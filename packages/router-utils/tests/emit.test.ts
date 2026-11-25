@@ -92,6 +92,30 @@ describe('statement separation', () => {
   })
 })
 
+describe('directive prologue', () => {
+  // A string statement following a removed statement joins its function's
+  // prologue unless something precedes it: a generated comment is no token.
+  // Source: emit prototype review (Gemini, `lastTokenBefore`)
+  it('keeps a string statement after a removed one and a generated comment an expression', async () => {
+    const source =
+      "export function f(...a: Array<unknown>) {\n  wrap()\n  'use strict'\n  return a.length\n}\n"
+    const code = await envOf(source, (ctx) => {
+      const call = callOf(ctx, 'wrap')
+      ctx.rewrites.edit({
+        range: { start: call.start, end: call.end },
+        body: [],
+        by: 'toy-emit',
+      })
+      ctx.rewrites.insert({
+        at: source.indexOf("'use strict'"),
+        body: [{ k: 'text', parts: ['/* c */ '] }],
+        by: 'toy-emit',
+      })
+    })
+    expect(code).toContain("/* c */ void 'use strict'")
+  })
+})
+
 describe('inserts', () => {
   // A renamed export loses its `export` keyword (placement rewrites the
   // statement): an insert at the statement's start is its text and renders

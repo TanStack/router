@@ -821,6 +821,48 @@ export function choose(...args: Array<string>) {
   expect(await inPage(served, 'return typeof module.choose')).toBe('function')
 })
 
+// A kept client-only fn nested in another, under TypeScript wrappers: the
+// call's value, not a reference to the member it read (`(obj.m as any)()`
+// calls with `this`, `delete (obj.m as any)` deletes the property, a direct
+// `eval` sees local bindings, `typeof` of an undeclared name does not
+// throw). Source: emit prototype review (Gemini 1)
+test('client: a member kept through nested client-only fns is a value where it is called, deleted, evaluated or under typeof', async () => {
+  const served = await serveCase(await host(), {
+    'module.tsx': `import { createClientOnlyFn } from '@tanstack/react-start'
+const obj = {
+  m(this: unknown) {
+    return this === obj
+  },
+}
+export function called() {
+  return createClientOnlyFn(createClientOnlyFn(obj.m as any) as any)()
+}
+export function deleted() {
+  delete createClientOnlyFn(createClientOnlyFn(obj.m as any) as any)
+  return 'm' in obj
+}
+export function evaluated() {
+  const local = 'local'
+  return createClientOnlyFn(createClientOnlyFn(eval as any) as any)(
+    'typeof local',
+  )
+}
+export function typed() {
+  try {
+    return typeof createClientOnlyFn(createClientOnlyFn(undeclaredName as any) as any)
+  } catch (error) {
+    return (error as Error).name
+  }
+}`,
+  })
+  expect(
+    await inPage(
+      served,
+      'return [module.called(), module.deleted(), module.evaluated(), module.typed()]',
+    ),
+  ).toEqual([false, true, 'undefined', 'ReferenceError'])
+})
+
 // Parenthesized JSX keeps working.
 test('client: keeps parenthesized JSX working', async () => {
   const served = await serveCase(await host(), {
@@ -858,6 +900,35 @@ export function html() {
 // Source maps point to the user's code (SPEC R6): the map each environment
 // serves with the module (Vite's composed map of every plugin's transform).
 // Source: #8504 start-compiler-preserves-user-code.test.ts
+// A lone CR ending a kept statement, then a removed import and its LF:
+// the output's CR and LF are one line terminator, and the map counts the
+// lines the output has. Source: emit prototype review (Astra 3)
+test.each([
+  ['a lone CR', '\r'],
+  ['an LF (control)', '\n'],
+])(
+  'client: maps code after a removed import that followed %s to its source line',
+  async (_, end) => {
+    const code = `export const a = 1${end}import { createClientOnlyFn } from '@tanstack/react-start'\n\nexport const marker = createClientOnlyFn(() => 23)\n`
+    const started = await host()
+    const startCase = await started.case({ 'module.tsx': code })
+    const result =
+      await started.host.dev.vite.environments.client.transformRequest(
+        startCase.url(),
+      )
+    expect(result, 'the served module').toBeTruthy()
+    const [generated] = tokenOffsets(result!.code, { identifier: 'marker' })
+    expect(generated, 'the declaration in the output').toBeDefined()
+    const [original] = tokenOffsets(code, { identifier: 'marker' })
+    expectMapsTo(result!.map as never, positionAt(result!.code, generated!), {
+      file: startCase.file(),
+      root: started.root,
+      mapUrl: pathToFileURL(startCase.file()).href,
+      ...positionAt(code, original!),
+    })
+  },
+)
+
 test.each(['client', 'ssr'] as const)(
   '%s: maps the string value of a JSX attribute to its own source column',
   async (environment) => {

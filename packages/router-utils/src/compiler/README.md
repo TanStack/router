@@ -80,7 +80,8 @@ emits its own output. Nothing depends on transform order.
   or a planner's text the shape its edit or placeholder declares (a server fn's stub is a call), else an unknown one (grouped as an operand, valued where called, deleted, decorated or under `typeof`); a nested boundary that is all
   of the kept node renders bare and the outer one wraps it once, seeing the shape the inner one resolved to; under a
   group or a TypeScript wrapper of the kept node (`inner() as Fn`) it is that wrapper's operand, wrapped there, and
-  the outer one sees the reference of what it rendered (none once wrapped). Each open boundary is one record on a
+  the outer one sees the reference of what it rendered: none once V made it a value (`(0, x)`), the same through
+  parentheses G wrote (`(obj.m)()` still calls with `this`). Each open boundary is one record on a
   stack (`Boundary` in `freeze.ts`): what renders on its kept node reports there. The opening text is a segment reserved before the
   body and written after it (no splice), mapped to the first token it wraps (one segment with that token when it is generated text mapped to the same offset, `(0, props.cb`); a closing `)` after generated text mapped to the source joins that text (`(0, props.cb)`, as a callee's `(0, x)`), any other closing text and spaces are unmapped (copied source text ends its mapping there).
   Statement separation stays apart (`Renderer.statementStart`, below): it decides whether two statements join,

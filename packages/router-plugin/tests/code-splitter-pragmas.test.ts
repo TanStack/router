@@ -108,6 +108,13 @@ describe('split modules keep file-level JSX pragmas', () => {
       'inside a license comment',
       `/**\n * @license MIT\n * @jsxImportSource @emotion/react\n */\n${head}`,
     ],
+    // the pragma's value touching the comment's end (`react*/`): the pragma
+    // is the comment's value, without its delimiters.
+    // Source: emit prototype review (Fable 1, Astra 1, Gemini 2)
+    [
+      'in a license comment ending on its value',
+      `/*! @jsxImportSource @emotion/react*/\n${head}`,
+    ],
   ])('keeps @jsxImportSource %s in effect', async (_, header) => {
     const rendered = await expectRendersLikeUntouched(styledRoute(header))
     expect(emotionStyled(rendered)).toBe(true)

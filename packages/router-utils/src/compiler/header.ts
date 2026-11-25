@@ -40,10 +40,18 @@ export function isLicenseComment(c: Comment): boolean {
   )
 }
 
-/** The pragmas of a comment alone, as a comment (a license comment's pragmas, which other outputs need without the notice). */
+/**
+ * The pragmas of a comment alone (a license comment's, which other outputs
+ * need without the notice), as a line comment: read from the comment's
+ * value, never its delimiters; a line comment holds any pragma value (one
+ * ending with a block comment's closing delimiter included).
+ */
 export function pragmaComment(code: string, range: Range): string {
-  const value = code.slice(range.start, range.end)
-  return `/* ${[...value.matchAll(PRAGMA_RE)].map((m) => m[0]).join(' ')} */`
+  const value = code.slice(
+    range.start + 2,
+    code.startsWith('/*', range.start) ? range.end - 2 : range.end,
+  )
+  return `// ${[...value.matchAll(PRAGMA_RE)].map((m) => m[0]).join(' ')}`
 }
 
 export function pragmasOf(c: Comment): Array<Pragma> {

@@ -3,9 +3,9 @@
  * source text and drives the `OutputBuilder`. Emission is on demand and the
  * module never ends inside a line comment it did not end in already.
  */
-import { OutputBuilder, SourceText } from './output-builder'
+import { OutputBuilder, SourceText, breaksNotLf } from './output-builder'
 import { specifierLiteral } from './strings'
-import { internalError } from './self-checks'
+import { SELF_CHECKS, internalError } from './self-checks'
 import type { RawSourceMap } from './output-builder'
 import type { EdgeRecord, OutputRecipe, Segment } from './plan'
 
@@ -19,6 +19,16 @@ export function emitRecipe(
   source: SourceText,
   wantMap: boolean,
 ): Emitted {
+  if (
+    SELF_CHECKS &&
+    recipe.plainText &&
+    recipe.segments.some((s) => s.k === 'text' && breaksNotLf(s.text))
+  ) {
+    // (the flag lets the builder count glue lines by LF alone)
+    throw internalError(
+      'a recipe marked plainText holds a text segment breaking a line with CR, U+2028 or U+2029',
+    )
+  }
   const b = new OutputBuilder(source, recipe.mapSource, {
     map: wantMap,
     plainText: recipe.plainText,

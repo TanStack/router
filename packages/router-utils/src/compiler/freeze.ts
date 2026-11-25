@@ -43,7 +43,7 @@ import {
   tokensMeet,
   withRef,
 } from './expression'
-import { internalError } from './self-checks'
+import { SELF_CHECKS, internalError } from './self-checks'
 import type { Dest, Role, Shape } from './expression'
 import type { ClassifiedRef, RefContext } from './analysis'
 import type { EdgeView } from './edges'
@@ -1356,11 +1356,15 @@ class Renderer {
     if (suffix !== '') {
       out.push({ k: 'text', text: suffix })
     }
-    return prefix !== ''
+    // (only `(0, …)` makes a value of a reference: a group keeps what it
+    // holds, `(obj.m)()` calls with `this`)
+    return prefix === '(0, '
       ? SHAPE_GROUPED
-      : suffix.startsWith('()')
-        ? SHAPE_CALL
-        : shape
+      : prefix !== ''
+        ? withRef(SHAPE_GROUPED, shape)
+        : suffix.startsWith('()')
+          ? SHAPE_CALL
+          : shape
   }
 
   /** Before rendering at `offset`: the index of a reserved segment when the last boundary ended there (`meetBoundary`), else -1. */
@@ -1426,7 +1430,7 @@ class Renderer {
       if (
         separate &&
         (offset === -1 || this.startsModuleStatement(offset)) &&
-        out.lineOpen(from)
+        out.lineOpenAt(from, offset)
       ) {
         out.insert(from, '\n')
       }
@@ -1437,7 +1441,11 @@ class Renderer {
       return
     }
     let at = from
-    if (separate && st.list.type === 'Program' && out.lineOpen(from)) {
+    if (
+      separate &&
+      st.list.type === 'Program' &&
+      out.lineOpenAt(from, offset)
+    ) {
       out.insert(at++, '\n')
     }
     if (continues) {
@@ -1508,8 +1516,12 @@ class Renderer {
     ) {
       return false
     }
-    // (the prologue: the list's opening `{`, then its directives)
-    let end = st.list.type === 'Program' ? 0 : st.list.start + 1
+    // (the prologue: the list's opening `{` or the module's start, after a
+    // hashbang, then its directives)
+    let end =
+      st.list.type === 'Program'
+        ? (this.plan.analysis.file.program.hashbang?.end ?? 0)
+        : st.list.start + 1
     for (const x of (st.list as unknown as { body: Array<Node> }).body) {
       if (typeof (x as { directive?: unknown }).directive !== 'string') {
         break
@@ -1527,7 +1539,13 @@ class Renderer {
     for (let i = from - 1; i >= 0; i--) {
       const seg = segs[i]!
       if (seg.k === 'text') {
-        if (seg.text.trim() !== '') {
+        if (tokenStart(seg.text) < seg.text.length) {
+          if (SELF_CHECKS && /['"];?\s*$/.test(seg.text)) {
+            // (special case: generated text is never taken for a directive)
+            throw internalError(
+              `generated text ending with a string precedes a string statement of the source: a directive prologue the statement rule cannot read (${JSON.stringify(seg.text.slice(-40))})`,
+            )
+          }
           return -2
         }
         continue
@@ -1557,7 +1575,7 @@ class Renderer {
    */
   keepPragmasLate(from: number): void {
     const late = this.plan.analysis.header.latePragmas
-    if (late.length === 0) {
+    if (late.length === 0 && !SELF_CHECKS) {
       return
     }
     const out = this.out
@@ -1565,6 +1583,15 @@ class Renderer {
     for (let i = from; i < out.segments.length; i++) {
       const seg = out.segments[i]!
       if (seg.k === 'text') {
+        if (
+          SELF_CHECKS &&
+          /@jsx(?:ImportSource|Runtime|Frag)?\s/.test(seg.text)
+        ) {
+          // (special case: the pass reads source slices only)
+          throw internalError(
+            `generated text holding a JSX pragma renders before the output's first token: a pragma this pass cannot keep late (${JSON.stringify(seg.text.slice(0, 40))})`,
+          )
+        }
         if (tokenStart(seg.text) < seg.text.length) {
           return
         }

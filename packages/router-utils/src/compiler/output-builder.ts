@@ -277,7 +277,7 @@ export function tokenStart(text: string, start = 0, end = text.length): number {
 }
 
 /** Whether `text` holds a line terminator other than LF (CR, U+2028, U+2029). */
-function breaksNotLf(text: string): boolean {
+export function breaksNotLf(text: string): boolean {
   for (let i = 0; i < text.length; i++) {
     const c = text.charCodeAt(i)
     if (c === 13 || c === 0x2028 || c === 0x2029) {
@@ -493,6 +493,25 @@ export class RecipeWriter {
     return false
   }
 
+  /**
+   * Whether the line of a token rendered first from segment `from` on, at
+   * source offset `offset` (-1: generated), holds something rendered before
+   * that segment: a line end between the segment's start and the token (in
+   * a slice holding it: its comments before the token are its own) closes
+   * what precedes.
+   */
+  lineOpenAt(from: number, offset: number): boolean {
+    const seg = this.segments[from]
+    if (seg?.k === 'slice' && offset > seg.start && offset <= seg.end) {
+      for (let p = offset - 1; p >= seg.start; p--) {
+        if (isLineTerminator(this.code.charCodeAt(p))) {
+          return false
+        }
+      }
+    }
+    return this.lineOpen(from)
+  }
+
   /** Whether the last line rendered before segment `from` holds anything but whitespace (what renders next would share it). */
   lineOpen(from: number): boolean {
     for (let i = from - 1; i >= 0; i--) {
@@ -554,6 +573,14 @@ export class OutputBuilder {
   private prevCol = 0
   private lineHasSeg = false
   private lastMapped = false
+  /**
+   * Where unmapped glue started on a line nothing is mapped on yet, after
+   * mapped code (-1: none): its 1-field segment is written once something
+   * on the line maps, so a line holding no mapping holds no segment.
+   */
+  private pendingUnmapped = -1
+  /** The output ends with a CR it counted as a line end: an LF written next is that terminator's (CRLF). */
+  private endsCR = false
   // forward cursor in the original (offset, line, lineStart)
   private curOff = 0
   private curLine = 0
@@ -570,8 +597,17 @@ export class OutputBuilder {
     this.plainText = opts.plainText === true
   }
 
-  /** Appends original `[start, end)`. */
+  /**
+   * Appends original `[start, end)`. Lines are the output's: a CR ending
+   * one write and an LF starting the next are one terminator there.
+   */
   copy(start: number, end: number): void {
+    if (end > start && this.endsCR && this.src.code.charCodeAt(start) === 10) {
+      // (the line ended at the CR: the LF takes no column)
+      this.code += '\n'
+      this.endsCR = false
+      start++
+    }
     if (end > start) {
       this._run(start, end)
     }
@@ -583,6 +619,9 @@ export class OutputBuilder {
       return
     }
     this.code += t
+    // (an LF after a CR the previous write ended with is that CR's line end)
+    const skip = this.endsCR && t.charCodeAt(0) === 10 ? 1 : 0
+    this.endsCR = this.src.ecma && t.charCodeAt(t.length - 1) === 13
     if (!this.withMap) {
       return
     }
@@ -596,7 +635,7 @@ export class OutputBuilder {
     // or LF only; text breaking lines with LF alone counts them natively)
     if (!this.plainText && this.src.ecma && breaksNotLf(t)) {
       let lineStart = -1
-      for (let i = 0; i < t.length; i++) {
+      for (let i = skip; i < t.length; i++) {
         const c = t.charCodeAt(i)
         if (isLineTerminator(c)) {
           if (c === 13 && t.charCodeAt(i + 1) === 10) {
@@ -607,12 +646,12 @@ export class OutputBuilder {
         }
       }
       this.genCol =
-        lineStart === -1 ? this.genCol + t.length : t.length - lineStart
+        lineStart === -1 ? this.genCol + t.length - skip : t.length - lineStart
       return
     }
-    let nl = t.indexOf('\n')
+    let nl = t.indexOf('\n', skip)
     if (nl === -1) {
-      this.genCol += t.length
+      this.genCol += t.length - skip
       return
     }
     let last: number
@@ -624,11 +663,13 @@ export class OutputBuilder {
     this.genCol = t.length - last - 1
   }
 
-  /** Ends the current line unless the output is empty or already ends with a line terminator. */
+  /** Ends the current line unless the output is empty or already ends with a line terminator (the source's convention). */
   newline(): void {
+    const c = this.code.charCodeAt(this.code.length - 1)
     if (
       this.code.length > 0 &&
-      !isLineTerminator(this.code.charCodeAt(this.code.length - 1))
+      c !== 10 &&
+      !(this.src.ecma && isLineTerminator(c))
     ) {
       this.text('\n')
     }
@@ -697,8 +738,13 @@ export class OutputBuilder {
   private _run(s: number, e: number): void {
     const code = this.src.code
     this.code += code.slice(s, e)
+    const ecma = this.src.ecma
+    this.endsCR = ecma && code.charCodeAt(e - 1) === 13
     if (!this.withMap) {
       return
+    }
+    if (this.pendingUnmapped !== -1) {
+      this._writeUnmapped()
     }
     this._locate(s)
     let line = this.curLine
@@ -727,7 +773,6 @@ export class OutputBuilder {
     pc = s - lineStart
     has = true
 
-    const ecma = this.src.ecma
     let prev = -1
     for (let i = s; i < e; i++) {
       const c = code.charCodeAt(i)
@@ -735,7 +780,12 @@ export class OutputBuilder {
       if (c < 128) {
         k = CLS[c]!
         if (k >= LF) {
-          if (k === CR && (!ecma || code.charCodeAt(i + 1) === 10)) {
+          // (a CR ending the run ends its line: an LF the next write
+          // starts with is skipped, `copy`/`text`)
+          if (
+            k === CR &&
+            (!ecma || (i + 1 < e && code.charCodeAt(i + 1) === 10))
+          ) {
             k = SPACE
           } else {
             if (p > cap) {
@@ -792,8 +842,7 @@ export class OutputBuilder {
     this.prevLine = pl
     this.prevCol = pc
     this.lineHasSeg = has
-    // (copied text that ended its line leaves nothing mapped on the new one)
-    this.lastMapped = has
+    this.lastMapped = true
     this.genCol = base + e
     this.curOff = e
     this.curLine = line
@@ -801,6 +850,9 @@ export class OutputBuilder {
   }
 
   private _seg(genCol: number, line: number, col: number): void {
+    if (this.pendingUnmapped !== -1) {
+      this._writeUnmapped()
+    }
     if (this.len > this.buf.length - 48) {
       this._grow(this.len)
     }
@@ -821,8 +873,27 @@ export class OutputBuilder {
     this.lastMapped = true
   }
 
-  /** A 1-field segment: generated glue after mapped code is not attributed to that code. */
+  /**
+   * A 1-field segment: generated glue after mapped code is not attributed
+   * to that code. On a line nothing maps on yet it waits for the line's
+   * first mapping (`pendingUnmapped`).
+   */
   private _unmapped(): void {
+    this.lastMapped = false
+    if (this.lineHasSeg) {
+      this._unmappedAt(this.genCol)
+    } else if (this.pendingUnmapped === -1) {
+      this.pendingUnmapped = this.genCol
+    }
+  }
+
+  private _writeUnmapped(): void {
+    const col = this.pendingUnmapped
+    this.pendingUnmapped = -1
+    this._unmappedAt(col)
+  }
+
+  private _unmappedAt(col: number): void {
     if (this.len > this.buf.length - 48) {
       this._grow(this.len)
     }
@@ -831,11 +902,10 @@ export class OutputBuilder {
     if (this.lineHasSeg) {
       buf[p++] = COMMA
     }
-    p = vlq(buf, p, this.genCol - this.prevGenCol)
+    p = vlq(buf, p, col - this.prevGenCol)
     this.len = p
-    this.prevGenCol = this.genCol
+    this.prevGenCol = col
     this.lineHasSeg = true
-    this.lastMapped = false
   }
 
   private _newline(): void {
@@ -846,6 +916,7 @@ export class OutputBuilder {
     this.prevGenCol = 0
     this.lineHasSeg = false
     this.lastMapped = false
+    this.pendingUnmapped = -1
   }
 
   private _grow(p: number): { buf: Uint8Array; cap: number } {

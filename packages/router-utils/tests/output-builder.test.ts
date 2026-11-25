@@ -279,4 +279,39 @@ describe('OutputBuilder', () => {
     b.text('export { a }\n')
     expect(b.finish().map!.mappings).toBe('AAAA,MAAM,EAAE,EAAE;;')
   })
+
+  // `lines: 'lf'` (the webpack-family hosts): a CR is no line terminator,
+  // so an output ending with one still gets its final LF.
+  it('ends an output that ends with a CR with an LF under LF lines', () => {
+    const code = 'const a = 1\r'
+    const b = new OutputBuilder(new SourceText(code, { lines: 'lf' }), '/m.ts')
+    b.copy(0, code.length)
+    b.newline()
+    const { code: out, map } = b.finish()
+    expect(out).toBe(`${code}\n`)
+    expect(map!.mappings.split(';').length).toBe(2)
+  })
+
+  // A CR ending one write and an LF starting the next are one terminator
+  // of the output: the map counts the output's lines.
+  it.each([
+    ['two copies', (b: OutputBuilder) => (b.copy(0, 12), b.copy(13, 14))],
+    ['a copy and text', (b: OutputBuilder) => (b.copy(0, 12), b.text('\n'))],
+    ['text and a copy', (b: OutputBuilder) => (b.text('x\r'), b.copy(13, 14))],
+  ])('counts a CR and an LF from %s as one line end', (_, write) => {
+    const code = 'const a = 1\r;\nconst m = 2\n'
+    const b = new OutputBuilder(new SourceText(code), '/m.ts')
+    write(b)
+    b.copy(14, code.length)
+    const { code: out, map } = b.finish()
+    const lines = out.split(/\r\n|[\n\r]/).length
+    expect(map!.mappings.split(';').length).toBe(lines)
+    const at = out.indexOf('m =')
+    expect(
+      originalPositionFor(new TraceMap(map as never), {
+        line: 2,
+        column: at - out.indexOf('\n') - 1,
+      }),
+    ).toMatchObject({ line: 3, column: 6 })
+  })
 })

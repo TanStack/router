@@ -443,6 +443,79 @@ export function nonNullAround(x = 8) {
     timeout,
   )
 
+  // Source text the compiler copies after what it removed or rewrote keeps
+  // its meaning and its place: a string after a hashbang and a removed
+  // import stays an expression (a hashbang is no statement of the prologue;
+  // Astra), and a trailing comment after a rewritten statement's end stays
+  // on that statement's line (Fable). Source: emit prototype review
+  test(
+    'source after a removed import or a rewritten statement end: no directive after a hashbang, a trailing comment on its line',
+    async () => {
+      const compiled = new Map<string, string>()
+      const files = {
+        'src/bang.ts': `#!/usr/bin/env node
+import { createServerOnlyFn } from '@tanstack/react-start'
+'use client'
+export const bang = createServerOnlyFn(() => 123)
+`,
+        'src/trailing.ts': `import { createServerOnlyFn } from '@tanstack/react-start'
+const label = 1
+export const trailing = createServerOnlyFn(() => label) // the server's
+export const after = 2
+`,
+      }
+      const { ssr } = await buildStart({
+        bundler,
+        entry: { client: 'client.ts', ssr: 'ssr.ts' },
+        files: {
+          ...files,
+          'client.ts': `export * from './src/bang'\nexport * from './src/trailing'\n`,
+          'ssr.ts': `export * from './src/bang'\nexport * from './src/trailing'\n`,
+        },
+        viteConfig: {
+          plugins: [
+            {
+              name: 'test:compiled-copies',
+              enforce: 'pre',
+              applyToEnvironment: (environment) => environment.name === 'ssr',
+              transform(code, id) {
+                const file = Object.keys(files).find((f) =>
+                  id.endsWith(`/${f}`),
+                )
+                if (file !== undefined) {
+                  compiled.set(file, code)
+                }
+              },
+            },
+          ],
+        },
+      })
+      expect(
+        (await ssr.run('return [entry.bang(), entry.trailing(), entry.after]'))
+          .result,
+      ).toEqual([123, 1, 2])
+      if (bundler === 'vite') {
+        const { program } = parseSync('bang.ts', compiled.get('src/bang.ts')!, {
+          lang: 'ts',
+          sourceType: 'module',
+        })
+        expect({
+          directives: program.body
+            .filter(
+              (statement) => 'directive' in statement && statement.directive,
+            )
+            .map((statement) => (statement as { directive: string }).directive),
+          trailingOnItsLine: compiled
+            .get('src/trailing.ts')!
+            .split(/\r\n|[\n\r\u2028\u2029]/)
+            .find((line) => line.includes("// the server's"))
+            ?.includes('export const trailing'),
+        }).toEqual({ directives: [], trailingOnItsLine: true })
+      }
+    },
+    timeout,
+  )
+
   // the kept text's last character beside the source's next token: `impl`
   // then `in` would be one identifier. Source: Astra review of the
   // splicing design (class A2)
