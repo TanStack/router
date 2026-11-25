@@ -65,9 +65,11 @@ run @tanstack/start-plugin-core:test:integration:whole 9 & run @tanstack/router-
   `pnpm nx run-many -t test:unit test:integration -p @tanstack/router-generator @tanstack/router-plugin @tanstack/start-plugin-core @tanstack/react-start-rsc --parallel=1 --outputStyle=stream --skipRemoteCache`.
 
 The cache-equivalence run (`cache-equivalence.mjs`, from the repository root): the fast tiers and the slow tier's
-freshness and watch suites, once as they are and once with every compiler cache off (`TSR_COMPILER_NO_CACHE=all`),
-compared test by test; a test whose outcome differs fails the run (a cache answered what a fresh compile does not).
-It takes the machine, like the whole oracle:
+freshness, watch and cache suites, once as they are and once with every compiler cache off
+(`TSR_COMPILER_NO_CACHE=all`), compared test by test and file by file. Any difference fails the run (a cache answered
+what a fresh compile does not), and so do a test failing in both runs and a run that did not start, ended on a signal
+or exited nonzero without a failed test to show for it. `--survey` runs every slow-tier file whose name says dev,
+watch, cache, edit, restart or HMR instead (how the set was chosen). It takes the machine, like the whole oracle:
 
 ```sh
 node packages/compiler-test-utils/oracle/cache-equivalence.mjs --out "$(mktemp -d)"
