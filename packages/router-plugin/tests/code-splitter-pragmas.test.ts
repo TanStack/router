@@ -154,6 +154,45 @@ describe('split modules keep file-level JSX pragmas', () => {
     },
   )
 
+  // A separator the project's transform does not take for one (Oxc: a
+  // non-breaking space, a vertical tab, a form feed): the untouched file
+  // uses the default runtime, and so does the split component, which gets
+  // the comment as written. Source: emit review re-check (Astra, cbe1503a9e)
+  it.each([
+    ['a non-breaking space', '\u00a0'],
+    ['a vertical tab', '\v'],
+    ['a form feed', '\f'],
+  ])(
+    'keeps a pragma in a license comment separated from its value by %s as ineffective as in the untouched file',
+    async (_, separator) => {
+      const rendered = await expectRendersLikeUntouched(
+        styledRoute(
+          `/**\n * @license MIT\n * @jsxImportSource${separator}@emotion/react\n */\n${head}`,
+        ),
+      )
+      expect(emotionStyled(rendered)).toBe(false)
+    },
+  )
+
+  // A pragma comment is copied as written, whatever the project's transform
+  // makes of it: a value on the next line is no pragma to Oxc (the
+  // untouched file and the chunk use the default runtime) but is one to
+  // TypeScript, which reads the chunk's copy as it reads the source.
+  // Source: emit review re-check (Fable N1, cbe1503a9e)
+  it('copies a pragma comment with its value on the next line into the split component as written', async () => {
+    const comment = '/* @jsxImportSource\n@emotion/react */'
+    const route = await loadWithUntouched(styledRoute(`${comment}\n${head}`))
+    expect(
+      (await route.loadedBy('component')).some((code) =>
+        code.includes(comment),
+      ),
+    ).toBe(true)
+    const [rendered, expected] = await route.run<[string, string]>(
+      `return [await render('component'), await renderComponent(${untouched}.component)]`,
+    )
+    expect(rendered).toBe(expected)
+  })
+
   it('keeps a @jsxImportSource written after the imports as ineffective as in the untouched file (leading-pragma project)', async () => {
     const rendered = await expectRendersLikeUntouched(
       styledRoute(`${head}/** @jsxImportSource @emotion/react */\n`),

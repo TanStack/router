@@ -273,7 +273,8 @@ every output of an edited file). Rollup and Rolldown name a module's source by i
 Vite hosts' `outputOptions` compose `sourcemapPathTransform` with `withOwnSourcesNamedByFile` (`hosts/vite.ts`), which
 drops the owned query keys, so every output of a file names it once (R135); the webpack family names the resource
 path already. The header (hashbang, pragmas, license, directives) is handled by `header.ts`; derived outputs copy pragmas and
-directives, never license comments (a license comment's pragmas render alone, as a comment of their own).
+directives: a comment holding a JSX pragma's name is copied as written (a license notice holding one too), and the
+host's JSX transform decides whether it is in effect there as it does in the source; no other license comment.
 
 `output-builder.ts` is the one reader of characters: line terminators and whitespace, where two pieces meet (L of
 the boundaries, `spaceBefore`/`spaceAfter`), and what an output's segments render (`RecipeWriter`, which freeze

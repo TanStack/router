@@ -40,6 +40,19 @@ describe('a license comment holding a JSX pragma, on Rspack', () => {
       header: `/**\n * @license MIT\n * @jsxImportSource @emotion/react\n */\n`,
       styled: true,
     },
+    // SWC reads a pragma that starts its line (after one `*`) only: one
+    // after other text on its line is no pragma there, in the source as in
+    // the chunk's copy. Source: emit review re-check (Fable N2, cbe1503a9e)
+    {
+      name: 'a pragma after the `!` of the comment on its line',
+      header: `/*! @jsxImportSource @emotion/react */\n`,
+      styled: false,
+    },
+    {
+      name: 'a pragma after `@license` on its line',
+      header: `/** @license MIT @jsxImportSource @emotion/react */\n`,
+      styled: false,
+    },
     {
       name: 'a pragma name with its value on the next line',
       header: `/**\n * @license MIT\n * @jsxImportSource\n * @emotion/react\n */\n`,

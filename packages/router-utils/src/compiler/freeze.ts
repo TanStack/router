@@ -14,7 +14,6 @@ import { dedupeEdges, sourceEdges } from './edges'
 import { specifierLiteral, specifierName } from './strings'
 import { statementRecipe } from './units'
 import { VALUE } from './declarations'
-import { pragmaComment } from './header'
 import {
   RecipeWriter,
   continuesStatement,
@@ -624,22 +623,13 @@ function renderDerived(
     out.push({ k: 'text', text: 'export {}\n' })
     return
   }
-  // header: pragmas and directives (leadingness preserved), never license
-  // comments (a license comment's pragmas render alone); a comment holding
-  // two pragmas renders once
+  // header: the comments holding pragmas, as written (a license notice
+  // with them: the host reads a copy as it reads the source), and the
+  // directives (leadingness preserved)
   const header = analysis.header
-  let lastPragma = -1
   for (const p of header.pragmas) {
-    const { start, end } = p.range
-    if (start !== lastPragma) {
-      if (header.license.some((l) => l.start === start)) {
-        out.push({ k: 'text', text: `${pragmaComment(code, p.range)}\n` })
-      } else {
-        renderer.renderSpan(root, start, end, null, null)
-        out.push({ k: 'text', text: '\n' })
-      }
-    }
-    lastPragma = start
+    renderer.renderSpan(root, p.range.start, p.range.end, null, null)
+    out.push({ k: 'text', text: '\n' })
   }
   for (const d of header.directives) {
     if (decl.header?.dropDirectives?.includes(d.value)) {

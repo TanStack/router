@@ -31,9 +31,13 @@ export interface Header {
   latePragmas: Array<Range>
 }
 
-/** A JSX pragma and its value, on one line (a line break after the name leaves it without one: no pragma to the JSX transforms). */
-const PRAGMA_RE =
-  /@(jsxImportSource|jsxRuntime|jsxFrag|jsx)[^\S\r\n\u2028\u2029]+(\S+)/g
+/**
+ * A JSX pragma's name: a comment holding one is copied whole, as written,
+ * wherever the file's JSX goes, and the host's JSX transform decides
+ * whether it is in effect there as it does in the source (its own rules
+ * for separators, lines and comment kinds).
+ */
+const PRAGMA_RE = /@jsx(?:ImportSource|Runtime|Frag)?(?![\w$])/
 
 export function isLicenseComment(c: Comment): boolean {
   return (
@@ -42,28 +46,9 @@ export function isLicenseComment(c: Comment): boolean {
   )
 }
 
-/**
- * The pragmas of a comment alone (a license comment's, which other outputs
- * need without the notice), as a comment of the source comment's kind (SWC
- * and TypeScript read JSX pragmas in block comments only), read from its
- * value: a block comment's value holds no closing delimiter.
- */
-export function pragmaComment(code: string, range: Range): string {
-  const block = code.startsWith('/*', range.start)
-  const value = code.slice(range.start + 2, block ? range.end - 2 : range.end)
-  const pragmas = [...value.matchAll(PRAGMA_RE)]
-    .map((m) => `@${m[1]} ${m[2]}`)
-    .join(' ')
-  return block ? `/* ${pragmas} */` : `// ${pragmas}`
-}
-
-export function pragmasOf(c: Comment): Array<Pragma> {
-  const out: Array<Pragma> = []
-  PRAGMA_RE.lastIndex = 0
-  while (PRAGMA_RE.exec(c.value) !== null) {
-    out.push({ range: { start: c.start, end: c.end } })
-  }
-  return out
+/** Whether a comment holds a JSX pragma's name (`PRAGMA_RE`). */
+export function holdsPragma(c: Comment): boolean {
+  return PRAGMA_RE.test(c.value)
 }
 
 /** Counts the line terminators (CRLF = 1) in `code[start, end)`. */
@@ -205,12 +190,14 @@ export function analyzeHeader(file: SourceFile): Header {
   let end = hashbang ? extendOverTrailingLine(code, hashbang.end) : 0
   for (let i = 0; i < leading.length; i++) {
     const c = leading[i]!
-    const p = pragmasOf(c)
+    const p = holdsPragma(c)
     const lic = isLicenseComment(c)
-    if (i >= attachedFrom && p.length === 0 && !lic) {
+    if (i >= attachedFrom && !p && !lic) {
       continue
     }
-    pragmas.push(...p)
+    if (p) {
+      pragmas.push({ range: { start: c.start, end: c.end } })
+    }
     if (lic) {
       license.push({ start: c.start, end: c.end })
     }
@@ -232,7 +219,7 @@ export function analyzeHeader(file: SourceFile): Header {
   const latePragmas: Array<Range> = []
   if (code.includes('@jsx')) {
     for (const c of file.comments) {
-      if (c.start >= end && pragmasOf(c).length > 0) {
+      if (c.start >= end && holdsPragma(c)) {
         latePragmas.push({ start: c.start, end: c.end })
       }
     }
