@@ -142,8 +142,9 @@ function info not found` when one of them calls it, and the build says nothing, 
   still writes import protection's state and reports its violations when it answers last: `onViolation` hears of an
   import the file no longer has, or of an import judged against a dependency as it was. Vite dev. SPEC J6.5.
   `start-plugin-core/tests/integration/start-dev-settlement.test.ts`: "C6-02b: an import the newer text removed is not
-  reported", "the file saved with other text and back (A, B, A): the older A reports nothing", "a dependency-only
-  rebuild of the same text: the older compile reports nothing". Fix: a compile's shared writes and reports follow only
+  reported", "the file saved with other text and back (A, B, A): the older A reports nothing", "the file removed
+  and created again with the same bytes: the older compile reports nothing", "a dependency-only rebuild of the same
+  text: the older compile reports nothing". Fix: a compile's shared writes and reports follow only
   an answer no newer answer of its key overtook (step 2: `session.transform`, one commit for a current answer).
 - **A check that waits while an event lands accepts what it read before** (settlement design, step 0; whole-PR review
   C6-01, C6-03): a plan hit or a restored plan whose resolution the resolver read before a tsconfig change and
@@ -156,12 +157,16 @@ function info not found` when one of them calls it, and the build says nothing, 
 - **Vite watch build: a client rebuild whose output fails keeps the previous client build** (settlement design rev 4,
   step 7): another plugin's `generateBundle` failing leaves the client's output directory empty (Vite emptied it before
   rendering), and the server's document still names the previous client files. A hand-ordered server build after a
-  failed client rebuild (S4-02) answers "Server function info not found" for the call of the client build on disk, and
-  a fixed custom server fn id whose definition moves to another module is not found after the watch rebuild.
-  `start-plugin-core/tests/integration/start-build-settlement-generate.test.ts`: "another plugin's generateBundle
-  fails: the document names no client file"; `start-build-settlement-ids.test.ts`: "the call of the id answers the
-  function at its new place", "S4-02: the server answers the call of the last written client build". Fix: the client-build record follows the output on disk
-  (withdrawn at `renderStart`, committed at `writeBundle`), the resolver reads its descriptors (step 7).
+  failed client rebuild (S4-02) answers "Server function info not found" for the call of the client build on disk.
+  `start-plugin-core/tests/integration/start-build-settlement-output.test.ts`: "another plugin's generateBundle
+  fails: the document names no client file"; `start-build-settlement-ids.test.ts`: "S4-02: the server answers the
+  call of the last written client build". Fix: the client-build record follows the output on disk (withdrawn at
+  `renderStart`, committed at `writeBundle`), the resolver reads its descriptors (step 7).
+- **Vite watch build: a custom server fn id whose definition moves to another module is not found** (whole-PR review
+  S1-22, decision D-22 pending): the id allocator never releases an id in a watch build, so the moved definition gets
+  another id (`greet_fixed_1`) and a call of the custom id answers "Server function info not found" until a restart.
+  `start-plugin-core/tests/integration/start-build-settlement-ids.test.ts`: "the call of the id answers the function
+  at its new place". Fix: the allocator releases the ids of definitions the rebuild no longer has.
 
 ## Known incorrect rejections (accepted, R89)
 

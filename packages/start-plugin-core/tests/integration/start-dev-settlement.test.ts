@@ -150,11 +150,15 @@ describe('Vite dev: an older compile of a module answered after a newer one', ()
    * `form.ts` imports the marked `lib.ts`; the compile's `allowImport` call
    * waits. Then `between` runs (edits that end with `form.ts` reading
    * `lib.ts` again, as its text says, after `lib.ts` dropped its marker),
-   * the newest request is served, and the held `allowImport` answers
-   * (`false`, the mock) last. Gives what `onViolation` was told.
+   * the newest request (of `newest`, a URL of the file) is served, and the
+   * held `allowImport` answers (`false`, the mock) last. Gives what
+   * `onViolation` was told. Each request gets its own answer: the older one
+   * the mock, the newest the real `lib.ts` (a setup that gives them one
+   * answer throws: it shows nothing).
    */
   async function heldJudgement(
     between: (server: DevServer) => Promise<void>,
+    newest: (server: DevServer) => string = () => '/src/form.ts',
   ): Promise<Array<string>> {
     const gate = holdPoint()
     const { importProtection, reports } = protection(gate)
@@ -169,9 +173,14 @@ describe('Vite dev: an older compile of a module answered after a newer one', ()
     await reached
     await between(server)
     // (the newest request: `lib.ts` is plain now, so no violation)
-    expect(await server.transform('/src/form.ts')).toContain('secret')
+    const newer = await server.transform(newest(server))
+    if (reports.length > 0) {
+      throw new Error(`test: reported before the release: ${reports}`)
+    }
     gate.release()
-    await older
+    if ((await older) === newer) {
+      throw new Error('test: the two requests got one answer')
+    }
     await server.idle()
     return reports
   }
@@ -189,6 +198,27 @@ describe('Vite dev: an older compile of a module answered after a newer one', ()
           await server.edit({ 'src/lib.ts': unmarked })
           await server.edit({ 'src/form.ts': readsLib })
         }),
+      ).toEqual([])
+    },
+    timeout,
+  )
+
+  // Vite keys a request in flight by its URL, and the module of a file
+  // created again joins the older request of the same URL: the newest
+  // request names the file by Vite's `/@fs/` URL.
+  // Source: Astra's review of settlement step 0, finding 1 (`unlink.mjs`).
+  test.fails(
+    'the file removed and created again with the same bytes: the older compile reports nothing',
+    async () => {
+      expect(
+        await heldJudgement(
+          async (server) => {
+            await server.edit({ 'src/form.ts': null })
+            await server.edit({ 'src/lib.ts': unmarked })
+            await server.edit({ 'src/form.ts': readsLib })
+          },
+          (server) => `/@fs${server.file('src/form.ts')}`,
+        ),
       ).toEqual([])
     },
     timeout,
@@ -240,6 +270,10 @@ export const read = () => [valueOf(secret), slow]
       const older = server.import('/src/form.ts')
       await reached
       await server.edit({ 'src/form.ts': plainForm })
+      // (the newer text is served first)
+      expect(await server.transform('/src/form.ts', 'ssr')).toContain(
+        'MARK_PLAIN',
+      )
       gate.release()
       expect((await older).read()).toEqual(['mock', 1])
       expect(await server.transform('/src/form.ts', 'ssr')).toContain(
@@ -328,31 +362,50 @@ export const read = () => valueOf(secret)
 })
 
 describe('Vite dev: outputs of one text', () => {
-  // A server fn file's SSR module and its client module, requested
-  // together right after a save: both are answers of the newest text, and
-  // the new server fn is callable.
+  // A server fn file is saved; the compile of its new text
+  // waits on a resolution while the SSR module and the module of its
+  // handler (two outputs of one file in one environment) are both
+  // requested: the call loads the handler, as a page's does. Both are
+  // answers of the newest text and both stand: the call answers the new
+  // handler, and so does a call after both answered.
+  // Source: Astra's and Gemini's reviews of settlement step 0.
   test(
-    'sibling outputs of one text both stand: the new server fn answers',
+    'two outputs of one text in one environment both stand: the new handler answers',
     async () => {
+      const gate = holdPoint()
+      const fns = (
+        marker: string,
+      ) => `import { createServerFn } from '@tanstack/react-start'
+import { helper } from './helper'
+export const fn = createServerFn().handler(() => helper('${marker}'))
+`
       const server = await startDevServer({
+        plugins: [holdResolution(gate, './helper', 'ssr')],
         files: {
           ...startRequestFiles,
-          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
-export const oldFn = createServerFn().handler(() => 'MARK_OLD')
-`,
+          'src/helper.ts': `export const helper = (marker: string) => marker\n`,
+          'src/fns.ts': fns('MARK_OLD'),
         },
       })
-      await server.import('/src/fns.ts')
-      await server.edit({
-        'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
-export const newFn = createServerFn().handler(() => 'MARK_NEW')
-`,
-      })
-      const [ssr] = await Promise.all([
-        server.import('/src/fns.ts'),
-        server.transform('/src/fns.ts'),
+      // (a dev id names the file and the function: the save keeps it)
+      const { url } = (await server.import('/src/fns.ts')).fn
+      expect(await callServerFn(server, url)).toBe('MARK_OLD')
+      // (the module runner imports the saved module again on its own: that
+      // compile is the one held)
+      const reached = gate.arm()
+      await server.write({ 'src/fns.ts': fns('MARK_NEW') })
+      await Promise.race([
+        reached,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('test: no compile held')), 10_000),
+        ),
       ])
-      expect(await callServerFn(server, ssr.newFn)).toBe('MARK_NEW')
+      const call = callServerFn(server, url)
+      gate.release()
+      expect(await call).toBe('MARK_NEW')
+      await server.settle()
+      await server.idle()
+      expect(await callServerFn(server, url)).toBe('MARK_NEW')
     },
     timeout,
   )

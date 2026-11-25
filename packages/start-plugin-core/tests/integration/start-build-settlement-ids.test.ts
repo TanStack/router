@@ -1,10 +1,12 @@
 /**
  * The server fn a server built after a client build answers: a fixed custom
- * server fn id whose provider moves in a `vite build --watch` rebuild, and
- * S4-02's hand-ordered builds (a client rebuild fails before the server
- * builds). Settlement design, step 0 (design-settlement.md rev 4, §6); the
- * `.fails` tests are pins: step 7 (the resolver reads the client-build
- * record's descriptors) turns them green.
+ * server fn id whose definition moves to another module in a
+ * `vite build --watch` rebuild (a pin of whole-PR review S1-22: the id
+ * allocator keeps the old definition's id, so the moved one gets another;
+ * decision D-22 pending), and S4-02's hand-ordered builds (a client rebuild
+ * fails before the server builds; a pin: step 7, the resolver reads the
+ * client-build record's descriptors, turns it green). Settlement design,
+ * step 0 (design-settlement.md rev 4, §6).
  */
 import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -47,7 +49,9 @@ export { greet } from './moved'
 
   // `greet` keeps its custom id while its definition moves to another
   // module (the client imports it from there): the rebuilt server answers
-  // the call of that id with the moved function.
+  // the call of that id with the moved function. Red for S1-22 (the
+  // allocator never releases `greet_fixed` in a watch build), not for the
+  // client-build record (Gemini's review of settlement step 0).
   // Source: Astra's review of the settlement design, change 5.
   test.fails(
     'the call of the id answers the function at its new place',

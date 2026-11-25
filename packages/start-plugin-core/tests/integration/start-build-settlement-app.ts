@@ -38,7 +38,7 @@ export const app = {
   'src/router.ts': routerFile,
   'src/routes/__root.tsx': rootDocument(),
   'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
-export const Route = createFileRoute('/')({ component: () => <p>home</p> })
+export const Route = createFileRoute('/')({ component: () => <p>MARK_HOME</p> })
 `,
   'src/client-entry.ts': `export { getRouter } from './router'
 export { label } from './client-only'
@@ -82,6 +82,10 @@ export const callGreet = `${callByIdPrelude}try {
 
 /** What the client builds and the server, as the app's host serves them, give at one moment. */
 export interface Served {
+  /** The HTTP status of the document at `/`. */
+  status: number
+  /** Whether the document is the page (the index route's text), not an error page. */
+  rendered: boolean
   /** The client files the server's document names, with their bytes on disk (null: none there). */
   named: Record<string, string | null>
   /** What a client call of `greet` (by its id) answers, or the error's message. */
@@ -90,37 +94,57 @@ export interface Served {
 
 /**
  * The builds of a watch mode run, seen from outside: where each environment
- * writes, and which environments are building. Also a plugin of the app
- * that fails the client's `generateBundle` or `writeBundle` while `fail`
- * names it (another plugin, placed after Start's).
+ * writes, when a build hook last ran, how many server builds began, and how
+ * many client builds failed. Also a plugin of the app that fails the
+ * client's `generateBundle` or `writeBundle` while `fail` names it (another
+ * plugin, placed after Start's).
  */
 export function watchedBuilds() {
   const state = {
     clientDir: '',
     serverEntry: '',
-    /** Client builds whose build phase ended (`buildEnd`; a watch rebuild that fails after it calls `closeBundle` only when its watcher closes). */
-    clientBuilt: 0,
+    /** When a build hook of any environment last ran. */
+    activeAt: 0,
+    /** Server builds begun. */
+    serverBuilds: 0,
+    /** Client builds that failed: in the build phase (`buildEnd` with an error), or in the hook `fail` names. */
+    clientFailures: 0,
     fail: null as null | 'generateBundle' | 'writeBundle',
+  }
+  const active = () => {
+    state.activeAt = Date.now()
   }
   const plugin: Plugin = {
     name: 'test:watched-builds',
-    buildEnd() {
-      if (this.environment.name === 'client') {
-        state.clientBuilt++
+    buildStart() {
+      active()
+      if (this.environment.name === 'ssr') {
+        state.serverBuilds++
       }
     },
+    buildEnd(error) {
+      active()
+      if (this.environment.name === 'client' && error) {
+        state.clientFailures++
+      }
+    },
+    renderStart: active,
     generateBundle() {
+      active()
       if (
         this.environment.name === 'client' &&
         state.fail === 'generateBundle'
       ) {
+        state.clientFailures++
         throw new Error('test: generateBundle fails')
       }
     },
     writeBundle(options, bundle) {
+      active()
       if (this.environment.name === 'client') {
         state.clientDir = options.dir!
         if (state.fail === 'writeBundle') {
+          state.clientFailures++
           throw new Error('test: writeBundle fails')
         }
         return
@@ -135,24 +159,30 @@ export function watchedBuilds() {
         state.serverEntry = path.join(options.dir!, entries[0]!.fileName)
       }
     },
+    closeBundle: active,
   }
-  /** The document's client files and their bytes, and the call's answer. */
+  /** The document at `/`, its client files and their bytes, and the call's answer. */
   const served = async (): Promise<Served> => {
     const { stdout } = await runNodeProgram(
       `const result = await (async () => {
 ${inAppRequest(
   state.serverEntry,
   `const entry = globalThis.__tssBuildHarnessEntry
-const html = await (await entry.startServerEntry.fetch(new Request('http://localhost/'))).text()
+const response = await entry.startServerEntry.fetch(new Request('http://localhost/'))
+const html = await response.text()
 const call = await (async () => {
 ${callGreet}
 })()
-return { html, call }`,
+return { status: response.status, html, call }`,
 )}
 })()
 process.stdout.write(JSON.stringify(result))`,
     )
-    const { html, call } = JSON.parse(stdout) as { html: string; call: string }
+    const { status, html, call } = JSON.parse(stdout) as {
+      status: number
+      html: string
+      call: string
+    }
     const named: Record<string, string | null> = {}
     for (const [, file] of html.matchAll(
       /["']\/([^"'\s]+?\.(?:js|css))["']/g,
@@ -160,60 +190,79 @@ process.stdout.write(JSON.stringify(result))`,
       const onDisk = path.join(state.clientDir, file!)
       named[file!] = existsSync(onDisk) ? readFileSync(onDisk, 'utf8') : null
     }
-    return { named, call }
+    return { status, rendered: html.includes(PAGE_TEXT), named, call }
   }
   /**
-   * Once a client build phase ended after `since` such builds: what is
-   * served, once it is `expected` or after a bound (the builds that follow
-   * the client's, a server rebuild included, end within it).
+   * Once the client failed again after `failures` failures and the builds
+   * are quiet (no build hook of any environment for `quietMs`: whatever the
+   * failure starts, a server rebuild included, has ended): what is served,
+   * and how many server builds began since `serverBuilds`.
    */
-  const servedAfter = async (
-    since: number,
-    expected: (served: Served) => boolean,
-  ): Promise<Served> => {
+  const servedAfterFailure = async (
+    failures: number,
+    serverBuilds: number,
+  ): Promise<{ served: Served; serverBuilds: number }> => {
     const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
     const start = Date.now()
-    while (state.clientBuilt <= since) {
+    while (state.clientFailures <= failures) {
       if (Date.now() > start + 30_000) {
-        throw new Error('test: the client did not build again')
+        throw new Error('test: the client build did not fail')
       }
       await sleep(50)
     }
-    const deadline = Date.now() + 10_000
-    for (;;) {
-      // (a server rebuild may be writing its files)
-      const now = await served().catch(() => null)
-      if ((now && expected(now)) || Date.now() > deadline) {
-        return now ?? (await served())
-      }
-      await sleep(500)
+    while (Date.now() - state.activeAt < quietMs) {
+      await sleep(100)
+    }
+    return {
+      served: await served(),
+      serverBuilds: state.serverBuilds - serverBuilds,
     }
   }
-  return { state, plugin, served, servedAfter }
+  return { state, plugin, served, servedAfterFailure }
 }
 
+/** The index route's text: a document with it is the page. */
+const PAGE_TEXT = 'MARK_HOME'
+/** How long the builds stay without a hook before what a failure starts counts as ended. */
+const quietMs = 2_000
+
 /**
- * A watch run: the first build, then the client-only save `edit` with the
- * client's `fail` hook armed, then (seen through that failure) the fix.
- * Gives what was served after the first build, through the failure, and
- * after the fix, with the fix's builds.
+ * A watch run: the first build (the page, its client files on disk, the
+ * call answered: else it throws), then the client-only save `edit` with the
+ * client's `fail` hook armed, then (seen once that failure happened and the
+ * builds are quiet) the fix. Gives what was served after the first build,
+ * through the failure (with the server builds it started), and after the
+ * fix, with the fix's builds.
  */
 export async function failedRebuild(
   edit: Record<string, string>,
   fail: null | 'generateBundle' | 'writeBundle',
-  expected: (during: Served, first: Served) => boolean,
 ) {
   const builds = watchedBuilds()
   let first!: Served
-  let during!: Served
-  let built = 0
+  let during!: { served: Served; serverBuilds: number }
+  let failures = 0
+  let serverBuilds = 0
   const steps: Array<WatchStep> = [
     {
       edits: edit,
       when: async () => {
         first = await builds.served()
+        const files = Object.values(first.named)
+        if (
+          first.status !== 200 ||
+          !first.rendered ||
+          files.length === 0 ||
+          files.includes(null) ||
+          first.call !== 'MARK_GREET'
+        ) {
+          throw new Error(
+            `test: the first build does not serve the page: ${JSON.stringify({ ...first, named: Object.keys(first.named) })}`,
+          )
+        }
         builds.state.fail = fail
-        built = builds.state.clientBuilt
+        failures = builds.state.clientFailures
+        serverBuilds = builds.state.serverBuilds
       },
     },
     {
@@ -222,7 +271,7 @@ export async function failedRebuild(
         'src/client-only.ts': clientOnly('MARK_FIXED'),
       },
       when: async () => {
-        during = await builds.servedAfter(built, (now) => expected(now, first))
+        during = await builds.servedAfterFailure(failures, serverBuilds)
         builds.state.fail = null
       },
       rebuilds: ['ssr'],
@@ -257,5 +306,9 @@ export function expectRecovered(
     Object.fromEntries(js.map((file) => [file, emitted.get(file) ?? null])),
   )
   expect(bytesOf(after).some((code) => code?.includes('MARK_FIXED'))).toBe(true)
-  expect(after.call).toBe('MARK_GREET')
+  expect([after.status, after.rendered, after.call]).toEqual([
+    200,
+    true,
+    'MARK_GREET',
+  ])
 }

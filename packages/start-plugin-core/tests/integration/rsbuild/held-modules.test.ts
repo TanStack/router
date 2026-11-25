@@ -5,7 +5,9 @@
  * either module's compile ends last; once done, its output is not written). Each module records what it served,
  * and a build on the persistent cache (`performance.buildCache`) is the
  * clean build: the server answers the client's call, the worker calls the
- * same function, and the module's warning is reported once more.
+ * same function, and the module's warning and the worker's own module's
+ * warning (the child compilation's, which the worker plugin hands to the
+ * client's) are reported once more.
  *
  * Settlement design, step 0 (design-settlement.md §2, the instance-local
  * sink; §6 row (c)), a pin expected green on head: step 4 (the Rsbuild
@@ -38,7 +40,19 @@ export const requireRole = (role: string) =>
     return next()
   })
 `,
+  // (only the worker imports it: its warning is the child compilation's)
+  'src/worker-role.ts': `import { createMiddleware } from '@tanstack/react-start'
+export const workerRole = (role: string) =>
+  createMiddleware().server(async ({ next }) => {
+    if (role === 'none') {
+      throw new Error('no')
+    }
+    return next()
+  })
+`,
   'src/worker.ts': `import { greet } from './fns'
+import { workerRole } from './worker-role'
+void workerRole
 self.onmessage = () => {
   self.postMessage(greet.url)
 }
@@ -63,7 +77,13 @@ describe('rsbuild build: one file in the client and in a worker', () => {
             ...(cached && { performance: { buildCache: true } }),
             environments: {
               client: {
-                tools: { rspack: { plugins: [workerPluginOf({ at })] } },
+                tools: {
+                  rspack: {
+                    // (the child's warnings, handed to the client's
+                    // compilation as a worker plugin does)
+                    plugins: [workerPluginOf({ at, handOver: 'as they are' })],
+                  },
+                },
               },
             },
           },
@@ -86,6 +106,16 @@ describe('rsbuild build: one file in the client and in a worker', () => {
             severity: 'warning',
             file: 'src/fns.ts',
           }).length,
+          workerWarnings: findDiagnostics(build.diagnostics, {
+            severity: 'warning',
+            file: 'src/worker-role.ts',
+          }).length,
+          // (the child's own warning, handed over while the client
+          // compilation makes its modules, names no file: Rspack reads it
+          // back without its module)
+          allWarnings: findDiagnostics(build.diagnostics, {
+            severity: 'warning',
+          }).length,
         }
       }
       const clean = await outcome(false)
@@ -94,6 +124,10 @@ describe('rsbuild build: one file in the client and in a worker', () => {
         workerCalls: at === 'make' ? true : null,
       })
       expect(clean.warnings).toBeGreaterThan(0)
+      // (the child's warning is reported: by its file, or as one more)
+      expect(
+        clean.workerWarnings > 0 || clean.allWarnings > clean.warnings,
+      ).toBe(true)
       expect(await outcome(true)).toEqual(clean)
     },
   )
