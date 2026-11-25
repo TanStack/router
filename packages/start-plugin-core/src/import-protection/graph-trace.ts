@@ -15,7 +15,11 @@
  * not the file's) locates nothing.
  */
 import fs from 'node:fs'
-import { identify, revision } from '@tanstack/router-utils/compiler'
+import {
+  identify,
+  parseModule,
+  revision,
+} from '@tanstack/router-utils/compiler'
 import { Locator } from './locate'
 import type { TraceStep } from './trace'
 
@@ -50,6 +54,37 @@ export interface NodeGraph {
   imported?: (node: GraphNode) => boolean
   /** A view's (`groundedGraph`): the bundler's graph it reads, with every importer. */
   built?: NodeGraph
+  /** Build, after tree-shaking: whether the output evaluates `node` (a module of one of its chunks). */
+  kept?: (node: GraphNode) => boolean
+  /** Build: `node`'s code as the bundler holds it, after every transform; null when unknown. */
+  code?: (node: GraphNode) => string | null
+}
+
+/**
+ * The specifiers `code` imports for evaluation alone: `import 'x'`,
+ * `import {} from 'x'`, `export {} from 'x'` (none type-only). Empty when
+ * the code does not parse as a module.
+ */
+export function evaluationSpecifiers(code: string): Array<string> {
+  const parsed = parseModule(code, { lang: 'js', semantic: false })
+  if (!parsed.ok) {
+    return []
+  }
+  const out: Array<string> = []
+  for (const stmt of parsed.file.program.body) {
+    if (
+      (stmt.type === 'ImportDeclaration' &&
+        stmt.importKind !== 'type' &&
+        stmt.specifiers.length === 0) ||
+      (stmt.type === 'ExportNamedDeclaration' &&
+        stmt.source !== null &&
+        stmt.exportKind !== 'type' &&
+        stmt.specifiers.length === 0)
+    ) {
+      out.push(stmt.source!.value)
+    }
+  }
+  return out
 }
 
 /** A node's key, for sets. */

@@ -542,12 +542,24 @@ export function importEdgesPlanner(
         // TypeScript may erase a static import whose bindings are unused or
         // only used as types (per the bundler's transform options): the host
         // decides when the bundler asks for the edge module
-        const pending =
-          config.mode === 'dev' &&
+        const erasable =
           !j.handoff &&
           typescript &&
           j.edge.form === 'static' &&
           j.edge.kind === 'evaluation'
+        const pending = config.mode === 'dev' && erasable
+        // (every specifier written `type`: J6.2 ignores it, unless the
+        // bundler's TypeScript keeps it as a bare import)
+        const typeSpecifiers =
+          erasable &&
+          ctx.analysis.imports.some(
+            (i) =>
+              j.edge.locations.some(
+                (l) => l.range.start === i.specifierRange.start,
+              ) &&
+              i.specifiers.length > 0 &&
+              i.specifiers.every((spec) => spec.typeOnly),
+          )
         // a server rendering client-only code: whether it renders it as a component
         const ownStatic = envType === 'server' && j.offset !== undefined
         const offsets = j.edge.locations.map((l) => l.range.start)
@@ -611,6 +623,8 @@ export function importEdgesPlanner(
           }),
           ...(j.edge.form === 'reexport' && { reexport: true }),
           ...(j.handoff && { handoff: true }),
+          ...(erasable && { erasable: true }),
+          ...(typeSpecifiers && { typeSpecifiers: true }),
         })
       }
       // the module's own violation
@@ -678,15 +692,16 @@ export function importEdgesPlanner(
     j: Judged,
     ctx: PolicyContext,
   ): Promise<EdgeModuleContent> {
-    // the module's own marker: the marker module is empty, and its import is
-    // bare (the edge stands for the marked module being in the bundle)
+    // the module's own marker: the marker module is empty
     const ownMarker = ownEntry(ip.markerSpecifiers, j.raw) !== undefined
-    // a bare import of a denied module says its code runs: a violation
-    // wherever the importer is evaluated, whatever the module does or
-    // `sideEffects` declares (D-c); an asset query of it (its text or URL)
-    // runs nothing
+    // an `import()` or `require()` the output keeps evaluates its module,
+    // whatever it reads of it: its edge module is in the output then (a bare
+    // import is read in the bundler's graph: `ImportProtectionEnv.surviving`);
+    // an asset query of it (its text or URL) runs nothing
+    const code = j.resolved === null || !isAssetId(j.resolved)
     const runs =
-      j.edge.form === 'bare' && (j.resolved === null || !isAssetId(j.resolved))
+      code && (j.edge.form === 'dynamic' || j.edge.form === 'require')
+    const evaluated = code && j.edge.form === 'bare'
     const target =
       j.resolved !== null && !ownMarker && j.edge.form !== 'bare'
         ? await describeTarget(j.resolved, ctx)
@@ -719,6 +734,7 @@ export function importEdgesPlanner(
       hasDefault: importsDefault || (target?.hasDefault ?? true),
       bare: j.edge.form === 'bare',
       ...(runs && { runs: true }),
+      ...(evaluated && { evaluated: true }),
       rule: j.rule!,
     }
   }

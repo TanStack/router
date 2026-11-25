@@ -904,15 +904,18 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
 - **J6.4 Only surviving edges are reported.** Build: violations are decided after compilation and tree-shaking, on
   the mock alone: an import is a violation when its mock survives (the bundle uses a binding of it), whatever the
   denied module itself would do; nothing predicts the real module's effects. A bare import (`import './x.server'`,
-  not of an asset query) is a violation wherever its importer is evaluated, whatever `sideEffects` declares. A denied
-  module the environment's importers import (an importer reached from an entry) whose mocks all were dropped, or that
-  the importer's TypeScript transform erased, is no violation (no `onViolation`, no failure under `error`): the
-  build warns once per denied module, naming it and one importer with its chain (wording free, J6.12), and nothing
-  of it ships. The warning is not exhaustive. Dev: an edge the Start compiler itself removed from the importer's
-  output (handler-only, `.server()`-only, server-only-fn-only imports) is not a violation and is neither reported
-  nor mocked, whatever the request order, warm-up, pre-transform, lookup requests or full-bundle mode; edges that
-  only bundler tree-shaking would remove may still be reported in dev: dev reports each mock it serves as a
-  violation, once, and has no dropped-import warning.
+  `import {} from`, `export {} from`; not of an asset query) is a violation wherever the output evaluates its importer,
+  read as the bundler's graph holds it: whatever the compiler read of the importer (a package module it does not
+  compile, an import another plugin added, an import bare only after TypeScript), whatever `sideEffects` or the
+  tree-shaking options say. A surviving `import()` or `require()` is one whatever it reads; one tree-shaking drops is
+  not. A denied module the environment's importers import (an importer reached from an entry) whose mocks all were
+  dropped, or that the importer's TypeScript transform erased, nothing of which shipped (no import of it allowed, no
+  exempt importer given it), is no violation (no `onViolation`, no failure under `error`): the build warns once per
+  denied module and build, naming it and one importer with its chain (wording free, J6.12). An import of type
+  specifiers only (`import { type T }`) gets none (J6.2). The warning is not exhaustive. An importer the compiler does not read counts as evaluated when the bundler's graph reaches it from an entry (its tree-shaking cannot be read: the denied file's mock keeps nothing alive). Limits: an eager `import.meta.glob` written as a statement is, as Vite's own transform writes it, a namespace import, judged by its use (and a pattern import has no report of its own, J6.7); on Rsbuild, SWC turns `export {} from 'x'` into `export {}` (the bundler never imports `x`). Dev: an edge the Start compiler itself removed from the importer's output (handler-only, `.server()`-only,
+  server-only-fn-only imports) is not a violation and is neither reported nor mocked, whatever the request order,
+  warm-up, pre-transform, lookup requests or full-bundle mode; edges that only bundler tree-shaking would remove may
+  still be reported in dev: dev reports each mock it serves as a violation, once, and has no dropped-import warning.
 - **J6.5 Report content.** Environment type, the matching rule, the importer's `file:line:col` in the _original_
   source (through source maps, also for non-JS sources and other plugins' rewrites) where the location is
   source-derived, the raw specifier, the resolved path and the import chain from an entry (cut at `maxTraceDepth`)

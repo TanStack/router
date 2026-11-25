@@ -83,6 +83,10 @@ export interface EdgeViolation {
   handoff?: true
   /** The edge is a re-export (`export … from`): a barrel passes the module on. */
   reexport?: true
+  /** A static import of a TypeScript module that reads no value of it: its TypeScript transform may erase it (dev's `pending`). */
+  erasable?: true
+  /** Every specifier of the import is written `type` (J6.2 ignores it unless the bundler's TypeScript keeps it bare). */
+  typeSpecifiers?: true
   /** Build: one importer's import of a module that is its own violation, by the pattern import found in its text. */
   pattern?: PatternImport | null
 }
@@ -313,7 +317,7 @@ export const RSPACK_BUILD_INFO_KEY = 'tanstack.start.ip'
  * edge keys and edge-module ids of compile environments (no layer; an
  * Rspack RSC layer's module records the `rsc` environment's). 4: the
  * client-reference handoff (`EdgeViolation.handoff`, `clientReferences`).
- * 5: no effect witness (`EdgeModuleContent.runs` for every bare import).
+ * 5: no effect witness (`EdgeModuleContent.runs`: `import()`, `require()`; `evaluated`: bare imports and modules that are their own violation).
  */
 export const RSPACK_BUILD_INFO_VERSION = 5
 

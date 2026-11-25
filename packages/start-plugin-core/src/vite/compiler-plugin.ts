@@ -531,7 +531,11 @@ function envCompilerPlugins(
       const live = readRolldownWitness(bundle as never, ipEnv.witness())
       const reports = await ipEnv.surviving(
         live,
-        rolldownNodeGraph(env.name, (id) => this.getModuleInfo(id)),
+        rolldownNodeGraph(
+          env.name,
+          (id) => this.getModuleInfo(id),
+          bundle as never,
+        ),
         // (a denied file served as it was compiled first is reported: a
         // build compiles it once)
         (id) => this.getModuleInfo(id) !== null,

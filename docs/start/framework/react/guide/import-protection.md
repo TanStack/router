@@ -86,7 +86,7 @@ Mixed imports still count when they include at least one runtime value. Split th
 import { type User, getUsers } from './db.server'
 ```
 
-A value import whose bindings are only used as types (or not at all) is judged by what your bundler keeps. Its TypeScript transform erases such an import unless `verbatimModuleSyntax` applies: Vite reads it from the tsconfig that covers the file, Rsbuild from `tools.swc`. Import protection does not read tsconfig itself. It reports the import only when the bundler loads it, and an erased import is never reported. Write `import type` when only the type should cross the boundary.
+A value import whose bindings are only used as types (or not at all) is judged by what your bundler keeps. Its TypeScript transform erases such an import unless `verbatimModuleSyntax` applies: Vite reads it from the tsconfig that covers the file, Rsbuild from `tools.swc`. Import protection does not read tsconfig itself. It reports the import only when the bundler loads it, and an erased import is never a violation (a build warns about it once, suggesting `import type`). An import whose specifiers are all written `type` (`import { type User }`) is ignored like `import type`, unless `verbatimModuleSyntax` keeps it as a bare import. Write `import type` when only the type should cross the boundary.
 
 ```ts
 // Reported only if the bundler keeps the import (verbatimModuleSyntax).
@@ -613,9 +613,9 @@ If you see an import-protection violation for a file you expected to be "compile
 
 ## False Positives: Dev vs Build
 
-In **build mode**, import protection defers violation checks until after tree-shaking, and decides on the mock: a denied import is replaced by its mock, and it is a violation when the bundle uses what the mock stands in for. What the denied module itself would do does not count: it never ships. A bare import (`import './secrets.server'`) is a violation wherever its importer runs, since it is written for the module's side effects.
+In **build mode**, import protection defers violation checks until after tree-shaking, and decides on the mock: a denied import is replaced by its mock, and it is a violation when the bundle uses what the mock stands in for. What the denied module itself would do does not count: it never ships. A bare import (`import './secrets.server'`, `import {} from`, `export {} from`) is a violation wherever the build keeps its importer, since it is written for the module's side effects: whoever wrote it (your code, a package, another plugin's transform) and whatever your tree-shaking options say. So is an `import()` or `require()` the build keeps, whatever it reads; one in a branch the build drops (`if (import.meta.env.SSR)`) is not.
 
-If tree-shaking removes every use of a denied import, no violation is reported and the build does not fail. The build prints one warning per denied module instead, naming the module and one importer with its import chain: the import was mocked and nothing of the module shipped, but the client still imports it, so move the import out of client code. An import TypeScript erased because it was used only as a type gets the same warning (write it as `import type`).
+If tree-shaking removes every use of a denied import, no violation is reported and the build does not fail. The build prints one warning per denied module instead, naming the module and one importer with its import chain: the import was mocked and nothing of the module shipped. If the import only runs on the server (behind `import.meta.env.SSR`, as recommended for `@tanstack/react-start/server`), there is nothing to do; otherwise move it out of client code. An import TypeScript erased because it was used only as a type gets the same warning, suggesting `import type`. There is no warning when another import of the module was allowed or an exempt importer got it as it is, since then the module did ship.
 
 In **dev mode**, tree-shaking may be incomplete or unavailable, so import protection can report false positives for imports that would later be compiled away.
 

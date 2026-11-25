@@ -14,7 +14,7 @@ import {
   identify,
   normalizePath,
 } from '@tanstack/router-utils/compiler'
-import { RUNS_EDGE_QUERY } from '../import-protection/edge-modules'
+import { EVALUATED_EDGE_QUERY } from '../import-protection/edge-modules'
 import { ownFileRule } from '../import-protection/rules'
 import { StartRsbuildCompilerSession } from './compiler-session'
 import { createStartHostPlugin } from './host-plugin'
@@ -246,12 +246,11 @@ export function registerStartCompiler(
       )
     }
     if (ip) {
-      // the edge module of a bare import of a denied module keeps its
-      // witness under the app's `sideEffects: false` (D-c). Last too: no
-      // other rule's index moves
+      // an evaluated mock keeps its importers evaluated under the app's
+      // `sideEffects: false` (D-c). Last too: no other rule's index moves
       rules.push({
         test: EDGE_MODULE_FILE_RE,
-        resourceQuery: RUNS_EDGE_QUERY,
+        resourceQuery: EVALUATED_EDGE_QUERY,
         sideEffects: true,
       })
     }

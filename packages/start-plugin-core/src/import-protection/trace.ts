@@ -269,20 +269,24 @@ export function formatUncheckedImporters(
 
 /**
  * A build's warning (not a violation, SPEC J6.4): a denied module the
- * environment's graph imports, mocked, whose mocks tree-shaking dropped
- * everywhere, so nothing of it shipped. One per denied module, with one
- * importer and its chain from an entry.
+ * environment's importers import, mocked, whose mocks were all dropped (or
+ * that TypeScript erased), so nothing of it shipped. One per denied module
+ * and build, with one importer and its chain from an entry. It cannot tell
+ * an import guarded to run in the other environment only (the documented
+ * fix) from one that is merely unused, so it says both.
  */
 export function formatDroppedImport(
+  v: EdgeViolation,
   info: ReportedInfo,
   ctx: ReportContext,
 ): string {
   const { root } = ctx.config
   const rel = (p: string) => relativizePath(p, root)
   const loc = info.importerLoc
+  const other = info.envType === 'client' ? 'server' : 'client'
   const lines = [
     ``,
-    `[import-protection] Denied import mocked in ${info.envType} environment and removed by tree-shaking`,
+    `[import-protection] Denied import mocked in ${info.envType} environment${info.env !== info.envType ? ` (${info.env})` : ''}, and removed from the build`,
     ``,
     deniedBy(info, ctx),
     info.type === 'specifier' || !info.resolved
@@ -303,11 +307,20 @@ export function formatDroppedImport(
       lines.push(`    ${printed.first + i}. ${rel(step.file)}${at}${tag}`)
     })
   }
-  lines.push(
-    ``,
-    `  Not a violation: the import was mocked and nothing of it shipped to the ${info.envType}. Move the import out of ${info.envType} code.`,
-    ``,
-  )
+  lines.push(``)
+  if (v.erasable) {
+    lines.push(
+      `  Not a violation: this import reads no value at run time (its bindings are unused, or used only as types), so TypeScript or tree-shaking removed it.`,
+      `    - If it is for types only, write it as \`import type\`.`,
+    )
+  } else {
+    lines.push(
+      `  Not a violation: the import was mocked, and tree-shaking removed every use of the mock.`,
+      `    - If the import only runs on the ${other} (behind a guard such as ${info.envType === 'client' ? '`import.meta.env.SSR`' : '`typeof window !== "undefined"`'}, or in an \`import()\` there), there is nothing to do.`,
+      `    - Otherwise, move the import out of ${info.envType} code (split a barrel that re-exports it).`,
+    )
+  }
+  lines.push(``)
   return lines.join('\n')
 }
 

@@ -79,18 +79,40 @@ interface RollupModuleInfoLike {
   importers: ReadonlyArray<string>
   dynamicImporters: ReadonlyArray<string>
   isEntry: boolean
+  code?: string | null
 }
 
 /**
  * The module graph of the Rolldown build of environment `env`
  * (`this.getModuleInfo`): another environment's nodes are not readable
- * there (null).
+ * there (null). With the output's `bundle` (`generateBundle`), the modules
+ * it evaluates: those of its chunks (Rolldown lists a module there when it
+ * is evaluated, whatever of its code it kept).
  */
 export function rolldownNodeGraph(
   env: string,
   getModuleInfo: (id: string) => RollupModuleInfoLike | null,
+  bundle?: RolldownOutputBundle,
 ): NodeGraph {
+  let kept: Set<string> | null = null
   return {
+    ...(bundle && {
+      kept(node) {
+        if (!kept) {
+          kept = new Set()
+          for (const out of Object.values(bundle)) {
+            if (out.type === 'chunk') {
+              for (const id of Object.keys(out.modules)) {
+                kept.add(id)
+              }
+            }
+          }
+        }
+        return node.env === env && kept.has(node.id)
+      },
+      code: (node) =>
+        node.env === env ? (getModuleInfo(node.id)?.code ?? null) : null,
+    }),
     importers(node) {
       if (node.env !== env) {
         return null
@@ -114,6 +136,8 @@ export function rolldownNodeGraph(
 
 export interface RspackModuleLike {
   resource?: string
+  /** The module's code after its loaders. */
+  originalSource?: () => { source: () => string | Buffer } | null
   buildInfo?: Record<string, unknown>
   /** Inner modules of a ConcatenatedModule. */
   modules?: Iterable<RspackModuleLike>
@@ -422,6 +446,8 @@ export function rspackNodeGraph(
   let byEnv: Map<string, Map<string, Entry>> | null = null
   /** The environment of each concatenated inner module of the index (from its holder). */
   const envs = new Map<RspackModuleLike, string>()
+  /** The nodes of the compilation's chunks (`kept`), read on the first ask. */
+  let keptNodes: Set<string> | null = null
   const key = (env: string, id: string) => `${env}\0${id}`
   const entryOf = (node: GraphNode): Entry | undefined => {
     if (!byEnv) {
@@ -554,6 +580,30 @@ export function rspackNodeGraph(
       return entry.byItself
     },
     holds: (node) => entryOf(node) !== undefined,
+    kept(node) {
+      if (!keptNodes) {
+        keptNodes = new Set()
+        for (const chunk of compilation.chunks) {
+          for (const m of compilation.chunkGraph.getChunkModules(chunk)) {
+            for (const inner of m.modules ?? [m]) {
+              if (inner.resource) {
+                keptNodes.add(key(envOf(inner, m), idOf(inner.resource)))
+              }
+            }
+          }
+        }
+      }
+      return keptNodes.has(key(node.env, node.id))
+    },
+    code(node) {
+      for (const module of entryOf(node)?.own ?? []) {
+        const source = module.originalSource?.()?.source()
+        if (source !== undefined) {
+          return source.toString()
+        }
+      }
+      return null
+    },
     builds: (node) => (entryOf(node)?.own.length ?? 0) > 0,
     served(node) {
       for (const module of entryOf(node)?.own ?? []) {

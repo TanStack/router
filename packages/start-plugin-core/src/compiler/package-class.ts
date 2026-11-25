@@ -1,8 +1,7 @@
 /**
  * The class of a module by the package that owns it, decided once per
  * package root for a session and shared by every reader (the compile
- * scope, the summaries, import protection's effect analysis, the hosts'
- * filters):
+ * scope, the summaries, the hosts' filters):
  *
  * - `app`: under the source directory, in no `node_modules`;
  * - `workspace`: in no `node_modules`, outside the source directory (a
@@ -13,8 +12,7 @@
  *
  * The class decides one thing: whether a module is read on demand (a Start
  * value's summary, a namespace's escape, a `Hydrate` re-export, a server
- * function's reach, the late pass, the effects of a denied module's
- * imports). An ordinary package's module is read only when its text names
+ * function's reach, the late pass). An ordinary package's module is read only when its text names
  * what the planners recognise or re-exports another module. Import
  * protection's verdicts never read it: a marker is honoured in every module
  * the compiler is handed.
@@ -24,7 +22,6 @@
  * edited while a dev server runs takes effect at its next start.
  */
 import { readFileSync } from 'node:fs'
-import path from 'node:path'
 import { normalizePath } from '../utils'
 import type { CompileStartFrameworkOptions } from '../types'
 
@@ -108,7 +105,6 @@ export function packageRootOf(normalizedPath: string): string | null {
 export class PackageClasses {
   private readonly manifests = new Map<string, Record<string, unknown> | null>()
   private readonly declared = new Map<string, boolean>()
-  private readonly nearest = new Map<string, string | null>()
   private readonly src: string | undefined
 
   constructor(
@@ -139,25 +135,6 @@ export class PackageClasses {
       this.manifests.set(file, manifest)
     }
     return manifest
-  }
-
-  /**
-   * The directory of the nearest `package.json` at or above `dir`, not
-   * above a `node_modules` directory (a file there belongs to no package).
-   */
-  packageDirOf(dir: string): string | null {
-    let found = this.nearest.get(dir)
-    if (found === undefined) {
-      const parent = path.dirname(dir)
-      found =
-        this.manifest(path.join(dir, 'package.json')) !== null
-          ? dir
-          : parent === dir || path.basename(dir) === 'node_modules'
-            ? null
-            : this.packageDirOf(parent)
-      this.nearest.set(dir, found)
-    }
-    return found
   }
 
   /** Whether the package at `root` declares Start (its manifest, read once). */
