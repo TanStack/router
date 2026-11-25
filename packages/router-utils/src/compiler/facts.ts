@@ -178,7 +178,8 @@ export class RawFactsCache {
   private readonly byPath = new Map<string, Set<string>>()
   /**
    * `TSR_COMPILER_NO_CACHE=facts|targets`: every read rebuilds (measurement
-   * knobs); `facts` keeps each entry for all but its reuse.
+   * knobs); `facts` keeps each entry for all but its reuse, and both keep
+   * the facts a file last parsed to while it does not parse.
    */
   private readonly noFacts = cacheDisabled('facts')
   private readonly noTargets = cacheDisabled('targets')
@@ -601,7 +602,18 @@ export class RawFactsCache {
   /** The facts J6 target facts are taken from (`get`, or a fresh read when the target-facts knob is off). */
   async getTarget(canonicalId: string, env: string): Promise<RawFacts> {
     if (this.noTargets && !this.isKnownSpecifier(canonicalId)) {
-      return this.build(canonicalId, await this.read(canonicalId, env), true)
+      // the entry as `get` keeps it, and the target facts rebuilt from a
+      // fresh read, but for a file that stops parsing: it keeps the facts it
+      // last parsed to, as with the knob off
+      const kept = await this.get(canonicalId, env)
+      const text = await this.read(canonicalId, env)
+      const built = this.build(canonicalId, text, true)
+      return text !== null &&
+        !built.opaque &&
+        built.summary === null &&
+        kept.summary
+        ? kept
+        : built
     }
     const facts = await this.get(canonicalId, env)
     if (!facts.opaque) {
