@@ -843,6 +843,21 @@ module "…" in the React Client Manifest`. Dev is not affected (the next compil
   that save through a temporary file and a rename are not affected. Not fixable by a delay or another read: nothing
   tells an open writer from a closed one. A fix scaffolds only files the generator has never read with content.
   No test (the outcome is the limit).
+- **A route file's upkeep is stamped after its rename** (review-generator-generation-gemini.md item 3). The
+  generator records the modification time and size of a route file it kept up by a `stat` after the rename. Two
+  windows of that `stat`, each microseconds wide:
+  - A `stat` that fails with anything but `ENOENT` (the path replaced in between, a directory's permission removed)
+    fails the run with the write done but neither recorded nor told to `onWrite`. The next batch rescans (it follows
+    a failure), reads the file again (its stamp changed) and finds nothing to keep up. The bundler's own watcher
+    reports the rename.
+  - A save that lands between the rename and the `stat` pairs the generator's text with the save's stamp. The save's
+    own event forces a read, so this shows only when that event is lost (Vite dev's 50 ms rule below): the next
+    rescan skips the file as unchanged and keeps the generator's text until the next save.
+
+  A fix stamps the temporary file before the rename (a rename keeps the modification time and size), which moves the
+  `stat` into the publisher. The route tree's `stat` after an unchanged comparison has the same window. No test
+  (timing only).
+
 - **`vite build --watch` on Vite 8.3: the build after a failed build can emit no app** (hotspot 2 N1; user, 11-22:
   known bug until Vite 8.4). With an HTML entry and `"sideEffects": false` in the app's `package.json` (as in
   `quickstart-file-based`), the first successful watch build after a failed one reports success and emits only
