@@ -400,6 +400,74 @@ describe('spellings', () => {
       at(8, 1),
       false,
     ],
+    [
+      'webpack:// with a namespace of two segments',
+      'webpack://my/pkg/./src/a.ts:3:5',
+      a,
+      true,
+    ],
+    [
+      'webpack-internal with a layer',
+      'webpack-internal:///(rsc)/./src/a.ts:3:5',
+      a,
+      true,
+    ],
+    ['.. inside a relative path', 'src/routes/../a.ts:3:5', a, true],
+    ['./ inside a relative path', 'src/./a.ts:3:5', a, true],
+    [
+      'a web URL of another host, the root’s path',
+      'see https://evil.example/app/src/a.ts',
+      a,
+      false,
+    ],
+    [
+      'a web URL whose path is the relative path',
+      'see https://docs.example.com/src/a.ts',
+      a,
+      false,
+    ],
+    [
+      'a web URL with a position',
+      'at https://cdn.example.com/src/a.ts:3:5',
+      a,
+      false,
+    ],
+    [
+      'another drive',
+      'in D:\\app\\src\\a.ts:3:5',
+      { file: 'src/a.ts', root: 'C:/app' },
+      false,
+    ],
+    [
+      'its drive',
+      'in C:\\app\\src\\a.ts:3:5',
+      { file: 'src/a.ts', root: 'C:/app' },
+      true,
+    ],
+    [
+      'a file asked with ..',
+      'in /app/src/a.ts:3:5',
+      { file: 'src/temp/../a.ts', root, position: { line: 3, column: 5 } },
+      true,
+    ],
+    [
+      'a file asked with ./',
+      'in /app/src/a.ts:3:5',
+      { file: '/app/src/./a.ts', position: { line: 3, column: 5 } },
+      true,
+    ],
+    [
+      'a later file’s position in parentheses',
+      'src/a.ts imports src/b.ts(3,5): error 3:5',
+      at(3, 5),
+      false,
+    ],
+    [
+      'a later file’s position after its fragment',
+      'src/a.ts imports src/b.ts#frag 3:5',
+      at(3, 5),
+      false,
+    ],
     ['a version between', 'src/a.ts (vite v8.3.8) 3:5', at(3, 5), true],
     [
       'a URL between',
@@ -436,6 +504,59 @@ describe('spellings', () => {
       root,
       position: { line: 2, column: 1 },
     })
+  })
+
+  test.each([
+    [
+      'a sibling whose name continues past the file’s',
+      '/app/src/a.ts#copy.ts',
+      at(8, 1),
+      false,
+    ],
+    [
+      'itself, by its whole name',
+      '/app/src/a.ts#copy.ts',
+      { file: 'src/a.ts#copy.ts', root, position: { line: 8, column: 1 } },
+      true,
+    ],
+    ['itself, through ..', '/app/src/temp/../a.ts', at(8, 1), true],
+    [
+      'another file whose query names it',
+      '/app/src/b.ts?from=src/a.ts',
+      at(8, 1),
+      false,
+    ],
+    [
+      'another drive',
+      'D:/app/src/a.ts',
+      { file: 'src/a.ts', root: 'C:/app', position: { line: 8, column: 1 } },
+      false,
+    ],
+    [
+      'its drive',
+      'C:/app/src/a.ts',
+      { file: 'src/a.ts', root: 'C:/app', position: { line: 8, column: 1 } },
+      true,
+    ],
+  ] as const)('a structured location names %s', (_, file, expected, names) => {
+    const record = { message: 'parse error', loc: { file, line: 8, column: 0 } }
+    expect(findDiagnostics(record, expected)).toHaveLength(names ? 1 : 0)
+  })
+
+  test('a position its cause gives counts beside its own location in the file', () => {
+    const [diagnostic] = diagnosticsOf({
+      message: 'bad',
+      id: '/app/src/a.ts',
+      loc: { line: 1, column: 0 },
+      cause: {
+        message: 'inner',
+        id: '/app/src/a.ts',
+        loc: { line: 3, column: 4 },
+      },
+    })
+    expectDiagnostic(diagnostic!, at(3, 5))
+    expectDiagnostic(diagnostic!, at(1, 1))
+    expect(findDiagnostics(diagnostic!, at(2, 1))).toEqual([])
   })
 
   test('output of unknown owner: a presence check needs its absolute path, an absence check sees it named any way', () => {

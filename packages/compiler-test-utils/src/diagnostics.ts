@@ -61,11 +61,19 @@ export interface Diagnostic {
   /** The channel it was reported on, when a channel recorded it. */
   source?: DiagnosticSource
   /**
-   * The file and position the tool gave as fields (Rollup's `id`/`loc`,
-   * webpack's `moduleName`/`loc`), column as the tool prints it. A position
-   * in that file is judged by it, not by the text.
+   * The files and positions the tool gave as fields (Rollup's `id`/`loc`,
+   * webpack's `moduleName`/`loc`): the object's own (`own`) and those of the
+   * errors it aggregates and its cause, column as the tool prints it, and how
+   * the text prints each (`printed`). Its own location in a file decides the
+   * position there, with the others; without one, the text does, with them.
    */
-  location?: { file: string; line: number; column?: number }
+  locations?: Array<{
+    file: string
+    line: number
+    column?: number
+    printed: string
+    own?: true
+  }>
   /**
    * Printed outside any async scope (a bundler's native callback) by work
    * the harness could not tell apart: every open capture received it, so it
@@ -131,18 +139,49 @@ export function diagnosticsOf(
   }
   // An error (with the errors it aggregates, e.g. a `BuildError` or an
   // esbuild failure, read as one) and the warnings it carries.
-  const { file, line, column } = locationOf(record)
+  const locations = locationsOf(record)
   return [
     {
       severity,
       text: describe(record),
       raw: value,
-      ...(file !== undefined &&
-        line !== undefined && {
-          location: { file, line, ...(column !== undefined && { column }) },
-        }),
+      ...(locations.length > 0 && { locations }),
     },
     ...diagnosticsOf(warnings, 'warning'),
+  ]
+}
+
+/**
+ * The located positions of an error object, its aggregated errors and its
+ * cause (as `describe` prints them, to the same depth).
+ */
+function locationsOf(
+  record: Record<string, unknown>,
+  depth = 0,
+): NonNullable<Diagnostic['locations']> {
+  const { file, line, column, printed } = locationOf(record)
+  return [
+    ...(file !== undefined && line !== undefined
+      ? [
+          {
+            file,
+            line,
+            ...(column !== undefined && { column }),
+            printed,
+            ...(depth === 0 && { own: true as const }),
+          },
+        ]
+      : []),
+    ...(depth < 3
+      ? [
+          ...(Array.isArray(record.errors) ? record.errors : []),
+          record.cause,
+        ].flatMap((nested) =>
+          nested && typeof nested === 'object'
+            ? locationsOf(nested as Record<string, unknown>, depth + 1)
+            : [],
+        )
+      : []),
   ]
 }
 
@@ -354,27 +393,41 @@ function contentMismatches(
       `severity ${diagnostic.severity}, expected ${severities.join(' or ')}`,
     )
   }
-  const location = diagnostic.location
-  if (
-    expected.file !== undefined &&
-    location !== undefined &&
-    fileMentions(location.file, expected.file, { ...expected, tail: true })
-      .mentions.length > 0
-  ) {
-    // The tool's own fields name the file: they give its position
-    const { line, column } = expected.position ?? {}
-    if (
-      line !== undefined &&
-      (location.line !== line ||
-        (column !== undefined &&
-          location.column !== column &&
-          location.column !== column - 1))
-    ) {
+  const reader =
+    expected.file === undefined
+      ? undefined
+      : pathReader(expected.file, { ...expected, tail: true })
+  // (a tool's field holds a whole path: its query and a virtual prefix
+  // are no part of the file)
+  const locations = diagnostic.locations ?? []
+  const located = locations.filter(
+    ({ file }) =>
+      reader?.names(posix(file).replace(/^\0/, '').replace(/\?.*$/, '')) !==
+      undefined,
+  )
+  const { line, column } = expected.position ?? {}
+  const atPosition = located.some(
+    (location) =>
+      location.line === line &&
+      (column === undefined ||
+        location.column === column ||
+        location.column === column - 1),
+  )
+  if (located.some(({ own }) => own)) {
+    // The tool's own fields name the file: they give its positions
+    if (line !== undefined && !atPosition) {
       reasons.push(
-        `reports ${location.line}${location.column === undefined ? '' : `:${location.column}`} in its location`,
+        `reports ${located.map((location) => `${location.line}${location.column === undefined ? '' : `:${location.column}`}`).join(', ')} in its locations`,
       )
     }
     return reasons
+  }
+  // The text, but for what it prints of the fields that name other files
+  let text = diagnostic.text
+  for (const { printed } of locations) {
+    if (!located.some((location) => location.printed === printed)) {
+      text = text.replaceAll(printed, '')
+    }
   }
   /**
    * The parts of the text that are about the file: each from where it names
@@ -382,16 +435,17 @@ function contentMismatches(
    */
   const { mentions, lead } =
     expected.file === undefined
-      ? fileMentionsOfAll(diagnostic.text)
-      : fileMentions(diagnostic.text, expected.file, {
+      ? fileMentionsOfAll(text)
+      : fileMentions(text, expected.file, {
           ...expected,
           tail: true,
         })
-  if (mentions.length === 0) {
+  if (mentions.length === 0 && located.length === 0) {
     reasons.push(`does not name ${expected.file}`)
   }
   if (
     expected.position !== undefined &&
+    !atPosition &&
     !reportsPosition(mentions, lead, expected.position)
   ) {
     const { line, column } = expected.position
@@ -557,14 +611,21 @@ function endsPath(said: string, end: number) {
 const count = (text: string, character: string) =>
   text.split(character).length - 1
 
+const posix = (value: string) => value.replaceAll('\\', '/')
+
+/** The bundlers' module URLs: a namespace, then the path from `./`. */
+const bundlerSchemes = new Set(['webpack', 'webpack-internal'])
+
 /**
- * The path a spelled token names: without an opening `(` or `[` that does
- * not close in it (a stack frame's), from after its last `/@fs` (Vite's path
- * of a file outside the root), without a URL's authority (`//app` of
- * `webpack://app/./src/a.ts`), with `.` and `..` segments read
- * (`path.posix.normalize`).
+ * The path a spelled path names, or `undefined` for none (a web URL's path,
+ * which names no file but through Vite's `/@fs`). `scheme` is the URL's it
+ * is spelled in (`webpack://app/./src/a.ts`: `webpack`). Read: without an
+ * opening `(` or `[` that does not close in it (a stack frame's); a bundler
+ * URL's path from its `./` on (or without its namespace); a `file:` URL's
+ * without its host; from after a `/@fs` (Vite's path of a file outside the
+ * root); with `.` and `..` segments and `//` read (`path.posix.normalize`).
  */
-function normalizedPath(token: string) {
+function normalizedPath(token: string, scheme?: string) {
   let spelled = token
   while (
     (spelled.startsWith('(') && count(spelled, '(') > count(spelled, ')')) ||
@@ -573,10 +634,87 @@ function normalizedPath(token: string) {
     spelled = spelled.slice(1)
   }
   const fs = spelled.lastIndexOf('/@fs/')
-  if (fs !== -1) {
+  if (scheme !== undefined && bundlerSchemes.has(scheme)) {
+    const context = spelled.indexOf('/./')
+    spelled =
+      context === -1
+        ? spelled.replace(/^\/\/[^/]*/, '')
+        : spelled.slice(context + 1)
+  } else if (fs !== -1) {
     spelled = spelled.slice(fs + '/@fs'.length)
+  } else if (scheme === 'file') {
+    spelled = spelled.replace(/^\/\/[^/]*/, '')
+  } else if (scheme !== undefined) {
+    return undefined
   }
-  return path.posix.normalize(spelled.replace(/^\/\/(?!\/)[^/]*/, ''))
+  return path.posix.normalize(spelled)
+}
+
+/**
+ * How spelled paths name `file` (`file` absolute, or relative to `root`):
+ * each is read (`normalizedPath`) and so is `file`.
+ */
+function pathReader(file: string, options: { root?: string; tail?: boolean }) {
+  const absolute = path.isAbsolute(file)
+    ? path.posix.normalize(posix(file))
+    : options.root !== undefined
+      ? path.posix.join(posix(options.root), posix(file))
+      : undefined
+  const relative =
+    absolute === undefined
+      ? path.posix.normalize(posix(file))
+      : options.root !== undefined
+        ? path.posix.relative(posix(options.root), absolute)
+        : undefined
+  const absolutes = [
+    ...new Set(
+      (absolute === undefined ? [] : [absolute, realOf(absolute)])
+        .filter((spelling): spelling is string => spelling !== undefined)
+        .map((spelling) => path.posix.normalize(posix(spelling))),
+    ),
+  ]
+  /** How a spelled path names `file`, if it does. */
+  const names = (
+    token: string,
+    scheme?: string,
+  ): 'absolute' | 'relative' | undefined => {
+    const normalized = normalizedPath(token, scheme)
+    if (normalized === undefined) {
+      return undefined
+    }
+    if (absolutes.includes(normalized)) {
+      return 'absolute'
+    }
+    const tail = normalized.replace(/^\/+/, '').replace(/^(?:\.\.\/)+/, '')
+    if (relative === undefined) {
+      return options.tail === true &&
+        tail.includes('/') &&
+        absolutes.some((spelling) => spelling.endsWith(`/${tail}`))
+        ? 'relative'
+        : undefined
+    }
+    return tail === relative ||
+      (tail.endsWith(`/${relative}`) &&
+        (options.root === undefined ||
+          absolutes.some((spelling) => spelling.endsWith(`/${tail}`))))
+      ? 'relative'
+      : undefined
+  }
+  /** The file's spellings, to find as written (with their spaces). */
+  const needles = [...absolutes]
+  if (relative !== undefined) {
+    needles.push(relative)
+  } else if (options.tail) {
+    // Every end of the path from one of its directories on, longest first
+    for (const spelling of absolutes) {
+      for (let at = 1; at < spelling.length; at++) {
+        if (spelling[at - 1] === '/' && spelling.indexOf('/', at) !== -1) {
+          needles.push(spelling.slice(at))
+        }
+      }
+    }
+  }
+  return { names, needles }
 }
 
 /** A naming of a file in a text (`fileMentions`). */
@@ -604,14 +742,21 @@ interface FileMention {
  * string `'src/b.ts:8:1'`). With `tail` (diagnostics), an absolute `file`
  * without a root is also named by the end of its path from one of its
  * directories on (`src/a.ts`, as messages name files relative to the project
- * root). Every spelled path is read the same way (`normalizedPath`).
+ * root). Every spelled path, and `file`, is read the same way
+ * (`pathReader`): a path is the run of path characters around it (with a
+ * drive letter), ending at a `#` or a `(` after its file name.
+ *
+ * Limits: a percent-encoded path (`/@fs/C%3A/…`) is not decoded; a symlink
+ * printed for a real path asked (or a real path for a link) is not resolved
+ * but through `realpath` of the asked file, and `..` is read lexically
+ * (`node_modules/<link>/..` is not the link's parent); a query value that
+ * spells a file (`b.ts?from=src/a.ts`) names it in text.
  */
 function fileMentions(
   text: string,
   file: string,
   options: { root?: string; tail?: boolean },
 ): { mentions: Array<FileMention>; lead: Array<number> } {
-  const posix = (value: string) => value.replaceAll('\\', '/')
   const said = posix(stripVTControlCharacters(text))
   // The code frames' lines out of the prose, offsets kept
   const highlights: Array<{ at: number; line: number }> = []
@@ -627,68 +772,39 @@ function fileMentions(
       prose += line
     }
   }
-  const absolute = path.isAbsolute(file)
-    ? file
-    : options.root !== undefined
-      ? path.join(options.root, file)
-      : undefined
-  const relative = path.isAbsolute(file)
-    ? options.root !== undefined
-      ? posix(path.relative(options.root, file))
-      : undefined
-    : posix(path.normalize(file))
-  const absolutes = [
-    ...new Set(
-      (absolute === undefined ? [] : [absolute, realOf(absolute)])
-        .filter((spelling): spelling is string => spelling !== undefined)
-        .map(posix),
-    ),
-  ]
-  /** How a spelled path names `file`, if it does. */
-  const names = (token: string): 'absolute' | 'relative' | undefined => {
-    const normalized = normalizedPath(token)
-    if (absolutes.includes(normalized)) {
-      return 'absolute'
-    }
-    const tail = normalized.replace(/^\/+/, '').replace(/^(?:\.\.\/)+/, '')
-    if (relative === undefined) {
-      return options.tail === true &&
-        tail.includes('/') &&
-        absolutes.some((spelling) => spelling.endsWith(`/${tail}`))
-        ? 'relative'
-        : undefined
-    }
-    return tail === relative ||
-      (tail.endsWith(`/${relative}`) &&
-        (options.root === undefined ||
-          absolutes.some((spelling) => spelling.endsWith(`/${tail}`))))
-      ? 'relative'
-      : undefined
-  }
-  /** The start of the run of path characters that ends at `at`. */
-  const runStart = (at: number) => {
+  const { names, needles } = pathReader(file, options)
+  /** The start of the path spelled up to `at`, with its drive letter. */
+  const pathStart = (at: number) => {
     let start = at
     while (start > 0 && pathCharacter.test(prose[start - 1]!)) {
       start--
     }
+    if (
+      prose[start] === '/' &&
+      prose[start - 1] === ':' &&
+      /[A-Za-z]/.test(prose[start - 2] ?? '') &&
+      !/\w/.test(prose[start - 3] ?? '')
+    ) {
+      start -= 2
+    }
     return start
   }
-  /** What to look for: the file's spellings, each found as written. */
-  const needles = [...absolutes]
-  if (relative !== undefined) {
-    needles.push(relative)
-  } else if (options.tail) {
-    // Every end of the path from one of its directories on, longest first
-    for (const spelling of absolutes) {
-      for (let at = 1; at < spelling.length; at++) {
-        if (spelling[at - 1] === '/' && spelling.indexOf('/', at) !== -1) {
-          needles.push(spelling.slice(at))
-        }
-      }
-    }
+  /** The scheme of the URL a path spelled from `start` is in, if any. */
+  const schemeAt = (start: number) => {
+    const word = prose.slice(0, start + 2).match(/\S*$/)![0]
+    return /([A-Za-z][\w+.-]*):\/\//.exec(word)?.[1]?.toLowerCase()
   }
   /** The namings found, by where they end. */
   const found = new Map<number, { start: number; absolute: boolean }>()
+  const record = (start: number, end: number, token: string) => {
+    const how = names(token, schemeAt(start))
+    const known = found.get(end)
+    if (how !== undefined && (!known || start < known.start)) {
+      found.set(end, { start, absolute: how === 'absolute' })
+    }
+    return how !== undefined
+  }
+  // The file's spellings as written (a space in a name)
   for (const needle of needles) {
     for (
       let at = prose.indexOf(needle);
@@ -696,13 +812,9 @@ function fileMentions(
       at = prose.indexOf(needle, at + 1)
     ) {
       const end = at + needle.length
-      const start = runStart(at)
-      const how = endsPath(prose, end)
-        ? names(prose.slice(start, end))
-        : undefined
-      const known = found.get(end)
-      if (how !== undefined && (!known || start < known.start)) {
-        found.set(end, { start, absolute: how === 'absolute' })
+      if (endsPath(prose, end)) {
+        const start = pathStart(at)
+        record(start, end, prose.slice(start, end))
       }
     }
   }
@@ -711,38 +823,40 @@ function fileMentions(
   /**
    * Where the text names some other file: a path with a directory and an
    * extension or a position after it, a file of a source extension, a URL's
-   * path only with a position after it.
+   * path only with a position after it. Every path token that reads as
+   * `file` is a naming of it (`src/temp/../a.ts`).
    */
   const others: Array<number> = []
   for (const match of prose.matchAll(/[\w.@$~+%#/()[\]-]+/g)) {
-    let token = match[0].replace(/[.]+$/, '')
+    const start = pathStart(match.index)
+    let token = prose.slice(start, match.index) + match[0]
+    // (a file name ends at a fragment or a `(line,column)`)
+    token = /^.*?\.[A-Za-z]\w*(?=[#(])/.exec(token)?.[0] ?? token
+    token = token.replace(/[.]+$/, '')
     while (
       (token.endsWith(')') && count(token, ')') > count(token, '(')) ||
       (token.endsWith(']') && count(token, ']') > count(token, '['))
     ) {
       token = token.slice(0, -1)
     }
-    const start = match.index
     const end = start + token.length
-    const normalized = normalizedPath(token)
-    if (
-      within(start) ||
-      names(token) !== undefined ||
-      normalized === '.' ||
-      normalized === '/'
-    ) {
+    if (within(start) || record(start, end, token)) {
+      continue
+    }
+    const scheme = schemeAt(start)
+    const normalized = normalizedPath(token, scheme) ?? ''
+    if (normalized === '' || normalized === '.' || normalized === '/') {
+      // (a web URL: another file only with a position after it)
+      if (scheme !== undefined && /^:\d/.test(prose.slice(end))) {
+        others.push(start)
+      }
       continue
     }
     const positioned = /^:\d/.test(prose.slice(end))
-    const url = (prose.slice(0, start).match(/\S*$/)![0] + token).includes(
-      '://',
-    )
     if (
-      url
-        ? positioned && normalized.includes('/')
-        : normalized.includes('/')
-          ? /\.[A-Za-z]\w*$/.test(normalized) || positioned
-          : sourceExtension.test(normalized)
+      normalized.includes('/')
+        ? /\.[A-Za-z]\w*$/.test(normalized) || positioned
+        : sourceExtension.test(normalized)
     ) {
       others.push(start)
     }
