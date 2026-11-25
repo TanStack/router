@@ -1222,9 +1222,10 @@ export class StartRsbuildCompilerSession {
       ? { version: 4, canonicalId: identity.canonicalId, facts: [] }
       : undefined
     /** The module is served as its bytes: what its previous compile left is retired, on the module and in the session. */
-    const notCompiled = async (): Promise<LoaderResult> => {
+    /** `overtaken`: a newer answer of the module exists (`current()`), the record takes nothing out of the index. */
+    const notCompiled = async (overtaken = false): Promise<LoaderResult> => {
       const had = this.recorded.has(key.key)
-      this.record(ctx, key.key, key.child, { fns: none })
+      this.record(ctx, key.key, key.child, { fns: none, overtaken })
       if (had) {
         // (import protection's edges, violations and served state of it)
         if (!key.child) {
@@ -1265,7 +1266,7 @@ export class StartRsbuildCompilerSession {
       this.hostFor(env),
       async ({ output: out, current }) => {
         if (!out) {
-          return notCompiled()
+          return notCompiled(!current())
         }
         const diagnosed = this.diagnose(
           out,
@@ -1276,14 +1277,17 @@ export class StartRsbuildCompilerSession {
         )
         if (diagnosed.errors.length > 0) {
           // the module fails: its errors, and nothing its previous build left
-          this.record(ctx, key.key, key.child, { errors: diagnosed.errors })
+          this.record(ctx, key.key, key.child, {
+            errors: diagnosed.errors,
+            overtaken: !current(),
+          })
           const error = new Error(
             diagnosed.errors.map((e) => e.message).join('\n'),
           )
           error.name = LOCATED_DIAGNOSTICS.errorName
           throw error
         }
-        const served = await this.protect(ctx, env, id, out, key)
+        const served = await this.protect(ctx, env, id, out, key, current)
         // (a module served as its mock declares nothing in this environment)
         const facts = served.mock ? null : serverFnFactsOf(out)
         this.record(ctx, key.key, key.child, {
@@ -1343,6 +1347,8 @@ export class StartRsbuildCompilerSession {
     id: string,
     out: CompiledOutputLike,
     key: { key: string; child: boolean },
+    // (an asset outside any request: no newer answer can overtake it)
+    current: () => boolean = () => true,
   ): Promise<{
     mock: LoaderResult | null
     ip: { key: string; value: unknown } | null
@@ -1353,7 +1359,7 @@ export class StartRsbuildCompilerSession {
     const outcome = this.start.afterCompile(env, id, out)
     const { error, mock } = outcome instanceof Promise ? await outcome : outcome
     if (error) {
-      throw this.fail(ctx, key, error as DevViolationError)
+      throw this.fail(ctx, key, error as DevViolationError, !current())
     }
     const ip = this.start.ip?.env(env.name).buildInfo(id, out) ?? null
     if (!mock) {
@@ -1374,6 +1380,7 @@ export class StartRsbuildCompilerSession {
     ctx: LoaderContextLike,
     key: { key: string; child: boolean },
     error: DevViolationError,
+    overtaken = false,
   ): Error {
     this.record(ctx, key.key, key.child, {
       errors: error.reports.map((report) => ({
@@ -1381,6 +1388,7 @@ export class StartRsbuildCompilerSession {
         message: report.message,
         ...report.at,
       })),
+      overtaken,
     })
     const failure = new Error(error.message)
     failure.name = LOCATED_DIAGNOSTICS.errorName
