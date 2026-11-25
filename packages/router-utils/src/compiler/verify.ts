@@ -12,7 +12,6 @@ import { emitRecipe } from './emit'
 import { SourceText } from './output-builder'
 import { resolveSameFileSpecifier } from './identity'
 import { forEachChild, parseModule, patternIdentifiers } from './source'
-import { hasRuntimeValue } from './symbols'
 import { internalError } from './self-checks'
 import type { Node } from 'yuku'
 import type { SourceIdentity } from './identity'
@@ -105,23 +104,13 @@ export function verifyPlan(
         continue
       }
       // (b) a glue import names an export of its home output that has a
-      // runtime value (an `export { X }` of a type-only binding is erased
-      // with it: the bundler sees no export)
+      // runtime value (a type-only export, `export { X }` of a type-only
+      // binding included, is erased: the bundler sees no export)
       if (!home.analysis.exports.some((e) => e.kind === 'star')) {
-        const homeSymbols = home.analysis.t1().symbols
         const names = new Set(
-          home.analysis.exports.flatMap((e) => {
-            if (!('name' in e) || ('typeOnly' in e && e.typeOnly)) {
-              return []
-            }
-            if (e.kind === 'local' && e.local !== null) {
-              const b = homeSymbols.binding(e.local)
-              if (b !== null && !hasRuntimeValue(b)) {
-                return []
-              }
-            }
-            return [e.name]
-          }),
+          home.analysis.exports.flatMap((e) =>
+            !('name' in e) || ('typeOnly' in e && e.typeOnly) ? [] : [e.name],
+          ),
         )
         for (const s of imp.specifiers) {
           if (!s.typeOnly && !s.namespace && !names.has(s.imported)) {

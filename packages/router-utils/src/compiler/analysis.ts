@@ -13,6 +13,7 @@ import { analyzeHeader } from './header'
 import { declaredNames, isExpressionWrapper, unwrapExpression } from './source'
 import { SymbolTable, valueBinding } from './symbols'
 import { buildItems, buildUnits } from './units'
+import { isTypeOnlyExport } from './declarations'
 import { MutationModel } from './mutation'
 import {
   noteBuilderConsts,
@@ -420,7 +421,7 @@ export class ModuleAnalysis {
           break
         }
         case 'ExportAllDeclaration': {
-          const typeOnly = stmt.exportKind === 'type'
+          const typeOnly = isTypeOnlyExport(file, stmt)
           if (!typeOnly) {
             noteMarker(stmt.source.value)
           }
@@ -469,8 +470,13 @@ export class ModuleAnalysis {
           break
         }
         case 'ExportNamedDeclaration': {
-          const typeOnly = stmt.exportKind === 'type'
+          // (what the export is, a type or a value, is the table's)
+          const bindingAt = (at: number) => {
+            const local = exportLocals.get(at)
+            return local === undefined ? null : file.bindings[local]!
+          }
           if (stmt.source !== null) {
+            const typeOnly = isTypeOnlyExport(file, stmt)
             if (!typeOnly) {
               noteMarker(stmt.source.value)
             }
@@ -478,7 +484,7 @@ export class ModuleAnalysis {
             for (const spec of stmt.specifiers) {
               const exported = moduleExportNameOf(spec.exported)
               const local = moduleExportNameOf(spec.local)
-              const typeSpecifier = typeOnly || spec.exportKind === 'type'
+              const typeSpecifier = typeOnly || isTypeOnlyExport(file, spec)
               if (!typeSpecifier) {
                 names.push(local)
               }
@@ -508,18 +514,21 @@ export class ModuleAnalysis {
                 kind: 'local',
                 name: id.name,
                 local: exportLocals.get(id.start) ?? null,
-                typeOnly: typeOnly || isTypeDeclaration(stmt.declaration),
+                typeOnly: isTypeOnlyExport(file, stmt, bindingAt(id.start)),
                 range: { start: id.start, end: id.end },
               })
             }
           } else {
+            const typeOnly = stmt.exportKind === 'type'
             for (const spec of stmt.specifiers) {
               const exported = moduleExportNameOf(spec.exported)
               exportEntries.push({
                 kind: 'local',
                 name: exported,
                 local: exportLocals.get(spec.start) ?? null,
-                typeOnly: typeOnly || spec.exportKind === 'type',
+                typeOnly:
+                  typeOnly ||
+                  isTypeOnlyExport(file, spec, bindingAt(spec.start)),
                 range: { start: spec.start, end: spec.end },
               })
             }
@@ -538,6 +547,15 @@ export class ModuleAnalysis {
               name: 'default',
               local: exportLocals.get(stmt.start) ?? null,
               typeOnly: false,
+              range: { start: stmt.start, end: stmt.end },
+            })
+          } else if (isTypeOnlyExport(file, stmt)) {
+            // `export default interface X {}`
+            exportEntries.push({
+              kind: 'local',
+              name: 'default',
+              local: exportLocals.get(stmt.start) ?? null,
+              typeOnly: true,
               range: { start: stmt.start, end: stmt.end },
             })
           } else if (d.type === 'Identifier') {
@@ -1226,20 +1244,6 @@ function moduleExportNameOf(n: Node): string {
   return n.type === 'Identifier'
     ? n.name
     : String((n as { value: unknown }).value)
-}
-
-function isTypeDeclaration(decl: Node): boolean {
-  return (
-    decl.type === 'TSTypeAliasDeclaration' ||
-    decl.type === 'TSInterfaceDeclaration' ||
-    (decl.type === 'TSModuleDeclaration' && decl.declare) ||
-    (decl.type === 'TSImportEqualsDeclaration' && decl.importKind === 'type') ||
-    ((decl.type === 'VariableDeclaration' ||
-      decl.type === 'ClassDeclaration' ||
-      decl.type === 'FunctionDeclaration') &&
-      decl.declare === true) ||
-    decl.type === 'TSDeclareFunction'
-  )
 }
 
 /**

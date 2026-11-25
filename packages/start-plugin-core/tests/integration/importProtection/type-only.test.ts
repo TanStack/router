@@ -1,7 +1,7 @@
 /**
  * Type-only imports of a denied file through real hosts (SPEC
- * J6.2): `import type`, `import { type X }`, `export type { X } from`
- * and `export type * from` of the denied file `src/types.server.ts` are no
+ * J6.2): `import type`, `import { type X }`, `export type { X } from`,
+ * `export { type X } from` and `export type * from` of the denied file `src/types.server.ts` are no
  * violation: nothing is reported for their importers and the client never
  * loads the file (it records that it ran). A mixed `import { type X, value }`
  * of the denied file `src/mixed.server.ts` still uses a value: it is
@@ -48,6 +48,10 @@ export const exportType = 1
   'src/forms/export-type-star.ts': `export type * from '../types.server'
 export const exportTypeStar = 1
 `,
+  // (C1-16, whole-PR review: a re-export whose specifiers are all type-only)
+  'src/forms/export-inline-type.ts': `export { type Secret } from '../types.server'
+export const exportInlineType = 1
+`,
 }
 
 const app = {
@@ -67,6 +71,7 @@ export const readMixed = (): Mixed => mixed()
 export * from './forms/inline-type'
 export * from './forms/export-type'
 export * from './forms/export-type-star'
+export * from './forms/export-inline-type'
 import { readMixed } from './forms/mixed'
 export { readMixed }
 ;(globalThis as any).readMixed = readMixed

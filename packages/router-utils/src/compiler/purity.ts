@@ -11,6 +11,7 @@
  * `import()` is impure. The same classification yields the module's own effects at statement granularity (`ModuleAnalysis.effects()`).
  */
 import { BindingFlags } from 'yuku'
+import { isTypeOnlyExport } from './declarations'
 import { unwrapExpression } from './source'
 import { ownEntry } from './strings'
 import type {
@@ -636,10 +637,11 @@ export function statementHasEffects(
     case 'ImportDeclaration':
       return stmt.specifiers.length === 0 && stmt.importKind !== 'type'
     case 'ExportAllDeclaration':
-      return stmt.exportKind !== 'type'
+      return !isTypeOnlyExport(ctx.file, stmt)
     case 'ExportNamedDeclaration':
       if (stmt.source !== null) {
-        return stmt.exportKind !== 'type'
+        // (`export { type X } from`: TypeScript's, as `export type`)
+        return !isTypeOnlyExport(ctx.file, stmt)
       }
       return stmt.declaration === null
         ? false
