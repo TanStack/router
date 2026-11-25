@@ -283,6 +283,46 @@ export const run = () => pick(null)
       expected: { value: 1 },
       gone: true,
     },
+    // however the implementation is exported, or not at all (Astra's
+    // re-check of the declarations lane)
+    ...[
+      {
+        how: 'an export specifier',
+        decl: 'function pick(x: typeof sv): number\nfunction pick(x: unknown) { return 1 }\nexport { pick }',
+      },
+      {
+        how: 'export default of its name',
+        decl: 'function pick(x: typeof sv): number\nfunction pick(x: unknown) { return 1 }\nexport default pick',
+      },
+      {
+        how: 'no export',
+        decl: 'function pick(x: typeof sv): number\nfunction pick(x: unknown) { return 1 }',
+      },
+    ].map(
+      ({ how, decl }): Row => ({
+        name: `an overload signature of a function exported by ${how}`,
+        code: `${SO}import { getServerVal } from './db.server'
+const sv = getServerVal()
+${decl}
+export const f = createServerOnlyFn(() => 1)
+export const run = () => pick(null)
+`,
+        expected: { value: 1 },
+        gone: true,
+      }),
+    ),
+    {
+      name: 'an overload signature of an anonymous default-exported function',
+      code: `${SO}import { getServerVal } from './db.server'
+const sv = getServerVal()
+export default function (x: typeof sv): number
+export default function (x: unknown) { return 1 }
+export const f = createServerOnlyFn(() => 1)
+export const run = () => 1
+`,
+      expected: { value: 1 },
+      gone: true,
+    },
     {
       // C4-01's control: both spellings beside a read of the value
       name: 'a value kept code reads stays beside both spellings',

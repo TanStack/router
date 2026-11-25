@@ -59,6 +59,13 @@ export interface Declaration {
    *   `declare` of a value (the value's own text, without code).
    */
   kind: 'definition' | 'statement' | 'erased'
+  /**
+   * An overload signature (a bodyless `function f(x: T): R` beside the
+   * function's implementation): a definition, as the text of the function it
+   * belongs to, but TypeScript erases it, so what its types name is named by
+   * erased text, however the function is exported, or if it is not.
+   */
+  signature?: true
 }
 
 type Row = Omit<Declaration, 'id'>
@@ -108,9 +115,13 @@ export function classify(
               : 'statement',
       }
     case 'FunctionDeclaration':
-    case 'TSDeclareFunction':
-      // (an overload is text of the function it belongs to)
       return { node, spaces: VALUE, kind: runs(node.declare || ambient) }
+    case 'TSDeclareFunction':
+      // (an overload is text of the function it belongs to; a `declare` of
+      // the function is erased whole)
+      return node.declare || ambient
+        ? { node, spaces: VALUE, kind: 'erased' }
+        : { node, spaces: VALUE, kind: 'definition', signature: true }
     case 'ClassDeclaration':
       return {
         node,

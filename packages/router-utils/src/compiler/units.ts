@@ -98,10 +98,10 @@ export interface Unit {
   /**
    * For a type unit: a type export of this module's own names (an exported
    * declaration TypeScript erases, a type-only `export { … }`, specifier of
-   * a local name or `export default X`); for a declaration unit: an
-   * exported overload signature (TypeScript's text of its function). It renders in no output's JavaScript, and for
-   * provenance its text is erased text (`removal/closure.ts`); a re-export
-   * reads nothing of the module.
+   * a local name or `export default X`); for a declaration unit: an overload
+   * signature, exported or not (the table's `signature`). It renders in no
+   * output's JavaScript, and for provenance its text is erased text
+   * (`removal/closure.ts`); a re-export reads nothing of the module.
    */
   typeExport: boolean
   /** Export names this unit provides directly (`export const a`, `export { a as b }`, `default`). */
@@ -403,11 +403,14 @@ export function buildUnits(
       }
       case 'ExportDefaultDeclaration': {
         const d = node.declaration
-        if ('id' in d && d.id != null && classify(file, d) !== null) {
+        const row = classify(file, d)
+        if (row !== null && (row.signature || ('id' in d && d.id != null))) {
           // a named declaration (a function, its overload, a class, an
-          // interface): what it is, a type or a value, is the table's
+          // interface) or an overload signature: what it is, a type or a
+          // value, is the table's (an anonymous signature exports nothing:
+          // its function's declaration does)
           for (const u of declarationUnits(item, d, false)) {
-            if (u.kind === 'declaration') {
+            if (u.kind === 'declaration' && u.declares.length > 0) {
               u.exported.push('default')
             }
           }
@@ -495,12 +498,11 @@ export function buildUnits(
       )
       u.spaces = row!.spaces
       u.definition = row!.kind === 'definition'
-      // (an exported declaration TypeScript erases, or an exported overload
-      // signature, which is TypeScript's text of its function: a type
-      // export)
+      // (an exported declaration TypeScript erases is a type export; an
+      // overload signature's types are erased text whatever exports it)
       u.typeExport =
-        item.exportKeyword !== null &&
-        (u.kind === 'type' || node.type === 'TSDeclareFunction')
+        (u.kind === 'type' && item.exportKeyword !== null) ||
+        row!.signature === true
       return u
     }
     switch (decl.type) {
