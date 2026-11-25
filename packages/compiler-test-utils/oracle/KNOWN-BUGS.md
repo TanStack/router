@@ -123,6 +123,14 @@ function info not found` when one of them calls it, and the build says nothing, 
   query (no language, no marker read); a marked file that does not parse with an asset query. Rsbuild, the same: a plain
   `import.meta.webpackContext` of a non-code file (`*.server.json`). SPEC J6.1.
   `start-plugin-core/tests/integration/importProtection/known-bugs-asset-forms.test.ts`.
+- **A top-level `using` that a split chunk or a `<Hydrate>` chunk reads is acquired twice** (`using v = acquire()`):
+  the declaration table calls it a statement (it disposes what it declares), but its unit is a declaration, so the
+  chunk copies it and acquires again (and disposes again); the env module keeps it too, and Hydrate children render
+  the second resource's value. Main's splitter moves it into the chunk (once). Importing the binding from the env
+  module instead (an effect unit) loses its disposal under V8 14.6 (Node 26, Chromium): a module's `using` binding that
+  it exports is never disposed, an upstream V8 bug, not reported (an alias `const a = v; export { a }` disposes). SPEC
+  J2.0, J5.2. No pin (a fix depends on the V8 bug or on an alias export; whole-PR review C2-03, patch and V8 repro in
+  the lane notes). Fix: one acquisition and one disposal in every output.
 - **An isomorphic fn whose chain passes through a helper throws when its module loads**
   (`withBuilder(createIsomorphicFn().server(f)).client(g)`): the inner `.server(f)` compiles on its own into a plain
   function, so `.client` isn't there to call, on the client and on the server. No server code ships: `.server()` finished

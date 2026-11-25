@@ -223,7 +223,9 @@ reads the tree (`Removal` in `removal/index.ts`):
   no declaration (`x.p = v`, `x = v`) is never removed (R154). Type units stay in the env module as written whatever
   their cluster, never in a derived output unless a planner roots one there (route HMR copies a type statement
   holding a `@refresh` comment into a component chunk) or it declares a value (an ambient value declaration,
-  `declare enum`, `declare const`, exported or not, is copied: a TS transform resolves names through it), under the
+  `declare enum`, `declare const`, exported or not, is copied: Vite 8's Oxc with any tsconfig inlines the members of a
+  `declare enum` and a `declare const enum`, Rsbuild's SWC those of a `declare const enum`, so a derived output without
+  it would read a name the env module inlined and no runtime holds), under the
   same two rules; the TypeScript-only syntax no output
   renders is a unit's `stripped` (type-only export syntax, `isTypeOnlyExport`; an inline `type` import specifier, which
   follows its statement's value specifiers). A read the core

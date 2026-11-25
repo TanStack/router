@@ -209,9 +209,13 @@ function includedUnitsOf(
       // their cluster, except the TypeScript-only syntax no output renders
       // (`Unit.stripped`); ambient value declarations (a type unit that
       // declares a value: `declare enum`, `declare var`, …, exported or
-      // not) are copied: erased by TypeScript, but a TS transform resolves
-      // the names through them (Oxc inlines `declare enum` members), and so
-      // is a type unit a planner
+      // not) are copied: erased by TypeScript, but the transform after the
+      // compiler reads them in the file that holds them (Vite 8's Oxc, with
+      // any tsconfig, inlines the members of a `declare enum` and a
+      // `declare const enum`, Rsbuild's SWC those of a `declare const
+      // enum`), and the env module inlines what a derived output without
+      // the declaration would read from a name that exists nowhere
+      // (research-ambient-declarations.md). So is a type unit a planner
       // rooted in the output that the env module would keep (its text is
       // what the planner wants there)
       if (
