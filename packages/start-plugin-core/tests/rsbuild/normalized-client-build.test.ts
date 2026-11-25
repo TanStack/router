@@ -469,6 +469,43 @@ describe('normalizeRspackClientBuild', () => {
     ])
   })
 
+  test('imports the chunk of a side-effect-free module used after its inactive import', async () => {
+    // The import statement's own connection to `lib.js` is inactive (no side
+    // effects); the later connection for the used `lib` binding is active.
+    const { clientBuild } = await buildClientFixture(
+      {
+        'index.js': `globalThis.route = () => import(/* webpackChunkName: "alpha" */ './alpha.js?tsr-split=component')`,
+        'alpha.js': `
+        import { lib } from './lib.js'
+        export const render = () => lib() + 'alpha'
+      `,
+        'lib.js': `export const lib = () => 'lib'`,
+      },
+      {
+        module: { rules: [{ test: /lib\.js$/, sideEffects: false }] },
+        optimization: {
+          splitChunks: {
+            minSize: 0,
+            cacheGroups: {
+              default: false,
+              defaultVendors: false,
+              vendor: {
+                name: 'vendor',
+                test: /lib\.js$/,
+                chunks: 'all',
+                enforce: true,
+              },
+            },
+          },
+        },
+      },
+    )
+
+    expect(clientBuild.chunksByFileName.get('alpha.js')?.imports).toEqual([
+      'vendor.js',
+    ])
+  })
+
   test('uses a dependency in the parent group without importing its copy in another entry', async () => {
     const { clientBuild } = await buildClientFixture(
       {

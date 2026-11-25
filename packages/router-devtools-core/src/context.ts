@@ -1,9 +1,5 @@
 import { createContext, useContext } from 'solid-js'
 
-export const ShadowDomTargetContext = createContext<ShadowRoot | undefined>(
-  undefined,
-)
-
 export const DevtoolsOnCloseContext = createContext<
   | {
       onCloseClick: (

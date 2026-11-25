@@ -1,5 +1,27 @@
 # @tanstack/start-plugin-core
 
+## 1.172.0
+
+### Minor Changes
+
+- [#8858](https://github.com/TanStack/router/pull/8858) [`2ebc0f3`](https://github.com/TanStack/router/commit/2ebc0f35866fed7345e567cf7d0925ba3c0bcc65) - A server function id that a custom `serverFns.generateFunctionId` returns and that never worked over HTTP now fails the build, with an error naming the file, the function and the id: whitespace, a control or non-ASCII character, any of `"`, `#`, `/`, `<`, `>`, `?`, `\`, `^`, `` ` ``, `{`, `}`, the ids `.` and `..`, and a percent-encoding the server reads as another id (`%41`, lowercase hex, `%2E`) or rejects. The client puts the id in the URL unencoded, so a `#` or `?` ended the path and a `/` cut the id short (the call silently ran another server function of the file or none), and the other characters reached the server percent-encoded and matched no function. An id embedding a non-ASCII `functionName` is one of these. One case did work and now fails the build: such an id on a server function only SSR code called.
+
+  Ids with `%` or the other characters URLs allow (such as `:`, `@`, `+`, `=`, `,`, `;`, `!`, `*`, `(`, `)`, `&`, `'`, `|`, `[`, `]`) still build and reach their handler, with a deprecation warning (from the Vite plugin; the Rsbuild plugin does not print compiler warnings yet): the next major version rejects them, since proxies and servers may decode or rewrite them (hash the inputs instead, as the documented example does). An id with `'` no longer breaks the server bundle.
+
+### Patch Changes
+
+- [#8926](https://github.com/TanStack/router/pull/8926) [`0b6d4f3`](https://github.com/TanStack/router/commit/0b6d4f3f6b42e704555d9ff0014ddbf8b44f8e09) - Rsbuild: the Start manifest pass that runs after every client compilation (builds and each dev update) reads an imported module's chunks once per compilation and counts the module once per importing chunk, instead of once per import connection. The manifest is unchanged; the pass takes about 40 % less time (on a 333-route app, tens of milliseconds less per HMR update).
+
+- [#8876](https://github.com/TanStack/router/pull/8876) [`c156097`](https://github.com/TanStack/router/commit/c156097786b685db61f535d2779cb2a52a6af8aa) - Rsbuild: a route's client manifest entry lists only its own chunks and CSS. When two routes shared a module in a chunk of its own, each route's entry also listed the other route's chunk as a preload and its stylesheet.
+
+- [#8890](https://github.com/TanStack/router/pull/8890) [`f870933`](https://github.com/TanStack/router/commit/f8709334ac3056d007e65bc146d94702e052434b) - fix: the Rsbuild RSC integration skips falsy entries in a rule's `use` array (Rspack's conditionally disabled loaders) instead of treating them as loaders.
+
+- [#8907](https://github.com/TanStack/router/pull/8907) [`70bbd11`](https://github.com/TanStack/router/commit/70bbd11025143665ab5a391ddb44cb3917e4d2e3) - Rsbuild: fix the Rsbuild plugin build after two changes to its virtual modules crossed. Without this fix the package does not build, so no release could ship it. The Rsbuild dev manifest is written to its virtual module under the app's root.
+
+- [#8868](https://github.com/TanStack/router/pull/8868) [`df6ac30`](https://github.com/TanStack/router/commit/df6ac3040695ddf2ec2d5e8b4be8f63273a658a6) - Rsbuild: Start writes its virtual modules under the app's root, not the working directory. An app built or served from another directory (`rsbuild build --root <app>` from a monorepo root) no longer fails with "Module not found" on the packages they import, such as RSC's serialization adapters.
+
+- [#8866](https://github.com/TanStack/router/pull/8866) [`3cc054c`](https://github.com/TanStack/router/commit/3cc054c3741d15e8cb6591b0954b315e0a2327a3) - Vite: Start finds the Start libraries it bundles in the SSR build from Vite's root, not the working directory. A `vite build <app>` run from another directory (a monorepo root, a script) no longer leaves them external and uncompiled, where their server fns returned `undefined`.
+
 ## 1.171.57
 
 ### Patch Changes
