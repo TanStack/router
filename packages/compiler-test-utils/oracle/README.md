@@ -33,8 +33,8 @@ not compilers (manifest, sitemap, prerender, RSC runtime, …), listed in each p
 Not the oracle: start-plugin-core `tests/rsbuild/compilation-files.test.ts` (run by `test:unit`): it calls the Rsbuild
 session's own logic for a race a timed dev server would otherwise be needed for.
 
-Not the oracle: the `perf-guards` project (start-plugin-core `tests/integration/perf-guards/`, run by
-`test:integration`). Its tests count what the compiler does (plans, raw facts, compiles, resolutions) to guard reported
+Not the oracle: the `perf-guards` projects (start-plugin-core and router-plugin `tests/integration/perf-guards/`, run
+by `test:integration`). Its tests count what the compiler does (plans, raw facts, compiles, resolutions) to guard reported
 costs; a correct compiler need not match them.
 
 The suite runs with the compilers' self-checks on (`TSR_COMPILER_VERIFY=1`, set by `src/run-directory.ts`): a violated

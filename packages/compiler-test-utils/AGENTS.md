@@ -80,7 +80,7 @@ CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-plugin:test:unit --outputStyle
   browser pages; `tests/integration/pages/` is the `integration-pages` project). `integration` projects keep modules
   across files (`isolate: false`): a file leaves nothing behind but what the harness owns. A file that reads
   process-global state runs in a process of its own (start-plugin-core `integration-alone`; `compilerStats()`
-  readers: `perf-guards`, not part of the oracle):
+  readers: `perf-guards` of start-plugin-core and router-plugin, not part of the oracle):
   Vite 8 keeps the plugins of every finished build and closed server alive.
 - Those files share one heap, and it only grows: everything a Vite plugin reaches stays for the rest of the process, and
   native bundler callbacks keep the async contexts they were created in. So what a harness scope or plugin holds is

@@ -66,7 +66,11 @@ const integrationProject = {
     // started with (see `test-scope-setup`)
     isolate: false,
     include: ['integration/**/*.test.ts'],
-    exclude: [...configDefaults.exclude, 'integration/pages/**'],
+    exclude: [
+      ...configDefaults.exclude,
+      'integration/pages/**',
+      'integration/perf-guards/**',
+    ],
     testTimeout: 30_000,
     hookTimeout: 30_000,
   },
@@ -117,7 +121,20 @@ const config = defineConfig({
         },
       },
       {
-        // Slow tier too (`test:integration` runs both projects): route apps
+        // Work and memory guards (`test:integration` runs them; not oracle
+        // tests: they count what the compiler keeps alive through the stats
+        // knob, process-wide, which a correct compiler need not match), each
+        // file in a process of its own.
+        extends: true,
+        test: {
+          name: 'perf-guards',
+          include: ['integration/perf-guards/**/*.test.ts'],
+          testTimeout: 30_000,
+          hookTimeout: 30_000,
+        },
+      },
+      {
+        // Slow tier too (`test:integration` runs the three projects): route apps
         // checked in pages of a real browser (`route-app.ts`), as the fast
         // tier checks them, whose cost does not fit the fast tier.
         ...pagesProject,

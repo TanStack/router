@@ -14,13 +14,13 @@ import { compilerStats } from '@tanstack/router-utils/compiler'
 import {
   TanStackRouterCodeSplitterRspack,
   TanStackRouterGeneratorRspack,
-} from '../../src/rspack'
+} from '../../../src/rspack'
 import {
   TanStackRouterCodeSplitterWebpack,
   TanStackRouterGeneratorWebpack,
-} from '../../src/webpack'
-import { build, routeApp } from '../build-harness'
-import type { RouterPluginOptions } from '../../src/hosts/vite'
+} from '../../../src/webpack'
+import { build, routeApp } from '../../build-harness'
+import type { RouterPluginOptions } from '../../../src/hosts/vite'
 
 const timeout = 60_000
 
