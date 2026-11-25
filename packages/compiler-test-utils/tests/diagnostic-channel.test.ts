@@ -299,6 +299,31 @@ describe('tool logger', () => {
     })
   })
 
+  test('a logger error that only starts like the status line, or one without a failed compile, is recorded', async () => {
+    const { diagnostics } = await captureDiagnostics((channel) => {
+      channel.reportLogged(
+        'build failed in 0.12s (client)',
+        [],
+        'error',
+        'rsbuild',
+      )
+      channel.reportCompilation({ errors: [{ message: 'Failed in src/a.ts' }] })
+      channel.reportLogged(
+        'build failed in 0.12s: src/route.ts could not load',
+        [],
+        'error',
+        'rsbuild',
+      )
+    })
+    expect(diagnostics.map(({ source, text }) => `${source}: ${text}`)).toEqual(
+      [
+        'rsbuild: build failed in 0.12s (client)',
+        'bundler: Failed in src/a.ts',
+        'rsbuild: build failed in 0.12s: src/route.ts could not load',
+      ],
+    )
+  })
+
   test('the status line of a failed compile is no report; another error of that turn is', async () => {
     const { diagnostics } = await captureDiagnostics((channel) => {
       channel.reportCompilation({

@@ -81,7 +81,7 @@ export interface DiagnosticChannel {
    * under `source`, unless it only prints again the latest compilation
    * report of a compiler this channel recorded (Rsbuild's "Build errors: …")
    * or is Rsbuild's status line of a failed compile ("build failed in
-   * 0.12s"). Each report is then recorded once, from the compilation;
+   * 0.12s", while a compiler's latest compile failed). Each report is then recorded once, from the compilation;
    * anything else the logger prints is recorded.
    */
   reportLogged: (
@@ -178,11 +178,12 @@ function quotedOf(item: unknown) {
 }
 
 /**
- * Rsbuild's status line of a compile that failed (`build failed in 0.12s`,
- * with the environment's name when it builds several): it names nothing the
- * compilation's report does not.
+ * Rsbuild's status line of a compile that failed, as Rsbuild prints it
+ * (`build failed in 0.12s`, `1m 2.5s`, with the environment's name when it
+ * builds several): it names nothing the compilation's report does not.
  */
-const rsbuildFailedStatus = /^build failed in \d[^\n]*$/
+const rsbuildFailedStatus =
+  /^build failed in (?:\d+(?:\.\d+)?s|\d+m(?: \d+(?:\.\d+)?s)?)(?: \([^()\n]+\))?$/
 
 /** Opens a channel for run()/scope() work, recording until close(). */
 export function openDiagnosticChannel(): DiagnosticChannel {
@@ -204,10 +205,14 @@ export function openDiagnosticChannel(): DiagnosticChannel {
     receive: (entry) => push(printedDiagnostic(entry)),
   })
   /**
-   * The messages of each compiler's latest compilation report (`quotedOf`):
-   * what a tool's summary of the compile repeats.
+   * Each compiler's latest compilation report: its messages (`quotedOf`),
+   * what a tool's summary of the compile repeats, and whether it failed
+   * (what the tool's status line of a failed compile follows).
    */
-  const compiled = new Map<object, Array<string>>()
+  const compiled = new Map<
+    object,
+    { messages: Array<string>; failed: boolean }
+  >()
   /** The compiler of reports that name none. */
   const channelCompiler = {}
 
@@ -276,12 +281,12 @@ export function openDiagnosticChannel(): DiagnosticChannel {
       const warnings = [...(compilation.warnings ?? [])]
       report(errors, 'error', 'bundler')
       report(warnings, 'warning', 'bundler')
-      compiled.set(
-        compilation.compiler ?? channelCompiler,
-        [...errors, ...warnings]
+      compiled.set(compilation.compiler ?? channelCompiler, {
+        messages: [...errors, ...warnings]
           .map(quotedOf)
           .filter((quoted) => quoted !== ''),
-      )
+        failed: errors.length > 0,
+      })
     },
     reportLogged: (message, args, severity, source) => {
       const printed = [message, ...args]
@@ -289,10 +294,12 @@ export function openDiagnosticChannel(): DiagnosticChannel {
       const reprint =
         (severity === 'error' || severity === 'warning') &&
         // The report's messages, each from the start of a line
-        ([...compiled.values()].some((messages) =>
+        ([...compiled.values()].some(({ messages }) =>
           messages.some((quoted) => `\n${content}`.includes(`\n${quoted}`)),
         ) ||
-          (severity === 'error' && rsbuildFailedStatus.test(content)))
+          (severity === 'error' &&
+            rsbuildFailedStatus.test(content) &&
+            [...compiled.values()].some(({ failed }) => failed)))
       if (reprint) {
         return
       }
@@ -311,8 +318,10 @@ export function openDiagnosticChannel(): DiagnosticChannel {
         closed = true
         stop()
         // A plugin holding the channel's logger may outlive the build (Vite 8
-        // keeps every plugin it was given): it keeps no listener's scope
+        // keeps every plugin it was given): it keeps no listener's scope, nor
+        // the compilers it reported
         listeners.length = 0
+        compiled.clear()
       }
     },
   }
