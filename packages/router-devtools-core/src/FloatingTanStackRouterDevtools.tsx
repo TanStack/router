@@ -1,15 +1,13 @@
-import { clsx as cx } from 'clsx'
-
 import { createEffect, createMemo, createSignal } from 'solid-js'
-import { Dynamic } from 'solid-js/web'
+import { dynamic } from '@solidjs/web'
 
 import { DevtoolsOnCloseContext } from './context'
-import { useIsMounted } from './utils'
 import { BaseTanStackRouterDevtoolsPanel } from './BaseTanStackRouterDevtoolsPanel'
 import useLocalStorage from './useLocalStorage'
 import { TanStackLogo } from './logo'
-import { useStyles } from './useStyles'
-import type { Accessor, JSX } from 'solid-js'
+import { attachStyles } from './styles'
+import type { Accessor } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import type { AnyRouter } from '@tanstack/router-core'
 
 export interface FloatingDevtoolsOptions {
@@ -52,7 +50,12 @@ export interface FloatingDevtoolsOptions {
   router: Accessor<AnyRouter>
   routerState: Accessor<any>
   /**
-   * Use this to attach the devtool's styles to specific element in the DOM.
+   * The element the devtools are mounted in. Its document or shadow root gets
+   * the devtools styles.
+   */
+  mountElement?: Element
+  /**
+   * Adds the devtools styles to this shadow root instead.
    */
   shadowDOMTarget?: ShadowRoot
 }
@@ -66,8 +69,13 @@ export function FloatingTanStackRouterDevtools({
   containerElement: Container = 'footer',
   router,
   routerState,
+  mountElement,
   shadowDOMTarget,
 }: FloatingDevtoolsOptions): JSX.Element | null {
+  if (mountElement) {
+    attachStyles(mountElement, shadowDOMTarget)
+  }
+  const ContainerElement = dynamic(() => Container)
   const [rootEl, setRootEl] = createSignal<HTMLDivElement>()
 
   // eslint-disable-next-line prefer-const
@@ -83,10 +91,8 @@ export function FloatingTanStackRouterDevtools({
     null,
   )
 
-  const [isResolvedOpen, setIsResolvedOpen] = createSignal(false)
+  const isResolvedOpen = () => isOpen() ?? false
   const [isResizing, setIsResizing] = createSignal(false)
-  const isMounted = useIsMounted()
-  const styles = useStyles()
 
   const handleDragStart = (
     panelElement: HTMLDivElement | undefined,
@@ -124,62 +130,33 @@ export function FloatingTanStackRouterDevtools({
     document.addEventListener('mouseup', unsub)
   }
 
-  const isButtonClosed = isOpen() ?? false
-
-  createEffect(() => {
-    setIsResolvedOpen(isOpen() ?? false)
-  })
-
-  createEffect(() => {
-    if (isResolvedOpen()) {
-      const previousValue = rootEl()?.parentElement?.style.paddingBottom
-
+  // Pad the page so the open panel does not cover its bottom.
+  createEffect(
+    () => ({ open: isResolvedOpen(), parent: rootEl()?.parentElement }),
+    ({ open, parent }) => {
+      if (!parent) return
+      if (!open) {
+        // Reset padding when devtools are closed
+        parent.removeAttribute('style')
+        return
+      }
+      const previousValue = parent.style.paddingBottom
       const run = () => {
         const containerHeight = panelRef!.getBoundingClientRect().height
-        if (rootEl()?.parentElement) {
-          setRootEl((prev) => {
-            if (prev?.parentElement) {
-              prev.parentElement.style.paddingBottom = `${containerHeight}px`
-            }
-            return prev
-          })
-        }
+        parent.style.paddingBottom = `${containerHeight}px`
       }
-
       run()
-
-      if (typeof window !== 'undefined') {
-        window.addEventListener('resize', run)
-
-        return () => {
-          window.removeEventListener('resize', run)
-          if (rootEl()?.parentElement && typeof previousValue === 'string') {
-            setRootEl((prev) => {
-              prev!.parentElement!.style.paddingBottom = previousValue
-              return prev
-            })
-          }
-        }
+      window.addEventListener('resize', run)
+      return () => {
+        window.removeEventListener('resize', run)
+        parent.style.paddingBottom = previousValue
       }
-    } else {
-      // Reset padding when devtools are closed
-      if (rootEl()?.parentElement) {
-        setRootEl((prev) => {
-          if (prev?.parentElement) {
-            prev.parentElement.removeAttribute('style')
-          }
-          return prev
-        })
-      }
-    }
-    return
-  })
+    },
+  )
 
-  createEffect(() => {
-    if (rootEl()) {
-      const el = rootEl()
-      const fontSize = getComputedStyle(el!).fontSize
-      el?.style.setProperty('--tsrd-font-size', fontSize)
+  createEffect(rootEl, (el) => {
+    if (el) {
+      el.style.setProperty('--tsrd-font-size', getComputedStyle(el).fontSize)
     }
   })
 
@@ -199,47 +176,39 @@ export function FloatingTanStackRouterDevtools({
     ...otherToggleButtonProps
   } = toggleButtonProps
 
-  // Do not render on the server
-  if (!isMounted()) return null
-
   const resolvedHeight = createMemo(() => devtoolsHeight() ?? 500)
 
   const basePanelClass = createMemo(() => {
-    return cx(
-      styles().devtoolsPanelContainer,
-      styles().devtoolsPanelContainerVisibility(!!isOpen()),
-      styles().devtoolsPanelContainerResizing(isResizing),
-      styles().devtoolsPanelContainerAnimation(
-        isResolvedOpen(),
-        resolvedHeight() + 16,
-      ),
-    )
+    return [
+      'tsrd-devtools-panel-container',
+      isOpen() ? '' : 'tsrd-devtools-panel-container-hidden',
+      isResizing() ? 'tsrd-devtools-panel-container-resizing' : '',
+      // The closed offset comes from `--tsrd-panel-offset`.
+      isResolvedOpen() ? '' : 'tsrd-devtools-panel-container-closed',
+    ].join(' ')
   })
 
   const basePanelStyle = createMemo(() => {
     return {
       height: `${resolvedHeight()}px`,
+      '--tsrd-panel-offset': `${resolvedHeight() + 16}px`,
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       ...(panelStyle || {}),
     }
   })
 
   const buttonStyle = createMemo(() => {
-    return cx(
-      styles().mainCloseBtn,
-      styles().mainCloseBtnPosition(position),
-      styles().mainCloseBtnAnimation(!!isOpen()),
-      toggleButtonClassName,
-    )
+    return [
+      'tsrd-main-close-btn',
+      `tsrd-main-close-btn-${position}`,
+      isOpen() ? 'tsrd-main-close-btn-hidden' : '',
+      toggleButtonClassName ?? '',
+    ].join(' ')
   })
 
   return (
-    <Dynamic
-      component={Container}
-      ref={setRootEl}
-      class="TanStackRouterDevtools"
-    >
-      <DevtoolsOnCloseContext.Provider
+    <ContainerElement ref={setRootEl} class="TanStackRouterDevtools">
+      <DevtoolsOnCloseContext
         value={{
           onCloseClick: onCloseClick ?? (() => {}),
         }}
@@ -252,15 +221,13 @@ export function FloatingTanStackRouterDevtools({
           routerState={routerState}
           className={basePanelClass}
           style={basePanelStyle}
-          isOpen={isResolvedOpen()}
           setIsOpen={setIsOpen}
           handleDragStart={(e) => handleDragStart(panelRef, e)}
-          shadowDOMTarget={shadowDOMTarget}
         />
         {/* ) : (
           <p>No router</p>
         )} */}
-      </DevtoolsOnCloseContext.Provider>
+      </DevtoolsOnCloseContext>
 
       <button
         type="button"
@@ -272,18 +239,18 @@ export function FloatingTanStackRouterDevtools({
         }}
         class={buttonStyle()}
       >
-        <div class={styles().mainCloseBtnIconContainer}>
-          <div class={styles().mainCloseBtnIconOuter}>
+        <div class="tsrd-main-close-btn-icon-container">
+          <div class="tsrd-main-close-btn-icon-outer">
             <TanStackLogo />
           </div>
-          <div class={styles().mainCloseBtnIconInner}>
+          <div class="tsrd-main-close-btn-icon-inner">
             <TanStackLogo />
           </div>
         </div>
-        <div class={styles().mainCloseBtnDivider}>-</div>
-        <div class={styles().routerLogoCloseButton}>TanStack Router</div>
+        <div class="tsrd-main-close-btn-divider">-</div>
+        <div class="tsrd-router-logo-close-button">TanStack Router</div>
       </button>
-    </Dynamic>
+    </ContainerElement>
   )
 }
 
