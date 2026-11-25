@@ -760,8 +760,9 @@ function pathReader(file: string, options: { root?: string; tail?: boolean }) {
  * `webpack:`), `#` starts a fragment; in a plain path, it is part of the
  * name (`C# project #2/`, `a.ts#copy.ts`).
  *
- * Limit: webpack's `module.resource` of a request with a fragment
- * (`./a.ts#x`) is a plain path whose `#x` reads as part of the name.
+ * Limit: an id or resource of a request with a fragment (`./a.ts#x`) is a
+ * plain path whose `#x` reads as part of the name: webpack's
+ * `module.resource`, and Vite's module id (`/app/src/a.ts#x`).
  */
 function fieldNames(
   field: string,
