@@ -153,7 +153,9 @@ function info not found` when one of them calls it, and the build says nothing, 
   without the banner an upstream plugin prepends, discards the only compile of the transformed text (nothing published,
   nothing stale). Core rows (no public input holds these reads): `router-utils/tests/freshness.test.ts`, "a check that
   waits while an event lands". Fix: one `stable(snapshot)` accepted in the caller's turn, and an event moves the key's
-  generation instead of naming its text (step 6a).
+  generation instead of naming its text (step 6a). Also a cost: a comment-only save of a dependency while a compile
+  checks its snapshot restarts the compile (the `asked` rows), though no fact it read moved: "a comment-only edit: the
+  compile is not attempted again" in the same file. Fix: the snapshot alone decides (step 6b).
 - **Vite watch build: a client rebuild whose output fails keeps the previous client build** (settlement design rev 4,
   step 7): another plugin's `generateBundle` failing leaves the client's output directory empty (Vite emptied it before
   rendering), and the server's document still names the previous client files. A hand-ordered server build after a

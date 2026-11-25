@@ -40,11 +40,12 @@ export const requireRole = (role: string) =>
     return next()
   })
 `,
-  // (only the worker imports it: its warning is the child compilation's)
+  // (only the worker imports it: its warning is the child compilation's,
+  // the only one naming `workerSecret`)
   'src/worker-role.ts': `import { createMiddleware } from '@tanstack/react-start'
-export const workerRole = (role: string) =>
+export const workerRole = (workerSecret: string) =>
   createMiddleware().server(async ({ next }) => {
-    if (role === 'none') {
+    if (workerSecret === 'none') {
       throw new Error('no')
     }
     return next()
@@ -106,16 +107,12 @@ describe('rsbuild build: one file in the client and in a worker', () => {
             severity: 'warning',
             file: 'src/fns.ts',
           }).length,
+          // (the child's warning, by the parameter it names: handed over
+          // while the client compilation makes its modules it names no
+          // file, Rspack reads it back without its module)
           workerWarnings: findDiagnostics(build.diagnostics, {
             severity: 'warning',
-            file: 'src/worker-role.ts',
-          }).length,
-          // (the child's own warning, handed over while the client
-          // compilation makes its modules, names no file: Rspack reads it
-          // back without its module)
-          allWarnings: findDiagnostics(build.diagnostics, {
-            severity: 'warning',
-          }).length,
+          }).filter((d) => d.text.includes('`workerSecret`')).length,
         }
       }
       const clean = await outcome(false)
@@ -124,10 +121,7 @@ describe('rsbuild build: one file in the client and in a worker', () => {
         workerCalls: at === 'make' ? true : null,
       })
       expect(clean.warnings).toBeGreaterThan(0)
-      // (the child's warning is reported: by its file, or as one more)
-      expect(
-        clean.workerWarnings > 0 || clean.allWarnings > clean.warnings,
-      ).toBe(true)
+      expect(clean.workerWarnings).toBeGreaterThan(0)
       expect(await outcome(true)).toEqual(clean)
     },
   )

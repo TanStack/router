@@ -362,49 +362,100 @@ export const read = () => valueOf(secret)
 })
 
 describe('Vite dev: outputs of one text', () => {
-  // A server fn file is saved; the compile of its new text
-  // waits on a resolution while the SSR module and the module of its
-  // handler (two outputs of one file in one environment) are both
-  // requested: the call loads the handler, as a page's does. Both are
-  // answers of the newest text and both stand: the call answers the new
-  // handler, and so does a call after both answered.
-  // Source: Astra's and Gemini's reviews of settlement step 0.
+  // A server fn file is saved with a denied import its module reads outside
+  // the handler: the SSR module's output imports it (a violation, its mock),
+  // the handler module's does not. The compile of the new text, the SSR
+  // module's (the module runner imports it again), waits on a resolution
+  // inside its transform; the handler module is requested (a call, as a
+  // page's) and reaches the transform before the wait ends. Both outputs
+  // stand: the call answers the new handler, and the SSR module's commit
+  // reports its violation, which only that output has.
+  // Source: Astra's and Gemini's reviews of settlement step 0 (rounds 2, 3);
+  // Fable's round-3 re-check, finding 5.
   test(
-    'two outputs of one text in one environment both stand: the new handler answers',
+    'two outputs of one text in one environment both stand: the new handler answers, the module reports',
     async () => {
-      const gate = holdPoint()
-      const fns = (
-        marker: string,
-      ) => `import { createServerFn } from '@tanstack/react-start'
+      const fns = (marker: string, denied: boolean) =>
+        `import { createServerFn } from '@tanstack/react-start'
 import { helper } from './helper'
-export const fn = createServerFn().handler(() => helper('${marker}'))
+${denied ? "import { secret } from './secret.client'\nexport const top = secret\n" : ''}export const fn = createServerFn().handler(() => helper('${marker}'))
 `
+      let transforming = false
+      let held: { reached: () => void; release: Promise<void> } | null = null
+      let handlerArrived!: () => void
+      const arrived = new Promise<void>((r) => (handlerArrived = r))
+      const isFns = (id: string | undefined) =>
+        id !== undefined && id.split('?')[0]!.endsWith('/src/fns.ts')
+      const plugin: Plugin = {
+        name: 'test:hold-in-transform',
+        enforce: 'pre',
+        transform: {
+          order: 'pre',
+          handler(_code, id) {
+            if (this.environment.name === 'ssr' && isFns(id)) {
+              if (id.includes('?')) {
+                handlerArrived()
+              } else {
+                transforming = true
+              }
+            }
+            return null
+          },
+        },
+        async resolveId(source, importer) {
+          if (
+            this.environment.name === 'ssr' &&
+            source === './helper' &&
+            isFns(importer) &&
+            !importer!.includes('?') &&
+            transforming &&
+            held
+          ) {
+            const hold = held
+            held = null
+            hold.reached()
+            await hold.release
+          }
+          return null
+        },
+      }
+      const { importProtection, reports } = protection(null)
       const server = await startDevServer({
-        plugins: [holdResolution(gate, './helper', 'ssr')],
+        plugins: [plugin],
+        start: { importProtection },
         files: {
           ...startRequestFiles,
           'src/helper.ts': `export const helper = (marker: string) => marker\n`,
-          'src/fns.ts': fns('MARK_OLD'),
+          'src/secret.client.ts': `export const secret = 'MARK_SECRET'\n`,
+          'src/fns.ts': fns('MARK_OLD', false),
         },
       })
       // (a dev id names the file and the function: the save keeps it)
       const { url } = (await server.import('/src/fns.ts')).fn
       expect(await callServerFn(server, url)).toBe('MARK_OLD')
-      // (the module runner imports the saved module again on its own: that
-      // compile is the one held)
-      const reached = gate.arm()
-      await server.write({ 'src/fns.ts': fns('MARK_NEW') })
-      await Promise.race([
-        reached,
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('test: no compile held')), 10_000),
-        ),
-      ])
+      let release!: () => void
+      const reached = new Promise<void>((r) => {
+        held = {
+          reached: r,
+          release: new Promise<void>((done) => (release = done)),
+        }
+      })
+      transforming = false
+      const timedOut = (what: string) =>
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(`test: ${what}`)), 10_000),
+        )
+      await server.write({ 'src/fns.ts': fns('MARK_NEW', true) })
+      await Promise.race([reached, timedOut('no transform held')])
       const call = callServerFn(server, url)
-      gate.release()
+      await Promise.race([arrived, timedOut('no handler request')])
+      // (the handler request goes on into the compiler)
+      await new Promise((r) => setTimeout(r, 100))
+      release()
       expect(await call).toBe('MARK_NEW')
       await server.settle()
       await server.idle()
+      expect(reports).toEqual(['fns.ts -> ./secret.client'])
       expect(await callServerFn(server, url)).toBe('MARK_NEW')
     },
     timeout,
