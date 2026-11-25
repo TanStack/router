@@ -222,8 +222,9 @@ reads the tree (`Removal` in `removal/index.ts`):
   unused `const`, an import nothing reads, a declaration whose own text only reads it). A top-level statement that is
   no declaration (`x.p = v`, `x = v`) is never removed (R154). Type units stay in the env module as written whatever
   their cluster, never in a derived output unless a planner roots one there (route HMR copies a type statement
-  holding a `@refresh` comment into a component chunk), under the same two rules; only the TypeScript-only specifiers follow their statement's value
-  specifiers (`droppedTypeUnits`). Type-only export syntax is in no output (`isTypeOnlyExport`). A read the core
+  holding a `@refresh` comment into a component chunk), under the same two rules; the TypeScript-only syntax no output
+  renders is a unit's `stripped` (type-only export syntax, `isTypeOnlyExport`; an inline `type` import specifier, which
+  follows its statement's value specifiers). A read the core
   synthesises from a name (a Solid `use:` directive) binds only to a declaration with a runtime value. A type name
   decorator metadata serializes is a read by value where the class is defined (`metadataNames`). JSX is no read of
   the classic runtime's factory.

@@ -12,7 +12,7 @@ import { CHILD_KEYS } from 'yuku'
 import { sameFileSpecifier } from './identity'
 import { dedupeEdges, sourceEdges } from './edges'
 import { specifierLiteral, specifierName } from './strings'
-import { isTypeOnlyExport, statementRecipe } from './units'
+import { statementRecipe } from './units'
 import { namespaceName } from './source'
 import { extendOverTrailingLine, isLineTerminator, pragmasOf } from './header'
 import { erases } from './rewrite'
@@ -206,21 +206,18 @@ function includedUnitsOf(
     const u = plan.t1.units[uid]!
     if (u.kind === 'type') {
       // type units stay in the env module (erased by TypeScript) whatever
-      // their cluster, except type-only export syntax, which no output
-      // keeps (`isTypeOnlyExport`), and the TypeScript-only specifiers
-      // placement dropped (`droppedTypeUnits`); ambient value declarations
+      // their cluster, except the TypeScript-only syntax no output renders
+      // (`Unit.stripped`); ambient value declarations
       // (`declare enum`, `declare var`, …) are copied: erased by
       // TypeScript, but a TS transform resolves the names through them (Oxc
       // inlines `declare enum` members), and so is a type unit a planner
       // rooted in the output that the env module would keep (its text is
       // what the planner wants there)
-      const kept =
-        !isTypeOnlyExport(u.node) && !placement.droppedTypeUnits.has(uid)
       if (
         derived
           ? isAmbientValueDeclaration(u.node) ||
-            (kept && roots.some((r) => r.t === 'unit' && r.id === uid))
-          : kept
+            (!u.stripped && roots.some((r) => r.t === 'unit' && r.id === uid))
+          : !u.stripped
       ) {
         set.add(uid)
       }

@@ -156,6 +156,45 @@ export function classify(
   }
 }
 
+/**
+ * Whether an export statement or specifier exports types only: TypeScript
+ * erases it. Its syntax says so (`export type { X }`, `export { type X }`,
+ * `export type * from`, an `export { … }` whose specifiers all are), or what
+ * it exports: a declaration the table erases (`export interface X`,
+ * `export default interface X`, `export declare const x`, a namespace of
+ * types), or for the specifier of a local name (`export { X }`), a binding
+ * with no runtime value (a type-only import, an interface, an alias).
+ */
+export function isTypeOnlyExport(
+  file: SourceFile,
+  node: Node,
+  /** A declaration's binding (`classify`); a local specifier's: the binding it exports. */
+  binding?: Binding | null,
+): boolean {
+  switch (node.type) {
+    case 'ExportNamedDeclaration':
+      return (
+        node.exportKind === 'type' ||
+        (node.declaration !== null
+          ? classify(file, node.declaration, binding ?? undefined)?.kind ===
+            'erased'
+          : node.specifiers.length > 0 &&
+            node.specifiers.every((spec) => spec.exportKind === 'type'))
+      )
+    case 'ExportDefaultDeclaration':
+      return classify(file, node.declaration)?.kind === 'erased'
+    case 'ExportAllDeclaration':
+      return node.exportKind === 'type'
+    case 'ExportSpecifier':
+      return (
+        node.exportKind === 'type' ||
+        (binding != null && !hasRuntimeValue(binding))
+      )
+    default:
+      return false
+  }
+}
+
 /** Whether a declaration stands inside `declare global {}` or `declare namespace {}`. */
 function inAmbientContext(file: SourceFile, node: Node): boolean {
   for (let p = file.parentOf(node); p !== null; p = file.parentOf(p)) {

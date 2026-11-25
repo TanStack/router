@@ -174,6 +174,44 @@ export const run = () => 1
       gone: true,
     },
     {
+      // C4-01 (whole-PR review): a default-exported interface
+      name: 'an export default interface',
+      code: `${SO}import { getServerVal } from './db.server'
+const sv = getServerVal()
+export default interface Shape { v: typeof sv }
+export const f = createServerOnlyFn(() => 1)
+export const run = () => 1
+`,
+      expected: { value: 1 },
+      gone: true,
+    },
+    {
+      // C4-01 (whole-PR review): `export { X }` of a local type, no `type`
+      name: 'an export specifier of a local type',
+      code: `${SO}import { getServerVal } from './db.server'
+const sv = getServerVal()
+type LocalAlias = typeof sv
+export { LocalAlias }
+export const f = createServerOnlyFn(() => 1)
+export const run = () => 1
+`,
+      expected: { value: 1 },
+      gone: true,
+    },
+    {
+      // C4-01's control: both spellings beside a read of the value
+      name: 'a value kept code reads stays beside both spellings',
+      code: `${SO}import { getServerVal } from './db.server'
+const sv = getServerVal()
+type LocalAlias = typeof sv
+export { LocalAlias }
+export default interface Shape { v: typeof sv }
+export const f = createServerOnlyFn(() => 1)
+export const run = () => typeof sv
+`,
+      expected: { value: 'object' },
+    },
+    {
       // X_V7A_value_also_read_by_kept_code
       name: 'a value kept code reads too stays',
       code: `${SO}import { getServerVal } from './db.server'

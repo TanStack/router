@@ -8,8 +8,7 @@
  * (`RegionTable`, rewrite.ts).
  */
 import { BindingFlags } from 'yuku'
-import { classify } from './declarations'
-import { hasRuntimeValue } from './symbols'
+import { classify, isTypeOnlyExport } from './declarations'
 import { extendOverTrailingLine, isLicenseComment } from './header'
 import {
   bindingNameRange,
@@ -80,6 +79,23 @@ export interface Unit {
   spaces: number
   /** For a declaration: it runs only to give its names a value (the removal rule applies to it). */
   definition: boolean
+  /**
+   * For a type unit: TypeScript-only syntax no output renders: type-only
+   * export syntax (`isTypeOnlyExport`: its binding may be an inline type
+   * import specifier that left with its statement's values, and a Babel
+   * plugin after the compiler rejects an export of a name nothing declares),
+   * and an inline `type` import specifier, which leaves with its statement's
+   * value specifiers.
+   */
+  stripped: boolean
+  /**
+   * For a type unit: a type export of this module's own names (an exported
+   * declaration TypeScript erases, a type-only `export { … }` or specifier
+   * of a local name). It renders in no output's JavaScript, and for
+   * provenance its text is erased text (`removal/closure.ts`); a re-export
+   * reads nothing of the module.
+   */
+  typeExport: boolean
   /** Export names this unit provides directly (`export const a`, `export { a as b }`, `default`). */
   exported: Array<string>
   /** Import entries (Tier 0 index) for import units. */
@@ -215,14 +231,6 @@ export function buildUnits(
     const b = file.bindingOf(nameNode)
     return b ? symbols.ofBinding(b) : null
   }
-  /** Whether a local name resolves to a binding without a runtime value. */
-  const isTypeOnlyBinding = (local: Node): boolean => {
-    if (local.type !== 'Identifier') {
-      return false
-    }
-    const b = file.referenceOf(local)?.binding ?? null
-    return b !== null && !hasRuntimeValue(b)
-  }
   const add = (
     item: TopLevelItem,
     u: Omit<Unit, 'id' | 'item' | 'region'>,
@@ -257,6 +265,8 @@ export function buildUnits(
     declares: [],
     spaces: 0,
     definition: false,
+    stripped: false,
+    typeExport: false,
     exported: [],
     importIndex: null,
     declNameRanges: [],
@@ -287,6 +297,7 @@ export function buildUnits(
             start: spec.start,
             end: spec.end,
           })
+          u.stripped = erased && node.importKind !== 'type'
           const s = symOf(spec.local)
           if (s !== null) {
             u.declares.push(s)
@@ -306,6 +317,7 @@ export function buildUnits(
           node.exportKind === 'type' ? 'type' : 'reexport',
           itemRange,
         )
+        u.stripped = u.kind === 'type'
         if (node.exported) {
           u.exported.push(
             node.exported.type === 'Identifier'
@@ -317,16 +329,19 @@ export function buildUnits(
         break
       }
       case 'ExportNamedDeclaration': {
-        if (node.exportKind === 'type') {
-          add(item, base(node, 'type', itemRange))
+        if (
+          node.exportKind === 'type' ||
+          (node.source !== null && isTypeOnlyExport(file, node))
+        ) {
+          // `export type …`; `export { type X } from '…'`: as
+          // `export type { X } from '…'`. Export syntax no output renders
+          // but an exported declaration, which the env module keeps
+          const u = add(item, base(node, 'type', itemRange))
+          u.stripped = node.declaration === null
+          u.typeExport = node.source === null
           break
         }
         if (node.source !== null) {
-          if (isTypeOnlyExport(node)) {
-            // `export { type X } from '…'`: as `export type { X } from '…'`
-            add(item, base(node, 'type', itemRange))
-            break
-          }
           const u = base(node, 'reexport', itemRange)
           for (const spec of node.specifiers) {
             u.exported.push(moduleExportName(spec.exported))
@@ -341,8 +356,17 @@ export function buildUnits(
         for (const spec of node.specifiers) {
           // `export { type X }`, or `export { X }` of a binding with no value
           // (a type-only import, an interface, a type alias): erased by TS
-          if (spec.exportKind === 'type' || isTypeOnlyBinding(spec.local)) {
-            add(item, base(spec, 'type', { start: spec.start, end: spec.end }))
+          const local =
+            spec.local.type === 'Identifier'
+              ? (file.referenceOf(spec.local)?.binding ?? null)
+              : null
+          if (isTypeOnlyExport(file, spec, local)) {
+            const u = add(
+              item,
+              base(spec, 'type', { start: spec.start, end: spec.end }),
+            )
+            u.stripped = true
+            u.typeExport = true
             continue
           }
           const u = base(spec, 'export-specifier', {
@@ -364,6 +388,11 @@ export function buildUnits(
           for (const u of units0) {
             u.exported.push('default')
           }
+          break
+        }
+        if (isTypeOnlyExport(file, node)) {
+          // `export default interface X {}`: a type export
+          declarationUnits(item, d, false)
           break
         }
         const u = base(node, 'export-default', itemRange)
@@ -432,6 +461,8 @@ export function buildUnits(
       )
       u.spaces = row!.spaces
       u.definition = row!.kind === 'definition'
+      // (an exported declaration TypeScript erases: a type export)
+      u.typeExport = u.kind === 'type' && item.exportKeyword !== null
       return u
     }
     switch (decl.type) {
@@ -607,35 +638,6 @@ function itemAt(
 }
 
 type StatementRecipe = 'keep' | 'drop' | Array<Frag>
-
-/**
- * Type-only export syntax: `export type { X }`, `export type { X } from '…'`,
- * `export type * from '…'`, an `export { type X }` specifier and an
- * `export { type X } from '…'` whose specifiers are all type-only. It has no
- * runtime meaning, and every output leaves it out, as `main` does
- * (`stripTypeExports`): its binding may be an inline type import specifier
- * that left with its statement's values, and a Babel plugin after the
- * compiler rejects an export of a name nothing declares. A type-only
- * specifier next to value ones in an `export { … } from` renders nowhere
- * either (`reexport-list`). Type declarations (`export type X = …`,
- * `export interface X`) are no export syntax of this kind.
- */
-export function isTypeOnlyExport(node: Node): boolean {
-  switch (node.type) {
-    case 'ExportNamedDeclaration':
-      return (
-        node.declaration === null &&
-        (node.exportKind === 'type' ||
-          (node.specifiers.length > 0 &&
-            node.specifiers.every((spec) => spec.exportKind === 'type')))
-      )
-    case 'ExportAllDeclaration':
-    case 'ExportSpecifier':
-      return node.exportKind === 'type'
-    default:
-      return false
-  }
-}
 
 /**
  * One edit per statement from the final retained set (not per-unit comma

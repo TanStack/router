@@ -29,7 +29,6 @@ import type { PlacementInput } from '../placement'
 import type { ReadIndex } from '../reads'
 import type { OutputView } from '../rewrite'
 import type { SymbolId, SymbolTable } from '../symbols'
-import type { TopLevelItem } from '../units'
 import type { Definitions } from './build'
 import type { NamedText } from './named'
 
@@ -54,35 +53,6 @@ export interface Provenance {
   below: Array<SymbolId>
   /** The clusters a declaration of which reads itself in its own text (`Definitions.readsItself` decides). */
   selfReading: Set<ClusterId>
-}
-
-/**
- * The type export statements `main` strips before its removal rule
- * (`stripTypeExports`): `export type X = …`, `export interface X {…}`,
- * `export type { X }`, and an `export { type X }` specifier. For provenance
- * their text is removed text like an erased handler's: a value only they
- * read was used by the source and goes when nothing left reads it (F1). A
- * re-export reads nothing of the module.
- */
-function strippedTypeExportRanges(
-  items: ReadonlyArray<TopLevelItem>,
-): Array<Range> {
-  const out: Array<Range> = []
-  for (const { node, nodeRange } of items) {
-    if (node.type !== 'ExportNamedDeclaration' || node.source !== null) {
-      continue
-    }
-    if (node.exportKind === 'type') {
-      out.push(nodeRange)
-      continue
-    }
-    for (const spec of node.specifiers) {
-      if (spec.exportKind === 'type') {
-        out.push({ start: spec.start, end: spec.end })
-      }
-    }
-  }
-  return out
 }
 
 /** A reference erased with the types, and the declarations it names (`Declarations.resolve`). */
@@ -314,12 +284,16 @@ export function closure(a: ClosureInput): Provenance {
       relay: false,
     })
   }
-  // (a type export statement renders in no output's JavaScript: for the type
-  // declarations it names it is erased text, whatever `main` did with them)
-  if (units.some((u) => u.kind === 'type')) {
-    for (const p of strippedTypeExportRanges(t1.items)) {
+  // a type export (`Unit.typeExport`: the type export statements `main`
+  // strips before its removal rule, `stripTypeExports`, and the other
+  // spellings of one) renders in no output's JavaScript: its text is removed
+  // text like an erased handler's, and for the type declarations it names it
+  // is erased text. A value only it reads was used by the source and goes
+  // when nothing left reads it (F1)
+  for (const u of units) {
+    if (u.typeExport) {
       parts.push({
-        ...p,
+        ...u.range,
         value: USED | ERASED,
         type: USED | ERASED,
         relay: true,

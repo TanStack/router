@@ -165,8 +165,6 @@ export interface Placement {
   shared: OutputDecl | null
   /** The exported symbols the shared module holds (the env module re-exports them from it). */
   sharedExports: Array<SymbolId>
-  /** Type units the env module drops (TypeScript-only specifiers that follow their statement's value specifiers); every other type unit stays there, whatever its cluster. */
-  droppedTypeUnits: Set<UnitId>
 }
 
 /** A plan that is no route file: no name a chunk imports, none `main` shares. */
@@ -1295,22 +1293,6 @@ export function computePlacement(input: PlacementInput): Placement {
     }
   }
 
-  // ---- TypeScript-only specifiers leave with their statement's values -------
-  const droppedTypeUnits = new Set<UnitId>()
-  units.forEach((unit, u) => {
-    if (unit.kind !== 'type') {
-      return
-    }
-    const inlineImportSpecifier =
-      unit.importIndex !== null &&
-      (items[unit.item]!.node as { importKind?: string }).importKind !== 'type'
-    const typeOnlyExportSpecifier =
-      unit.node.type === 'ExportSpecifier' && unit.node.exportKind !== 'type'
-    if (inlineImportSpecifier || typeOnlyExportSpecifier) {
-      droppedTypeUnits.add(u)
-    }
-  })
-
   return {
     clusterOfRegion: graph.clusterOfRegion,
     clusterOfGen: graph.clusterOfGen,
@@ -1321,6 +1303,5 @@ export function computePlacement(input: PlacementInput): Placement {
     fallbacks,
     shared,
     sharedExports,
-    droppedTypeUnits,
   }
 }
