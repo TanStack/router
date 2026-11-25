@@ -137,6 +137,31 @@ function info not found` when one of them calls it, and the build says nothing, 
   the value, and a wrapper is not followed (R92). SPEC J4.5. `start-plugin-core/tests/start-compiler-cases.test.ts`:
   "each output keeps its implementation of an isomorphic fn whose chain passes through a helper function". Fix: each
   output keeps its implementation, or the build fails at the helper.
+- **An overtaken compile still publishes** (settlement design, step 0; whole-PR review C6-02): a compile whose answer a
+  newer request, an event or a removal overtook while it waited (a resolution a plugin holds, an async `allowImport`)
+  still writes import protection's state and reports its violations when it answers last: `onViolation` hears of an
+  import the file no longer has, or of an import judged against a dependency as it was. Vite dev. SPEC J6.5.
+  `start-plugin-core/tests/integration/start-dev-settlement.test.ts`: "C6-02b: an import the newer text removed is not
+  reported", "the file saved with other text and back (A, B, A): the older A reports nothing", "a dependency-only
+  rebuild of the same text: the older compile reports nothing". Fix: a compile's shared writes and reports follow only
+  an answer no newer answer of its key overtook (step 2: `session.transform`, one commit for a current answer).
+- **A check that waits while an event lands accepts what it read before** (settlement design, step 0; whole-PR review
+  C6-01, C6-03): a plan hit or a restored plan whose resolution the resolver read before a tsconfig change and
+  answered after it is accepted (the hit emits the old target's output; the restore reports nothing stale); a
+  route-registry digest that changed during a hit's check is not read again; the event of a file's own save, read
+  without the banner an upstream plugin prepends, discards the only compile of the transformed text (nothing published,
+  nothing stale). Core rows (no public input holds these reads): `router-utils/tests/freshness.test.ts`, "a check that
+  waits while an event lands". Fix: one `stable(snapshot)` accepted in the caller's turn, and an event moves the key's
+  generation instead of naming its text (step 6a).
+- **Vite watch build: a client rebuild whose output fails keeps the previous client build** (settlement design rev 4,
+  step 7): another plugin's `generateBundle` failing leaves the client's output directory empty (Vite emptied it before
+  rendering), and the server's document still names the previous client files. A hand-ordered server build after a
+  failed client rebuild (S4-02) answers "Server function info not found" for the call of the client build on disk, and
+  a fixed custom server fn id whose definition moves to another module is not found after the watch rebuild.
+  `start-plugin-core/tests/integration/start-build-settlement.test.ts`: "another plugin's generateBundle fails: the
+  document names no client file", "the call of the id answers the function at its new place", "S4-02: the server
+  answers the call of the last written client build". Fix: the client-build record follows the output on disk
+  (withdrawn at `renderStart`, committed at `writeBundle`), the resolver reads its descriptors (step 7).
 
 ## Known incorrect rejections (accepted, R89)
 

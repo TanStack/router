@@ -1,0 +1,359 @@
+/**
+ * Overlapping requests of one module on Start's Vite dev server, each held
+ * where a user's own input can hold it (a plugin's `resolveId`, an async
+ * `allowImport`): the caller always gets its own answer (code, mock or error)
+ * and can load what that answer names, and what the server shares (the server
+ * fn registry, import protection's reports and edges) is the newest answer's.
+ * An answer that a newer request, an event or a removal overtook while it
+ * waited reports nothing and replaces nothing.
+ *
+ * Settlement design, step 0 (design-settlement.md §6, rows (b) and (c)).
+ * The `.fails` tests are pins (KNOWN-BUGS "An overtaken compile still
+ * publishes"): step 2 (`session.transform`: `judge`, `defineEdges`, one
+ * commit for a current answer) turns them green.
+ */
+import path from 'node:path'
+import { describe, expect, test } from 'vitest'
+import { callServerFn, startDevServer, startRequestFiles } from '../dev-server'
+import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
+import type { Plugin } from 'vite'
+import type {
+  ImportProtectionOptions,
+  ViolationInfo,
+} from '../importProtection/public-types'
+
+const timeout = 60_000
+
+/** A gate: `reached` once something waits on it, until `release`. */
+function holdPoint() {
+  let release!: () => void
+  const released = new Promise<void>((r) => (release = r))
+  let armed: (() => void) | null = null
+  return {
+    /** Arms the gate for the next wait; resolves when something waits. */
+    arm: () =>
+      new Promise<void>((reached) => {
+        armed = reached
+      }),
+    /** Waits at the gate when armed, else goes on. */
+    async wait() {
+      const reached = armed
+      if (reached) {
+        armed = null
+        reached()
+        await released
+      }
+    },
+    release,
+  }
+}
+
+/** A plugin holding the next resolution of `specifier` in `environment` at `gate`. */
+function holdResolution(
+  gate: ReturnType<typeof holdPoint>,
+  specifier: string,
+  environment: string,
+): Plugin {
+  return {
+    name: 'test:hold-resolution',
+    enforce: 'pre',
+    async resolveId(source) {
+      if (this.environment.name === environment && source === specifier) {
+        await gate.wait()
+      }
+      return null
+    },
+  }
+}
+
+/** Import protection telling the test of every report (`reports`), and `allowImport` held at `gate`. */
+function protection(
+  gate: ReturnType<typeof holdPoint> | null,
+  answer: (info: { importer: string }) => boolean = () => false,
+) {
+  const reports: Array<string> = []
+  const asked: Array<string> = []
+  const name = (file: string) => path.basename(file.split('?')[0]!)
+  const importProtection: ImportProtectionOptions = {
+    behavior: 'mock',
+    onViolation: (info: ViolationInfo) => {
+      reports.push(`${name(info.importer)} -> ${info.specifier}`)
+    },
+    ...(gate && {
+      allowImport: async (info) => {
+        asked.push(`${name(info.importer)} -> ${info.specifier}`)
+        await gate.wait()
+        return answer(info)
+      },
+    }),
+  }
+  return { importProtection, reports, asked }
+}
+
+const marked = `import '@tanstack/react-start/server-only'
+export const secret = () => 'MARK_SECRET'
+`
+const unmarked = `export const secret = () => 'MARK_SECRET'\n`
+/** `form.ts` reading the marked `lib.ts` (a violation in the client while `lib.ts` is marked). */
+const readsLib = `import { secret } from './lib'
+export const read = () => secret()
+`
+const plainForm = `export const read = () => 'MARK_PLAIN'\n`
+/** What a call of the denied file's `secret` gives: its value, or `mock`. */
+const valueOf = `const valueOf = (secret: () => unknown) => {
+  const value: unknown = secret()
+  return typeof value === 'string' && value.startsWith('MARK_') ? value : 'mock'
+}`
+
+describe('Vite dev: an older compile of a module answered after a newer one', () => {
+  // `form.ts` is saved to import the denied `data.server.ts`, and that
+  // compile waits on the resolution; it is saved again without the import,
+  // and the newer text is compiled and served. The older compile answers
+  // last: its own caller gets its answer, and nothing reports the import
+  // the file no longer has.
+  // Source: whole-PR review C6-02 (b) (V-28, Astra's Vite dev probe
+  // `v28/overlap.mjs`).
+  test.fails(
+    'C6-02b: an import the newer text removed is not reported',
+    async () => {
+      const gate = holdPoint()
+      const { importProtection, reports } = protection(null)
+      const server = await startDevServer({
+        plugins: [holdResolution(gate, './data.server', 'client')],
+        start: { importProtection },
+        files: {
+          'src/data.server.ts': `export const value = 1\n`,
+          'src/shared.ts': `export const value = 2\n`,
+          'src/form.ts': `import { value } from './shared'\nexport const current = value\n`,
+        },
+      })
+      await server.transform('/src/form.ts')
+      await server.edit({
+        'src/form.ts': `import { value } from './data.server'\nexport const current = value\n`,
+      })
+      const reached = gate.arm()
+      const older = server.transform('/src/form.ts')
+      await reached
+      await server.edit({
+        'src/form.ts': `import { value } from './shared'\nexport const latest = value\n`,
+      })
+      expect(await server.transform('/src/form.ts')).toContain('latest')
+      gate.release()
+      expect(await older).toContain('current')
+      await server.idle()
+      expect(reports).toEqual([])
+    },
+    timeout,
+  )
+
+  /**
+   * `form.ts` imports the marked `lib.ts`; the compile's `allowImport` call
+   * waits. Then `between` runs (edits that end with `form.ts` reading
+   * `lib.ts` again, as its text says, after `lib.ts` dropped its marker),
+   * the newest request is served, and the held `allowImport` answers
+   * (`false`, the mock) last. Gives what `onViolation` was told.
+   */
+  async function heldJudgement(
+    between: (server: DevServer) => Promise<void>,
+  ): Promise<Array<string>> {
+    const gate = holdPoint()
+    const { importProtection, reports } = protection(gate)
+    const server = await startDevServer({
+      start: { importProtection },
+      files: { 'src/lib.ts': marked, 'src/form.ts': plainForm },
+    })
+    await server.transform('/src/form.ts')
+    await server.edit({ 'src/form.ts': readsLib })
+    const reached = gate.arm()
+    const older = server.transform('/src/form.ts')
+    await reached
+    await between(server)
+    // (the newest request: `lib.ts` is plain now, so no violation)
+    expect(await server.transform('/src/form.ts')).toContain('secret')
+    gate.release()
+    await older
+    await server.idle()
+    return reports
+  }
+
+  // Overlaps whose older answer is of the text the file has again, judged
+  // against `lib.ts` as it was: a text comparison takes it for the newest.
+  // Source: Astra's review of the settlement design, change 2.
+  test.fails(
+    'the file saved with other text and back (A, B, A): the older A reports nothing',
+    async () => {
+      expect(
+        await heldJudgement(async (server) => {
+          await server.edit({ 'src/form.ts': plainForm })
+          await server.transform('/src/form.ts')
+          await server.edit({ 'src/lib.ts': unmarked })
+          await server.edit({ 'src/form.ts': readsLib })
+        }),
+      ).toEqual([])
+    },
+    timeout,
+  )
+
+  test.fails(
+    'a dependency-only rebuild of the same text: the older compile reports nothing',
+    async () => {
+      expect(
+        await heldJudgement(async (server) => {
+          await server.edit({ 'src/lib.ts': unmarked })
+        }),
+      ).toEqual([])
+    },
+    timeout,
+  )
+})
+
+describe('Vite dev: what an overtaken answer names loads', () => {
+  // `form.ts` is saved to import the denied `secret.client.ts` (client-only:
+  // denied on the server) and a helper whose resolution waits; it is saved
+  // again without them before that compile answers. The SSR import that
+  // asked for the older text gets its answer: its edge module loads, and
+  // the denied import is its mock.
+  // Source: Gemini's review of the settlement design, change 1.
+  test(
+    "an overtaken answer with a new denied import: its caller's edge module loads as the mock",
+    async () => {
+      const gate = holdPoint()
+      const { importProtection } = protection(null)
+      const server = await startDevServer({
+        plugins: [holdResolution(gate, './secret.client', 'ssr')],
+        start: { importProtection },
+        files: {
+          'src/secret.client.ts': `export const secret = () => 'MARK_SECRET'\n`,
+          'src/slow.ts': `export const slow = 1\n`,
+          'src/form.ts': plainForm,
+        },
+      })
+      await server.transform('/src/form.ts', 'ssr')
+      await server.edit({
+        'src/form.ts': `import { secret } from './secret.client'
+import { slow } from './slow'
+${valueOf}
+export const read = () => [valueOf(secret), slow]
+`,
+      })
+      const reached = gate.arm()
+      const older = server.import('/src/form.ts')
+      await reached
+      await server.edit({ 'src/form.ts': plainForm })
+      gate.release()
+      expect((await older).read()).toEqual(['mock', 1])
+      expect(await server.transform('/src/form.ts', 'ssr')).toContain(
+        'MARK_PLAIN',
+      )
+    },
+    timeout,
+  )
+
+  // `allowImport` allows `form.ts`'s import of `secret.client.ts`; it is
+  // asked while the file is saved again with other text. The SSR import that
+  // asked for the older text loads the real export through the edge `allowImport`
+  // allowed, the callback runs once for the import, and the newer text
+  // stands.
+  // Source: Astra's re-check of the settlement design (rev 2), change 3.
+  test(
+    'an overtaken importer whose import allowImport allowed loads the real export, with one callback',
+    async () => {
+      const gate = holdPoint()
+      const { importProtection, asked, reports } = protection(gate, () => true)
+      const server = await startDevServer({
+        start: { importProtection },
+        files: {
+          'src/secret.client.ts': `export const secret = () => 'MARK_SECRET'\n`,
+          'src/form.ts': plainForm,
+        },
+      })
+      await server.transform('/src/form.ts', 'ssr')
+      await server.edit({
+        'src/form.ts': `import { secret } from './secret.client'
+${valueOf}
+export const read = () => valueOf(secret)
+`,
+      })
+      const reached = gate.arm()
+      const older = server.import('/src/form.ts')
+      await reached
+      await server.edit({ 'src/form.ts': plainForm })
+      // (the module runner joins its own import in flight: the newer text
+      // is requested of the environment)
+      expect(await server.transform('/src/form.ts', 'ssr')).toContain(
+        'MARK_PLAIN',
+      )
+      gate.release()
+      expect((await older).read()).toBe('MARK_SECRET')
+      await server.idle()
+      // (the denied file is asked about too, as its own importer, when it
+      // is compiled under its own id)
+      expect(asked.filter((a) => a.startsWith('form.ts'))).toEqual([
+        'form.ts -> ./secret.client',
+      ])
+      expect(reports).toEqual([])
+      // (not imported: the module runner keeps the module it evaluated for
+      // the older request)
+      expect(await server.transform('/src/form.ts', 'ssr')).toContain(
+        'MARK_PLAIN',
+      )
+    },
+    timeout,
+  )
+
+  // One import judged twice: the overtaken compile's `allowImport` call is
+  // still waiting when a newer text with the same import is compiled.
+  test(
+    'allowImport is asked once per import across an overtaken compile',
+    async () => {
+      const gate = holdPoint()
+      const { importProtection, asked } = protection(gate)
+      const server = await startDevServer({
+        start: { importProtection },
+        files: { 'src/lib.ts': marked, 'src/form.ts': plainForm },
+      })
+      await server.transform('/src/form.ts')
+      await server.edit({ 'src/form.ts': readsLib })
+      const reached = gate.arm()
+      const older = server.transform('/src/form.ts')
+      await reached
+      await server.edit({ 'src/form.ts': `// edited\n${readsLib}` })
+      const newer = server.transform('/src/form.ts')
+      gate.release()
+      await Promise.all([older, newer])
+      expect(asked).toEqual(['form.ts -> ./lib'])
+    },
+    timeout,
+  )
+})
+
+describe('Vite dev: outputs of one text', () => {
+  // A server fn file's SSR module and its client module, requested
+  // together right after a save: both are answers of the newest text, and
+  // the new server fn is callable.
+  test(
+    'sibling outputs of one text both stand: the new server fn answers',
+    async () => {
+      const server = await startDevServer({
+        files: {
+          ...startRequestFiles,
+          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+export const oldFn = createServerFn().handler(() => 'MARK_OLD')
+`,
+        },
+      })
+      await server.import('/src/fns.ts')
+      await server.edit({
+        'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+export const newFn = createServerFn().handler(() => 'MARK_NEW')
+`,
+      })
+      const [ssr] = await Promise.all([
+        server.import('/src/fns.ts'),
+        server.transform('/src/fns.ts'),
+      ])
+      expect(await callServerFn(server, ssr.newFn)).toBe('MARK_NEW')
+    },
+    timeout,
+  )
+})

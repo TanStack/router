@@ -159,7 +159,7 @@ export function linkStartRuntime(root: string) {
  * the one its server entry opens for that request: the app's start options
  * and request middleware, its router.
  */
-const inAppRequest = (serverEntryFile: string, script: string) =>
+export const inAppRequest = (serverEntryFile: string, script: string) =>
   `const inProbeRequest = ${inProbeRequest.toString()}
 ${runNodeStep('importing the server entry')}const serverModule = await import(${JSON.stringify(pathToFileURL(serverEntryFile).href)})
 const serverEntry = typeof serverModule.default?.fetch === 'function' ? serverModule.default : serverModule.default?.default
