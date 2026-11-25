@@ -2,8 +2,10 @@
  * Survival witness readers: which edge modules survived tree-shaking, read from
  * the bundler after linking, and the bundler's graph for traces. An edge module
  * survives when it owns a used export (`renderedExports` on Rolldown, used
- * exports on Rspack) or, for a bare import, when it is in a chunk at all (its
- * `__fx` witness is kept iff its importer is evaluated).
+ * exports on Rspack), when it stands for an `import()` or `require()` and is
+ * in a chunk at all (`EdgeModuleContent.runs`), or, on Rolldown, when it is
+ * the module a dynamic entry chunk loads (an `import()` of it survived).
+ * Bare imports are read in the bundler's graph (`ImportProtectionEnv.surviving`).
  *
  * Structural types only: the readers take what Vite's `generateBundle` and
  * Rspack's `processAssets` hand the host.
@@ -48,6 +50,9 @@ interface RolldownRenderedModule {
 interface RolldownOutputChunk {
   type: 'chunk'
   modules: Record<string, RolldownRenderedModule>
+  /** An `import()` of `facadeModuleId` survived: the chunk loads it. */
+  isDynamicEntry?: boolean
+  facadeModuleId?: string | null
 }
 
 type RolldownOutputBundle = Record<
@@ -70,6 +75,16 @@ export function readRolldownWitness(
       if (edge && (m.renderedExports.length > 0 || edge.runs)) {
         live.add(edge.key)
       }
+    }
+    // a surviving `import()` of a mock that reads nothing of it loads its
+    // chunk all the same, whoever wrote it (a package module, another
+    // plugin): the import evaluates the module
+    const dynamic =
+      out.isDynamicEntry && out.facadeModuleId
+        ? lookup(out.facadeModuleId)
+        : null
+    if (dynamic) {
+      live.add(dynamic.key)
     }
   }
   return [...live].sort()

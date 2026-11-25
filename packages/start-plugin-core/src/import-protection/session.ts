@@ -2595,6 +2595,12 @@ class ImportProtectionEnv {
         if (v.handoff || (v.resolved !== null && isAssetId(v.resolved))) {
           continue
         }
+        // an entry's own marker: whatever its form, or what the host's
+        // TypeScript makes of it (SWC drops `export {} from`), the entry runs
+        if (v.ownMarker && host.kept!({ env: this.name, id: v.importerId })) {
+          add(v)
+          continue
+        }
         if (!v.self) {
           if (
             await importsBare(
@@ -2621,23 +2627,17 @@ class ImportProtectionEnv {
         const file = deniedPathOf(v)
         for (const c of this.incoming(v, graph).checked) {
           const node = { env: c.env, id: c.importerId }
-          // (an importer the compiler does not read is evaluated when an
-          // entry reaches it: its mock keeps nothing of the chain alive)
           const owner = this.ip.liveEnv(c.env) ?? this
           if (
             !c.handoff &&
-            (await importsBare(
-              node,
-              host.kept!(node) || owner.trace(c.importerId, graph).fromEntry,
-              async (specifier) => {
-                const r = (await resolve?.(specifier, c.importer)) ?? null
-                return (
-                  r !== null &&
-                  !isAssetId(r) &&
-                  normalizePath(identify(r).path) === file
-                )
-              },
-            ))
+            (await importsBare(node, host.kept!(node), async (specifier) => {
+              const r = (await resolve?.(specifier, c.importer)) ?? null
+              return (
+                r !== null &&
+                !isAssetId(r) &&
+                normalizePath(identify(r).path) === file
+              )
+            }))
           ) {
             add(await owner.importOf(v, c, resolve), owner)
           }

@@ -87,6 +87,8 @@ export interface EdgeViolation {
   erasable?: true
   /** Every specifier of the import is written `type` (J6.2 ignores it unless the bundler's TypeScript keeps it bare). */
   typeSpecifiers?: true
+  /** The import of a marker by the module it marks (an entry's: its own violation, whatever its form or the host's transform makes of it). */
+  ownMarker?: true
   /** Build: one importer's import of a module that is its own violation, by the pattern import found in its text. */
   pattern?: PatternImport | null
 }
@@ -140,6 +142,10 @@ export function selfViolationOf(
     resolved: id,
     hasDefault: target.hasDefault,
     bare: false,
+    // (a marked file: its importers are package modules the compiler does
+    // not compile; its mock keeps them evaluated as the real file would,
+    // under the package's own `sideEffects`)
+    ...(rule.type === 'marker' && { evaluated: true }),
     rule,
   }
   return {

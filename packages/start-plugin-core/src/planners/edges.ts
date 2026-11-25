@@ -548,15 +548,20 @@ export function importEdgesPlanner(
           j.edge.form === 'static' &&
           j.edge.kind === 'evaluation'
         const pending = config.mode === 'dev' && erasable
-        // (every specifier written `type`: J6.2 ignores it, unless the
-        // bundler's TypeScript keeps it as a bare import)
-        const typeSpecifiers =
-          erasable &&
-          ctx.analysis.imports.some(
-            (i) =>
+        // (every specifier of every import of the edge written `type`: J6.2
+        // ignores it, unless the bundler's TypeScript keeps it as a bare
+        // import; one value specifier is judged as such)
+        const imports = erasable
+          ? ctx.analysis.imports.filter((i) =>
               j.edge.locations.some(
                 (l) => l.range.start === i.specifierRange.start,
-              ) &&
+              ),
+            )
+          : []
+        const typeSpecifiers =
+          imports.length > 0 &&
+          imports.every(
+            (i) =>
               i.specifiers.length > 0 &&
               i.specifiers.every((spec) => spec.typeOnly),
           )
@@ -590,7 +595,7 @@ export function importEdgesPlanner(
                 )
             : []
         const spec = specs.find((s) => /^[A-Z]/.test(s.localName)) ?? specs[0]
-        const content = await edgeModuleContent(edges, j, ctx)
+        const content = await edgeModuleContent(edges, j, ctx, typeSpecifiers)
         const key = edgeModuleKey(content)
         if (!j.handoff) {
           ctx.substitute(j.edge.edgeKey, ip.ids.request(key, content))
@@ -625,6 +630,9 @@ export function importEdgesPlanner(
           ...(j.handoff && { handoff: true }),
           ...(erasable && { erasable: true }),
           ...(typeSpecifiers && { typeSpecifiers: true }),
+          ...(ownEntry(ip.markerSpecifiers, j.raw) !== undefined && {
+            ownMarker: true,
+          }),
         })
       }
       // the module's own violation
@@ -691,6 +699,8 @@ export function importEdgesPlanner(
     edges: Readonly<PlanEdges>,
     j: Judged,
     ctx: PolicyContext,
+    /** Every specifier written `type`: TypeScript erases the import, or keeps it bare (`verbatimModuleSyntax`). */
+    typeSpecifiers: boolean,
   ): Promise<EdgeModuleContent> {
     // the module's own marker: the marker module is empty
     const ownMarker = ownEntry(ip.markerSpecifiers, j.raw) !== undefined
@@ -701,7 +711,8 @@ export function importEdgesPlanner(
     const code = j.resolved === null || !isAssetId(j.resolved)
     const runs =
       code && (j.edge.form === 'dynamic' || j.edge.form === 'require')
-    const evaluated = code && j.edge.form === 'bare'
+    // (an import of type specifiers only is bare once TypeScript keeps it)
+    const evaluated = code && (j.edge.form === 'bare' || typeSpecifiers)
     const target =
       j.resolved !== null && !ownMarker && j.edge.form !== 'bare'
         ? await describeTarget(j.resolved, ctx)
