@@ -15,6 +15,10 @@
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { callServerFn, startDevServer, startRequestFiles } from '../dev-server'
+import {
+  runViteClient,
+  startBrowserStartDevServer,
+} from './importProtection/client-pages'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 import type { Plugin } from 'vite'
 import type {
@@ -362,28 +366,24 @@ export const read = () => valueOf(secret)
 })
 
 describe('Vite dev: outputs of one text', () => {
-  // A server fn file is saved with a denied import its module reads outside
-  // the handler: the SSR module's output imports it (a violation, its mock),
-  // the handler module's does not. The compile of the new text, the SSR
-  // module's (the module runner imports it again), waits on a resolution
-  // inside its transform; the handler module is requested (a call, as a
-  // page's) and reaches the transform before the wait ends. Both outputs
-  // stand: the call answers the new handler, and the SSR module's commit
-  // reports its violation, which only that output has.
-  // Source: Astra's and Gemini's reviews of settlement step 0 (rounds 2, 3);
-  // Fable's round-3 re-check, finding 5.
+  // A server fn file with a denied import its module reads outside the
+  // handler: the SSR module's output imports it (a violation, reported), the
+  // handler module's does not. The client compiled the file (the page reads
+  // the fn's URL); SSR has not. The SSR module is requested and its compile
+  // waits on a resolution inside its transform; the call (as a page's) then
+  // requests the handler module, which reaches the transform before the wait
+  // ends. Both stand: the call answers the handler, and the SSR module's
+  // request reports its violation, which only that output has. No hot update
+  // runs, so no later request of the SSR module (one transform of it) can
+  // stand in for the held one.
+  // Source: Astra's and Gemini's reviews of settlement step 0 (rounds 2 to
+  // 4); Gemini's round-4 drive.
   test(
-    'two outputs of one text in one environment both stand: the new handler answers, the module reports',
+    'two outputs of one text in one environment both stand: the handler answers, the module reports',
     async () => {
-      const fns = (marker: string, denied: boolean) =>
-        `import { createServerFn } from '@tanstack/react-start'
-import { helper } from './helper'
-${denied ? "import { secret } from './secret.client'\nexport const top = secret\n" : ''}export const fn = createServerFn().handler(() => helper('${marker}'))
-`
-      let transforming = false
+      let moduleTransforms = 0
       let held: { reached: () => void; release: Promise<void> } | null = null
-      let handlerArrived!: () => void
-      const arrived = new Promise<void>((r) => (handlerArrived = r))
+      let handlerArrived: (() => void) | null = null
       const isFns = (id: string | undefined) =>
         id !== undefined && id.split('?')[0]!.endsWith('/src/fns.ts')
       const plugin: Plugin = {
@@ -394,9 +394,9 @@ ${denied ? "import { secret } from './secret.client'\nexport const top = secret\
           handler(_code, id) {
             if (this.environment.name === 'ssr' && isFns(id)) {
               if (id.includes('?')) {
-                handlerArrived()
+                handlerArrived?.()
               } else {
-                transforming = true
+                moduleTransforms++
               }
             }
             return null
@@ -408,7 +408,7 @@ ${denied ? "import { secret } from './secret.client'\nexport const top = secret\
             source === './helper' &&
             isFns(importer) &&
             !importer!.includes('?') &&
-            transforming &&
+            moduleTransforms > 0 &&
             held
           ) {
             const hold = held
@@ -420,19 +420,33 @@ ${denied ? "import { secret } from './secret.client'\nexport const top = secret\
         },
       }
       const { importProtection, reports } = protection(null)
-      const server = await startDevServer({
+      const server = await startBrowserStartDevServer({
         plugins: [plugin],
         start: { importProtection },
         files: {
           ...startRequestFiles,
           'src/helper.ts': `export const helper = (marker: string) => marker\n`,
           'src/secret.client.ts': `export const secret = 'MARK_SECRET'\n`,
-          'src/fns.ts': fns('MARK_OLD', false),
+          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+import { helper } from './helper'
+import { secret } from './secret.client'
+export const top = secret
+export const fn = createServerFn().handler(() => helper('MARK_NEW'))
+`,
         },
       })
-      // (a dev id names the file and the function: the save keeps it)
-      const { url } = (await server.import('/src/fns.ts')).fn
-      expect(await callServerFn(server, url)).toBe('MARK_OLD')
+      const { result: url } = await runViteClient(
+        server,
+        '/src/fns.ts',
+        'return entry.fn.url',
+      )
+      if (moduleTransforms !== 0) {
+        throw new Error('test: the SSR module was compiled before the row')
+      }
+      const timedOut = (what: string) =>
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(`test: ${what}`)), 10_000),
+        )
       let release!: () => void
       const reached = new Promise<void>((r) => {
         held = {
@@ -440,23 +454,20 @@ ${denied ? "import { secret } from './secret.client'\nexport const top = secret\
           release: new Promise<void>((done) => (release = done)),
         }
       })
-      transforming = false
-      const timedOut = (what: string) =>
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error(`test: ${what}`)), 10_000),
-        )
-      await server.write({ 'src/fns.ts': fns('MARK_NEW', true) })
+      const module = server.transform('/src/fns.ts', 'ssr')
       await Promise.race([reached, timedOut('no transform held')])
-      const call = callServerFn(server, url)
+      // (armed now: the handler request of the call below)
+      const arrived = new Promise<void>((r) => (handlerArrived = r))
+      const call = callServerFn(server, url as string)
       await Promise.race([arrived, timedOut('no handler request')])
       // (the handler request goes on into the compiler)
       await new Promise((r) => setTimeout(r, 100))
       release()
       expect(await call).toBe('MARK_NEW')
-      await server.settle()
+      await module
       await server.idle()
       expect(reports).toEqual(['fns.ts -> ./secret.client'])
-      expect(await callServerFn(server, url)).toBe('MARK_NEW')
+      expect(moduleTransforms).toBe(1)
     },
     timeout,
   )
