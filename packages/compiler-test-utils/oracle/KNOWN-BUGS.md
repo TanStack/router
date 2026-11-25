@@ -190,7 +190,8 @@ function info not found` when one of them calls it, and the build says nothing, 
   1, decided by a run: the same-text rule is not built). A dependency saved during each of three attempts leaves the
   compile's answer unpublished (the file is left for its bundler to build again); if its host still acts on it while
   that rebuild of the same text publishes, both answers read current and the older, judged against the dependency as
-  it was, may write last until the next event of the file. A rule moving the generation at publication would end it,
+  it was, may write last until the file's next build (its next save, or a save of a dependency that changes what it
+  read). A rule moving the generation at publication would end it,
   and would also end an unpublished env-module answer whenever a split sibling of the text publishes first, which
   writes no server functions (worse). Needs three overtaken attempts and a host act that outlasts a rebuild: no dev
   server reproduced it (settlement step 0). Pinned at the core: `router-utils/tests/settlement.test.ts`, "an answer
