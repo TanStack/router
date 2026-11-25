@@ -63,7 +63,22 @@ jobs:
             mode: memory
           - benchmark: memory-client
             mode: memory
-    runs-on: ubuntu-latest
+    # Pinned to ubuntu-24.04 (not ubuntu-latest) because:
+    # - `mode: simulation` (client-nav, ssr) runs under CodSpeed's own valgrind
+    #   build, which only exists for specific Ubuntu releases. ubuntu-latest moved
+    #   to 26.04 in Nov 2026, and the runner bundled with CodSpeedHQ/action v5.2.1
+    #   (runner 5.2.1) fails there with a bare "Unsupported system" error.
+    #   `mode: memory` doesn't use valgrind, so only the CPU jobs broke.
+    # - An OS change silently shifts every CodSpeed baseline, so OS upgrades
+    #   should be deliberate, not whenever GitHub moves ubuntu-latest.
+    #
+    # Blocker for moving to 26.04 / ubuntu-latest: Ubuntu 26.04 support landed in
+    # CodSpeedHQ/runner v5.7.0, but no CodSpeedHQ/action release bundles it yet
+    # (v5.6.3 ships runner 5.6.3). Check the `.codspeed-runner-version` file at
+    # https://github.com/CodSpeedHQ/action. Once an action release ships runner
+    # >= 5.7.0, bump the action pin below and this `runs-on` in the same PR,
+    # and expect a one-time jump in every baseline.
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

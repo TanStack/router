@@ -1,18 +1,25 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import type { Page } from '@playwright/test'
 
-for (const mode of ['panel', 'shadow', 'floating']) {
+const modes = ['panel', 'shadow', 'shadow-auto', 'floating'] as const
+
+async function openDevtools(page: Page, mode: (typeof modes)[number]) {
+  await page.goto(mode === 'floating' ? '/' : `/?devtools=${mode}`)
+  if (mode === 'floating') {
+    await page
+      .getByRole('button', { name: 'Open TanStack Router Devtools' })
+      .click()
+  }
+
+  return page.locator('.TanStackRouterDevtoolsPanel')
+}
+
+for (const mode of modes) {
   test(`devtools preserve typography and explorer indentation in ${mode} mode`, async ({
     page,
   }) => {
-    await page.goto(mode === 'floating' ? '/' : `/?devtools=${mode}`)
-    if (mode === 'floating') {
-      await page
-        .getByRole('button', { name: 'Open TanStack Router Devtools' })
-        .click()
-    }
-
-    const panel = page.locator('.TanStackRouterDevtoolsPanel')
+    const panel = await openDevtools(page, mode)
     const router = panel.getByRole('button', { name: /^Router\s*\d+ items/ })
     const state = panel.getByRole('button', { name: /^state\s*\d+ items/ })
     await expect(router).toBeVisible()
@@ -38,5 +45,29 @@ for (const mode of ['panel', 'shadow', 'floating']) {
       await expect(router).toHaveCSS('font-size', '18px')
       await expect(router).toHaveCSS('gap', '6px')
     }
+  })
+
+  test(`devtools are styled under a CSP that blocks inline style elements in ${mode} mode`, async ({
+    page,
+  }) => {
+    await page.route(
+      (url) => url.pathname === '/',
+      async (route) => {
+        const response = await route.fetch()
+        await route.fulfill({
+          response,
+          headers: {
+            ...response.headers(),
+            'content-security-policy': "style-src-elem 'self'",
+          },
+        })
+      },
+    )
+
+    const panel = await openDevtools(page, mode)
+    const router = panel.getByRole('button', { name: /^Router\s*\d+ items/ })
+    await expect(router).toBeVisible()
+    await expect(router).toHaveCSS('font-size', '12px')
+    await expect(router).toHaveCSS('gap', '4px')
   })
 }

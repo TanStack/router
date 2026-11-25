@@ -1,5 +1,19 @@
 # @tanstack/router-devtools-core
 
+## 1.168.4
+
+### Patch Changes
+
+- [#8957](https://github.com/TanStack/router/pull/8957) [`30aaa94`](https://github.com/TanStack/router/commit/30aaa94e7c8912d4e510ccb40af8cebaf4d01c39) - The devtools now use Solid 2 internally. They bundle their own copy of Solid, so apps are not affected by the Solid version.
+
+- [#8954](https://github.com/TanStack/router/pull/8954) [`e75f0ff`](https://github.com/TanStack/router/commit/e75f0ffb2de05e6480a1214ee718fde477cd2052) - The devtools no longer use goober. Their styles are now a static stylesheet adopted into the document or shadow root the devtools render in, instead of a `<style>` element in `<head>`. This means:
+  - The devtools are styled on pages with a Content Security Policy that blocks inline `<style>` elements, without a nonce.
+  - Devtools rendered inside a shadow root are styled without passing `shadowDOMTarget`.
+  - The devtools no longer write to the shared `#_goober` style element.
+  - Browsers without adoptable stylesheets (before Safari 16.4 and Firefox 101) show the devtools unstyled.
+
+- [#8959](https://github.com/TanStack/router/pull/8959) [`bb11d90`](https://github.com/TanStack/router/commit/bb11d90332edca7d897174546769622826431ee3) - Add a `trustedTypesPolicy` option, so the devtools render on pages that enforce `require-trusted-types-for 'script'`.
+
 ## 1.168.3
 
 ### Patch Changes
