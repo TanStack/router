@@ -13,7 +13,8 @@
  * restarts). A known-bug pin (`.fails`) that passes with the caches off (its
  * bug is a cache's) is listed, and fails the run too unless `--pins` allows
  * it. The differences known on head (`KNOWN`, each named for the step that
- * removes it) are listed and do not fail the run.
+ * removes it) are listed and do not fail the run; an intermittent one may
+ * also not show.
  *
  * Usage, from the repository root (one build first, then the test commands
  * with `--excludeTaskDependencies`, as the whole oracle's):
@@ -64,8 +65,9 @@ const SLOW = {
 
 /**
  * Known differences, each red on head and named for the step that removes
- * it. One entry excuses one file's own failure with the caches off, and only
- * when the file passes with them on and its failure is the named check's
+ * it (`intermittent`: red in some runs only). One entry excuses one file's
+ * own failure with the caches off, and only when the file passes with them
+ * on and its failure is the named check's
  * (`check`: text of that check's message; `excludes`: text that must not be
  * in it). Nothing else is excused: a test of the file whose outcome differs,
  * another check, or the file failing with the caches on still fails the run.
@@ -82,6 +84,19 @@ const KNOWN = [
     check: 'left stale paths no rebuild took',
     excludes: /[1-9]\d* stale hits/,
     step: 'settlement step 6a',
+  },
+  {
+    // The same stale-set ownership on Rsbuild's dev server: with the caches
+    // off, an edited file's own event adds it to the stale set while the
+    // host takes and drops that set, and the file's end-of-file stats check
+    // finds one stale path no rebuild took (every test passes). Seen in
+    // about one run in four with the caches off, never with them on: a run
+    // where the file passes with the caches off agrees and needs no entry.
+    file: 'packages/start-plugin-core/tests/integration/rsbuild/dev-checkout.test.ts',
+    check: 'left stale paths no rebuild took',
+    excludes: /[1-9]\d* stale hits/,
+    step: 'settlement step 6a',
+    intermittent: true,
   },
 ]
 
@@ -223,12 +238,17 @@ for (const r of RUNS) {
 if (known.length > 0) {
   console.log(`\nKnown differences (KNOWN):\n${known.join('\n')}`)
 }
-if (known.length < KNOWN.length && RUNS.length > 1) {
+if (
+  KNOWN.some(
+    (k) => !k.intermittent && !known.some((line) => line.includes(k.file)),
+  ) &&
+  RUNS.length > 1
+) {
   // (a run of the whole set that no longer sees an entry: remove it once its
   // step landed)
   console.log(
     `\nKnown differences not seen:\n${KNOWN.filter(
-      (k) => !known.some((line) => line.includes(k.file)),
+      (k) => !k.intermittent && !known.some((line) => line.includes(k.file)),
     )
       .map((k) => `  ${k.file} (${k.step})`)
       .join('\n')}`,
