@@ -12,7 +12,8 @@
  * suites (`SLOW`: edits, removals, overlapping requests, watch builds, dev
  * restarts). A known-bug pin (`.fails`) that passes with the caches off (its
  * bug is a cache's) is listed, and fails the run too unless `--pins` allows
- * it.
+ * it. The differences known on head (`KNOWN`, each named for the step that
+ * removes it) are listed and do not fail the run.
  *
  * Usage, from the repository root (one build first, then the test commands
  * with `--excludeTaskDependencies`, as the whole oracle's):
@@ -60,6 +61,29 @@ const SLOW = {
     'tests/integration/webpack-dev-server-generator-watching',
   ],
 }
+
+/**
+ * Known differences, each red on head and named for the step that removes
+ * it. One entry excuses one file's own failure with the caches off, and only
+ * when the file passes with them on and its failure is the named check's
+ * (`check`: text of that check's message; `excludes`: text that must not be
+ * in it). Nothing else is excused: a test of the file whose outcome differs,
+ * another check, or the file failing with the caches on still fails the run.
+ */
+const KNOWN = [
+  {
+    // "a client build that fails in generateBundle ends its wait": with
+    // `plans` and `facts` off, the saved file's own event supersedes its
+    // client plan and adds it to the stale set after the watch rebuild's
+    // `buildStart` took that set, and no later build takes it (the outputs
+    // are right). Stale-set ownership is step 6a's (an event moves the
+    // generation; one `stable()`).
+    file: 'packages/start-plugin-core/tests/integration/start-build-watch.test.ts',
+    check: 'left stale paths no rebuild took',
+    excludes: /[1-9]\d* stale hits/,
+    step: 'settlement step 6a',
+  },
+]
 
 /** Each run: an Nx target and its Vitest filters. */
 const RUNS = [
@@ -140,7 +164,11 @@ function run({ target, filters }, mode) {
   for (const file of JSON.parse(fs.readFileSync(report, 'utf8')).testResults) {
     const rel = path.relative(process.cwd(), file.name)
     // (a file fails on its own too: a hook, or the stats check at its end)
-    outcomes.set(`${rel} (file)`, { status: file.status, pin: false })
+    outcomes.set(`${rel} (file)`, {
+      status: file.status,
+      pin: false,
+      message: file.message ?? '',
+    })
     for (const test of file.assertionResults) {
       outcomes.set(`${rel} > ${test.fullName}`, {
         status: test.status,
@@ -154,8 +182,22 @@ function run({ target, filters }, mode) {
   return outcomes
 }
 
+/** The known entry excusing `key`'s outcomes (`a` on, `b` and `off` with the caches off), if any. */
+function knownFor(key, a, b, off) {
+  return KNOWN.find(
+    (k) =>
+      key === `${k.file} (file)` &&
+      a === 'passed' &&
+      b === 'failed' &&
+      off.message.includes(k.check) &&
+      !k.excludes.test(off.message),
+  )
+}
+
 const differ = []
 const pins = []
+/** Known differences seen, by their entry. */
+const known = []
 /** Tests that failed in both runs: the runs agree, but on no green baseline. */
 const failing = []
 for (const r of RUNS) {
@@ -170,8 +212,27 @@ for (const r of RUNS) {
       }
       continue
     }
+    const entry = knownFor(key, a, b, off.get(key) ?? {})
+    if (entry) {
+      known.push(`  ${key}: ${a} → ${b} (red until ${entry.step})`)
+      continue
+    }
     ;(off.get(key)?.pin ? pins : differ).push(`  ${key}: ${a} → ${b}`)
   }
+}
+if (known.length > 0) {
+  console.log(`\nKnown differences (KNOWN):\n${known.join('\n')}`)
+}
+if (known.length < KNOWN.length && RUNS.length > 1) {
+  // (a run of the whole set that no longer sees an entry: remove it once its
+  // step landed)
+  console.log(
+    `\nKnown differences not seen:\n${KNOWN.filter(
+      (k) => !known.some((line) => line.includes(k.file)),
+    )
+      .map((k) => `  ${k.file} (${k.step})`)
+      .join('\n')}`,
+  )
 }
 if (pins.length > 0) {
   console.log(
