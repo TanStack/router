@@ -212,6 +212,21 @@ function info not found` when one of them calls it, and the build says nothing, 
   module without that comment above it compiles with the default one. Oxc (Vite) and TypeScript read leading
   comments only and agree (the C5-03 rows run there). Write the pragma at the file's top. SPEC J2.16. No test (the
   outcome is the limit).
+- **A JSX pragma comment on a directive's own line is read by SWC in a derived module, not in the route file**
+  (emit review re-check, Fable S1). `'use client'; /** @jsxImportSource x */` (or the comment inside the directive's
+  statement): SWC (Rsbuild) ignores a pragma that does not start its line, so the route file compiles with the default
+  runtime; a derived module gets the comment on a line of its own after the directive (twice when it was inside the
+  statement), where SWC reads it. Oxc, esbuild and TypeScript agree in both. As before the emit redesign
+  (`1d6300f099`: the same in a Rspack build). Write the pragma on a line of its own. SPEC J2.16. No test (the outcome
+  is the limit).
+- **The RSC provider module of a `'use client'` file leads with a pragma the file has after the directive**
+  (emit review re-check, Fable S2). The provider module (the server-side module of the file's server fns under RSC)
+  drops `'use client'` by design: it is server code, and the file's own module keeps the directive and stays the
+  client reference (SPEC J4.2, #7943). A JSX pragma comment after the directive then leads the provider module:
+  TypeScript, which reads a pragma before the first statement only, reads it there and not in the file. Oxc and
+  esbuild read it in both, SWC differs only where S1 does. As before the emit redesign (`1d6300f099`: the same header
+  in a real Start RSC build, client reference and server fn call unchanged). SPEC J2.16. No test (the outcome is the
+  limit).
 - **TypeScript reads a JSX pragma's name in any letter case; the compiler copies a comment holding the name as
   written only** (emit review re-check, Fable P3). `/** @jsximportsource @emotion/react */` is a pragma to
   TypeScript, not to Oxc, SWC or esbuild; a derived module gets no copy of it, so with TypeScript as the JSX transform
