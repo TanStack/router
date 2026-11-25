@@ -704,3 +704,123 @@ test('a position asked in no file is read in all of the text, its printed locati
   })
   expectDiagnostic(diagnostic!, { severity: 'error', position: { line: 5 } })
 })
+
+// What a tool's fields print is read by the same path reader as the text,
+// and where it names another file it ends the expected file's part of the
+// text, without erasing the same spelling in the message. Source: the X1
+// round-5 review probes (Astra's matcher probes, Fable's field spellings).
+describe('fields and the text', () => {
+  const root = '/app'
+  const a = { file: 'src/a.ts', root }
+  const at = (line: number, column?: number) => ({
+    ...a,
+    position: column === undefined ? { line } : { line, column },
+  })
+  test.each([
+    [
+      'another file’s field ends the file’s part',
+      {
+        message: 'src/a.ts imports src/b.ts:8:1\n> 8 | broken()',
+        loc: { file: 'src/b.ts', line: 8, column: 0 },
+      },
+      at(8),
+      false,
+    ],
+    [
+      'another file’s field in a cause ends the file’s part',
+      {
+        message: 'src/a.ts imports src/b.ts:8:1',
+        cause: {
+          message: 'parse error',
+          frame: '> 8 | broken()',
+          loc: { file: 'src/b.ts', line: 8, column: 0 },
+        },
+      },
+      at(8),
+      false,
+    ],
+    [
+      'a field spelling another file leaves the message’s naming',
+      { message: 'src/a.ts:8:1', loc: { file: 'a.ts', line: 8, column: 0 } },
+      at(8, 1),
+      true,
+    ],
+    [
+      'a file URL field',
+      {
+        message: 'bad',
+        loc: { file: 'file:///app/src/a.ts', line: 8, column: 0 },
+      },
+      at(8, 1),
+      true,
+    ],
+    [
+      'a webpack URL field',
+      {
+        message: 'bad',
+        loc: { file: 'webpack://lib/./src/a.ts', line: 8, column: 0 },
+      },
+      at(8, 1),
+      true,
+    ],
+    [
+      'a concatenated module’s field',
+      { message: 'bad', moduleName: './src/a.ts + 2 modules', loc: '8:0-4' },
+      at(8, 1),
+      true,
+    ],
+    [
+      'a loader chain’s field',
+      { message: 'bad', moduleName: 'x-loader!./src/a.ts', loc: '8:0-4' },
+      at(8, 1),
+      true,
+    ],
+    [
+      'a virtual id field',
+      {
+        message: 'bad',
+        id: '\0virtual:split:/app/src/a.ts',
+        loc: { line: 8, column: 0 },
+      },
+      at(8, 1),
+      true,
+    ],
+    [
+      'a field with a fragment',
+      { message: 'bad', id: '/app/src/a.ts#x', loc: { line: 8, column: 0 } },
+      at(8, 1),
+      true,
+    ],
+    [
+      'a file-only field of a sibling whose name continues past the file’s',
+      { message: 'bad', id: '/app/src/a.ts#copy.ts' },
+      a,
+      false,
+    ],
+    [
+      'a file-only field whose query names the file',
+      { message: 'bad', id: '/app/src/b.ts?from=src/a.ts' },
+      a,
+      false,
+    ],
+  ] as const)('%s', (_, record, expected, names) => {
+    expect(findDiagnostics(diagnosticsOf(record), expected)).toHaveLength(
+      names ? 1 : 0,
+    )
+  })
+
+  test.each([
+    [
+      'a /@fs URL’s line and column',
+      'at http://localhost:5173/@fs/app/src/a.ts:3:5',
+      at(3, 5),
+    ],
+    [
+      'a position after a web URL with a port',
+      'src/a.ts, served at http://localhost:5173/, 3:5',
+      at(3, 5),
+    ],
+  ])('%s are the file’s', (_, text, expected) => {
+    expectDiagnostic([{ severity: 'warning', text, raw: text }], expected)
+  })
+})

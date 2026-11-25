@@ -69,7 +69,7 @@ export interface Diagnostic {
    */
   locations?: Array<{
     file: string
-    line: number
+    line?: number
     column?: number
     printed: string
     own?: true
@@ -161,11 +161,11 @@ function locationsOf(
 ): NonNullable<Diagnostic['locations']> {
   const { file, line, column, printed } = locationOf(record)
   return [
-    ...(file !== undefined && line !== undefined
+    ...(file !== undefined
       ? [
           {
             file,
-            line,
+            ...(line !== undefined && { line }),
             ...(column !== undefined && { column }),
             printed,
             ...(depth === 0 && { own: true as const }),
@@ -397,14 +397,10 @@ function contentMismatches(
     expected.file === undefined
       ? undefined
       : pathReader(expected.file, { ...expected, tail: true })
-  // (a tool's field holds a whole path: its query and a virtual prefix
-  // are no part of the file)
   const locations = diagnostic.locations ?? []
-  const located = locations.filter(
-    ({ file }) =>
-      reader?.names(posix(file).replace(/^\0/, '').replace(/\?.*$/, '')) !==
-      undefined,
-  )
+  const located = reader
+    ? locations.filter(({ file }) => fieldNames(file, reader))
+    : []
   const { line, column } = expected.position ?? {}
   const atPosition = located.some(
     (location) =>
@@ -413,7 +409,7 @@ function contentMismatches(
         location.column === column ||
         location.column === column - 1),
   )
-  if (located.some(({ own }) => own)) {
+  if (located.some(({ own, line }) => own && line !== undefined)) {
     // The tool's own fields name the file: they give its positions
     if (line !== undefined && !atPosition) {
       reasons.push(
@@ -422,12 +418,24 @@ function contentMismatches(
     }
     return reasons
   }
-  // The text, but for what it prints of the fields that name other files
-  // (an expectation of no file reads all of it)
-  let text = diagnostic.text
-  for (const { printed } of reader ? locations : []) {
-    if (!located.some((location) => location.printed === printed)) {
-      text = text.replaceAll(printed, '')
+  // The text: a line that prints a field naming another file names that
+  // file (it ends the file's part), whatever its spelling reads as (an
+  // expectation of no file reads all of it)
+  const elsewhere = new Set(
+    reader
+      ? locations
+          .filter((location) => !located.includes(location))
+          .map(({ printed }) => printed)
+      : [],
+  )
+  let text = ''
+  const boundaries: Array<number> = []
+  for (const line of diagnostic.text.split(/(?<=\n)/)) {
+    if (elsewhere.has(line.replace(/\r?\n$/, ''))) {
+      boundaries.push(text.length)
+      text += line.replace(/[^\n]/g, ' ')
+    } else {
+      text += line
     }
   }
   /**
@@ -437,10 +445,12 @@ function contentMismatches(
   const { mentions, lead } =
     expected.file === undefined
       ? fileMentionsOfAll(text)
-      : fileMentions(text, expected.file, {
-          ...expected,
-          tail: true,
-        })
+      : fileMentions(
+          text,
+          expected.file,
+          { ...expected, tail: true },
+          boundaries,
+        )
   if (mentions.length === 0 && located.length === 0) {
     reasons.push(`does not name ${expected.file}`)
   }
@@ -718,6 +728,34 @@ function pathReader(file: string, options: { root?: string; tail?: boolean }) {
   return { names, needles }
 }
 
+/**
+ * Whether a tool's field holding a file names the one `reader` reads, read
+ * as a path of the text is (`pathReader`), whole: without a virtual id's
+ * `\0` and prefixes (`virtual:split:`), a loader chain (`x-loader!`), a
+ * query, webpack's `+ 2 modules` of a concatenated module, and a fragment
+ * (`#x`; but `a.ts#copy.ts`, a file name, is the file's).
+ */
+function fieldNames(field: string, reader: ReturnType<typeof pathReader>) {
+  let spelled = posix(field)
+    .replace(/^\0/, '')
+    .replace(/^.*!/, '')
+    .replace(/ \+ \d+ modules?$/, '')
+    .replace(/\?.*$/, '')
+  if (!/#[^/]*\.[A-Za-z]\w*$/.test(spelled)) {
+    spelled = spelled.replace(/#.*$/, '')
+  }
+  const scheme = /^([A-Za-z][\w+.-]*):(?=\/\/)/.exec(spelled)?.[1]
+  if (scheme !== undefined) {
+    return (
+      reader.names(spelled.slice(scheme.length + 1), scheme.toLowerCase()) !==
+      undefined
+    )
+  }
+  return (
+    reader.names(spelled.replace(/^(?:[\w-]{2,}:)+(?=\/)/, '')) !== undefined
+  )
+}
+
 /** A naming of a file in a text (`fileMentions`). */
 interface FileMention {
   /** Where the naming starts in the text (ANSI colours removed, `\\` as `/`). */
@@ -757,6 +795,8 @@ function fileMentions(
   text: string,
   file: string,
   options: { root?: string; tail?: boolean },
+  /** Where the text names another file a tool's field gave. */
+  boundaries: ReadonlyArray<number> = [],
 ): { mentions: Array<FileMention>; lead: Array<number> } {
   const said = posix(stripVTControlCharacters(text))
   // The code frames' lines out of the prose, offsets kept
@@ -827,7 +867,7 @@ function fileMentions(
    * path only with a position after it. Every path token that reads as
    * `file` is a naming of it (`src/temp/../a.ts`).
    */
-  const others: Array<number> = []
+  const others: Array<number> = [...boundaries]
   for (const match of prose.matchAll(/[\w.@$~+%#/()[\]-]+/g)) {
     const start = pathStart(match.index)
     let token = prose.slice(start, match.index) + match[0]
@@ -847,8 +887,13 @@ function fileMentions(
     const scheme = schemeAt(start)
     const normalized = normalizedPath(token, scheme) ?? ''
     if (normalized === '' || normalized === '.' || normalized === '/') {
-      // (a web URL: another file only with a position after it)
-      if (scheme !== undefined && /^:\d/.test(prose.slice(end))) {
+      // (a web URL: another file only with a position after its path, not
+      // the port after its host)
+      if (
+        scheme !== undefined &&
+        token.includes('/') &&
+        /^:\d+(?::\d+)?(?![\d/])/.test(prose.slice(end))
+      ) {
         others.push(start)
       }
       continue
@@ -862,6 +907,7 @@ function fileMentions(
       others.push(start)
     }
   }
+  others.sort((a, b) => a - b)
   const mentions = [...found]
     .map(([end, { start, absolute: isAbsolute }]) => ({
       start,
