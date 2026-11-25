@@ -61,6 +61,12 @@ export interface Diagnostic {
   /** The channel it was reported on, when a channel recorded it. */
   source?: DiagnosticSource
   /**
+   * The file and position the tool gave as fields (Rollup's `id`/`loc`,
+   * webpack's `moduleName`/`loc`), column as the tool prints it. A position
+   * in that file is judged by it, not by the text.
+   */
+  location?: { file: string; line: number; column?: number }
+  /**
    * Printed outside any async scope (a bundler's native callback) by work
    * the harness could not tell apart: every open capture received it, so it
    * may be another concurrent test's (`./console-hook`). It meets an
@@ -125,11 +131,16 @@ export function diagnosticsOf(
   }
   // An error (with the errors it aggregates, e.g. a `BuildError` or an
   // esbuild failure, read as one) and the warnings it carries.
+  const { file, line, column } = locationOf(record)
   return [
     {
       severity,
       text: describe(record),
       raw: value,
+      ...(file !== undefined &&
+        line !== undefined && {
+          location: { file, line, ...(column !== undefined && { column }) },
+        }),
     },
     ...diagnosticsOf(warnings, 'warning'),
   ]
@@ -148,26 +159,18 @@ function hasMessage(record: Record<string, unknown>) {
 }
 
 /**
- * The text of an error or a warning object: its message, its frame, the
- * file and location fields tools add (Rollup/Vite `id`/`loc`/`frame`,
- * esbuild `text`/`location`, Oxc `codeframe`, webpack `moduleName`/`loc`),
- * the errors it aggregates and its cause.
+ * The file and position an error or a warning object gives as fields, and
+ * how its text prints them: Rollup, Vite, Babel and esbuild `loc` (0-based
+ * column, printed 1-based: `file:3:8`); webpack and Rspack `loc.start`
+ * (`DependencyLocation`) and `line:column-column` strings, printed as given
+ * (`./src/a.tsx 3:7`).
  */
-function describe(record: Record<string, unknown>, depth = 0): string {
-  const lines: Array<string> = []
-  const message = [record.message, record.text].find(
-    (candidate): candidate is string => typeof candidate === 'string',
-  )
-  if (message !== undefined) {
-    lines.push(message)
-  } else if (!(record instanceof Error)) {
-    lines.push(inspect(record, { depth: 3 }))
-  }
-  for (const frame of [record.frame, record.codeframe]) {
-    if (typeof frame === 'string') {
-      lines.push(frame)
-    }
-  }
+function locationOf(record: Record<string, unknown>): {
+  file?: string
+  line?: number
+  column?: number
+  printed: string
+} {
   const loc = (record.loc ?? record.location) as
     | {
         file?: unknown
@@ -192,21 +195,59 @@ function describe(record: Record<string, unknown>, depth = 0): string {
       typeof candidate === 'string' && candidate !== '',
   )
   if (typeof loc === 'object' && typeof loc.line === 'number') {
-    // Rollup, Vite, Babel and esbuild locations have 0-based columns.
-    const column = typeof loc.column === 'number' ? `:${loc.column + 1}` : ''
-    lines.push(`${file ?? ''}:${loc.line}${column}`)
-  } else if (typeof loc === 'object' && typeof loc.start?.line === 'number') {
-    // a webpack / Rspack error's `loc` (`DependencyLocation`), printed as
-    // given: `./src/a.tsx 3:7`
+    const column = typeof loc.column === 'number' ? loc.column + 1 : undefined
+    return {
+      file,
+      line: loc.line,
+      column,
+      printed: `${file ?? ''}:${loc.line}${column === undefined ? '' : `:${column}`}`,
+    }
+  }
+  if (typeof loc === 'object' && typeof loc.start?.line === 'number') {
     const { line, column } = loc.start
-    lines.push(
-      `${file ?? ''} ${line}${typeof column === 'number' ? `:${column}` : ''}`,
-    )
-  } else if (typeof loc === 'string') {
-    // webpack: `line:column-column`.
-    lines.push(`${file ?? ''} ${loc}`)
-  } else if (file !== undefined) {
-    lines.push(file)
+    return {
+      file,
+      line,
+      column: typeof column === 'number' ? column : undefined,
+      printed: `${file ?? ''} ${line}${typeof column === 'number' ? `:${column}` : ''}`,
+    }
+  }
+  if (typeof loc === 'string') {
+    const [, line, column] = /^(\d+)(?::(\d+))?/.exec(loc) ?? []
+    return {
+      file,
+      line: line === undefined ? undefined : Number(line),
+      column: column === undefined ? undefined : Number(column),
+      printed: `${file ?? ''} ${loc}`,
+    }
+  }
+  return { file, printed: file ?? '' }
+}
+
+/**
+ * The text of an error or a warning object: its message, its frame, the
+ * file and location fields tools add (Rollup/Vite `id`/`loc`/`frame`,
+ * esbuild `text`/`location`, Oxc `codeframe`, webpack `moduleName`/`loc`),
+ * the errors it aggregates and its cause.
+ */
+function describe(record: Record<string, unknown>, depth = 0): string {
+  const lines: Array<string> = []
+  const message = [record.message, record.text].find(
+    (candidate): candidate is string => typeof candidate === 'string',
+  )
+  if (message !== undefined) {
+    lines.push(message)
+  } else if (!(record instanceof Error)) {
+    lines.push(inspect(record, { depth: 3 }))
+  }
+  for (const frame of [record.frame, record.codeframe]) {
+    if (typeof frame === 'string') {
+      lines.push(frame)
+    }
+  }
+  const { printed } = locationOf(record)
+  if (printed !== '') {
+    lines.push(printed)
   }
   if (depth < 3) {
     for (const nested of [
@@ -313,13 +354,35 @@ function contentMismatches(
       `severity ${diagnostic.severity}, expected ${severities.join(' or ')}`,
     )
   }
+  const location = diagnostic.location
+  if (
+    expected.file !== undefined &&
+    location !== undefined &&
+    fileMentions(location.file, expected.file, { ...expected, tail: true })
+      .mentions.length > 0
+  ) {
+    // The tool's own fields name the file: they give its position
+    const { line, column } = expected.position ?? {}
+    if (
+      line !== undefined &&
+      (location.line !== line ||
+        (column !== undefined &&
+          location.column !== column &&
+          location.column !== column - 1))
+    ) {
+      reasons.push(
+        `reports ${location.line}${location.column === undefined ? '' : `:${location.column}`} in its location`,
+      )
+    }
+    return reasons
+  }
   /**
    * The parts of the text that are about the file: each from where it names
    * the file to where it names another (all of it without `file`).
    */
   const { mentions, lead } =
     expected.file === undefined
-      ? { mentions: [{ about: diagnostic.text }], lead: undefined }
+      ? fileMentionsOfAll(diagnostic.text)
       : fileMentions(diagnostic.text, expected.file, {
           ...expected,
           tail: true,
@@ -329,11 +392,7 @@ function contentMismatches(
   }
   if (
     expected.position !== undefined &&
-    !reportsPosition(
-      mentions.map(({ about }) => about),
-      lead,
-      expected.position,
-    )
+    !reportsPosition(mentions, lead, expected.position)
   ) {
     const { line, column } = expected.position
     reasons.push(
@@ -475,6 +534,14 @@ const sourceExtension =
   /\.(?:[cm]?[jt]sx?|vue|svelte|astro|mdx?|json|css|scss|sass|less|html)$/
 
 /**
+ * A code frame's line: a numbered line of source (`  2 | …`, `> 3 | …`,
+ * `2 │ …`) or a marker line under one (`    |  ^`, `   · ─`).
+ */
+const frameLine = /^[^\w\n]*(?:>\s*)?\d+\s*[|│]|^\s*[|│·]\s*[\^~─]/
+/** A code frame's highlighted line (`> 3 |`). */
+const highlightedLine = /^[^\w\n]*>\s*(\d+)\s*[|│]/
+
+/**
  * Whether a path spelled in `said` up to `end` ends there: no further path
  * character follows (`src/a.ts` in `src/a.tsx`), nor an extension
  * (`src/a.ts.map`); a sentence's full stop may.
@@ -486,35 +553,30 @@ function endsPath(said: string, end: number) {
   )
 }
 
+/** How often `character` occurs in `text`. */
+const count = (text: string, character: string) =>
+  text.split(character).length - 1
+
 /**
- * The ways the path spelled in `said` that ends with `said[at, end)` reads:
- * from the start of the run of path characters before `at`, and from after
- * each `(` or `[` that opens it (a stack frame's), each `/@fs` (Vite's path of
- * a file outside the root) and each `./` or `../` segment in it (what follows
- * counts on its own: `webpack://app/./src/a.ts`), each with `/./` read as
- * `/`. Longest first.
+ * The path a spelled token names: without an opening `(` or `[` that does
+ * not close in it (a stack frame's), from after its last `/@fs` (Vite's path
+ * of a file outside the root), without a URL's authority (`//app` of
+ * `webpack://app/./src/a.ts`), with `.` and `..` segments read
+ * (`path.posix.normalize`).
  */
-function pathReadings(said: string, at: number, end: number) {
-  let start = at
-  while (start > 0 && pathCharacter.test(said[start - 1]!)) {
-    start--
+function normalizedPath(token: string) {
+  let spelled = token
+  while (
+    (spelled.startsWith('(') && count(spelled, '(') > count(spelled, ')')) ||
+    (spelled.startsWith('[') && count(spelled, '[') > count(spelled, ']'))
+  ) {
+    spelled = spelled.slice(1)
   }
-  const readings: Array<{ start: number; path: string }> = []
-  for (let cut = start; cut <= at; cut++) {
-    const before = said.slice(start, cut)
-    if (
-      cut === start ||
-      /[([]$/.test(before) ||
-      /\/@fs$/.test(before) ||
-      /(?:^|\/)\.{1,2}\/$/.test(before)
-    ) {
-      readings.push({
-        start: cut,
-        path: said.slice(cut, end).replaceAll('/./', '/'),
-      })
-    }
+  const fs = spelled.lastIndexOf('/@fs/')
+  if (fs !== -1) {
+    spelled = spelled.slice(fs + '/@fs'.length)
   }
-  return readings
+  return path.posix.normalize(spelled.replace(/^\/\/(?!\/)[^/]*/, ''))
 }
 
 /** A naming of a file in a text (`fileMentions`). */
@@ -525,25 +587,46 @@ interface FileMention {
   end: number
   /** Whether it is the file's absolute path (or its real path). */
   absolute: boolean
-  /** The text from the naming to where the text names another file. */
+  /**
+   * The text from the naming to where the text names another file, but its
+   * code frames' lines.
+   */
   about: string
+  /** The highlighted lines of the code frames in that part. */
+  highlighted: Array<number>
 }
 
 /**
- * Where `text` names `file` (`mentionsFile`), in order, and the text before
- * any file is named when `file` is the first it names (`lead`: e.g. a code
- * frame printed before its location). With `tail` (diagnostics), an absolute
- * `file` without a root is also named by the end of its path from one of its
+ * Where `text` names `file` (`mentionsFile`), in order, and the highlighted
+ * lines of the code frames before any file is named when `file` is the first
+ * it names (`lead`: a frame printed before its location). Code frames name
+ * nothing: what their source spells is source (`import … from './b.ts'`, a
+ * string `'src/b.ts:8:1'`). With `tail` (diagnostics), an absolute `file`
+ * without a root is also named by the end of its path from one of its
  * directories on (`src/a.ts`, as messages name files relative to the project
- * root).
+ * root). Every spelled path is read the same way (`normalizedPath`).
  */
 function fileMentions(
   text: string,
   file: string,
   options: { root?: string; tail?: boolean },
-): { mentions: Array<FileMention>; lead?: string } {
+): { mentions: Array<FileMention>; lead: Array<number> } {
   const posix = (value: string) => value.replaceAll('\\', '/')
   const said = posix(stripVTControlCharacters(text))
+  // The code frames' lines out of the prose, offsets kept
+  const highlights: Array<{ at: number; line: number }> = []
+  let prose = ''
+  for (const line of said.split(/(?<=\n)/)) {
+    if (frameLine.test(line)) {
+      const highlighted = highlightedLine.exec(line)
+      if (highlighted) {
+        highlights.push({ at: prose.length, line: Number(highlighted[1]) })
+      }
+      prose += line.replace(/[^\n]/g, ' ')
+    } else {
+      prose += line
+    }
+  }
   const absolute = path.isAbsolute(file)
     ? file
     : options.root !== undefined
@@ -561,16 +644,13 @@ function fileMentions(
         .map(posix),
     ),
   ]
-  /** How a reading of a spelled path names `file`, if it does. */
-  const names = (spelled: string): 'absolute' | 'relative' | undefined => {
-    // (`//host/…` after a scheme is a URL's authority, not a root)
-    if (
-      !/^\/\/[^/]/.test(spelled) &&
-      absolutes.includes(spelled.replace(/^\/+(?=\/)/, ''))
-    ) {
+  /** How a spelled path names `file`, if it does. */
+  const names = (token: string): 'absolute' | 'relative' | undefined => {
+    const normalized = normalizedPath(token)
+    if (absolutes.includes(normalized)) {
       return 'absolute'
     }
-    const tail = spelled.replace(/^\/+/, '').replace(/^(?:\.{1,2}\/)+/, '')
+    const tail = normalized.replace(/^\/+/, '').replace(/^(?:\.\.\/)+/, '')
     if (relative === undefined) {
       return options.tail === true &&
         tail.includes('/') &&
@@ -584,6 +664,14 @@ function fileMentions(
           absolutes.some((spelling) => spelling.endsWith(`/${tail}`))))
       ? 'relative'
       : undefined
+  }
+  /** The start of the run of path characters that ends at `at`. */
+  const runStart = (at: number) => {
+    let start = at
+    while (start > 0 && pathCharacter.test(prose[start - 1]!)) {
+      start--
+    }
+    return start
   }
   /** What to look for: the file's spellings, each found as written. */
   const needles = [...absolutes]
@@ -603,60 +691,60 @@ function fileMentions(
   const found = new Map<number, { start: number; absolute: boolean }>()
   for (const needle of needles) {
     for (
-      let at = said.indexOf(needle);
+      let at = prose.indexOf(needle);
       at !== -1;
-      at = said.indexOf(needle, at + 1)
+      at = prose.indexOf(needle, at + 1)
     ) {
       const end = at + needle.length
-      if (!endsPath(said, end)) {
-        continue
-      }
-      for (const reading of pathReadings(said, at, end)) {
-        const how = names(reading.path)
-        if (how !== undefined) {
-          const known = found.get(end)
-          if (!known || reading.start < known.start) {
-            found.set(end, {
-              start: reading.start,
-              absolute: how === 'absolute' || known?.absolute === true,
-            })
-          }
-          break
-        }
+      const start = runStart(at)
+      const how = endsPath(prose, end)
+        ? names(prose.slice(start, end))
+        : undefined
+      const known = found.get(end)
+      if (how !== undefined && (!known || start < known.start)) {
+        found.set(end, { start, absolute: how === 'absolute' })
       }
     }
   }
   const within = (index: number) =>
-    [...found].some(([end, { start }]) => start < index && index <= end)
-  /** Whether `index` is in a code frame's line of source (`  2 | …`, `2 │ …`). */
-  const inCodeFrame = (index: number) =>
-    /^[^\w\n]*\d+\s*[|│]/.test(said.slice(said.lastIndexOf('\n', index) + 1))
-  /** Where the text names some other file. */
-  const others = new Set<number>()
-  // Spelled paths that end with an extension: a path, or a file of a source
-  // extension (a URL's path only with a position after it); not the paths a
-  // code frame's source names (`  2 | import { b } from './b.ts'`)
-  for (const match of said.matchAll(/\.[A-Za-z]\w*(?=[^\w/-]|$)/g)) {
-    const end = match.index + match[0].length
-    if (!endsPath(said, end) || within(end) || inCodeFrame(match.index)) {
+    [...found].some(([end, { start }]) => start <= index && index < end)
+  /**
+   * Where the text names some other file: a path with a directory and an
+   * extension or a position after it, a file of a source extension, a URL's
+   * path only with a position after it.
+   */
+  const others: Array<number> = []
+  for (const match of prose.matchAll(/[\w.@$~+%#/()[\]-]+/g)) {
+    let token = match[0].replace(/[.]+$/, '')
+    while (
+      (token.endsWith(')') && count(token, ')') > count(token, '(')) ||
+      (token.endsWith(']') && count(token, ']') > count(token, '['))
+    ) {
+      token = token.slice(0, -1)
+    }
+    const start = match.index
+    const end = start + token.length
+    const normalized = normalizedPath(token)
+    if (
+      within(start) ||
+      names(token) !== undefined ||
+      normalized === '.' ||
+      normalized === '/'
+    ) {
       continue
     }
-    const { start, path: spelled } = pathReadings(said, match.index, end)[0]!
-    const word = said.slice(0, start).match(/\S*$/)![0]
+    const positioned = /^:\d/.test(prose.slice(end))
+    const url = (prose.slice(0, start).match(/\S*$/)![0] + token).includes(
+      '://',
+    )
     if (
-      spelled.includes('/')
-        ? !(word + spelled).includes('://') || /^:\d/.test(said.slice(end))
-        : sourceExtension.test(spelled)
+      url
+        ? positioned && normalized.includes('/')
+        : normalized.includes('/')
+          ? /\.[A-Za-z]\w*$/.test(normalized) || positioned
+          : sourceExtension.test(normalized)
     ) {
-      others.add(start)
-    }
-  }
-  // Paths without an extension that a position follows (`src/routes/__root:3:5`)
-  for (const match of said.matchAll(
-    /(?<![\w.@$~+%#/()[\]-])[\w.@$~+%#()[\]-]+\/[\w.@$~+%#/()[\]-]*(?=:\d)/g,
-  )) {
-    if (!within(match.index + match[0].length) && !inCodeFrame(match.index)) {
-      others.add(match.index)
+      others.push(start)
     }
   }
   const mentions = [...found]
@@ -666,17 +754,23 @@ function fileMentions(
       absolute: isAbsolute,
     }))
     .sort((a, b) => a.start - b.start)
-  const boundaries = [...others].sort((a, b) => a - b)
-  const first = Math.min(...boundaries, ...mentions.map(({ start }) => start))
+  const first = Math.min(...others, ...mentions.map(({ start }) => start))
   return {
-    mentions: mentions.map((mention) => ({
-      ...mention,
-      about: said.slice(
-        mention.start,
-        boundaries.find((other) => other > mention.start),
-      ),
-    })),
-    ...(mentions[0]?.start === first && { lead: said.slice(0, first) }),
+    mentions: mentions.map((mention) => {
+      const until =
+        others.find((other) => other > mention.start) ?? prose.length
+      return {
+        ...mention,
+        about: prose.slice(mention.start, until),
+        highlighted: highlights
+          .filter(({ at }) => mention.start <= at && at < until)
+          .map(({ line }) => line),
+      }
+    }),
+    lead:
+      mentions[0]?.start === first
+        ? highlights.filter(({ at }) => at < first).map(({ line }) => line)
+        : [],
   }
 }
 
@@ -688,30 +782,45 @@ function realOf(file: string) {
   }
 }
 
+/** All of a text, for an expectation that names no file. */
+function fileMentionsOfAll(text: string) {
+  return {
+    mentions: [
+      {
+        about: text,
+        highlighted: text
+          .split('\n')
+          .flatMap((line) => highlightedLine.exec(line)?.[1] ?? [])
+          .map(Number),
+      },
+    ],
+    lead: [],
+  }
+}
+
 /**
- * Whether a text reports `position`: `line:column` (the column 1-based or
- * 0-based, as tools differ) in one of `named` (each the text from where it
- * names the file to where it names another); without a column, also `:line`
- * there, or a code frame's highlighted line (`> line |`, maybe inside a
- * tool's box) there or in `lead` (the text before it names any file, when
- * the file is the first it names).
+ * Whether one of `mentions` reports `position`: `line:column` (the column
+ * 1-based or 0-based, as tools differ) in its part of the text; without a
+ * column, also `:line` there, or a code frame's highlighted line (`> line |`)
+ * there or in `lead`.
  */
 function reportsPosition(
-  named: Array<string>,
-  lead: string | undefined,
+  mentions: Array<{ about: string; highlighted: Array<number> }>,
+  lead: Array<number>,
   { line, column }: { line: number; column?: number },
 ) {
   if (column !== undefined) {
     const position = new RegExp(
       `(?<!\\d)${line}:(?:${column}|${column - 1})(?!\\d)`,
     )
-    return named.some((about) => position.test(about))
+    return mentions.some(({ about }) => position.test(about))
   }
   const position = new RegExp(`(?<!\\d):${line}(?!\\d)|(?<![\\d:])${line}:\\d`)
-  const frame = new RegExp(`^[^\\w\\n]*>\\s*${line}\\s*\\|`, 'm')
   return (
-    named.some((about) => position.test(about) || frame.test(about)) ||
-    (lead !== undefined && frame.test(lead))
+    mentions.some(
+      ({ about, highlighted }) =>
+        position.test(about) || highlighted.includes(line),
+    ) || lead.includes(line)
   )
 }
 

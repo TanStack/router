@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, test } from 'vitest'
 import {
   expectDiagnostic,
-  findDiagnostics,
+  expectNoDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   problemsNaming,
@@ -102,11 +102,10 @@ console.log(db())
         severity: 'error',
         position: { line: 2, column: 20 },
       })
-      expect(
-        findDiagnostics(server.diagnostics, reported)
-          .map(({ text }) => text)
-          .filter((text) => text.includes(pluginDist)),
-      ).toEqual([])
+      expectNoDiagnostic(
+        server.diagnostics.filter(({ text }) => text.includes(pluginDist)),
+        reported,
+      )
       // the compilation's location of the failure (Rsbuild's `File:` line)
       expect(
         seen

@@ -13,7 +13,7 @@
  * a DOM.
  */
 import { describe, expect, test } from 'vitest'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { build, clientMountEntry, head, routeApp } from '../build-harness'
 
 const timeout = 120_000
@@ -41,11 +41,8 @@ async function buildRoute(
       },
     }),
   })
-  const warnings = findDiagnostics(app.warnings, {
-    severity: 'warning',
-  })
-    .filter(({ text }) => text.includes('routes/index.tsx'))
-    .map(({ text }) => text)
+  // (every channel: webpack prints some warnings through the console)
+  const reported = [...app.warnings, ...app.consoleMessages]
   try {
     const run = await app.run(
       'await entry.mount(entry.Route.options.component)',
@@ -53,7 +50,8 @@ async function buildRoute(
     return {
       where: app.where('MARK_PAGE'),
       text: (run.html as string).replace(/<[^>]*>/g, ''),
-      warnings,
+      reported,
+      root: app.root,
     }
   } finally {
     await app.dispose()
@@ -89,7 +87,11 @@ describe.each(['vite', 'rspack'] as const)('a %s build', (bundler) => {
       const r = await buildRoute(bundler, route(decls, options))
       expect(r.where).toBe('lazy')
       expect(r.text).toBe(text)
-      expect(r.warnings).toEqual([])
+      expectNoDiagnostic(r.reported, {
+        severity: 'warning',
+        file: 'routes/index.tsx',
+        root: r.root,
+      })
     },
     timeout,
   )

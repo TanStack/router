@@ -374,6 +374,32 @@ describe('spellings', () => {
       at(3),
       true,
     ],
+    ['under another root, through ..', 'in /other/foo/../src/a.ts', a, false],
+    ['under another root, through .', 'in /other/foo/./src/a.ts', a, false],
+    [
+      'a later absolute file’s position, no extension',
+      'src/a.ts: see /app/src/routes/__root:3:5',
+      at(3, 5),
+      false,
+    ],
+    [
+      'another file’s frame line naming a position',
+      'src/a.ts\n1 | src/b.ts:3:5',
+      at(3, 5),
+      false,
+    ],
+    [
+      'a file its code frame imports',
+      "/app/src/a.ts: Unexpected token (3:5)\n  1 | import { b } from 'src/b.ts'\n  2 |\n> 3 | b(\n    |  ^",
+      { file: 'src/b.ts', root, position: { line: 3 } },
+      false,
+    ],
+    [
+      'a position in its code frame’s source',
+      'src/a.ts: bad\n> 2 | const s = "src/b.ts:8:1"',
+      at(8, 1),
+      false,
+    ],
     ['a version between', 'src/a.ts (vite v8.3.8) 3:5', at(3, 5), true],
     [
       'a URL between',
@@ -383,6 +409,33 @@ describe('spellings', () => {
     ],
   ] as const)('%s', (_, text, expected, names) => {
     expect(findDiagnostics(warning(text), expected)).toHaveLength(names ? 1 : 0)
+  })
+
+  test('a tool’s structured location decides the position in its file', () => {
+    const [diagnostic] = diagnosticsOf(
+      {
+        message: 'unlike the call at src/a.ts:7:1',
+        id: '/app/src/a.ts',
+        loc: { file: '/app/src/a.ts', line: 4, column: 2 },
+      },
+      'warning',
+    )
+    expect(findDiagnostics(diagnostic!, at(7, 1))).toEqual([])
+    expectDiagnostic(diagnostic!, { ...at(4, 3), times: 1 })
+    // (a file it names in its message without a location is still named)
+    const [importer] = diagnosticsOf(
+      {
+        message: 'src/b.ts:2:1 is not exported',
+        id: '/app/src/a.ts',
+        loc: { file: '/app/src/a.ts', line: 4, column: 2 },
+      },
+      'warning',
+    )
+    expectDiagnostic(importer!, {
+      file: 'src/b.ts',
+      root,
+      position: { line: 2, column: 1 },
+    })
   })
 
   test('output of unknown owner: a presence check needs its absolute path, an absence check sees it named any way', () => {

@@ -2,6 +2,7 @@ import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
 import { captureDiagnostics } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import {
   diagnosticsOf,
+  expectNoDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { expect, it } from 'vitest'
@@ -114,10 +115,13 @@ return { data, loaded }`)
   })
 }, 60_000)
 
-const routeWarnings = (diagnostics: unknown) =>
-  findDiagnostics(diagnostics, { severity: 'warning' }).filter(({ text }) =>
-    text.includes('routes/index.tsx'),
-  )
+/** What a build reported about its route file, on every channel. */
+const aboutRoute = (app: { root: string }) =>
+  ({ severity: 'warning', file: 'routes/index.tsx', root: app.root }) as const
+const reported = (app: {
+  warnings: Array<unknown>
+  consoleMessages: Array<unknown>
+}) => [...app.warnings, ...app.consoleMessages]
 
 /**
  * A Vite `pre` plugin whose filter is anchored at the file's extension: it
@@ -169,7 +173,9 @@ it('a pre plugin that only the route module goes through is reported', async () 
       files: { 'entry.ts': clientMountEntry },
     }),
   })
-  expect(routeWarnings(app.warnings).length).toBeGreaterThan(0)
+  expect(
+    findDiagnostics(reported(app), aboutRoute(app)).length,
+  ).toBeGreaterThan(0)
 }, 60_000)
 
 // A plugin whose filter accepts queries gives every id of the file the same
@@ -196,5 +202,5 @@ it('a pre plugin that handles every id of the route file is not reported', async
       files: { 'entry.ts': clientMountEntry },
     }),
   })
-  expect(routeWarnings(app.warnings)).toEqual([])
+  expectNoDiagnostic(reported(app), aboutRoute(app))
 }, 60_000)

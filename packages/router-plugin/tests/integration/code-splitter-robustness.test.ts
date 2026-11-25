@@ -5,7 +5,7 @@
  * option values written as a sequence under a cast, in real builds.
  */
 import { expect, test } from 'vitest'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   build,
   clientMountEntry,
@@ -379,11 +379,11 @@ test.each([
         files: { 'entry.ts': clientMountEntry },
       }),
     })
-    expect(
-      findDiagnostics(app.warnings, { severity: 'warning' }).filter(
-        ({ text }) => text.includes('routes/index.tsx'),
-      ),
-    ).toEqual([])
+    expectNoDiagnostic([...app.warnings, ...app.consoleMessages], {
+      severity: 'warning',
+      file: 'routes/index.tsx',
+      root: app.root,
+    })
   },
   60_000,
 )

@@ -9,7 +9,10 @@ import { existsSync } from 'node:fs'
 import { utimes, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, onTestFinished, test } from 'vitest'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  expectNoDiagnostic,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { callServerFn, startDevServer, startRequestFiles } from '../dev-server'
 import { startRsbuildStartDevServer } from '../rsbuild-dev-server'
 import type { RsbuildPlugin } from '@rsbuild/core'
@@ -643,10 +646,13 @@ export const Route = createRootRoute({})
   }
   /** Long enough that a compile can't have read a text older than the file. */
   const readWindow = () => new Promise((resolve) => setTimeout(resolve, 2_100))
-  const warnings = (diagnostics: unknown) =>
-    findDiagnostics(diagnostics, { severity: 'warning' }).filter(({ text }) =>
-      text.includes('src/routes/index.tsx'),
-    )
+  /** What the server reported about the route file. */
+  const aboutRoute = (server: { root: string }) =>
+    ({
+      severity: 'warning',
+      file: 'src/routes/index.tsx',
+      root: server.root,
+    }) as const
 
   test(
     'a plugin that only the route module goes through is reported',
@@ -667,7 +673,9 @@ export const Route = createRootRoute({})
       })
       await readWindow()
       await server.load('/src/routes/index.tsx')
-      expect(warnings(server.diagnostics).length).toBeGreaterThan(0)
+      expect(
+        findDiagnostics(server.diagnostics, aboutRoute(server)).length,
+      ).toBeGreaterThan(0)
     },
     timeout,
   )
@@ -692,7 +700,13 @@ export const Route = createRootRoute({})
         await utimes(file, old, old)
       }
       await server.load('/src/routes/index.tsx')
-      expect(warnings(server.diagnostics)).toHaveLength(expected)
+      if (expected === 0) {
+        expectNoDiagnostic(server.diagnostics, aboutRoute(server))
+      } else {
+        expect(
+          findDiagnostics(server.diagnostics, aboutRoute(server)),
+        ).toHaveLength(expected)
+      }
     },
     timeout,
   )

@@ -12,7 +12,10 @@
  */
 import { describe, expect, test } from 'vitest'
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
-import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  expectNoDiagnostic,
+  findDiagnostics,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { expectValidModules, head, loadRoute } from '../../route-app'
 import type { RouteApp, RouteAppOptions } from '../../route-app'
 
@@ -436,13 +439,11 @@ export const Route = createFileRoute('/')({ component: () => <div /> })
     // The route module the dev server serves is a valid module, and
     // compiling it reported no error
     await expectValidModules({ reference: await route.transform() })
-    expect(
-      findDiagnostics(problems(await route.diagnostics()), {
-        severity: 'error',
-        file: 'route.tsx',
-        root: route.host.root,
-      }).map((diagnostic) => diagnostic.text),
-    ).toEqual([])
+    expectNoDiagnostic(problems(await route.diagnostics()), {
+      severity: 'error',
+      file: 'route.tsx',
+      root: route.host.root,
+    })
   })
 
   // Bug: the code splitter cannot parse a constructor parameter decorator
@@ -475,13 +476,11 @@ export const Route = createFileRoute('/')({
     ).toEqual(['data', '<p>1</p>'])
     // Compiled: nothing reported an error compiling the route, and the
     // component is split, as configured (not left in the route module)
-    expect(
-      findDiagnostics(problems(await route.diagnostics()), {
-        severity: 'error',
-        file: 'route.tsx',
-        root: route.host.root,
-      }).map((diagnostic) => diagnostic.text),
-    ).toEqual([])
+    expectNoDiagnostic(problems(await route.diagnostics()), {
+      severity: 'error',
+      file: 'route.tsx',
+      root: route.host.root,
+    })
     expect(await route.isLazy('component')).toBe(true)
   })
 
