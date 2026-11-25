@@ -3,8 +3,10 @@
  * transform, the Rsbuild loader).
  */
 import picomatch from 'picomatch'
+import { parseModule } from '@tanstack/router-utils/compiler'
 import { escapeRegExp, normalizePath } from '../utils'
 import { startRecognizer } from './recognizer'
+import type { ParseModuleOptions } from '@tanstack/router-utils/compiler'
 import type { ImportProtectionConfig } from '../import-protection/config'
 import type { ImportProtection } from '../import-protection/session'
 
@@ -153,29 +155,70 @@ function startTextTest(config: ImportProtectionConfig | null): RegExp {
   )
 }
 
-/** An ES re-export (`export * from`, `export * as ns from`, `export { … } from`): the module's exports are elsewhere. */
-const REEXPORT_RE =
-  /\bexport\s*(?:\*|\{[\s\S]*?\})(?:\s*as\s*[\w$]+)?\s*from\s*['"]/
+/**
+ * Whether a module forwards values it imports, so its exports are
+ * elsewhere: a re-export (`export * from`, `export * as ns from`,
+ * `export { … } from`), or an export list naming one of its value imports
+ * (`import { t as base } from './chunk.js'; export { base }`, the entry
+ * esbuild, tsup, Rolldown, tsdown and Vite's library mode print for a
+ * shared chunk's export, with or without code of its own beside it).
+ * Decided from Yuku's import and export records of the module parsed as
+ * its summary would be (`parse`, from the facts cache: a virtual module
+ * without an extension is JavaScript); the text test before the parse only
+ * passes over a module without both words. Type-only imports and exports do
+ * not count, nor do `export default x` and `export const y = x`; a module
+ * that does not parse is not read.
+ */
+function forwardsImports(
+  text: string,
+  parse: ParseModuleOptions | null,
+): boolean {
+  if (parse === null || !text.includes('export') || !text.includes('from')) {
+    return false
+  }
+  const parsed = parseModule(text, parse)
+  if (!parsed.ok) {
+    return false
+  }
+  return parsed.file.exports.some((e) => {
+    if (e.typeOnly) {
+      return false
+    }
+    if (e.kind === 'reExport' || e.kind === 'namespace' || e.kind === 'star') {
+      return true
+    }
+    if (e.kind !== 'named' || e.node.type !== 'ExportSpecifier') {
+      return false
+    }
+    const imported = e.local?.import
+    return (
+      imported != null &&
+      !imported.typeOnly &&
+      (imported.kind === 'named' || imported.kind === 'namespace')
+    )
+  })
+}
 
 /**
  * Whether a dependency module is opaque to the summaries (`RawFactsOptions.opaque`):
- * an ordinary package's exports carry no Start value, so its text is never
- * parsed for one. A module of `node_modules` is read when its package
+ * an ordinary package's exports carry no Start value, so it gets no
+ * summary (deciding that may parse it: `forwardsImports`). A module of
+ * `node_modules` is read when its package
  * declares Start (`startPackage`: a Start value may be forwarded under any
  * name), when import protection checks it, when its text names what the
  * planners recognise (the test of `startCompileScope`), or when it
- * re-exports another module (a library's barrel: the values are behind it).
- * The rest of a dependency graph stays unread.
+ * forwards what it imports (a library's barrel: the values are behind it,
+ * `forwardsImports`). The rest of a dependency graph stays unread.
  */
 export function opaquePackageModule(
   ip: ImportProtection | null,
   startPackage: (path: string) => boolean,
-): (path: string, text: string) => boolean {
+): (path: string, text: string, parse: ParseModuleOptions | null) => boolean {
   const startText = startTextTest(ip?.config ?? null)
-  return (path, text) =>
+  return (path, text, parse) =>
     NODE_MODULES_RE.test(path) &&
     !(ip?.inScope(path) ?? false) &&
     !startText.test(text) &&
-    !REEXPORT_RE.test(text) &&
-    !startPackage(path)
+    !startPackage(path) &&
+    !forwardsImports(text, parse)
 }

@@ -253,8 +253,8 @@ export class StartCompilerSession {
       jsx: opts.framework,
       // every analysis of the session agrees on the marker specifiers
       markerSpecifiers: this.ip?.markerSpecifiers,
-      opaque: (path, text) =>
-        (opts.opaque?.(path) ?? false) || packageModule(path, text),
+      opaque: (path, text, parse) =>
+        (opts.opaque?.(path) ?? false) || packageModule(path, text, parse),
     })
     // a removed file's server functions and import protection's records go
     // where the core applies the removal (a removal of a file that reads

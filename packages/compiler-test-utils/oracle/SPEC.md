@@ -799,7 +799,12 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   packages, packages that declare Start and installed optional dependencies, by the dependency name the importer wrote
   (npm aliases kept); one behind an ordinary installed parent stays behind it, and its compile warns. A dependency that
   uses Start without declaring it is compiled where its text names a Start API, not read on demand, and its compile
-  warns once per package instance. A route file the generator registered from a package is compiled like the app's.
+  warns once per package instance; its re-exports are followed (`export … from`, `export *`, and an export list
+  naming a value import, `import { t as base } from './chunk.js'; export { base }`, the entry esbuild, tsup, Rolldown
+  and tsdown print for a shared chunk; read from the parsed module, so comments in the lists change nothing and
+  type-only imports and exports do not count), a name it gives a Start value otherwise (`export const authed = base`,
+  `export default base`) is not.
+  A route file the generator registered from a package is compiled like the app's.
   Discovery uses the app's configured
   root, never an unrelated process cwd (`vite build <app>` from a monorepo root works). A CommonJS dependency the
   bundler hands to the Start compiler (for example because its text matches a detection pattern such as `.handler(`)

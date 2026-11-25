@@ -38,6 +38,7 @@ import { EMPTY_RECOGNIZER, isKnownSpecifier } from './values'
 import { approxBytes, cacheDisabled } from './stats'
 import type { JsxDialect } from './analysis'
 import type { ModuleSummary } from './summary'
+import type { ParseModuleOptions } from './source'
 import type { AbstractValue, RecognizerTable } from './values'
 
 export interface TargetFacts {
@@ -84,12 +85,17 @@ interface RawFactsOptions {
   jsx?: JsxDialect
   /**
    * Whether a module is opaque to the summaries, by its path and text (an
-   * ordinary package: its exports carry no value a planner recognises). An
-   * opaque module is not parsed: its summary is null (`unknown` to a
-   * resolver), its marker is read from the text, and its target facts are
-   * parsed only when asked (`getTarget`).
+   * ordinary package: its exports carry no value a planner recognises), and
+   * how its summary would parse it (`summaryParse`; null: not at all). An
+   * opaque module gets no summary: it is null (`unknown` to a resolver), its
+   * marker is read from the text, and its target facts are parsed only when
+   * asked (`getTarget`). The predicate may parse the text itself.
    */
-  opaque?: (path: string, text: string) => boolean
+  opaque?: (
+    path: string,
+    text: string,
+    parse: ParseModuleOptions | null,
+  ) => boolean
   /**
    * A file's modification time in milliseconds (null: unknown; a whole
    * number of seconds counts as unknown). Without it, every file event that
@@ -101,6 +107,22 @@ interface RawFactsOptions {
 /** Whether a module is virtual: its raw text is the host's `loadVirtual`, not a file's. */
 export const isVirtualId = (canonicalId: string): boolean =>
   canonicalId.startsWith('\0') || canonicalId.startsWith('virtual:')
+
+/**
+ * How the summaries parse a module (null: not at all): a virtual module
+ * without an extension is JavaScript, a file without a language is not.
+ */
+export function summaryParse(canonicalId: string): ParseModuleOptions | null {
+  const id = identify(canonicalId)
+  if (id.lang === null && !isVirtualId(canonicalId)) {
+    return null
+  }
+  return {
+    lang: id.lang ?? 'ts',
+    path: id.path,
+    sourceType: isCommonJsPath(id.path) ? 'commonjs' : undefined,
+  }
+}
 
 /** The target facts of an opaque module before anyone asks for them: exists, no marker, otherwise unknown. */
 const OPAQUE_TARGET: Omit<TargetFacts, 'digest'> = {
@@ -790,9 +812,10 @@ export class RawFactsCache {
       }
     }
     const id = identify(canonicalId)
+    const parse = summaryParse(canonicalId)
     if (
       !full &&
-      this.opts.opaque?.(id.path, text) &&
+      this.opts.opaque?.(id.path, text, parse) &&
       !this.mayHaveMarker(text)
     ) {
       return {
@@ -801,15 +824,7 @@ export class RawFactsCache {
         opaque: true,
       }
     }
-    // a virtual module without an extension is JavaScript; a file without a language is not
-    const parsed =
-      id.lang === null && !isVirtualId(canonicalId)
-        ? null
-        : parseModule(text, {
-            lang: id.lang ?? 'ts',
-            path: id.path,
-            sourceType: isCommonJsPath(id.path) ? 'commonjs' : undefined,
-          })
+    const parsed = parse === null ? null : parseModule(text, parse)
     if (!parsed?.ok) {
       const tf = {
         exists: true,

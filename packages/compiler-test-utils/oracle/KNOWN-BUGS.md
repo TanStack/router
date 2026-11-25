@@ -719,11 +719,14 @@ properties of undefined (reading 'id')`, page 500 (build and dev). `main` resolv
   it compiles it). `start-plugin-core/tests/integration/start-build-vite-crawl.test.ts`: "a Start package behind an
   ordinary installed parent: the client build warns at its module".
 - **A package that does not declare Start and forwards a builder under a new name with no builder call ships the
-  app's handler built on it** (node_modules policy, decision 11, A; `main` strips it). `export const chain = base` in
-  a module that names no Start API: Start does not read an undeclared package's modules on demand, so `chain` is not
-  followed. The compile of the module that makes the builder warns once that the package must declare Start
-  (decision 6, case i). `start-plugin-core/tests/integration/start-build-package-policy.test.ts`: "a package that
-  does not declare Start: one warning, naming one of its modules". Fix: the package declares Start as a peer.
+  app's handler built on it** (node_modules policy, decision 11, A; D-21 B; `main` strips it). A module that names
+  no Start API and forwards with `export const chain = base` or `export default base`: Start follows only an
+  undeclared package's re-exports (`export … from`, `export *`) and export lists naming a value import
+  (`import { base } from …; export { base }`), so `chain` is not followed. When that package also makes the
+  builder, that module's compile warns once that the package must declare Start (decision 6, case i); when the
+  builder comes from a package that declares Start, nothing warns and the handler ships.
+  `start-plugin-core/tests/integration/start-build-package-policy.test.ts`: "a package that does not declare Start:
+  one warning, naming one of its modules". Fix: the forwarding package declares Start as a peer.
 - **Vite RSC: a server function defined in a different file per export condition fails the production build, and
   development answers each caller with its own file** (node_modules policy, decision 13, A). The RSC environment
   builds before the client and lists the functions of the files it resolves; the browser's call names the browser's

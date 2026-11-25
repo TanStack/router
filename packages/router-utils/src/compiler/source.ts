@@ -17,7 +17,7 @@ type ParsedModule =
   | { ok: true; file: SourceFile; source: SourceText }
   | { ok: false; source: SourceText; diagnostics: Array<Diagnostic> }
 
-interface ParseModuleOptions {
+export interface ParseModuleOptions {
   lang: Lang
   /** Defaults from the path extension (`.cjs`/`.cts` → commonjs). */
   sourceType?: 'module' | 'script' | 'commonjs'

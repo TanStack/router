@@ -35,6 +35,7 @@ export {
   patternIdentifiers,
   unwrapExpression,
 } from './source'
+export type { ParseModuleOptions } from './source'
 export { OutputBuilder, SourceText } from './output-builder'
 export {
   DEST_INITIALIZER,
