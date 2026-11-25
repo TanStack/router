@@ -19,6 +19,7 @@ import {
   fileModifiedAt,
   identify,
   langFromId,
+  liveKey,
   parseModule,
   registerCompilerStats,
   releaseEnvironment,
@@ -41,7 +42,10 @@ import {
   gateToken,
 } from '../server-fns/ids'
 import { ServerFnRegistry } from '../server-fns/registry'
-import { createImportProtection } from '../import-protection/session'
+import {
+  createImportProtection,
+  runReports,
+} from '../import-protection/session'
 import { normalizePath } from '../utils'
 import { IMPORT_EDGES_PLANNER } from '../import-protection/violations'
 import { namesStartSpecifier, startRecognizer } from './recognizer'
@@ -58,6 +62,7 @@ import type {
   CompileOutcome,
   CompiledOutputLike,
   ImportProtection,
+  Judgement,
 } from '../import-protection/session'
 import type { SfcLocate } from './vue'
 import type { EdgeModuleIds } from '../import-protection/edge-modules'
@@ -194,6 +199,88 @@ export interface StartCompileInput {
 
 const NO_OUTCOME: CompileOutcome = { error: null }
 
+/** One module handed to the session (`StartCompilerSession.transform`): a JS/TS module of the bundler's main transform. */
+export interface ModuleRequest {
+  /** The bundler's id (path with query). */
+  id: string
+  code: string
+  env: StartCompilerEnvironment
+  inputMap: () => InputSourceMap | null
+  wantMap: boolean
+  /** How the map's consumer counts lines (`CompileInput.lines`). */
+  lines?: 'ecma' | 'lf'
+  /** The positions of a compile of another plugin's output, in the original file (a Vue SFC's script: `report`'s `inputMap`). */
+  originalMap?: () => InputSourceMap | null
+  /** A host that bundles only the Start packages it found (`report`'s `reach`), read for a compiled module only. */
+  reach?: () => StartPackageReach | undefined
+}
+
+/** What the host serves for a module (`StartCompilerSession.transform`). */
+export type ModuleOutcome =
+  /** The module as it is (untouched, or not the compiler's). */
+  | { kind: 'passthrough' }
+  /** The compile's output; `unchanged`: its code is the input's (the upstream map stands). */
+  | { kind: 'served'; output: CompileOutput; unchanged: boolean }
+  /** The mock of a module that is its own violation, instead of the output. */
+  | { kind: 'mock'; output: CompileOutput; code: string; mockId: string }
+  /**
+   * The module fails, current or not: the compile's errors (the first is
+   * the module's failure), or import protection's (dev `behavior: 'error'`).
+   */
+  | {
+      kind: 'failed'
+      output: CompileOutput
+      errors: Array<ReportedDiagnostic>
+      error: Error | null
+    }
+
+/** A diagnostic to report, with its positions (`StartDiagnosticSink`). */
+export interface ReportedDiagnostic {
+  d: Diagnostic
+  at: DiagnosticPosition | undefined
+  generated?: DiagnosticPosition
+}
+
+/** A warning to report once per run: `claim` takes it in the run's ledger (true: new). */
+interface ReportedWarning extends ReportedDiagnostic {
+  /** The module it is of, when not the compiled file (a bundle's source). */
+  module?: string
+  claim: () => boolean
+}
+
+/**
+ * What a compile reports (`StartCompilerSession.diagnose`), decided and not
+ * yet told: the errors, the package-use warnings and the compile's
+ * warnings, each warning with its claim in the run's ledger.
+ */
+export interface Diagnosis {
+  errors: Array<ReportedDiagnostic>
+  packageWarnings: Array<ReportedWarning>
+  warnings: Array<ReportedWarning>
+}
+
+/** What a host hands `transform` besides the module: where a committed answer's warnings go, and what follows a commit. */
+export interface TransformHooks {
+  warn: NonNullable<StartDiagnosticSink['warn']>
+  /** After a commit, before the caller gets its answer (Vite: the dev reporter's flush, `reloadMismatched`). */
+  committed?: () => void | Promise<void>
+}
+
+const PASSTHROUGH: ModuleOutcome = { kind: 'passthrough' }
+
+/** An answer of `transform`, and what its commit writes and tells. */
+interface Answer {
+  outcome: ModuleOutcome
+  judgement: Judgement | null
+  diagnosis: Diagnosis | null
+}
+
+const PASSED: Answer = {
+  outcome: PASSTHROUGH,
+  judgement: null,
+  diagnosis: null,
+}
+
 export class StartCompilerSession {
   /** Import protection of the session (null: `enabled: false`). */
   readonly ip: ImportProtection | null
@@ -209,6 +296,12 @@ export class StartCompilerSession {
   readonly warnings = new WarningLedger()
   /** The last production client build's publication (`publishClientOutput`); null before the run's first. */
   private published: ClientPublication | null = null
+  /**
+   * The modules with a committed record (`transform`'s commit), by
+   * `${env}\0${canonicalId}`: a module no longer admitted is left to the
+   * bundler without asking the core only when it has none.
+   */
+  private readonly committed = new Set<string>()
   private readonly routerConfigs = new Map<
     'client' | 'server',
     RouterPlannerConfig
@@ -446,6 +539,27 @@ export class StartCompilerSession {
       current: () => boolean
     }) => T | Promise<T>,
   ): Promise<T> {
+    return this.settleCore(input, host, ({ output, current }) => {
+      if (current() && !this.opts.serverFnsAtSettlement) {
+        this.registry.set(
+          input.env,
+          identify(input.id).canonicalId,
+          output && serverFnFactsOf(output),
+        )
+      }
+      return use({ output, current })
+    })
+  }
+
+  /** `settleModule` of one id with the session's planners and configuration, writing nothing of the session's. */
+  private settleCore<T>(
+    input: StartCompileInput,
+    host: HostServices,
+    use: (settled: {
+      output: CompileOutput | null
+      current: () => boolean
+    }) => T | Promise<T>,
+  ): Promise<T> {
     const { env, late } = input
     const config = this.configFor(env)
     return settleModule(
@@ -474,18 +588,159 @@ export class StartCompilerSession {
       },
       host,
       this.caches,
-      (settlement) => {
-        const output = settlement.kind === 'compiled' ? settlement.output : null
-        if (settlement.current() && !this.opts.serverFnsAtSettlement) {
-          this.registry.set(
-            env,
-            identify(input.id).canonicalId,
-            output && serverFnFactsOf(output),
-          )
-        }
-        return use({ output, current: settlement.current })
-      },
+      (settlement) =>
+        use({
+          output: settlement.kind === 'compiled' ? settlement.output : null,
+          current: settlement.current,
+        }),
     )
+  }
+
+  /**
+   * One module of the bundler's main transform, settled in the core and
+   * judged: admitted (`compiles`) → settled → diagnosed (pure) → judged by
+   * import protection → its edge modules defined (every answer: its code
+   * names them) → the outcome; then, for a current answer only (no newer
+   * answer of the module exists: `settleModule`'s `current()`, read in the
+   * commit's turn), the commit: the registry, import protection's importer
+   * record, the committed-id set, then the warnings (claimed in the run's
+   * ledger), import protection's reports and `hooks.committed`. The caller
+   * always gets its own answer. A module not admitted is left to the
+   * bundler without asking the core unless the session committed a record
+   * of it or the core holds its key: then the core settles it (a request
+   * in flight is overtaken) and its commit retires the record. `host`: the
+   * host services, made for a module the session takes.
+   */
+  async transform(
+    req: ModuleRequest,
+    host: () => HostServices,
+    hooks: TransformHooks,
+  ): Promise<{ outcome: ModuleOutcome; committed: boolean }> {
+    const identity = identify(req.id)
+    const key = `${req.env.name}\u0000${identity.canonicalId}`
+    const admitted = this.compiles(identity.path, req.code)
+    if (
+      !admitted &&
+      !this.committed.has(key) &&
+      !liveKey(this.caches, {
+        env: req.env.name,
+        canonicalId: identity.canonicalId,
+        configKey: this.configFor(req.env).configKey,
+      })
+    ) {
+      return { outcome: PASSTHROUGH, committed: false }
+    }
+    return this.settleCore(req, host(), async ({ output, current }) => {
+      const answer =
+        admitted && output ? await this.answer(req, identity, output) : PASSED
+      if (!current()) {
+        return { outcome: answer.outcome, committed: false }
+      }
+      this.commit(req, identity.canonicalId, key, answer)
+      const { outcome, diagnosis, judgement } = answer
+      if (diagnosis && outcome.kind !== 'failed') {
+        for (const w of diagnosis.packageWarnings) {
+          if (w.claim()) {
+            hooks.warn(w.d, w.at, w.generated, w.module)
+          }
+        }
+        for (const w of diagnosis.warnings) {
+          if (w.claim()) {
+            hooks.warn(w.d, w.at, w.generated, w.module)
+          }
+        }
+      }
+      if (judgement && judgement.reports.length > 0) {
+        await runReports(judgement.reports)
+      }
+      await hooks.committed?.()
+      return { outcome, committed: true }
+    })
+  }
+
+  /** `transform`'s answer on a compiled module: diagnosed, judged, its edge modules defined. */
+  private async answer(
+    req: ModuleRequest,
+    identity: ReturnType<typeof identify>,
+    output: CompileOutput,
+  ): Promise<Answer> {
+    const diagnosis = this.diagnose(
+      output,
+      identity.path,
+      req.code,
+      req.env.type,
+      req.originalMap,
+      req.reach?.(),
+    )
+    if (diagnosis.errors.length > 0) {
+      return {
+        outcome: {
+          kind: 'failed',
+          output,
+          errors: diagnosis.errors,
+          error: null,
+        },
+        judgement: null,
+        diagnosis,
+      }
+    }
+    const ipEnv = this.ip?.env(req.env.name)
+    let judgement: Judgement | null = null
+    if (ipEnv) {
+      const judged = ipEnv.judge(req.id, output)
+      judgement = judged instanceof Promise ? await judged : judged
+      ipEnv.defineEdges(judgement.edgeModules)
+    }
+    let outcome: ModuleOutcome
+    if (judgement?.error) {
+      outcome = { kind: 'failed', output, errors: [], error: judgement.error }
+    } else if (judgement?.mock) {
+      outcome = {
+        kind: 'mock',
+        output,
+        code: judgement.mock.code,
+        mockId: judgement.mock.id,
+      }
+    } else {
+      outcome = {
+        kind: 'served',
+        output,
+        unchanged: identity.derived === null && output.code === req.code,
+      }
+    }
+    return { outcome, judgement, diagnosis }
+  }
+
+  /**
+   * A current answer's writes (`transform`): served or mock, the module's
+   * server functions (each output's own, as it compiled: a mock's too) and
+   * import protection's record, and the module enters the committed-id set;
+   * passthrough or failed, both are retired and it leaves the set.
+   */
+  private commit(
+    req: ModuleRequest,
+    canonicalId: string,
+    key: string,
+    { outcome, judgement }: Answer,
+  ): void {
+    const kept = outcome.kind === 'served' || outcome.kind === 'mock'
+    if (!this.opts.serverFnsAtSettlement) {
+      this.registry.set(
+        req.env,
+        canonicalId,
+        kept ? serverFnFactsOf(outcome.output) : null,
+      )
+    }
+    const ipEnv = this.ip?.env(req.env.name)
+    if (kept) {
+      if (judgement) {
+        ipEnv!.commit(req.id, judgement.record)
+      }
+      this.committed.add(key)
+    } else {
+      ipEnv?.retire(req.id)
+      this.committed.delete(key)
+    }
   }
 
   /** Compiles one id (env or derived) of a module of an environment (`settle`'s output). */
@@ -538,6 +793,11 @@ export class StartCompilerSession {
   forget(path: string): void {
     this.registry.forget(path)
     this.ip?.forget(path)
+    for (const key of this.committed) {
+      if (key.slice(key.indexOf('\u0000') + 1).split('?')[0] === path) {
+        this.committed.delete(key)
+      }
+    }
   }
 
   /**
@@ -567,6 +827,51 @@ export class StartCompilerSession {
     inputMap?: () => InputSourceMap | null,
     reach?: StartPackageReach,
   ): void {
+    const { errors, packageWarnings, warnings } = this.diagnose(
+      out,
+      file,
+      code,
+      envType,
+      inputMap,
+      reach,
+    )
+    for (const w of packageWarnings) {
+      if (sink.warn && w.claim()) {
+        sink.warn(w.d, w.at, w.generated, w.module)
+      }
+    }
+    for (const e of errors) {
+      sink.error(e.d, e.at, e.generated)
+    }
+    for (const w of warnings) {
+      sink.found?.(w.d, w.at, w.generated)
+      if (sink.warn && w.claim()) {
+        sink.warn(w.d, w.at, w.generated)
+      }
+    }
+  }
+
+  /**
+   * What a compile reports (`report`), decided and told to no one (no
+   * warning claimed in the run's ledger: each carries its claim): the
+   * errors and warnings `report` describes, each at its position (a compile
+   * of another plugin's output: in the original file, the position in
+   * `code` beside it; an installed package's diagnostic named by its
+   * package after its position is read).
+   */
+  diagnose(
+    out: CompileOutput,
+    file: string,
+    code: string,
+    envType: 'client' | 'server',
+    inputMap?: () => InputSourceMap | null,
+    reach?: StartPackageReach,
+  ): Diagnosis {
+    const diagnosis: Diagnosis = {
+      errors: [],
+      packageWarnings: [],
+      warnings: [],
+    }
     // the module each offset of `code` is from: the file, or a bundle's
     // source (`StartPackageReach.original`)
     const original = reach?.original
@@ -577,17 +882,45 @@ export class StartCompilerSession {
     if (!this.opts.packageUseAtSeal && uses) {
       // once per module the uses are in (`packageUseWarning`: once per package)
       for (const module of new Set(uses.map(moduleAt))) {
+        // (the package's root, claimed once the warning is told)
+        let root = ''
         const warning =
           module !== null &&
           packageRootOf(module) !== null &&
-          this.packageUseWarning(module, reach)
+          this.packageUseWarning(module, reach, undefined, (r) => {
+            root = r
+            return true
+          })
         if (warning) {
-          sink.warn?.(warning, undefined, undefined, module)
+          const claimed = root
+          diagnosis.packageWarnings.push({
+            d: warning,
+            at: undefined,
+            module,
+            claim: () =>
+              this.warnings.once(claimed, {
+                code: 'start-package',
+                message: claimed,
+              }),
+          })
         }
       }
     }
     if (out.diagnostics.length === 0) {
-      return
+      return diagnosis
+    }
+    const collect: StartDiagnosticSink = {
+      error: (d, at, generated) => {
+        diagnosis.errors.push({ d, at, generated })
+      },
+      warn: (d, at, generated) => {
+        diagnosis.warnings.push({
+          d,
+          at,
+          generated,
+          claim: () => this.warnings.once(file, d),
+        })
+      },
     }
     let commonJsScript: boolean | undefined
     // positions in the original file (`originalPositions`, none in another)
@@ -602,7 +935,6 @@ export class StartCompilerSession {
       inputMap && locate && isVueSfc(file)
         ? vueReport(out, file, inputMap, locate)
         : null
-    const located = locate ? originalSink(sink, code, locate, vue?.moved) : sink
     // an installed package's module, or a bundle (whose diagnostic is of
     // the module its offset is from: installed code, unless that is the
     // user's source; unknown, it stays installed)
@@ -616,12 +948,17 @@ export class StartCompilerSession {
     }
     const installed =
       original !== undefined || this.isInstalled(file) ? ownerOf : null
+    // (the position first: `originalSink` finds a moved diagnostic by the
+    // diagnostic itself, which `installedSink` rewords)
+    const named =
+      installed === null ? collect : installedSink(collect, installed)
     reportCompileDiagnostics(
       vue?.diagnostics ?? out.diagnostics,
       file,
       code,
-      this.warnings,
-      installed === null ? located : installedSink(located, installed),
+      // (each warning is claimed when it is told: `ReportedWarning.claim`)
+      UNCLAIMED,
+      locate ? originalSink(named, code, locate, vue?.moved) : named,
       (d) => {
         if (namesStartSpecifier(code)) {
           return {
@@ -647,6 +984,7 @@ export class StartCompilerSession {
         return null
       },
     )
+    return diagnosis
   }
 
   /** Whether `file` is a module of an installed package (`node_modules`). */
@@ -811,6 +1149,11 @@ export class StartCompilerSession {
   release(envName: string): void {
     releaseEnvironment(this.caches, envName)
     this.ip?.release(envName)
+    for (const key of this.committed) {
+      if (key.startsWith(`${envName}\u0000`)) {
+        this.committed.delete(key)
+      }
+    }
   }
 }
 
@@ -1004,6 +1347,9 @@ function leftToTheBundler(code: string, file: string): boolean {
     parseModule(code, { lang, sourceType: 'commonjs', semantic: false }).ok
   )
 }
+
+/** A ledger that claims nothing (`diagnose`: a warning is claimed when it is told). */
+const UNCLAIMED = { once: () => true }
 
 /** The configuration key of the late pass (import protection and start-env over a non-JS module's JS) of a configuration. */
 const lateConfigKey = (configKey: string) => `late\u0000${configKey}`

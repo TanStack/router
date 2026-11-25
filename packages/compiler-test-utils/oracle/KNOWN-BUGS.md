@@ -138,15 +138,6 @@ function info not found` when one of them calls it, and the build says nothing, 
   the value, and a wrapper is not followed (R92). SPEC J4.5. `start-plugin-core/tests/start-compiler-cases.test.ts`:
   "each output keeps its implementation of an isomorphic fn whose chain passes through a helper function". Fix: each
   output keeps its implementation, or the build fails at the helper.
-- **An overtaken compile still publishes** (settlement design, step 0; whole-PR review C6-02): a compile whose answer a
-  newer request, an event or a removal overtook while it waited (a resolution a plugin holds, an async `allowImport`)
-  still writes import protection's state and reports its violations when it answers last: `onViolation` hears of an
-  import the file no longer has, or of an import judged against a dependency as it was. Vite dev. SPEC J6.5.
-  `start-plugin-core/tests/integration/start-dev-settlement.test.ts`: "C6-02b: an import the newer text removed is not
-  reported", "the file saved with other text and back (A, B, A): the older A reports nothing", "the file removed
-  and created again with the same bytes: the older compile reports nothing", "a dependency-only rebuild of the same
-  text: the older compile reports nothing". Fix: a compile's shared writes and reports follow only
-  an answer no newer answer of its key overtook (step 2: `session.transform`, one commit for a current answer).
 - **A check that waits while an event lands accepts what it read before** (settlement design, step 0; whole-PR review
   C6-01, C6-03): a plan hit or a restored plan whose resolution the resolver read before a tsconfig change and
   answered after it is accepted (the hit emits the old target's output; the restore reports nothing stale); a
@@ -1822,6 +1813,14 @@ Paths under `start-plugin-core/tests/` unless noted.
 
 Paths under `start-plugin-core/tests/integration/`; `ip/` means `integration/importProtection/`.
 
+- **An overtaken compile still published** (settlement design, step 0; whole-PR review C6-02): a compile whose answer
+  a newer request, an event or a removal overtook while it waited (a resolution a plugin holds, an async
+  `allowImport`) wrote import protection's state and reported its violations when it answered last. Vite dev. SPEC
+  J6.5. Fixed in step 2 (`session.transform`: a compile's shared writes and reports follow only a current answer).
+  `start-dev-settlement.test.ts`: "C6-02b: an import the newer text removed is not reported", "the file saved with
+  other text and back (A, B, A): the older A reports nothing", "the file removed and created again with the same
+  bytes: the older compile reports nothing", "a dependency-only rebuild of the same text: the older compile reports
+  nothing".
 - **Allowing an import only silenced the report on `main`** (`onViolation` returning `false`, replaced by
   `allowImport`): the mock was already chosen. SPEC J6.6.
   `ip/build-markers.test.ts`: "allows the import of %s: the build succeeds and the client gets the real module";

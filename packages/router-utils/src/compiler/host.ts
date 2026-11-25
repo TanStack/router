@@ -402,6 +402,16 @@ export function planCacheFor(caches: CompilerCaches, env: string): PlanCache {
   return cache
 }
 
+/**
+ * Whether the core holds anything of a key (`PlanCache.live`): a host that
+ * leaves a module to the bundler without asking the core (a module it does
+ * not admit) asks first, so a request in flight is overtaken and a
+ * published plan's record retired through the core.
+ */
+export function liveKey(caches: CompilerCaches, key: PlanKey): boolean {
+  return caches.plans.get(key.env)?.live(key) ?? false
+}
+
 /** A query carrying one of the compiler-owned keys (`OWNED_QUERY_KEYS`: the derived module ids). */
 export const OWNED_QUERY_RE = new RegExp(
   `(?:^|[?&])(?:${Object.values(OWNED_QUERY_KEYS).join('|')})(?:=|&|$)`,

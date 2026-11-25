@@ -97,11 +97,17 @@ export function latePassPlugin(state: ViteCompilerState): Plugin {
           env.type,
           readInputMap,
         )
-        let mock = state.afterCompile(s, env, id, out, (error) =>
-          this.error(error),
-        )
-        if (mock instanceof Promise) {
-          mock = await mock
+        let outcome = s.start.afterCompile(env, id, out)
+        if (outcome instanceof Promise) {
+          outcome = await outcome
+        }
+        const { error, mock } = outcome
+        if (error) {
+          this.error(error)
+        }
+        const committed = state.afterCommit(s, env)
+        if (committed) {
+          await committed
         }
         if (mock) {
           return { code: mock.code, map: null }

@@ -766,6 +766,11 @@ export class PlanCache {
     return this.records.get(planKeyString(key))?.generation ?? 0
   }
 
+  /** Whether the core holds anything of `key`: a request in progress, a published or restored plan. */
+  live(key: PlanKey): boolean {
+    return this.records.has(planKeyString(key))
+  }
+
   /** Makes attempts in flight for `key` stale (nothing to do when there are none). */
   bump(key: PlanKey): void {
     const ks = planKeyString(key)

@@ -386,6 +386,42 @@ describe('vite dev', () => {
     timeout,
   )
 
+  // An SFC of an installed package that declares Start: the refusal Vue's
+  // generated code moves to the binding's declaration keeps that position
+  // while it names the package.
+  // Source: whole-PR review S3-17 (Fable, Gemini); settlement step 2.
+  test(
+    "a refusal in an installed package's SFC is at its position in the SFC",
+    async () => {
+      devHost ??= createStartHost({ framework: 'vue' }).then((host) => {
+        hosts.push(host)
+        return host
+      })
+      const row = refusedInDev[0]!
+      const file = 'node_modules/kit/Page.vue'
+      const startCase = await (
+        await devHost
+      ).case({
+        [file]: row.sfc,
+        'node_modules/kit/package.json': JSON.stringify({
+          name: 'kit',
+          version: '1.0.0',
+          type: 'module',
+          peerDependencies: { '@tanstack/vue-start': '*' },
+        }),
+        'module.ts': `export { default } from './${file}'\n`,
+      })
+      const failure = await compileError(startCase, 'client', file)
+      expect(failure).toBeInstanceOf(Error)
+      expectAtRefusal(
+        [...diagnosticsOf(failure!.error), ...failure!.reported],
+        startCase.file(file),
+        row,
+      )
+    },
+    timeout,
+  )
+
   test.each(fixes)(
     '$name compiles',
     async ({ sfc: text, mark }) => {

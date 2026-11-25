@@ -7,10 +7,10 @@
  * An answer that a newer request, an event or a removal overtook while it
  * waited reports nothing and replaces nothing.
  *
- * Settlement design, step 0 (design-settlement.md §6, rows (b) and (c)).
- * The `.fails` tests are pins (KNOWN-BUGS "An overtaken compile still
- * publishes"): step 2 (`session.transform`: `judge`, `defineEdges`, one
- * commit for a current answer) turns them green.
+ * Settlement design, step 0 (design-settlement.md §6, rows (b) and (c));
+ * step 2 (`session.transform`: `judge`, `defineEdges`, one commit for a
+ * current answer) fixed the overlaps the older answer published in
+ * (KNOWN-BUGS, fixed: "An overtaken compile still published").
  */
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
@@ -117,7 +117,7 @@ describe('Vite dev: an older compile of a module answered after a newer one', ()
   // the file no longer has.
   // Source: whole-PR review C6-02 (b) (V-28, Astra's Vite dev probe
   // `v28/overlap.mjs`).
-  test.fails(
+  test(
     'C6-02b: an import the newer text removed is not reported',
     async () => {
       const gate = holdPoint()
@@ -192,7 +192,7 @@ describe('Vite dev: an older compile of a module answered after a newer one', ()
   // Overlaps whose older answer is of the text the file has again, judged
   // against `lib.ts` as it was: a text comparison takes it for the newest.
   // Source: Astra's review of the settlement design, change 2.
-  test.fails(
+  test(
     'the file saved with other text and back (A, B, A): the older A reports nothing',
     async () => {
       expect(
@@ -211,7 +211,7 @@ describe('Vite dev: an older compile of a module answered after a newer one', ()
   // created again joins the older request of the same URL: the newest
   // request names the file by Vite's `/@fs/` URL.
   // Source: Astra's review of settlement step 0, finding 1 (`unlink.mjs`).
-  test.fails(
+  test(
     'the file removed and created again with the same bytes: the older compile reports nothing',
     async () => {
       expect(
@@ -228,7 +228,7 @@ describe('Vite dev: an older compile of a module answered after a newer one', ()
     timeout,
   )
 
-  test.fails(
+  test(
     'a dependency-only rebuild of the same text: the older compile reports nothing',
     async () => {
       expect(

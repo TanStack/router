@@ -94,7 +94,7 @@ export function reportCompileDiagnostics(
   diagnostics: ReadonlyArray<Diagnostic>,
   file: string,
   code: string,
-  ledger: WarningLedger,
+  ledger: Pick<WarningLedger, 'once'>,
   sink: DiagnosticSink,
   parse: (d: Diagnostic) => Diagnostic | null,
 ): void {

@@ -115,6 +115,7 @@ export {
   fileModifiedAt,
   invalidate,
   isAnalyzableSpecifier,
+  liveKey,
   OWNED_QUERY_RE,
   planDependencyFiles,
   releaseEnvironment,

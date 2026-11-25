@@ -48,11 +48,9 @@ import { createVirtualWaits } from './virtual-waits'
 import type {
   ClientPublication,
   StartCompilerEnvironment,
+  StartDiagnosticSink,
+  StartPackageReach,
 } from '../compiler/session'
-import type {
-  CompileOutcome,
-  CompiledOutputLike,
-} from '../import-protection/session'
 import type { GenerateFunctionId } from '../server-fns/ids'
 import type {
   CompileStartFrameworkOptions,
@@ -864,34 +862,47 @@ export class ViteCompilerState implements ClientBuilds {
 
   /**
    * Reports a compile's diagnostics through a hook context (`ctx.error`
-   * throws). `inputMap`: a compile of another plugin's output (its
-   * positions are the original file's, `StartCompilerSession.report`). The
-   * dev server's hook context maps a `loc` through the module's combined
-   * source map itself: there, `loc` is the position in `code`.
+   * throws): `diagnosticSink`'s sink, and the Start packages the host
+   * bundles (`packageReach`). `inputMap`: a compile of another plugin's
+   * output (its positions are the original file's,
+   * `StartCompilerSession.report`).
    */
   reportDiagnostics(
     s: Session,
-    ctx: {
-      environment: Environment
-      warn: (w: {
-        message: string
-        id?: string
-        loc?: { file: string; line: number; column: number }
-      }) => void
-      error: (e: {
-        message: string
-        id?: string
-        loc?: { file: string; line: number; column: number }
-      }) => never
-    },
+    ctx: DiagnosticContext,
     out: CompileOutput,
     filePath: string,
     code: string,
     envType: 'client' | 'server',
     inputMap?: () => InputSourceMap | null,
   ): void {
+    s.start.report(
+      out,
+      filePath,
+      code,
+      envType,
+      this.diagnosticSink(s, ctx, filePath, code, inputMap !== undefined),
+      inputMap,
+      this.packageReach(ctx.environment, filePath, code),
+    )
+  }
+
+  /**
+   * A hook context's sink of a compile's diagnostics (`ctx.error` throws).
+   * `mapped`: the positions are the original file's (a compile of another
+   * plugin's output). The dev server's hook context maps a `loc` through
+   * the module's combined source map itself: there, `loc` is the position
+   * in `code`.
+   */
+  diagnosticSink(
+    s: Session,
+    ctx: DiagnosticContext,
+    filePath: string,
+    code: string,
+    mapped: boolean,
+  ): Required<Pick<StartDiagnosticSink, 'error' | 'warn'>> {
     // a Vue SFC's refusals are positioned in the SFC (`at`), not in `code`
-    const frameOf = inputMap ? null : code
+    const frameOf = mapped ? null : code
     const name = displayPath(filePath, s.start.opts.root)
     // Vite's dev transform context maps `loc` through the module's source
     // map; bundled dev's (Rolldown's) does not
@@ -905,60 +916,60 @@ export class ViteCompilerState implements ClientBuilds {
         ? // Vite maps the position in `code` back to the SFC itself
           viteLog(d.message, generated, code, name, filePath, true)
         : viteLog(d.message, at, frameOf, name, filePath, dev)
-    s.start.report(
-      out,
-      filePath,
-      code,
-      envType,
-      {
-        error: (d, at, generated) => ctx.error(log(d, at, generated)),
-        // (a warning of a bundle's source names that module: Vite prints it)
-        warn: (d, at, generated, module) =>
-          ctx.warn(
-            module === undefined
-              ? log(d, at, generated)
-              : { message: d.message, id: module },
-          ),
-      },
-      inputMap,
-      this.startPackageRoots
-        ? {
-            roots: this.startPackageRoots,
-            original: bundleOriginal(ctx.environment, filePath, code),
-          }
-        : undefined,
-    )
+    return {
+      error: (d, at, generated) => ctx.error(log(d, at, generated)),
+      // (a warning of a bundle's source names that module: Vite prints it)
+      warn: (d, at, generated, module) =>
+        ctx.warn(
+          module === undefined
+            ? log(d, at, generated)
+            : { message: d.message, id: module },
+        ),
+    }
+  }
+
+  /** The Start packages the host bundles, for a compile's package-use warnings (`StartCompilerSession.report`'s `reach`). */
+  packageReach(
+    environment: Environment,
+    filePath: string,
+    code: string,
+  ): StartPackageReach | undefined {
+    return this.startPackageRoots
+      ? {
+          roots: this.startPackageRoots,
+          original: bundleOriginal(environment, filePath, code),
+        }
+      : undefined
   }
 
   /**
-   * What follows a compile (`StartCompilerSession.afterCompile`): an
-   * `error`-behaviour violation fails the module; otherwise the import
+   * What follows a commit of a module in an environment (`transform`'s, and
+   * the projections' of the late pass and the asset load): the import
    * protection reports whose importers the graph (or the judged edges) can
    * reach now are printed, and (dev) a denied file its importers now ask
    * for otherwise is built again (`reloadMismatched`), before the module is
-   * served (a host completion event, no microtask polling). Gives the mock
-   * to serve instead of the output, if any.
+   * served (a host completion event, no microtask polling).
    */
-  afterCompile(
-    s: Session,
-    env: ViteStartEnvironment,
-    id: string,
-    out: CompiledOutputLike,
-    fail: (error: Error) => never,
-  ): CompileOutcome['mock'] | Promise<CompileOutcome['mock']> {
-    const finish = ({ error, mock }: CompileOutcome) => {
-      if (error) {
-        fail(error)
-      }
-      const ipEnv = s.start.ip?.env(env.name)
-      ipEnv?.reporter?.flush()
-      return s.server && ipEnv?.serving
-        ? reloadMismatched(s, env).then(() => mock)
-        : mock
-    }
-    const outcome = s.start.afterCompile(env, id, out)
-    return outcome instanceof Promise ? outcome.then(finish) : finish(outcome)
+  afterCommit(s: Session, env: ViteStartEnvironment): void | Promise<void> {
+    const ipEnv = s.start.ip?.env(env.name)
+    ipEnv?.reporter?.flush()
+    return s.server && ipEnv?.serving ? reloadMismatched(s, env) : undefined
   }
+}
+
+/** A hook context that reports a compile's diagnostics (`ctx.error` throws). */
+interface DiagnosticContext {
+  environment: Environment
+  warn: (w: {
+    message: string
+    id?: string
+    loc?: { file: string; line: number; column: number }
+  }) => void
+  error: (e: {
+    message: string
+    id?: string
+    loc?: { file: string; line: number; column: number }
+  }) => never
 }
 
 /**

@@ -133,17 +133,24 @@ function envCompilerPlugins(
   const watches = env.name === state.watchingEnv
   const compileTransform: TransformHandler = async function (code, id) {
     const identity = identify(id)
-    const s = state.sessionOf(this.environment)
-    if (identity.lang === null || !s.start.compiles(identity.path, code)) {
+    if (identity.lang === null) {
       return null
     }
+    const s = state.sessionOf(this.environment)
     const environment = this.environment
     let inputMap: InputSourceMap | null | undefined
     const readInputMap = () =>
       inputMap === undefined
         ? (inputMap = inputMapOf(this, code, identity.path))
         : inputMap
-    const out = await s.start.compile(
+    // a Vue SFC's script block, Vue's output: positions in the SFC
+    const vue = isVueSfc(identity.path)
+    // (the host services and the sink only for a module the session takes:
+    // most of a dependency graph passes through)
+    let sink: ReturnType<typeof state.diagnosticSink> | undefined
+    const sinkOf = () =>
+      (sink ??= state.diagnosticSink(s, this, identity.path, code, vue))
+    const { outcome } = await s.start.transform(
       {
         id,
         code,
@@ -152,39 +159,42 @@ function envCompilerPlugins(
         wantMap:
           s.start.opts.mode === 'dev' ||
           environment.config.build.sourcemap !== false,
+        ...(vue && { originalMap: readInputMap }),
+        reach: () => state.packageReach(environment, identity.path, code),
       },
-      state.hostFor(
-        s,
-        this.environment,
-        (source, imp, options) => this.resolve(source, imp, options),
-        id,
-      ),
+      () =>
+        state.hostFor(
+          s,
+          environment,
+          (source, imp, options) => this.resolve(source, imp, options),
+          id,
+        ),
+      {
+        warn: (d, at, generated, module) =>
+          sinkOf().warn(d, at, generated, module),
+        committed: () => state.afterCommit(s, env),
+      },
     )
-    if (!out) {
+    if (outcome.kind === 'passthrough') {
       return null
     }
-    watchDependencies(this, out, normalizePath(identity.path))
-    state.reportDiagnostics(
-      s,
-      this,
-      out,
-      identity.path,
-      code,
-      env.type,
-      // a Vue SFC's script block, Vue's output
-      isVueSfc(identity.path) ? readInputMap : undefined,
-    )
-    let mock = state.afterCompile(s, env, id, out, (error) => this.error(error))
-    if (mock instanceof Promise) {
-      mock = await mock
-    }
-    if (mock) {
-      return { code: mock.code, map: null }
-    }
-    if (identity.derived === null && out.code === code) {
+    watchDependencies(this, outcome.output, normalizePath(identity.path))
+    if (outcome.kind === 'failed') {
+      if (outcome.error) {
+        this.error(outcome.error)
+      }
+      // (the first error fails the module: `ctx.error` throws)
+      const [first] = outcome.errors
+      sinkOf().error(first!.d, first!.at, first!.generated)
       return null
     }
-    return { code: out.code, map: out.map as never }
+    if (outcome.kind === 'mock') {
+      return { code: outcome.code, map: null }
+    }
+    if (outcome.unchanged) {
+      return null
+    }
+    return { code: outcome.output.code, map: outcome.output.map as never }
   }
   const plugin: Plugin = {
     name: `tanstack-start:compiler:${env.name}`,
@@ -379,11 +389,14 @@ function envCompilerPlugins(
           // import the compiler does not read may have brought it here:
           // a denied file's text is served as its mock
           const out = await s.start.assetOutput(env, id)
-          const mock =
-            out &&
-            (await state.afterCompile(s, env, id, out, (error) =>
-              this.error(error),
-            ))
+          if (!out) {
+            return null
+          }
+          const { error, mock } = await s.start.afterCompile(env, id, out)
+          if (error) {
+            this.error(error)
+          }
+          await state.afterCommit(s, env)
           if (!mock) {
             return null
           }

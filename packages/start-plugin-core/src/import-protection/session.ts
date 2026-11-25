@@ -854,7 +854,51 @@ export interface CompileOutcome {
   mock?: { code: string; id: string }
 }
 
-const NO_ERROR: CompileOutcome = { error: null }
+/**
+ * An importer's record of one answer (`ImportProtectionEnv.judge`), which
+ * `commit` writes for a current answer: plain data.
+ */
+export interface IpRecord {
+  /** The output's violations (every environment's: a handoff's are another's). */
+  violations: Array<EdgeViolation>
+  clientReferences: boolean
+  /** The output is the env module (its client references are decided by it). */
+  envOutput: boolean
+  /** The edges its plan judged; null: none (the planner did not run). */
+  edges: ReturnType<typeof judgedEdgesOf>
+  /** The verdict on a module that is its own violation; null: it is none. */
+  self: Served | null
+}
+
+/** An edge module a judgement's code names (`defineEdges`), with `allowImport`'s decision on it (null: undecided, the mock). */
+export interface EdgeDefinition {
+  key: string
+  content: EdgeModuleContent
+  /** Its code is handed to the listeners (a handoff's key has none: `EdgeViolation.handoff`). */
+  emit: boolean
+  verdict: 'mock' | 'real' | null
+}
+
+/** One answer judged by import protection (`ImportProtectionEnv.judge`). */
+export interface Judgement {
+  record: IpRecord
+  edgeModules: Array<EdgeDefinition>
+  /** The mock to serve instead of the output (its own violation). */
+  mock?: { code: string; id: string }
+  /** Fails the module, current or not (dev `behavior: 'error'`). */
+  error: Error | null
+  /** What a commit tells (`onViolation`, the dev reporter), in order. */
+  reports: Array<() => Promise<void>>
+}
+
+/** Runs a commit's reports in order. */
+export async function runReports(
+  reports: ReadonlyArray<() => Promise<void>>,
+): Promise<void> {
+  for (const report of reports) {
+    await report()
+  }
+}
 
 /** The trace of a report that prints none (each `violationInfo` copies it). */
 const NO_TRACE: Trace = { steps: [], fromEntry: false }
@@ -942,7 +986,7 @@ class ImportProtectionEnv {
         // module's own violation by `reportSettled`)
         v.handoff ||
         v.self ||
-        (await this.allows(v))
+        (await this.decide(v))
       ) {
         continue
       }
@@ -1045,124 +1089,236 @@ class ImportProtectionEnv {
   }
 
   /**
-   * After EVERY compile of an id of this environment (fresh or cached):
-   * registers the output's edge modules (Rspack: their virtual files are
-   * written through `onEdgeModule` before the importer's dependencies
-   * resolve) and, in dev, reports the violations it holds and returns the
-   * error of `behavior: 'error'` ones (the module must not be served), but
-   * for those `allowImport` allows. A module that is its own violation is
-   * served as its mock unless it has real demand (`allowsSelf`), and the
-   * verdict is written to the served ledger; a build reports a served mock on
-   * survival (`surviving`), a dev compile now, as its only violation (its
-   * imports reach nothing).
+   * Judges a compile of an id of this environment (fresh or cached) and
+   * writes nothing an importer owns (`commit` does, for a current answer
+   * only): the importer's record (its violations, judged edges, client
+   * references, the verdict on a module that is its own violation), its
+   * edge modules with `allowImport`'s decision on each (`defineEdges`
+   * defines them for every answer: its code names them), the mock a module
+   * that is its own violation is served as unless it has real demand
+   * (`allowsSelf`), in dev the error of `behavior: 'error'` violations
+   * `allowImport` does not allow (the module must not be served, current or
+   * not), and the reports a commit runs (`onViolation`, the dev reporter).
+   * A build reports a served mock on survival (`surviving`), a dev compile
+   * now, as its only violation (its imports reach nothing). A promise only
+   * when something is asked now (`allowImport`; a module's own violation).
+   */
+  judge(
+    importerId: string,
+    out: CompiledOutputLike,
+  ): Judgement | Promise<Judgement> {
+    const violations = violationsOf(out)
+    const judged = judgedEdgesOf(out)
+    const record: IpRecord = {
+      violations,
+      clientReferences: clientReferencesOf(out),
+      envOutput: out.output === 'env',
+      // the edges its plan judged, a cached plan's as a fresh one's; none
+      // (the planner did not run: the module imports nothing now): what it
+      // imported before is no edge any more, nor a real demand it made
+      edges: judged,
+      self: null,
+    }
+    const edgeModules: Array<EdgeDefinition> = []
+    for (const v of violations) {
+      if (v.env === this.name) {
+        edgeModules.push({
+          key: v.module.key,
+          content: v.module.content,
+          emit: !v.handoff,
+          verdict: null,
+        })
+      }
+    }
+    const judgement: Judgement = {
+      record,
+      edgeModules,
+      error: null,
+      reports: [],
+    }
+    const self = violations.find((v) => v.self && v.env === this.name)
+    if (!self) {
+      return violations.length > 0
+        ? this.judgeImports(judgement, violations)
+        : judgement
+    }
+    return this.judgeSelf(judgement, self)
+  }
+
+  /** `judge` of a module that is its own violation: served real or as its mock. */
+  private async judgeSelf(
+    judgement: Judgement,
+    self: EdgeViolation,
+  ): Promise<Judgement> {
+    const id = normalizePath(self.importerId)
+    // (the graph's verdict of the last settlement, else the guess)
+    const settled = this.served.get(id)?.settled
+    const real = settled ?? (await this.allowsSelf(self))
+    judgement.record.self = {
+      verdict: real ? 'real' : 'mock',
+      self,
+      ...(settled !== undefined && { settled }),
+    }
+    if (real) {
+      return this.judgeImports(
+        judgement,
+        judgement.record.violations.filter((v) => v !== self),
+      )
+    }
+    judgement.mock = this.mockOf(self)
+    if (this.ip.config.mode !== 'dev' || this.explainedByStaleImporter(self)) {
+      return judgement
+    }
+    const errors: Array<DevReport> = []
+    for (const { v, owner } of this.devReportsOf(self, null)) {
+      if (v.behavior === 'error') {
+        errors.push(owner.devReport(v))
+      }
+      // (a host that settles: the verdict is a guess, reported once final,
+      // `reportSettled`; the module's failure is its compile's, and a
+      // settlement that serves it otherwise builds it again)
+      if (!this.ip.settles) {
+        judgement.reports.push(async () => {
+          await owner.notify(v)
+          owner.report(v)
+        })
+      }
+    }
+    judgement.error = this.errorOf(errors)
+    return judgement
+  }
+
+  /**
+   * `judge` of a compile's imports: `allowImport`'s answer on each, asked at
+   * the compile (a denied file compiled before the bundler resolves the
+   * import then finds it allowed) and carried by its edge module's
+   * definition; in dev, the violations it does not allow are reported.
+   */
+  private judgeImports(
+    judgement: Judgement,
+    violations: Array<EdgeViolation>,
+  ): Judgement | Promise<Judgement> {
+    const dev = this.ip.config.mode === 'dev'
+    if (!dev && !this.ip.config.allowImport) {
+      return judgement
+    }
+    return (async () => {
+      const errors: Array<DevReport> = []
+      for (const v of violations) {
+        if (v.env !== this.name || v.pending) {
+          continue
+        }
+        const allowed = await this.allows(v)
+        // (no `allowImport`: no decision, the edge stays undecided)
+        if (!v.self && this.ip.config.allowImport) {
+          for (const e of judgement.edgeModules) {
+            if (e.key === v.module.key) {
+              e.verdict = allowed ? 'real' : 'mock'
+            }
+          }
+        }
+        // (a denied handoff is reported when the module it brings compiles
+        // as its mock: `devReportsOf`)
+        if (dev && !allowed && !v.handoff) {
+          if (v.behavior === 'error') {
+            errors.push(this.devReport(v))
+          }
+          judgement.reports.push(async () => {
+            await this.notify(v)
+            this.report(v)
+          })
+        }
+      }
+      judgement.error ??= this.errorOf(errors)
+      return judgement
+    })()
+  }
+
+  /**
+   * Defines a judgement's edge modules (`judge`), for every answer, current
+   * or not: the answer's code names them, and the bundler loads what its
+   * caller's code names. Content-addressed and idempotent (Rspack: their
+   * virtual files are written through `onEdgeModule` before the importer's
+   * dependencies resolve); `allowImport`'s decision on an edge is the
+   * memo's answer, the same for every answer that asks it.
+   */
+  defineEdges(edgeModules: ReadonlyArray<EdgeDefinition>): void {
+    for (const e of edgeModules) {
+      this.defineModule(e.key, e.content, e.emit)
+      if (e.verdict) {
+        this.served.set(e.key, { verdict: e.verdict, self: null })
+      }
+    }
+  }
+
+  /**
+   * Writes a current answer's importer record (`judge`): its violations
+   * (and releases the edges of its previous record it no longer has), its
+   * judged edges (the index's one writer), its client references, and the
+   * verdict on a module that is its own violation.
+   */
+  commit(importerId: string, record: IpRecord): void {
+    this.register(importerId, record.violations)
+    if (record.clientReferences) {
+      this.clientReferences.add(normalizePath(importerId))
+    } else if (this.clientReferences.size > 0 && record.envOutput) {
+      this.clientReferences.delete(normalizePath(importerId))
+    }
+    if (record.edges) {
+      this.edges.set(importerId, record.edges.edges, record.edges.revision)
+    } else {
+      this.edges.delete(importerId)
+    }
+    if (record.self) {
+      this.served.set(normalizePath(importerId), record.self)
+    } else if (this.served.size > 0) {
+      this.served.delete(normalizePath(importerId))
+    }
+  }
+
+  /**
+   * Retires an id's importer record: a current answer that compiled nothing
+   * of it (untouched, failed, or no longer admitted) holds no import.
+   */
+  retire(importerId: string): void {
+    if (this.byImporter.has(importerId)) {
+      this.importersByFile.delete(importerId, traceFile(importerId))
+      this.forgetImporter(importerId)
+    }
+    this.edges.delete(importerId)
+    if (this.clientReferences.size > 0) {
+      this.clientReferences.delete(normalizePath(importerId))
+    }
+    if (this.served.size > 0) {
+      this.served.delete(normalizePath(importerId))
+    }
+  }
+
+  /**
+   * After a compile of an id of this environment, current by construction
+   * (the hosts that settle no answer of their own: Rsbuild's loader, Vite's
+   * late pass and asset load): `judge`, `defineEdges`, `commit`, then the
+   * reports. The outcome's error fails the module; `mock` is served
+   * instead of its output.
    */
   afterCompile(
     importerId: string,
     out: CompiledOutputLike,
   ): CompileOutcome | Promise<CompileOutcome> {
-    const violations = violationsOf(out)
-    this.register(importerId, violations)
-    if (clientReferencesOf(out)) {
-      this.clientReferences.add(normalizePath(importerId))
-    } else if (this.clientReferences.size > 0 && out.output === 'env') {
-      this.clientReferences.delete(normalizePath(importerId))
-    }
-    // the edges its plan judged, a cached plan's as a fresh one's (the
-    // index's one writer); none (the planner did not run: the module imports
-    // nothing now): what it imported before is no edge any more, nor a real
-    // demand it made
-    const judged = judgedEdgesOf(out)
-    if (judged) {
-      this.edges.set(importerId, judged.edges, judged.revision)
-    } else {
-      this.edges.delete(importerId)
-    }
-    const dev = this.ip.config.mode === 'dev'
-    const self = violations.find((v) => v.self && v.env === this.name)
-    if (!self) {
-      if (this.served.size > 0) {
-        this.served.delete(normalizePath(importerId))
+    const finish = (j: Judgement): CompileOutcome | Promise<CompileOutcome> => {
+      this.defineEdges(j.edgeModules)
+      this.commit(importerId, j.record)
+      const outcome: CompileOutcome = {
+        error: j.error,
+        ...(j.mock && { mock: j.mock }),
       }
-      return violations.length > 0 ? this.answer(violations) : NO_ERROR
-    }
-    const decided = async (): Promise<CompileOutcome> => {
-      const id = normalizePath(importerId)
-      // (the graph's verdict of the last settlement, else the guess)
-      const settled = this.served.get(id)?.settled
-      const real = settled ?? (await this.allowsSelf(self))
-      this.served.set(id, {
-        verdict: real ? 'real' : 'mock',
-        self,
-        ...(settled !== undefined && { settled }),
-      })
-      if (real) {
-        return this.answer(violations.filter((v) => v !== self))
+      if (j.reports.length === 0) {
+        return outcome
       }
-      const mock = this.mockOf(self)
-      if (!dev || this.explainedByStaleImporter(self)) {
-        return { error: null, mock }
-      }
-      const errors: Array<DevReport> = []
-      for (const { v, owner } of this.devReportsOf(self, null)) {
-        if (this.ip.settles) {
-          // (the verdict is a guess: it is reported once final,
-          // `reportSettled`; the module's failure is its compile's, and a
-          // settlement that serves it otherwise builds it again)
-          if (v.behavior === 'error') {
-            errors.push(owner.devReport(v))
-          }
-        } else {
-          await owner.notify(v)
-          errors.push(...owner.report(v))
-        }
-      }
-      return { error: this.errorOf(errors), mock }
+      return runReports(j.reports).then(() => outcome)
     }
-    return decided()
-  }
-
-  /**
-   * `allowImport`'s answers on a compile's imports, asked at the compile (a
-   * denied file compiled before the bundler resolves the import then finds
-   * it allowed); in dev, the violations it does not allow are reported.
-   */
-  private answer(
-    violations: Array<EdgeViolation>,
-  ): CompileOutcome | Promise<CompileOutcome> {
-    if (this.ip.config.mode === 'dev') {
-      return this.reportDev(violations)
-    }
-    if (!this.ip.config.allowImport) {
-      return NO_ERROR
-    }
-    return (async () => {
-      for (const v of violations) {
-        if (v.env === this.name && !v.pending) {
-          await this.allows(v)
-        }
-      }
-      return NO_ERROR
-    })()
-  }
-
-  private async reportDev(
-    violations: Array<EdgeViolation>,
-  ): Promise<CompileOutcome> {
-    const errors: Array<DevReport> = []
-    for (const v of violations) {
-      if (
-        v.env === this.name &&
-        !v.pending &&
-        !(await this.allows(v)) &&
-        // (a denied handoff is reported when the module it brings compiles
-        // as its mock: `devReportsOf`)
-        !v.handoff
-      ) {
-        await this.notify(v)
-        errors.push(...this.report(v))
-      }
-    }
-    return { error: this.errorOf(errors) }
+    const j = this.judge(importerId, out)
+    return j instanceof Promise ? j.then(finish) : finish(j)
   }
 
   /**
@@ -1185,22 +1341,28 @@ class ImportProtectionEnv {
     return out.length > 0 ? out : [{ v: self, owner: this }]
   }
 
-  /** The mock a module that is its own violation is served as. */
+  /** The mock a module that is its own violation is served as, rendered from the judged violation (no registered edge read). */
   private mockOf(self: EdgeViolation): { code: string; id: string } {
     const key = self.module.key
     return {
-      code: this.edgeLoad(key)!.code,
+      code: mockModuleCode(
+        self.module.content,
+        this.ip.ids.specifier({ env: this.name, kind: 'runtime' }),
+        this.ip.productionMock,
+        this.publicName,
+      ),
       id: this.ip.ids.specifier({ env: this.name, kind: 'edge', key }),
     }
   }
 
   /**
    * `allowImport`'s answer on an import: the one owner of the decision, asked
-   * once per import (`dedupeKey`) before anything depends on it. The answer
-   * is the state of its edge module (`served`), which brings the module into
-   * environments of this type while the import is there
-   * (`allowedImporters`); `false` or nothing is the normal outcome under
-   * `behavior`.
+   * once per import (`dedupeKey`) before anything depends on it; it writes
+   * nothing (a judgement's answer can be overtaken). The answer is the
+   * state of its edge module (`served`, written by its definition:
+   * `defineEdges`, `decide`), which brings the module into environments of
+   * this type while the import is there (`allowedImporters`); `false` or
+   * nothing is the normal outcome under `behavior`.
    */
   private async allows(v: EdgeViolation): Promise<boolean> {
     const { allowImport } = this.ip.config
@@ -1217,8 +1379,19 @@ class ImportProtectionEnv {
         true)()
       answers.set(key, answer)
     }
-    const allowed = await answer
-    if (!v.self) {
+    return answer
+  }
+
+  /**
+   * `allows`, its answer written as the state of the import's edge module
+   * or handoff (outside a judgement: an edge module about to load,
+   * `confirm`; a restored record, `restoredMismatches`, `reportAgain`; the
+   * handoffs a settlement answers, `answerHandoffs`).
+   */
+  private async decide(v: EdgeViolation): Promise<boolean> {
+    const allowed = await this.allows(v)
+    // (no `allowImport`: no decision, the edge stays undecided)
+    if (!v.self && this.ip.config.allowImport) {
       this.served.set(v.module.key, {
         verdict: allowed ? 'real' : 'mock',
         self: null,
@@ -1574,7 +1747,7 @@ class ImportProtectionEnv {
         continue
       }
       const [first] = m.violations.values()
-      const real = await this.allows(
+      const real = await this.decide(
         first ?? this.violationOfContent(key, m.content),
       )
       if (real !== (entry.verdict === 'real')) {
@@ -1711,7 +1884,7 @@ class ImportProtectionEnv {
       for (const from of graph.importers({ env: source.name, id: target }) ??
         []) {
         for (const handoff of source.handoffsOf(from.id, target)) {
-          await source.allows(handoff)
+          await source.decide(handoff)
         }
       }
     }
@@ -1945,7 +2118,7 @@ class ImportProtectionEnv {
       // (a module's own mock is not asked here: `allowsSelf` chose it)
       if (
         !first?.self &&
-        (await this.allows(
+        (await this.decide(
           first ?? this.violationOfContent(ref.key, m.content),
         ))
       ) {
