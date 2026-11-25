@@ -1,16 +1,120 @@
 /**
  * The splice engine and v3 source-map builder (direct VLQ; no magic-string on
- * the emit path).
+ * the emit path), and the one reader of rendered characters.
  *
+ * - The character classes of ECMAScript source (`isLineTerminator`,
+ *   `isWhiteSpace`) and where two pieces of code meet (`spaceBefore`,
+ *   `spaceAfter`: L of `expression.ts`), for every module that asks.
  * - `SourceText`: one per input revision, shared by every output of a plan.
  *   Lines are ECMAScript line terminators by default (LF, CRLF, lone CR,
  *   U+2028, U+2029), which is what V8, oxc, esbuild, Babel and Yuku count.
+ * - `RecipeWriter`: the segments of one output as freeze renders them, and
+ *   what they render (the characters before and after a position, the line
+ *   and the token a statement follows).
  * - `OutputBuilder`: one per output. `copy()` appends original text;
  *   `text()` appends generated glue (unmapped unless
  *   `mapTo` is given). Segments inside copied text sit at the start of every
  *   copy run, at the start of every word run and at every punctuator
  *   character; whitespace never starts one. The scan is syntax-agnostic.
+ *   Lines follow the source's convention in copied and generated text alike.
  */
+import type { Segment } from './plan'
+
+/** Whether `c` is an ECMAScript LineTerminator (LF, CR, U+2028, U+2029). */
+export function isLineTerminator(c: number): boolean {
+  return c === 10 || c === 13 || c === 0x2028 || c === 0x2029
+}
+
+/** Whether `c` is ECMAScript WhiteSpace (tab, VT, FF, space, U+00A0, U+FEFF, any other Zs). */
+export function isWhiteSpace(c: number): boolean {
+  return (
+    c === 32 ||
+    c === 9 ||
+    c === 11 ||
+    c === 12 ||
+    (c >= 0xa0 &&
+      (c === 0xa0 ||
+        c === 0xfeff ||
+        c === 0x1680 ||
+        (c >= 0x2000 && c <= 0x200a) ||
+        c === 0x202f ||
+        c === 0x205f ||
+        c === 0x3000))
+  )
+}
+
+/** Whether `c` is ECMAScript whitespace or a line terminator (`\s`). */
+export function isSpace(c: number): boolean {
+  return isWhiteSpace(c) || isLineTerminator(c)
+}
+
+/**
+ * Whether `c`, the first character of a statement, could continue the
+ * statement before it: a parenthesis, a bracket, a template, a sign, a
+ * regular expression, JSX or a type assertion (`foo` + `(x)` is a call).
+ */
+export function continuesStatement(c: string): boolean {
+  return c !== '' && '([`+-/<'.includes(c)
+}
+
+/**
+ * L at a boundary's start: whether a space goes between `a`, the last
+ * character rendered before it (`beforeA` the one before that), and `b`, its
+ * first character. Two identifier characters would be one name, `+ +` and
+ * `- -` one operator (`n+F(+n)`), a division then `/` or `*` a comment
+ * (`n/F(/re/g)`), `<` then `/` a closing tag to TypeScript's JSX scanner
+ * (`x<F(/re/)`). What precedes a call in valid source is never a regular
+ * expression's closing `/` (its letters would be flags), and the end of a
+ * comment merges with nothing.
+ */
+export function spaceBefore(beforeA: string, a: string, b: string): boolean {
+  return (
+    meets(a, b) ||
+    (a === '/' && beforeA !== '*' && (b === '/' || b === '*')) ||
+    (a === '<' && b === '/')
+  )
+}
+
+/**
+ * L at a boundary's end: whether a space goes between `a`, its last
+ * character, and `b`, the next one. As at the start, and: a regular
+ * expression's `/` then letters would take them as flags (`F(/re/)in o`),
+ * a number's last `.` then letters would be read as one token (`F(1.)in o`),
+ * `!` then `=` an inequality (`F(n!)==5`).
+ */
+export function spaceAfter(a: string, b: string): boolean {
+  return (
+    meets(a, b) ||
+    (a === '/' && (b === '/' || b === '*' || isIdentifierChar(b))) ||
+    (a === '.' && isIdentifierChar(b)) ||
+    (a === '!' && b === '=')
+  )
+}
+
+/** Two identifier characters, or the same one of `+`, `-`, `<`. */
+function meets(a: string, b: string): boolean {
+  if (a === '' || b === '') {
+    return false
+  }
+  return isIdentifierChar(a)
+    ? isIdentifierChar(b)
+    : a === b && (a === '+' || a === '-' || a === '<')
+}
+
+/** A letter, a digit, `$`, `_`, `\` (an escape) or any character above ASCII. */
+function isIdentifierChar(c: string): boolean {
+  const n = c.charCodeAt(0)
+  return (
+    (n >= 97 && n <= 122) || // a-z
+    (n >= 65 && n <= 90) || // A-Z
+    (n >= 48 && n <= 57) || // 0-9
+    n === 36 || // $
+    n === 95 || // _
+    n === 92 || // \
+    n > 127
+  )
+}
+
 const SPACE = 0
 const WORD = 1
 const PUNCT = 2
@@ -85,8 +189,8 @@ export class SourceText {
     if (
       !this.ecma ||
       (code.indexOf('\r') === -1 &&
-        code.indexOf(' ') === -1 &&
-        code.indexOf(' ') === -1)
+        code.indexOf('\u2028') === -1 &&
+        code.indexOf('\u2029') === -1)
     ) {
       for (
         let i = code.indexOf('\n');
@@ -136,8 +240,287 @@ export class SourceText {
   }
 }
 
+/**
+ * Where the first token of `text[start, end)` starts (`end` when there is
+ * none): whitespace and comments skipped (an unclosed block comment is a
+ * token).
+ */
+export function tokenStart(text: string, start = 0, end = text.length): number {
+  let i = start
+  while (i < end) {
+    const c = text.charCodeAt(i)
+    if (isSpace(c)) {
+      i++
+      continue
+    }
+    if (c === 47 /* / */ && i + 1 < end) {
+      const d = text.charCodeAt(i + 1)
+      if (d === 42 /* * */) {
+        const close = text.indexOf('*/', i + 2)
+        if (close === -1 || close + 2 > end) {
+          return i
+        }
+        i = close + 2
+        continue
+      }
+      if (d === 47) {
+        i += 2
+        while (i < end && !isLineTerminator(text.charCodeAt(i))) {
+          i++
+        }
+        continue
+      }
+    }
+    return i
+  }
+  return end
+}
+
+/** Whether `text` holds a line terminator other than LF (CR, U+2028, U+2029). */
+function breaksNotLf(text: string): boolean {
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i)
+    if (c === 13 || c === 0x2028 || c === 0x2029) {
+      return true
+    }
+  }
+  return false
+}
+
+/**
+ * The segments of one output as freeze renders them (`freeze.ts`), and the
+ * one reader of what they render: the characters a position meets, the first
+ * token after it, the line and the token a statement follows. Segments are
+ * written whole (one literal per shape, `OutputRecipe` keeps them); a
+ * reserved one is a text written later, dropped by `finish` when it stayed
+ * empty.
+ */
+export class RecipeWriter {
+  readonly segments: Array<Segment> = []
+  private reserved = false
+
+  constructor(private readonly code: string) {}
+
+  get length(): number {
+    return this.segments.length
+  }
+
+  push(seg: Segment): void {
+    this.segments.push(seg)
+  }
+
+  /** A segment to write later (`set`): its index. */
+  reserve(): number {
+    this.reserved = true
+    return this.segments.push({ k: 'text', text: '' }) - 1
+  }
+
+  set(i: number, seg: Segment): void {
+    this.segments[i] = seg
+  }
+
+  /** Puts `text` before segment `i`. */
+  insert(i: number, text: string): void {
+    this.segments.splice(i, 0, { k: 'text', text })
+  }
+
+  /** Puts `text` before the source offset `offset`, which the segments from `from` on render (in a slice, split there). */
+  insertAt(from: number, offset: number, text: string): void {
+    const segs = this.segments
+    for (let i = from; i < segs.length; i++) {
+      const s = segs[i]!
+      if (s.k === 'slice' && s.start <= offset && offset < s.end) {
+        if (s.start === offset) {
+          this.insert(i, text)
+        } else {
+          segs.splice(
+            i,
+            1,
+            { k: 'slice', start: s.start, end: offset },
+            { k: 'text', text },
+            { k: 'slice', start: offset, end: s.end },
+          )
+        }
+        return
+      }
+    }
+    this.insert(from, text)
+  }
+
+  /** The segments without the reserved ones left empty (in place: the array the recipe keeps). */
+  finish(): Array<Segment> {
+    const segs = this.segments
+    if (this.reserved) {
+      let w = 0
+      for (const s of segs) {
+        if (s.k !== 'text' || s.text !== '' || s.edgeKey !== undefined) {
+          segs[w++] = s
+        }
+      }
+      segs.length = w
+    }
+    return segs
+  }
+
+  /** Whether no text segment breaks a line but with LF (`OutputRecipe.plainText`). */
+  plainText(): boolean {
+    for (const s of this.segments) {
+      if (s.k === 'text' && breaksNotLf(s.text)) {
+        return false
+      }
+    }
+    return true
+  }
+
+  private textOf(seg: Segment): string {
+    return seg.k === 'slice' ? this.code.slice(seg.start, seg.end) : seg.text
+  }
+
+  /** The text rendered from segment `from` on. */
+  renderedText(from: number): string {
+    let text = ''
+    for (let i = from; i < this.segments.length; i++) {
+      text += this.textOf(this.segments[i]!)
+    }
+    return text
+  }
+
+  /** The first character rendered from segment `from` on ('' when none). */
+  firstChar(from: number): string {
+    const segs = this.segments
+    for (let i = from; i < segs.length; i++) {
+      const seg = segs[i]!
+      if (seg.k === 'slice' ? seg.end > seg.start : seg.text !== '') {
+        return seg.k === 'slice' ? this.code.charAt(seg.start) : seg.text[0]!
+      }
+    }
+    return ''
+  }
+
+  /** The first character of the first token rendered from segment `from` on ('' when none: a comment is no token). */
+  firstTokenChar(from: number): string {
+    const segs = this.segments
+    for (let i = from; i < segs.length; i++) {
+      const seg = segs[i]!
+      if (seg.k === 'slice') {
+        const at = tokenStart(this.code, seg.start, seg.end)
+        if (at < seg.end) {
+          return this.code[at]!
+        }
+      } else {
+        const at = tokenStart(seg.text)
+        if (at < seg.text.length) {
+          return seg.text[at]!
+        }
+      }
+    }
+    return ''
+  }
+
+  /** The character rendered `back` characters before segment `before` (0: the last one), after segment `after` ('' when none). */
+  charBefore(before: number, back: 0 | 1, after = -1): string {
+    let skip: number = back
+    for (let i = before - 1; i > after; i--) {
+      const seg = this.segments[i]!
+      const n = seg.k === 'slice' ? seg.end - seg.start : seg.text.length
+      if (n > skip) {
+        return seg.k === 'slice'
+          ? this.code.charAt(seg.end - 1 - skip)
+          : seg.text.charAt(n - 1 - skip)
+      }
+      skip -= n
+    }
+    return ''
+  }
+
+  /** The index of the last segment from `from` on that renders text (-1: none). */
+  lastRendered(from: number): number {
+    const segs = this.segments
+    for (let i = segs.length - 1; i >= from; i--) {
+      const seg = segs[i]!
+      if (seg.k === 'slice' ? seg.end > seg.start : seg.text !== '') {
+        return i
+      }
+    }
+    return -1
+  }
+
+  /** The source position the first text rendered from segment `from` on maps to, if it is mapped. */
+  firstMapped(from: number): number | undefined {
+    const segs = this.segments
+    for (let i = from; i < segs.length; i++) {
+      const seg = segs[i]!
+      if (seg.k === 'slice' ? seg.end > seg.start : seg.text !== '') {
+        return seg.k === 'slice'
+          ? seg.start
+          : seg.gen === true
+            ? undefined
+            : seg.mapTo
+      }
+    }
+    return undefined
+  }
+
+  /**
+   * Whether what renders before segment `from` ends with something a next
+   * token could continue: anything but a `;` or a block's start (taken for a
+   * comment's end when its line holds a `//`: another `;` costs nothing).
+   */
+  continuable(from: number): boolean {
+    for (let i = from - 1; i >= 0; i--) {
+      const seg = this.segments[i]!
+      const text = seg.k === 'slice' ? this.code : seg.text
+      const start = seg.k === 'slice' ? seg.start : 0
+      let p = (seg.k === 'slice' ? seg.end : seg.text.length) - 1
+      while (p >= start && isSpace(text.charCodeAt(p))) {
+        p--
+      }
+      if (p < start) {
+        continue
+      }
+      const last = text.charCodeAt(p)
+      if (last !== 59 /* ; */ && last !== 123 /* { */) {
+        return true
+      }
+      // (a `//` on its line, within the segment)
+      for (; p - 2 >= start && !isLineTerminator(text.charCodeAt(p - 1)); p--) {
+        if (text.charCodeAt(p - 1) === 47 && text.charCodeAt(p - 2) === 47) {
+          return true
+        }
+      }
+      return false
+    }
+    return false
+  }
+
+  /** Whether the last line rendered before segment `from` holds anything but whitespace (what renders next would share it). */
+  lineOpen(from: number): boolean {
+    for (let i = from - 1; i >= 0; i--) {
+      const seg = this.segments[i]!
+      const text = seg.k === 'slice' ? this.code : seg.text
+      const start = seg.k === 'slice' ? seg.start : 0
+      for (
+        let p = (seg.k === 'slice' ? seg.end : seg.text.length) - 1;
+        p >= start;
+        p--
+      ) {
+        const c = text.charCodeAt(p)
+        if (isLineTerminator(c)) {
+          return false
+        }
+        if (!isSpace(c)) {
+          return true
+        }
+      }
+    }
+    return false
+  }
+}
+
 export interface OutputBuilderOptions {
   map?: boolean
+  /** No `text()` breaks a line but with LF (a recipe's `plainText`): its lines are counted natively. */
+  plainText?: boolean
 }
 
 /**
@@ -160,6 +543,7 @@ export class OutputBuilder {
   private readonly src: SourceText
   private readonly mapSource: string
   private readonly withMap: boolean
+  private readonly plainText: boolean
   private code = ''
   private genCol = 0
   // VLQ state
@@ -183,6 +567,7 @@ export class OutputBuilder {
     this.src = source
     this.mapSource = mapSource
     this.withMap = opts.map !== false
+    this.plainText = opts.plainText === true
   }
 
   /** Appends original `[start, end)`. */
@@ -207,6 +592,24 @@ export class OutputBuilder {
     } else if (this.lastMapped) {
       this._unmapped()
     }
+    // (the source's line convention: ECMAScript's, a CRLF one terminator,
+    // or LF only; text breaking lines with LF alone counts them natively)
+    if (!this.plainText && this.src.ecma && breaksNotLf(t)) {
+      let lineStart = -1
+      for (let i = 0; i < t.length; i++) {
+        const c = t.charCodeAt(i)
+        if (isLineTerminator(c)) {
+          if (c === 13 && t.charCodeAt(i + 1) === 10) {
+            i++
+          }
+          this._newline()
+          lineStart = i + 1
+        }
+      }
+      this.genCol =
+        lineStart === -1 ? this.genCol + t.length : t.length - lineStart
+      return
+    }
     let nl = t.indexOf('\n')
     if (nl === -1) {
       this.genCol += t.length
@@ -221,11 +624,11 @@ export class OutputBuilder {
     this.genCol = t.length - last - 1
   }
 
-  /** Ends the current line unless the output is empty or already ends with LF. */
+  /** Ends the current line unless the output is empty or already ends with a line terminator. */
   newline(): void {
     if (
       this.code.length > 0 &&
-      this.code.charCodeAt(this.code.length - 1) !== 10
+      !isLineTerminator(this.code.charCodeAt(this.code.length - 1))
     ) {
       this.text('\n')
     }
@@ -389,7 +792,8 @@ export class OutputBuilder {
     this.prevLine = pl
     this.prevCol = pc
     this.lineHasSeg = has
-    this.lastMapped = true
+    // (copied text that ended its line leaves nothing mapped on the new one)
+    this.lastMapped = has
     this.genCol = base + e
     this.curOff = e
     this.curLine = line

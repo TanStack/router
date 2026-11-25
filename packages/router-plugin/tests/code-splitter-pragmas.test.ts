@@ -8,6 +8,11 @@
 // the same source as another module of the app that no route registers:
 // the project's transform without the router's compilers.
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  expectMapsTo,
+  positionAt,
+  tokenOffsets,
+} from '@tanstack/compiler-test-utils/source-maps'
 import { describe, expect, it } from 'vitest'
 import { head, loadRoute } from './route-app'
 import type { RouteApp, RouteAppOptions } from './route-app'
@@ -96,6 +101,13 @@ describe('split modules keep file-level JSX pragmas', () => {
       'inside a file header',
       `/**\n * Header\n * @jsxImportSource @emotion/react\n */\n${head}`,
     ],
+    // a license notice and the pragma in one comment: the notice stays in
+    // the route module (SPEC G12), the pragma takes effect in the chunk too.
+    // Source: whole-PR review C5-01 (Astra C5 #3)
+    [
+      'inside a license comment',
+      `/**\n * @license MIT\n * @jsxImportSource @emotion/react\n */\n${head}`,
+    ],
   ])('keeps @jsxImportSource %s in effect', async (_, header) => {
     const rendered = await expectRendersLikeUntouched(styledRoute(header))
     expect(emotionStyled(rendered)).toBe(true)
@@ -131,6 +143,32 @@ describe('split modules keep file-level JSX pragmas', () => {
       { hmr: true },
     )
     expect(emotionStyled(rendered)).toBe(false)
+  })
+
+  // The chunk's copy of a `@refresh` comment holding a lone CR (a line
+  // terminator, SPEC G6) keeps the chunk's map on the user's lines: the
+  // component's text maps to where the route file has it.
+  // Source: whole-PR review C5-05 (Astra C5 #5)
+  it('maps the split component to its source line after a copied @refresh comment holding a lone CR, with HMR', async () => {
+    const code = `${head}/* @refresh reset\r leave this comment */
+export const Route = createFileRoute('/')({
+  component: () => <p>marker</p>,
+})
+`
+    const route = await loadRoute(code, { hmr: true })
+    const { ids } = await route.modules()
+    const chunk = ids['lazy component']
+    expect(chunk, 'the split component module').toBeDefined()
+    const served =
+      await route.host.dev.vite.environments.client.transformRequest(chunk!)
+    const [generated] = tokenOffsets(served!.code, { string: 'marker' })
+    expect(generated, 'the component text in the chunk').toBeDefined()
+    const [original] = tokenOffsets(code, { string: 'marker' })
+    expectMapsTo(served!.map as never, positionAt(served!.code, generated!), {
+      file: route.host.file('route.tsx'),
+      mapUrl: route.host.file('route.tsx'),
+      ...positionAt(code, original!),
+    })
   })
 
   // The component calls the factory itself too, so the chunk keeps its

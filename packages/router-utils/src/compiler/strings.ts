@@ -1,7 +1,7 @@
 /**
- * String helpers for generated code. Generated
- * glue never contains a raw CR, U+2028 or U+2029: the OutputBuilder counts
- * only LF in glue, and the escaper keeps every other line terminator out.
+ * String helpers for generated code. The literals they print hold no raw
+ * line terminator (generated text may: the OutputBuilder counts its lines
+ * as it counts the source's).
  */
 
 /** A character `stringLiteral` escapes (the common specifier or name has none). */

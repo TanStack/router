@@ -103,6 +103,11 @@ export interface OutputRecipe {
   derivedId: string | null
   mapSource: string
   segments: Array<Segment>
+  /**
+   * No text segment breaks a line but with LF (the emitter counts their
+   * lines natively; phase C's specifier literals are escaped).
+   */
+  plainText: boolean
 }
 
 export interface PlanFacts {

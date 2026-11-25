@@ -896,6 +896,7 @@ function tier0Plan(
           derivedId: null,
           mapSource: identity.path,
           segments,
+          plainText: true,
         },
       },
       facts: { marker: t0.markers, planners: {} },

@@ -7,8 +7,9 @@
  * position (`RegionFrag.expr`). Planners name what goes where; the renderer
  * (`freeze.ts`) asks the three questions below at each boundary, on what
  * actually rendered there, and writes the parentheses, the `(0, …)` and the
- * spaces. `guardStatementStart` stays separate: it decides whether two
- * statements join, after the wrapping.
+ * spaces. Statement separation stays separate (`freeze.ts`,
+ * `Renderer.statementStart`): it decides whether two statements join, after
+ * the wrapping.
  *
  * Three inputs, all plain integers (no Yuku node outlives the plan):
  * - the role: what the replaced occurrence was (`ROLE_*`);
@@ -658,62 +659,4 @@ function opensNonExpressionStatement(code: string, start: number): boolean {
     return code[nextToken(code, first.lastIndex)] === '['
   }
   return token !== undefined
-}
-
-/**
- * L at a boundary's start: whether a space goes between `a`, the last
- * character rendered before it (`beforeA` the one before that), and `b`, its
- * first character. Two identifier characters would be one name, `+ +` and
- * `- -` one operator (`n+F(+n)`), a division then `/` or `*` a comment
- * (`n/F(/re/g)`), `<` then `/` a closing tag to TypeScript's JSX scanner
- * (`x<F(/re/)`). What precedes a call in valid source is never a regular
- * expression's closing `/` (its letters would be flags), and the end of a
- * comment merges with nothing.
- */
-export function spaceBefore(beforeA: string, a: string, b: string): boolean {
-  return (
-    meets(a, b) ||
-    (a === '/' && beforeA !== '*' && (b === '/' || b === '*')) ||
-    (a === '<' && b === '/')
-  )
-}
-
-/**
- * L at a boundary's end: whether a space goes between `a`, its last
- * character, and `b`, the next one. As at the start, and: a regular
- * expression's `/` then letters would take them as flags (`F(/re/)in o`),
- * a number's last `.` then letters would be read as one token (`F(1.)in o`),
- * `!` then `=` an inequality (`F(n!)==5`).
- */
-export function spaceAfter(a: string, b: string): boolean {
-  return (
-    meets(a, b) ||
-    (a === '/' && (b === '/' || b === '*' || isIdentifierChar(b))) ||
-    (a === '.' && isIdentifierChar(b)) ||
-    (a === '!' && b === '=')
-  )
-}
-
-/** Two identifier characters, or the same one of `+`, `-`, `<`. */
-function meets(a: string, b: string): boolean {
-  if (a === '' || b === '') {
-    return false
-  }
-  return isIdentifierChar(a)
-    ? isIdentifierChar(b)
-    : a === b && (a === '+' || a === '-' || a === '<')
-}
-
-/** A letter, a digit, `$`, `_`, `\` (an escape) or any character above ASCII. */
-function isIdentifierChar(c: string): boolean {
-  const n = c.charCodeAt(0)
-  return (
-    (n >= 97 && n <= 122) || // a-z
-    (n >= 65 && n <= 90) || // A-Z
-    (n >= 48 && n <= 57) || // 0-9
-    n === 36 || // $
-    n === 95 || // _
-    n === 92 || // \
-    n > 127
-  )
 }

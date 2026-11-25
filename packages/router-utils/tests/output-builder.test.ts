@@ -215,4 +215,68 @@ describe('OutputBuilder', () => {
     const lf = new SourceText('a b\r\nc\rd\n', { lines: 'lf' })
     expect(lf.locate(2)).toEqual({ line: 0, column: 2 })
   })
+
+  // Generated text follows the source's line convention as copied text does
+  // (a planner may copy a comment holding a lone CR as text, C5-05): the
+  // map's lines are the code's lines.
+  it.each([
+    {
+      name: 'a lone CR',
+      glue: '/* a\rb */\n',
+      lines: 'ecma' as const,
+      breaks: 2,
+    },
+    {
+      name: 'a CRLF',
+      glue: '/* a\r\nb */\n',
+      lines: 'ecma' as const,
+      breaks: 2,
+    },
+    {
+      name: 'U+2028',
+      glue: '/* a\u2028b */\n',
+      lines: 'ecma' as const,
+      breaks: 2,
+    },
+    {
+      name: 'a lone CR, LF lines',
+      glue: '/* a\rb */\n',
+      lines: 'lf' as const,
+      breaks: 1,
+    },
+  ])(
+    'counts the lines of generated text holding $name',
+    ({ glue, lines, breaks }) => {
+      const code = 'const marker = 1\n'
+      const b = new OutputBuilder(new SourceText(code, { lines }), '/app/m.ts')
+      b.text(glue)
+      b.copy(0, code.length)
+      const { code: out, map } = b.finish()
+      expect(map!.mappings.split(';').length - 1).toBe(breaks + 1)
+      const at = out.indexOf('marker')
+      const pos = originalPositionFor(new TraceMap(map as never), {
+        line: breaks + 1,
+        column: at - (out.lastIndexOf('\n', at) + 1),
+      })
+      expect(pos).toMatchObject({ line: 1, column: 6 })
+    },
+  )
+
+  it('ends an output that ends with a lone CR without another line terminator', () => {
+    const code = 'const a = 1\r'
+    const b = new OutputBuilder(new SourceText(code), '/app/m.ts')
+    b.copy(0, code.length)
+    b.newline()
+    const { code: out, map } = b.finish()
+    expect(out).toBe(code)
+    expect(map!.mappings.split(';').length).toBe(2)
+  })
+
+  it('writes no segment opening a line after copied text that ended its line', () => {
+    const code = 'const a = 1\n'
+    const b = new OutputBuilder(new SourceText(code), '/app/m.ts')
+    b.copy(0, code.length)
+    b.text('export { a }\n')
+    expect(b.finish().map!.mappings).toBe('AAAA,MAAM,EAAE,EAAE;;')
+  })
 })

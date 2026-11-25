@@ -2,6 +2,7 @@
  * Header: hashbang, leading comments (pragmas, license), directive prologue
  * and the insertion offset after them.
  */
+import { isLineTerminator, isWhiteSpace } from './output-builder'
 import type { Comment, SourceFile } from 'yuku'
 
 export interface Range {
@@ -22,6 +23,12 @@ export interface Header {
   end: number
   /** Number of leading `program.body` statements that are directives. */
   directiveCount: number
+  /**
+   * The comments after the header that hold a pragma, in source order: no
+   * pragma for a transform reading leading comments only, and none once
+   * an output renders them (`freeze.ts`).
+   */
+  latePragmas: Array<Range>
 }
 
 const PRAGMA_RE = /@(jsxImportSource|jsxRuntime|jsxFrag|jsx)\s+(\S+)/g
@@ -33,6 +40,12 @@ export function isLicenseComment(c: Comment): boolean {
   )
 }
 
+/** The pragmas of a comment alone, as a comment (a license comment's pragmas, which other outputs need without the notice). */
+export function pragmaComment(code: string, range: Range): string {
+  const value = code.slice(range.start, range.end)
+  return `/* ${[...value.matchAll(PRAGMA_RE)].map((m) => m[0]).join(' ')} */`
+}
+
 export function pragmasOf(c: Comment): Array<Pragma> {
   const out: Array<Pragma> = []
   PRAGMA_RE.lastIndex = 0
@@ -40,28 +53,6 @@ export function pragmasOf(c: Comment): Array<Pragma> {
     out.push({ range: { start: c.start, end: c.end } })
   }
   return out
-}
-
-export function isLineTerminator(c: number): boolean {
-  return c === 10 || c === 13 || c === 0x2028 || c === 0x2029
-}
-
-/** Whether `c` is ECMAScript WhiteSpace (tab, VT, FF, space, U+00A0, U+FEFF, any other Zs). */
-export function isWhiteSpace(c: number): boolean {
-  return (
-    c === 32 ||
-    c === 9 ||
-    c === 11 ||
-    c === 12 ||
-    (c >= 0xa0 &&
-      (c === 0xa0 ||
-        c === 0xfeff ||
-        c === 0x1680 ||
-        (c >= 0x2000 && c <= 0x200a) ||
-        c === 0x202f ||
-        c === 0x205f ||
-        c === 0x3000))
-  )
 }
 
 /** Counts the line terminators (CRLF = 1) in `code[start, end)`. */
@@ -227,11 +218,20 @@ export function analyzeHeader(file: SourceFile): Header {
   if (firstItem !== undefined && end > firstItem.start) {
     end = firstItem.start
   }
+  const latePragmas: Array<Range> = []
+  if (code.includes('@jsx')) {
+    for (const c of file.comments) {
+      if (c.start >= end && pragmasOf(c).length > 0) {
+        latePragmas.push({ start: c.start, end: c.end })
+      }
+    }
+  }
   return {
     pragmas,
     license,
     directives,
     end,
     directiveCount,
+    latePragmas,
   }
 }

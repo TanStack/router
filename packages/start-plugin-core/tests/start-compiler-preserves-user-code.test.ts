@@ -804,6 +804,23 @@ export function pick(flag: unknown, x: number, y: number) {
   expect(await inPage(served, 'return module.pick(true, 1, 2)')).toBe(-1)
 })
 
+// A string statement after a declaration is no directive (SPEC J4.17, G12):
+// the client erases the declaration only the server-only function reads,
+// and the string stays an expression (as a directive, `'use strict'` is a
+// syntax error in a function with a rest parameter).
+// Source: whole-PR review C5-02 (Astra C5 #1)
+test('client: a string statement after an erased declaration stays an expression', async () => {
+  const served = await serveCase(await host(), {
+    'module.tsx': `import { createServerOnlyFn } from '@tanstack/react-start'
+export function choose(...args: Array<string>) {
+  const label = args.join('-')
+  'use strict'
+  return createServerOnlyFn(() => label)
+}`,
+  })
+  expect(await inPage(served, 'return typeof module.choose')).toBe('function')
+})
+
 // Parenthesized JSX keeps working.
 test('client: keeps parenthesized JSX working', async () => {
   const served = await serveCase(await host(), {

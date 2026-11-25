@@ -222,6 +222,19 @@ export function Card() {
   })
 })
 
+// SPEC J2.16: a pragma written below the first import is ineffective for a
+// transform reading leading comments only (Oxc), and stays so once the
+// compiler removes that import: the module keeps the project's runtime.
+// Source: whole-PR review C5-03 (Astra C5 #2)
+test('client: a @jsxImportSource below a removed import stays as ineffective as in the untouched file', async () => {
+  const served = await serveCase(await host(), {
+    'module.tsx': `import { createClientOnlyFn } from '@tanstack/react-start'
+/** @jsxImportSource pragma-jsx */
+export const Card = createClientOnlyFn(() => <div css={{ color: 'hotpink' }} />)`,
+  })
+  expect(await clientPragma(served, 'Card')).toBe(null)
+})
+
 test('client: a pragma after a directive stays ahead of inserted server function imports', async () => {
   const served = await serveCase(await host(), {
     'module.tsx': `'use client'

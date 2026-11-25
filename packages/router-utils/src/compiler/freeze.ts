@@ -14,7 +14,15 @@ import { dedupeEdges, sourceEdges } from './edges'
 import { specifierLiteral, specifierName } from './strings'
 import { statementRecipe } from './units'
 import { VALUE } from './declarations'
-import { extendOverTrailingLine, isLineTerminator, pragmasOf } from './header'
+import { pragmaComment } from './header'
+import {
+  RecipeWriter,
+  continuesStatement,
+  isSpace,
+  spaceAfter,
+  spaceBefore,
+  tokenStart,
+} from './output-builder'
 import { erases } from './rewrite'
 import {
   DEST_CALLEE,
@@ -25,13 +33,13 @@ import {
   ROLE_MOVED,
   ROLE_REFERENCE,
   ROLE_VALUE,
+  SHAPE_CALL,
+  SHAPE_GROUPED,
   SHAPE_UNKNOWN,
   atStatementEdge,
   edgeOpens,
   needsGroup,
   needsValue,
-  spaceAfter,
-  spaceBefore,
   tokensMeet,
   withRef,
 } from './expression'
@@ -136,25 +144,12 @@ export function freezePlan(plan: AnalysisPlan, revision: string): FrozenPlan {
     const recipeEdges: Array<EdgeRecord> = []
     const importerId = decl.derivedId ?? plan.identity.canonicalId
     renderer.begin(importerId, recipeEdges)
-    const segments: Array<Segment> = renderer.withoutReserved(
-      id === 'env'
-        ? renderEnv(
-            plan,
-            renderer,
-            placement,
-            included,
-            exportNameOf,
-            glueExports,
-          )
-        : renderDerived(
-            plan,
-            renderer,
-            decl,
-            placement,
-            included,
-            exportNameOf,
-          ),
-    )
+    if (id === 'env') {
+      renderEnv(plan, renderer, placement, included, exportNameOf, glueExports)
+    } else {
+      renderDerived(plan, renderer, decl, placement, included, exportNameOf)
+    }
+    const segments = renderer.out.finish()
     recipeEdges.push(
       ...sourceEdges(
         plan.analysis,
@@ -168,6 +163,7 @@ export function freezePlan(plan: AnalysisPlan, revision: string): FrozenPlan {
       derivedId: decl.derivedId,
       mapSource: plan.identity.path,
       segments,
+      plainText: renderer.out.plainText(),
     }
     edges[id] = dedupeEdges(recipeEdges)
   }
@@ -252,9 +248,10 @@ interface EnvPiece {
  * The env module: the source's text (the walk) between its pieces, which are
  * the statements placement rewrites, the generated units at their anchors,
  * the glue imports after the header and the export glue at the end. The
- * pieces at one position render in that order: a statement's line end, the
- * glue imports, the generated units, a statement's `;`, the statement; what
- * a planner inserts there renders before them.
+ * pieces at one position render in that order: the glue imports, the
+ * generated units, the statement; what a planner inserts there renders
+ * before them. Every piece is a statement of the module, and so is the
+ * source's text after one (`Renderer.statementStart`).
  */
 function renderEnv(
   plan: AnalysisPlan,
@@ -263,58 +260,20 @@ function renderEnv(
   included: ReadonlySet<number>,
   exportNameOf: Map<OutputId, Map<SymbolId, string>>,
   glueExports: ReadonlySet<SymbolId>,
-): Array<Segment> {
+): void {
   const { t1, rewrites, analysis } = plan
   const { items, units } = t1
   const code = analysis.source.code
   const envView = rewrites.view('env')
-  const lineEnds: Array<EnvPiece> = []
-  /** The `;`s statements need and the statements placement rewrites, in source order. */
-  const statements: Array<EnvPiece> = []
   /** The statements placement rewrites (their removals), in source order. */
   const rewritten: Array<EnvPiece> = []
-  // a statement only a line break after its range ends (inside the
-  // multi-line comment after it, or after an annotation comment ending its
-  // line): that text leads what follows and may not render, so the
-  // statement gets a line end of its own (before anything else generated
-  // there)
-  const endLine = (statementEnd: number, at: number) => {
-    if (
-      (code.startsWith('/*', at) || code.startsWith('//', at)) &&
-      code[statementEnd - 1] !== ';' &&
-      !isLineTerminator(code.charCodeAt(at - 1))
-    ) {
-      lineEnds.push({
-        start: at,
-        end: at,
-        body: [{ k: 'text', parts: ['\n'] }],
-        gen: null,
-      })
-    }
-  }
-  for (const { range } of analysis.header.directives) {
-    endLine(range.end, extendOverTrailingLine(code, range.end))
-  }
   const anchored = anchoredGenerated(plan, 'env', placement)
-  /** Offsets where generated text renders right before what the source wrote. */
-  const generatedAt = new Set<number>()
-  // generated units homed here, at their anchors (before a statement's `;`)
-  const generated: Array<EnvPiece> = []
-  for (const { at, gen } of anchored) {
-    if (gen.body.length > 0) {
-      generatedAt.add(at)
-    }
-    generated.push({ start: at, end: at, body: gen.body, gen })
-  }
   /** Exported declarators of statements whose `export` keyword a sibling's rename drops. */
   const siblingExports: Array<{ sym: SymbolId; name: string }> = []
-  /** The statement rendered before the current one (as the source wrote it, or rewritten). */
-  let previous: RenderedStatement | undefined
   for (const item of items) {
     if (envView.isErasedAt(item.nodeRange.start)) {
       continue // (its text is a planner's)
     }
-    endLine(item.nodeRange.end, item.range.end)
     const retained = includedUnitsOf(plan, item, included, placement, null)
     let keepExport = true
     for (const uid of item.units) {
@@ -345,34 +304,13 @@ function renderEnv(
       }
     }
     const recipe = statementRecipe(item, units, retained, keepExport, code)
-    // (a license comment between the statements belongs to neither)
-    const afterGenerated =
-      generatedAt.size > 0 &&
-      (generatedAt.has(item.range.start) ||
-        (item.index > 0 && generatedAt.has(items[item.index - 1]!.range.end)))
-    if (
-      // (a statement placement rewrites starts with its keyword)
-      recipe === 'keep' &&
-      (item.index > 0 || afterGenerated) &&
-      needsLeadingSemicolon(code, item, afterGenerated ? undefined : previous)
-    ) {
-      statements.push({
-        start: item.nodeRange.start,
-        end: item.nodeRange.start,
-        body: [{ k: 'text', parts: [';'] }],
-        gen: null,
-      })
-    }
-    previous = { item, intact: recipe === 'keep' }
     if (recipe !== 'keep') {
-      const piece: EnvPiece = {
+      rewritten.push({
         start: item.range.start,
         end: item.range.end,
         body: recipe === 'drop' ? [] : recipe,
         gen: null,
-      }
-      statements.push(piece)
-      rewritten.push(piece)
+      })
     }
   }
   // glue imports of the env output (from shared/derived homes) after the header
@@ -396,12 +334,15 @@ function renderEnv(
     ),
   ]
   // (in the order they render at one position: by start, stable)
-  const pieces: Array<EnvPiece> = [...lineEnds]
+  const pieces: Array<EnvPiece> = []
   if (glueImports.length > 0) {
     const at = analysis.header.end
     pieces.push({ start: at, end: at, body: glueImports, gen: null })
   }
-  pieces.push(...generated, ...statements)
+  for (const { at, gen } of anchored) {
+    pieces.push({ start: at, end: at, body: gen.body, gen })
+  }
+  pieces.push(...rewritten)
   if (exportsText.length > 0) {
     pieces.push({
       start: code.length,
@@ -411,18 +352,6 @@ function renderEnv(
     })
   }
   pieces.sort((x, y) => x.start - y.start)
-  // text appended at the end starts on its own line
-  if (code.length > 0 && !isLineTerminator(code.charCodeAt(code.length - 1))) {
-    const i = pieces.findIndex(
-      (p) => p.start === code.length && p.body.length > 0,
-    )
-    if (i >= 0) {
-      pieces[i] = {
-        ...pieces[i]!,
-        body: [{ k: 'text', parts: ['\n'] }, ...pieces[i]!.body],
-      }
-    }
-  }
   // what the rewritten statements remove decides the bytes nothing in the
   // tree decides (in source order, disjoint)
   renderer.setView(envView, (offset) => {
@@ -446,33 +375,32 @@ function renderEnv(
     return false
   })
   const root = rewrites.regions.module
-  const out: Array<Segment> = []
   let pos = 0
   /** The inserts at `pos` rendered with the text before it (a piece followed them). */
   let skipAt: number | null = null
-  /** Something other than source text rendered before (the walk's `afterEdit`). */
-  let afterEdit = false
   // an insert at the start of a statement placement rewrites is that
   // statement's text (its owner is a unit of it): it renders with what the
   // statement keeps, never with the text before it
   const rewrittenAt = new Set(rewritten.map((p) => p.start))
+  /** A piece rendered before the text at `pos` (its statement follows something else than its source predecessor). */
+  let afterEdit = false
   for (const p of pieces) {
-    afterEdit = renderer.renderSpan(root, pos, p.start, null, null, out, {
+    renderer.renderSpan(root, pos, p.start, null, null, {
       skipAt,
       includeEnd: !rewrittenAt.has(p.start),
       afterEdit,
     })
-    renderer.renderPiece(p.start, p.end, p.body, p.gen, out)
+    renderer.renderPiece(p.start, p.body, p.gen, p.end > p.start)
     afterEdit = true
     pos = p.end
     skipAt = p.end === p.start ? pos : null
   }
-  renderer.renderSpan(root, pos, code.length, null, null, out, {
+  renderer.renderSpan(root, pos, code.length, null, null, {
     skipAt,
     includeEnd: true,
     afterEdit,
   })
-  return out
+  renderer.keepPragmasLate(0)
 }
 
 function anchoredGenerated(
@@ -679,14 +607,14 @@ function renderDerived(
   placement: Placement,
   included: ReadonlySet<number>,
   exportNameOf: Map<OutputId, Map<SymbolId, string>>,
-): Array<Segment> {
+): void {
   const { t1, rewrites, analysis } = plan
   const { items, units } = t1
   const code = analysis.source.code
   const view = rewrites.view(decl.id)
   renderer.setView(view, (offset) => view.isErasedAt(offset))
   const root = rewrites.regions.module
-  const out: Array<Segment> = []
+  const out = renderer.out
   const anchored = anchoredGenerated(plan, decl.id, placement)
   const empty =
     included.size === 0 &&
@@ -694,29 +622,30 @@ function renderDerived(
     (placement.imports.get(decl.id)?.size ?? 0) === 0
   if (empty) {
     out.push({ k: 'text', text: 'export {}\n' })
-    return out
+    return
   }
   // header: pragmas and directives (leadingness preserved), never license
-  // comments; a comment holding two pragmas renders once
+  // comments (a license comment's pragmas render alone); a comment holding
+  // two pragmas renders once
   const header = analysis.header
   let lastPragma = -1
   for (const p of header.pragmas) {
     const { start, end } = p.range
-    if (
-      start !== lastPragma &&
-      !header.license.some((l) => l.start === start)
-    ) {
-      renderer.renderSpan(root, start, end, null, null, out)
-      out.push({ k: 'text', text: '\n' })
+    if (start !== lastPragma) {
+      if (header.license.some((l) => l.start === start)) {
+        out.push({ k: 'text', text: `${pragmaComment(code, p.range)}\n` })
+      } else {
+        renderer.renderSpan(root, start, end, null, null)
+        out.push({ k: 'text', text: '\n' })
+      }
     }
     lastPragma = start
   }
-  const afterPragmas = out.length
   for (const d of header.directives) {
     if (decl.header?.dropDirectives?.includes(d.value)) {
       continue
     }
-    renderer.renderSpan(root, d.range.start, d.range.end, null, null, out)
+    renderer.renderSpan(root, d.range.start, d.range.end, null, null)
     out.push({ k: 'text', text: '\n' })
   }
   if (decl.header?.addDirective) {
@@ -725,19 +654,26 @@ function renderDerived(
       text: `${specifierLiteral(decl.header.addDirective)}\n`,
     })
   }
+  const body = out.length
   // glue imports
-  const glue = glueImportText(
-    plan,
-    decl.id,
-    placement,
-    exportNameOf,
-    anchored.map((a) => a.gen),
+  renderer.renderFrags(
+    glueImportText(
+      plan,
+      decl.id,
+      placement,
+      exportNameOf,
+      anchored.map((a) => a.gen),
+    ),
+    null,
+    null,
+    null,
   )
-  renderer.renderFrags(glue, null, null, out)
   // pieces in order: generated units by anchor, items by position
-  type Piece = Partial<RenderedStatement> & {
+  interface Piece {
     pos: number
     order: number
+    /** Where the source has the statement's first token (-1: generated). */
+    offset: number
     render: () => void
   }
   const pieces: Array<Piece> = []
@@ -758,25 +694,18 @@ function renderDerived(
     pieces.push({
       pos: item.range.start,
       order: 2,
-      item,
-      intact: recipe === 'keep',
-      render: () => {
-        if (recipe === 'keep') {
-          renderer.renderSpan(
-            root,
-            item.range.start,
-            item.range.end,
-            null,
-            null,
-            out,
-          )
-        } else {
-          renderer.renderFrags(recipe, null, null, out, {
-            level: root,
-            skipAt: null,
-          })
-        }
-      },
+      offset: recipe === 'keep' ? item.nodeRange.start : -1,
+      render:
+        recipe === 'keep'
+          ? () =>
+              renderer.renderSpan(
+                root,
+                item.range.start,
+                item.range.end,
+                null,
+                null,
+              )
+          : () => renderer.renderFrags(recipe, null, null, root),
     })
   }
   for (const a of anchored) {
@@ -792,75 +721,25 @@ function renderDerived(
     pieces.push({
       pos,
       order,
-      render: () => renderer.renderFrags(a.gen.body, a.gen, null, out),
+      offset: -1,
+      render: () => renderer.renderFrags(a.gen.body, a.gen, null, null),
     })
   }
   pieces.sort((x, y) => x.pos - y.pos || x.order - y.order)
-  // leadingness (J2.16): a pragma comment the source wrote after its
-  // first statement (ineffective for a transform that reads leading
-  // comments only) must not open this output; a token keeps it where the
-  // source had it
-  const first = pieces[0]
-  if (
-    out.length === afterPragmas &&
-    first?.item !== undefined &&
-    startsWithPragmaComment(plan, first.item)
-  ) {
-    out.push({ k: 'text', text: 'export {}\n' })
-  }
-  let previous: Piece | undefined
   for (const p of pieces) {
-    startLine(out, code)
-    if (p.item !== undefined && needsLeadingSemicolon(code, p.item, previous)) {
-      out.push({ k: 'text', text: ';' })
-    }
+    const from = out.length
     p.render()
-    previous = p
+    renderer.statementStart(p.offset, from, true)
   }
-  const exportsText = exportGlue(plan, decl.id, placement, exportNameOf, null)
-  if (exportsText.length > 0) {
-    startLine(out, code)
-  }
-  renderer.renderFrags(exportsText, null, null, out)
-  return out
-}
-
-/**
- * What renders next starts on its own line: what a derived output rendered
- * last may be the end of a statement the source ended without a `;`, on the
- * file's end or in a line comment there.
- */
-function startLine(out: Array<Segment>, code: string): void {
-  const last = out[out.length - 1]
-  if (
-    last !== undefined &&
-    !isLineTerminator(
-      last.k === 'slice'
-        ? code.charCodeAt(last.end - 1)
-        : last.text.charCodeAt(last.text.length - 1),
-    )
-  ) {
-    out.push({ k: 'text', text: '\n' })
-  }
-}
-
-/** Whether the comments between an item's owned start and its statement carry a JSX pragma. */
-function startsWithPragmaComment(
-  plan: AnalysisPlan,
-  item: TopLevelItem,
-): boolean {
-  for (const c of plan.analysis.file.comments) {
-    if (c.start < item.range.start) {
-      continue
-    }
-    if (c.end > item.nodeRange.start) {
-      break
-    }
-    if (pragmasOf(c).length > 0) {
-      return true
-    }
-  }
-  return false
+  const from = out.length
+  renderer.renderFrags(
+    exportGlue(plan, decl.id, placement, exportNameOf, null),
+    null,
+    null,
+    null,
+  )
+  renderer.statementStart(-1, from, true)
+  renderer.keepPragmasLate(body)
 }
 
 /** What of the module renders in `output` (`sourceEdges`): the units it includes, its tree's erasures, its rendered segments. */
@@ -901,42 +780,77 @@ function outputView(
 }
 
 interface SpanOptions extends WalkOptions {
-  /** Something other than source text rendered before the span (its source runs are guarded as after an edit). */
+  /** Something other than source text rendered before the span (a statement its source text starts is separated from it). */
   afterEdit?: boolean
 }
 
 const NO_SPAN_OPTIONS: SpanOptions = {}
 
-/** An expression boundary being rendered (`Renderer.openExpr`): its reserved opening text and the boundary it is nested in. */
-interface OpenExpr {
-  /** The reserved segment of its opening text (empty until it closes). */
-  at: number
-  outerAt: number
-  outerCoreStart: number
-  outerCoreEnd: number
-  outerCoreShape: number
-  outerCoreRef: number
-  outerCoreWrapped: boolean
-}
-
-/** Where an edit's body names source text: slices of `level` (the node it rewrites, the module for the core's statement recipes). */
-interface SliceLevel {
-  level: RangeNode
-  /** The inserts there render before the edit (a statement recipe's start). */
-  skipAt: number | null
+/** The span being rendered (`Renderer.renderSpan`); one record per depth of nested spans, reused. */
+interface Span {
+  owner: GeneratedUnit | null
+  env: SubstEnv | null
+  /** The references the substitution environment rewrites in the span's source (one inside an active node renders with it). */
+  subst: Array<ClassifiedRef> | null
+  si: number
+  /**
+   * The source text after an edit: the statement it starts may follow what
+   * the edit left (a removed `const local = 1;` before `(mk)()`).
+   */
+  afterEdit: boolean
 }
 
 /**
- * Renders ranges and fragments of one output into segments: the segment
- * visitor of the output's walk (`OutputView.walk`: source text, active nodes
- * whole, inserts), applying substitution environments and context-aware
- * reference rewrites.
+ * An expression boundary being rendered (`expression.ts`), in the one it is
+ * nested in: what rendered on its kept node reports itself here.
+ */
+interface Boundary {
+  /** Its reserved opening segment (written when it closes); a boundary rendering bare shares its outer one's. */
+  at: number
+  /** The range of its kept node inside its wrappers (-1: none, or generated text). */
+  coreStart: number
+  coreEnd: number
+  /** A group or a TypeScript wrapper renders around the core (`ExprBoundary.wrapped`): what renders on it reports its reference only. */
+  wrapped: boolean
+  /** The shape what rendered on the core reported in place of the boundary's (-1: none): an edit's or a placeholder's text, a nested boundary. */
+  shape: number
+  /** The reference what rendered on the core reported (-1: none): a substituted or renamed reference. */
+  ref: number
+  outer: Boundary | null
+}
+
+/** A statement and the statement list it stands in (`Renderer.statementAt`). */
+interface ListedStatement {
+  /** null: a statement of the module the source does not have (a piece). */
+  node: Node | null
+  /** The module, or the block, static block, case or namespace body holding the list. */
+  list: Node
+  /** The list is a function's body (it starts with a directive prologue, as the module's). */
+  functionBody: boolean
+}
+
+/**
+ * Renders ranges and fragments of one output into its segments (`out`): the
+ * segment visitor of the output's walk (`OutputView.walk`: source text,
+ * active nodes whole, inserts), applying substitution environments and
+ * context-aware reference rewrites. Its state is two stacks, the span and
+ * the expression boundary being rendered; the characters of what rendered
+ * are `out`'s to read (`RecipeWriter`).
  */
 class Renderer {
   view!: OutputView
   erasedAt!: (offset: number) => boolean
+  out!: RecipeWriter
   private importerId!: string
   private edges!: Array<EdgeRecord>
+  private span: Span | null = null
+  private readonly spans: Array<Span> = []
+  private depth = 0
+  private boundary: Boundary | null = null
+  /** Where the last in-place boundary ended, and its last character: an edit or an insert rendering there meets it (rule L). */
+  private boundaryEnd = -1
+  private boundaryLast = ''
+  private moduleStarts: Set<number> | undefined = undefined
   constructor(
     private readonly plan: AnalysisPlan,
     private readonly code: string,
@@ -945,23 +859,8 @@ class Renderer {
   begin(importerId: string, edges: Array<EdgeRecord>): void {
     this.importerId = importerId
     this.edges = edges
+    this.out = new RecipeWriter(this.code)
     this.boundaryEnd = -1
-    this.reserved = false
-  }
-
-  /** The output's segments without the reserved texts its boundaries left empty (the recipe a plan cache keeps). */
-  withoutReserved(segments: Array<Segment>): Array<Segment> {
-    if (this.reserved) {
-      // (in place: the array the cache keeps is the one rendered)
-      let w = 0
-      for (const s of segments) {
-        if (s.k !== 'text' || s.text !== '' || s.edgeKey !== undefined) {
-          segments[w++] = s
-        }
-      }
-      segments.length = w
-    }
-    return segments
   }
 
   /** What the output renders, and whether an original byte renders in no text of it (`sourceEdges`). */
@@ -970,80 +869,48 @@ class Renderer {
     this.erasedAt = erasedAt
   }
 
-  /** Renders a piece of the env module standing at `start` (`EnvPiece`). */
+  /**
+   * Renders a piece of the env module (`EnvPiece`), a statement of the
+   * module. A statement placement rewrites (`rewrites`: its body names its
+   * text) owns the inserts at its start: they render first, once, and none
+   * of its body's slices renders them again.
+   */
   renderPiece(
     start: number,
-    end: number,
     body: ReadonlyArray<Frag | GenFrag>,
     gen: GeneratedUnit | null,
-    out: Array<Segment>,
+    rewrites: boolean,
   ): void {
-    const from = out.length
-    this.renderFrags(
-      body,
-      gen,
-      null,
-      out,
-      end > start
-        ? { level: this.plan.rewrites.regions.module, skipAt: start }
-        : null,
-    )
-    this.guardStatementStart(start, out, from)
+    const from = this.out.length
+    if (rewrites && body.length > 0) {
+      const root = this.plan.rewrites.regions.module
+      this.renderSpan(root, start, start, null, null, { includeEnd: true })
+      this.renderFrags(body, gen, null, root, start)
+    } else {
+      this.renderFrags(body, gen, null, null)
+    }
+    this.statementStart(-1, from, true)
   }
-
-  // ---- the span being rendered (`renderSpan`; saved around a nested one) ----
-  private spanOwner: GeneratedUnit | null = null
-  private spanEnv: SubstEnv | null = null
-  private spanOut: Array<Segment> = []
-  /** The references the substitution environment rewrites in the span's source (one inside an active node renders with it). */
-  private spanSubst: Array<ClassifiedRef> | null = null
-  private spanSi = 0
-  /**
-   * The source text after an edit: the statement it starts may follow what
-   * the edit left (a removed `const local = 1;` before `(mk)()`).
-   */
-  private spanAfterEdit = false
-  // ---- the expression boundary being rendered (`expression.ts`; saved around a nested one) ----
-  /** The range of the open boundary's kept node inside its wrappers (-1: none, or generated text). */
-  private coreStart = -1
-  private coreEnd = -1
-  /** A group or a TypeScript wrapper renders around the core (`ExprBoundary.wrapped`): what renders on it reports its reference only. */
-  private coreWrapped = false
-  /** The shape what rendered on the core reported in place of the boundary's (-1: none): an edit's or a placeholder's text. */
-  private coreShape = -1
-  /** The reference what rendered on the core reported (-1: none): a substituted or renamed reference. */
-  private coreRef = -1
-  /** The open boundary's reserved opening (-1: none): one that opens right after it leaves L at its start to it. */
-  private openAt = -1
-  /** Where the last in-place boundary ended, and its last character: an edit or an insert rendering there meets it (rule L). */
-  private boundaryEnd = -1
-  private boundaryLast = ''
-  /** Whether the output reserved a segment (a boundary's opening, a meeting space): some may have stayed empty. */
-  private reserved = false
 
   /** The segment visitor of the walk, one per renderer (its state is the span's). */
   private readonly spanVisitor: WalkVisitor = {
     source: (s, e) => {
-      const subst = this.spanSubst
+      const span = this.span!
+      const subst = span.subst
       let pos = s
       if (subst !== null) {
-        const env = this.spanEnv!
-        const out = this.spanOut
-        while (
-          this.spanSi < subst.length &&
-          subst[this.spanSi]!.range.start < s
-        ) {
-          this.spanSi++ // (inside an active node)
+        const env = span.env!
+        const out = this.out
+        while (span.si < subst.length && subst[span.si]!.range.start < s) {
+          span.si++ // (inside an active node)
         }
-        while (
-          this.spanSi < subst.length &&
-          subst[this.spanSi]!.range.start < e
-        ) {
-          const ref = subst[this.spanSi++]!
+        while (span.si < subst.length && subst[span.si]!.range.start < e) {
+          const ref = subst[span.si++]!
           if (ref.range.start > pos) {
             this.copy(pos, ref.range.start)
           }
-          this.spanAfterEdit = false
+          const afterEdit = span.afterEdit
+          span.afterEdit = false
           const at = out.length
           const text = this.renderRefText(
             ref.ctx,
@@ -1055,7 +922,7 @@ class Renderer {
           this.reportRef(ref.range.start, ref.range.end, text)
           out.push({ k: 'text', text, mapTo: ref.range.start })
           // a callee at a statement's start renders `(0, props.x)`: as an edit
-          this.guardStatementStart(ref.range.start, out, at)
+          this.statementStart(ref.range.start, at, afterEdit)
           pos = Math.max(pos, ref.range.end)
         }
       }
@@ -1064,62 +931,54 @@ class Renderer {
       }
     },
     node: (n) => {
-      this.spanAfterEdit = true
-      const out = this.spanOut
+      const span = this.span!
+      const afterEdit = span.afterEdit
+      span.afterEdit = true
+      const out = this.out
       const at = out.length
-      const meet = this.meetsBoundary(n.start, out)
+      const meet = this.meetsBoundary(n.start)
       const last = this.boundaryLast
       const place = this.view.placeholderOf(n)
       if (place !== null) {
         const claimed = 'owner' in place
         this.renderFrags(
           claimed ? place.placeholder : place.body,
-          this.spanOwner,
-          this.spanEnv,
-          out,
-          { level: n, skipAt: null },
+          span.owner,
+          span.env,
+          n,
         )
-        if (n.start === this.coreStart && n.end === this.coreEnd) {
-          this.coreShape = (!claimed && place.shape) || SHAPE_UNKNOWN
+        const b = this.boundary
+        if (b !== null && n.start === b.coreStart && n.end === b.coreEnd) {
+          b.shape = (!claimed && place.shape) || SHAPE_UNKNOWN
         }
       } else {
-        this.renderEdit(
-          n,
-          this.view.editOf(n)!,
-          this.spanOwner,
-          this.spanEnv,
-          out,
-        )
+        this.renderEdit(n, this.view.editOf(n)!, span.owner, span.env)
       }
-      this.meetBoundary(meet, last, out)
-      this.guardStatementStart(n.start, out, at)
+      this.meetBoundary(meet, last, n.end)
+      this.statementStart(n.start, at, afterEdit)
     },
     insert: (e) => {
-      this.spanAfterEdit = true
-      const out = this.spanOut
-      const at = out.length
-      const meet = this.meetsBoundary(e.range.start, out)
+      const span = this.span!
+      const afterEdit = span.afterEdit
+      span.afterEdit = true
+      const at = this.out.length
+      const meet = this.meetsBoundary(e.range.start)
       const last = this.boundaryLast
-      this.renderFrags(e.body, this.spanOwner, this.spanEnv, out)
-      this.meetBoundary(meet, last, out)
-      this.guardStatementStart(e.range.start, out, at)
+      this.renderFrags(e.body, span.owner, span.env, null)
+      this.meetBoundary(meet, last, e.range.start)
+      this.statementStart(e.range.start, at, afterEdit)
     },
   }
 
-  /**
-   * Renders `[start, end)` of `level`'s text (`OutputView.walk`); returns
-   * whether something other than source text rendered (`afterEdit`, given:
-   * before it).
-   */
+  /** Renders `[start, end)` of `level`'s text (`OutputView.walk`). */
   renderSpan(
     level: RangeNode,
     start: number,
     end: number,
     owner: GeneratedUnit | null,
     env: SubstEnv | null,
-    out: Array<Segment>,
     opts: SpanOptions = NO_SPAN_OPTIONS,
-  ): boolean {
+  ): void {
     let subst: Array<ClassifiedRef> | null = null
     if (env && env.size > 0) {
       subst = []
@@ -1129,41 +988,38 @@ class Renderer {
         }
       }
     }
-    // (a span renders spans inside it, through the bodies it renders)
-    const outerOwner = this.spanOwner
-    const outerEnv = this.spanEnv
-    const outerOut = this.spanOut
-    const outerSubst = this.spanSubst
-    const outerSi = this.spanSi
-    const outerAfterEdit = this.spanAfterEdit
-    this.spanOwner = owner
-    this.spanEnv = env
-    this.spanOut = out
-    this.spanSubst = subst
-    this.spanSi = 0
-    this.spanAfterEdit = opts.afterEdit === true
+    // (a span renders spans inside it, through the bodies it renders: the
+    // stack of their records, one per depth)
+    const outer = this.span
+    const depth = this.depth++
+    let span = this.spans[depth]
+    if (span === undefined) {
+      span = { owner, env, subst, si: 0, afterEdit: false }
+      this.spans.push(span)
+    } else {
+      span.owner = owner
+      span.env = env
+      span.subst = subst
+      span.si = 0
+    }
+    span.afterEdit = opts.afterEdit === true
+    this.span = span
     this.view.walk(level, start, end, this.spanVisitor, opts)
-    const afterEdit = this.spanAfterEdit
-    this.spanOwner = outerOwner
-    this.spanEnv = outerEnv
-    this.spanOut = outerOut
-    this.spanSubst = outerSubst
-    this.spanSi = outerSi
-    this.spanAfterEdit = outerAfterEdit
-    return afterEdit
+    this.span = outer
+    this.depth = depth
   }
 
-  /** Copies source text of the span (after an edit, a statement it starts is guarded). */
+  /** Copies source text of the span (after an edit, a statement it starts is separated from what precedes). */
   private copy(pos: number, to: number): void {
-    const out = this.spanOut
-    if (!this.spanAfterEdit) {
+    const out = this.out
+    if (!this.span!.afterEdit) {
       out.push({ k: 'slice', start: pos, end: to })
       return
     }
     // a `;` goes after the indentation, before a comment (an annotation
     // stays with its call)
     let from = pos
-    while (from < to && /\s/.test(this.code[from]!)) {
+    while (from < to && isSpace(this.code.charCodeAt(from))) {
       from++
     }
     if (from > pos) {
@@ -1171,36 +1027,32 @@ class Renderer {
     }
     const at = out.length
     out.push({ k: 'slice', start: from, end: to })
-    // (a statement of the module's own list has freeze's guard)
-    this.guardStatementStart(this.tokenStart(from, to), out, at, true)
-  }
-
-  /** Where the first token of the source between `start` and `end` starts (`end` when there is none). */
-  private tokenStart(start: number, end: number): number {
-    return start + LEADING_TRIVIA.exec(this.code.slice(start, end))![0].length
+    this.statementStart(tokenStart(this.code, from, to), at, true)
   }
 
   /**
-   * Renders fragments: `slices` says where the body's slices are (none in a
-   * generated unit, which names source text as the regions it claims).
+   * Renders fragments: `level`, the node whose text the body's slices are
+   * (none in a generated unit, which names source text as the regions it
+   * claims); `skipAt`, where the inserts rendered before the body (a
+   * rewritten statement's start, `renderPiece`).
    */
   renderFrags(
     frags: ReadonlyArray<Frag | GenFrag>,
     owner: GeneratedUnit | null,
     env: SubstEnv | null,
-    out: Array<Segment>,
-    slices: SliceLevel | null = null,
+    level: RangeNode | null,
+    skipAt: number | null = null,
   ): void {
+    const out = this.out
     const mergedEnv = mergeEnv(env, owner?.env)
     // the generated unit's own body (not an edit, a placeholder, an insert
     // or what a region renders): its mapped text stands for no source text
-    const ownBody = owner !== null && slices === null && frags === owner.body
+    const ownBody = owner !== null && level === null && frags === owner.body
     for (const f of frags) {
       switch (f.k) {
         case 'slice': {
-          const level = slices?.level
           if (
-            level === undefined ||
+            level === null ||
             f.range.start < level.start ||
             f.range.end > level.end
           ) {
@@ -1214,10 +1066,7 @@ class Renderer {
             f.range.end,
             owner,
             mergedEnv,
-            out,
-            slices!.skipAt === null
-              ? NO_SPAN_OPTIONS
-              : { skipAt: slices!.skipAt },
+            skipAt === null ? NO_SPAN_OPTIONS : { skipAt },
           )
           break
         }
@@ -1247,22 +1096,21 @@ class Renderer {
           this.boundaryEnd = -1
           const expr = f.expr
           const at = out.length
-          const open =
-            expr === undefined ? null : this.openExpr(node, false, out)
+          const open = expr === undefined ? null : this.openExpr(node, false)
           if (expr?.head !== undefined) {
             out.push({ k: 'text', text: expr.head })
           }
           const edit = this.view.editOf(node)
           if (edit === null) {
-            this.renderSpan(node, node.start, node.end, owner, mergedEnv, out)
+            this.renderSpan(node, node.start, node.end, owner, mergedEnv)
           } else {
-            this.renderEdit(node, edit, owner, mergedEnv, out)
+            this.renderEdit(node, edit, owner, mergedEnv)
           }
           if (open !== null) {
-            this.closeExpr(open, expr!.dest, ROLE_MOVED, expr!.shape, -1, out)
+            this.closeExpr(open, expr!.dest, ROLE_MOVED, expr!.shape, -1)
           }
           if (edit !== null) {
-            this.guardStatementStart(node.start, out, at)
+            this.statementStart(node.start, at, false)
           }
           this.boundaryEnd = -1
           break
@@ -1326,85 +1174,77 @@ class Renderer {
   /**
    * Renders node `n`'s edit. A boundary's body renders as one expression,
    * wrapped where it stands; bare when it is all of the open boundary's kept
-   * node, which wraps it once (it has no position of its own). Under a
-   * wrapper of the open boundary (`inner() as Fn`) it has one, the
+   * node, which wraps it once (it has no position of its own): what rendered
+   * on its own core reports the shape it resolves to, as its closing would.
+   * Under a wrapper of the open boundary (`inner() as Fn`) it has one, the
    * wrapper's operand: it is wrapped there. What renders on the open
-   * boundary's kept node reports its shape: unknown, unless a reference
-   * reported its own.
+   * boundary's kept node reports its shape.
    */
   private renderEdit(
     n: RangeNode,
     edit: Edit,
     owner: GeneratedUnit | null,
     env: SubstEnv | null,
-    out: Array<Segment>,
   ): void {
-    const slices: SliceLevel = { level: n, skipAt: null }
     const b = edit.expr
-    const atCore = n.start === this.coreStart && n.end === this.coreEnd
-    if (atCore && (b === undefined || !this.coreWrapped)) {
-      // (a boundary rendering bare hands its own kept node on: what renders
-      // there is all of the open boundary's text too)
-      const wrapped = this.coreWrapped
-      if (b?.core) {
-        this.coreStart = b.core.start
-        this.coreEnd = b.core.end
-        this.coreWrapped = b.wrapped
-      }
-      this.renderFrags(edit.body, owner, env, out, slices)
-      this.coreStart = n.start
-      this.coreEnd = n.end
-      this.coreWrapped = wrapped
-      if (b !== undefined) {
-        this.coreShape = SHAPE_UNKNOWN
-      } else if (this.coreRef === -1) {
-        this.coreShape = edit.shape ?? SHAPE_UNKNOWN
-      }
-      return
-    }
+    const top = this.boundary
+    const atCore =
+      top !== null && n.start === top.coreStart && n.end === top.coreEnd
     if (b === undefined) {
-      this.renderFrags(edit.body, owner, env, out, slices)
+      this.renderFrags(edit.body, owner, env, n)
+      if (atCore && top.ref === -1) {
+        top.shape = edit.shape ?? SHAPE_UNKNOWN
+      }
       return
     }
-    const open = this.openExpr(b.core, b.wrapped, out)
-    this.renderFrags(edit.body, owner, env, out, slices)
-    this.closeExpr(open, b.dest, ROLE_VALUE, b.shape, n.end, out)
+    if (atCore && !top.wrapped) {
+      // (bare: the open boundary's opening is its own)
+      const bare = this.pushBoundary(top.at, b.core, b.wrapped)
+      this.renderFrags(edit.body, owner, env, n)
+      this.boundary = top
+      top.shape = rendered(bare, b.shape)
+      return
+    }
+    const open = this.openExpr(b.core, b.wrapped)
+    this.renderFrags(edit.body, owner, env, n)
+    const shape = this.closeExpr(open, b.dest, ROLE_VALUE, b.shape, n.end)
     if (atCore) {
-      this.coreShape = SHAPE_UNKNOWN
+      top.shape = shape
     }
   }
 
   /** A reference rendered as `text` on `[start, end)`: on the open boundary's kept node, it is what renders there. */
   private reportRef(start: number, end: number, text: string): void {
-    if (start === this.coreStart && end === this.coreEnd) {
-      this.coreRef = text.includes('.') ? REF_MEMBER : REF_BINDING
+    const b = this.boundary
+    if (b !== null && start === b.coreStart && end === b.coreEnd) {
+      b.ref = text.includes('.') ? REF_MEMBER : REF_BINDING
     }
+  }
+
+  private pushBoundary(
+    at: number,
+    core: { start: number; end: number } | null,
+    wrapped: boolean,
+  ): Boundary {
+    const b: Boundary = {
+      at,
+      coreStart: core?.start ?? -1,
+      coreEnd: core?.end ?? -1,
+      wrapped,
+      shape: -1,
+      ref: -1,
+      outer: this.boundary,
+    }
+    this.boundary = b
+    return b
   }
 
   /** Opens a boundary around what renders next: its opening text is reserved (written when it closes, `closeExpr`). */
   private openExpr(
     core: { start: number; end: number } | null,
     wrapped: boolean,
-    out: Array<Segment>,
-  ): OpenExpr {
-    const open: OpenExpr = {
-      at: out.length,
-      outerAt: this.openAt,
-      outerCoreStart: this.coreStart,
-      outerCoreEnd: this.coreEnd,
-      outerCoreShape: this.coreShape,
-      outerCoreRef: this.coreRef,
-      outerCoreWrapped: this.coreWrapped,
-    }
-    this.openAt = out.length
-    out.push({ k: 'text', text: '' })
-    this.reserved = true
-    this.coreStart = core?.start ?? -1
-    this.coreEnd = core?.end ?? -1
-    this.coreWrapped = wrapped
-    this.coreShape = -1
-    this.coreRef = -1
-    return open
+  ): Boundary {
+    return this.pushBoundary(this.out.reserve(), core, wrapped)
   }
 
   /**
@@ -1412,32 +1252,19 @@ class Renderer {
    * rendered, the opening text in the reserved segment (mapped to the first
    * token it wraps), the closing text after (a `)` joins generated text it
    * closes that is mapped). `end`: the source offset the
-   * boundary ends at in place (-1: a recipe's position).
+   * boundary ends at in place (-1: a recipe's position). Returns the shape
+   * it rendered (a group once V or G wrapped it).
    */
   private closeExpr(
-    open: OpenExpr,
+    open: Boundary,
     dest: Dest,
     role: Role,
     planned: Shape,
     end: number,
-    out: Array<Segment>,
-  ): void {
-    // (under a wrapper, what rendered on the core is the wrapper's operand:
-    // the wrapper's shape, with the reference the core reported)
-    const shape =
-      this.coreShape !== -1
-        ? this.coreWrapped
-          ? withRef(planned, this.coreShape)
-          : this.coreShape
-        : this.coreRef !== -1
-          ? withRef(planned, this.coreRef)
-          : planned
-    this.coreStart = open.outerCoreStart
-    this.coreEnd = open.outerCoreEnd
-    this.coreShape = open.outerCoreShape
-    this.coreRef = open.outerCoreRef
-    this.coreWrapped = open.outerCoreWrapped
-    this.openAt = open.outerAt
+  ): Shape {
+    const out = this.out
+    const shape = rendered(open, planned)
+    this.boundary = open.outer
     const from = open.at + 1
     let prefix = ''
     let suffix = ''
@@ -1448,7 +1275,7 @@ class Renderer {
       const group = needsGroup(
         dest,
         shape,
-        atStatementEdge(dest) && edgeOpens(dest, this.renderedText(out, from)),
+        atStatementEdge(dest) && edgeOpens(dest, out.renderedText(from)),
       )
       if (group === GROUP_PARENS) {
         prefix = '('
@@ -1458,16 +1285,17 @@ class Renderer {
       }
     }
     let opening = prefix
-    let mapTo = prefix === '' ? undefined : this.firstMapped(out, from)
+    let mapTo = prefix === '' ? undefined : out.firstMapped(from)
     if (tokensMeet(dest)) {
       // (what renders before it inside the boundary it opens in: at that
       // one's start, the opening still to be written decides, `(` or a space)
-      const a = this.charBefore(out, open.at, 0, this.openAt)
+      const after = this.boundary?.at ?? -1
+      const a = out.charBefore(open.at, 0, after)
       if (
         spaceBefore(
-          a === '/' ? this.charBefore(out, open.at, 1, this.openAt) : '',
+          a === '/' ? out.charBefore(open.at, 1, after) : '',
           a,
-          prefix.charAt(0) || this.firstChar(out, from),
+          prefix.charAt(0) || out.firstChar(from),
         )
       ) {
         opening = ' ' + prefix
@@ -1476,7 +1304,7 @@ class Renderer {
       if (end >= 0) {
         const last =
           suffix === ''
-            ? this.charBefore(out, out.length, 0)
+            ? out.charBefore(out.length, 0)
             : suffix.charAt(suffix.length - 1)
         if (spaceAfter(last, this.code.charAt(end))) {
           suffix += ' '
@@ -1489,22 +1317,22 @@ class Renderer {
     // (a closing parenthesis after generated text mapped to the source is
     // that text's: it maps with the text it closes, as a callee's `(0, x)`)
     if (suffix.charCodeAt(0) === 41 /* ) */) {
-      const i = this.lastRendered(out, from)
-      const seg = i === -1 ? undefined : out[i]!
+      const i = out.lastRendered(from)
+      const seg = i === -1 ? undefined : out.segments[i]!
       if (
         seg?.k === 'text' &&
         seg.mapTo !== undefined &&
         seg.edgeKey === undefined &&
         seg.gen === undefined
       ) {
-        out[i] = { k: 'text', text: seg.text + ')', mapTo: seg.mapTo }
+        out.set(i, { k: 'text', text: seg.text + ')', mapTo: seg.mapTo })
         suffix = suffix.slice(1)
       }
     }
     // (a new segment, not the reserved one written: every text segment of
     // a recipe has one of the shapes the emitter reads)
     if (opening !== '') {
-      const next = out[open.at + 1]
+      const next = out.segments[open.at + 1]
       if (
         mapTo !== undefined &&
         next?.k === 'text' &&
@@ -1514,156 +1342,124 @@ class Renderer {
       ) {
         // (the text it maps to follows: one segment, which every position
         // of either resolves to as before; the emptied one is dropped)
-        out[open.at] = { k: 'text', text: opening + next.text, mapTo }
-        out[open.at + 1] = { k: 'text', text: '' }
+        out.set(open.at, { k: 'text', text: opening + next.text, mapTo })
+        out.set(open.at + 1, { k: 'text', text: '' })
       } else {
-        out[open.at] =
+        out.set(
+          open.at,
           mapTo === undefined
             ? { k: 'text', text: opening }
-            : { k: 'text', text: opening, mapTo }
+            : { k: 'text', text: opening, mapTo },
+        )
       }
     }
     if (suffix !== '') {
       out.push({ k: 'text', text: suffix })
     }
+    return prefix !== ''
+      ? SHAPE_GROUPED
+      : suffix.startsWith('()')
+        ? SHAPE_CALL
+        : shape
   }
 
   /** Before rendering at `offset`: the index of a reserved segment when the last boundary ended there (`meetBoundary`), else -1. */
-  private meetsBoundary(offset: number, out: Array<Segment>): number {
+  private meetsBoundary(offset: number): number {
     if (offset !== this.boundaryEnd) {
       return -1
     }
     this.boundaryEnd = -1
-    this.reserved = true
-    out.push({ k: 'text', text: '' })
-    return out.length - 1
-  }
-
-  /** Rule L where an edit or an insert renders right after a boundary: a space when their characters would merge. */
-  private meetBoundary(at: number, last: string, out: Array<Segment>): void {
-    if (at === -1) {
-      return
-    }
-    if (spaceAfter(last, this.firstChar(out, at + 1))) {
-      out[at] = { k: 'text', text: ' ' }
-    }
-  }
-
-  /** The text rendered from segment `from` on. */
-  private renderedText(out: ReadonlyArray<Segment>, from: number): string {
-    let text = ''
-    for (let i = from; i < out.length; i++) {
-      const seg = out[i]!
-      text += seg.k === 'slice' ? this.code.slice(seg.start, seg.end) : seg.text
-    }
-    return text
-  }
-
-  /** The first character rendered from segment `from` on ('' when none). */
-  private firstChar(out: ReadonlyArray<Segment>, from: number): string {
-    for (let i = from; i < out.length; i++) {
-      const seg = out[i]!
-      if (seg.k === 'slice' ? seg.end > seg.start : seg.text !== '') {
-        return seg.k === 'slice' ? this.code.charAt(seg.start) : seg.text[0]!
-      }
-    }
-    return ''
-  }
-
-  /** The index of the last segment from `from` on that renders text (-1: none). */
-  private lastRendered(out: ReadonlyArray<Segment>, from: number): number {
-    for (let i = out.length - 1; i >= from; i--) {
-      const seg = out[i]!
-      if (seg.k === 'slice' ? seg.end > seg.start : seg.text !== '') {
-        return i
-      }
-    }
-    return -1
-  }
-
-  /** The source position the first text rendered from segment `from` on maps to, if it is mapped. */
-  private firstMapped(
-    out: ReadonlyArray<Segment>,
-    from: number,
-  ): number | undefined {
-    for (let i = from; i < out.length; i++) {
-      const seg = out[i]!
-      if (seg.k === 'slice' ? seg.end > seg.start : seg.text !== '') {
-        return seg.k === 'slice'
-          ? seg.start
-          : seg.gen === true
-            ? undefined
-            : seg.mapTo
-      }
-    }
-    return undefined
-  }
-
-  /** The last character rendered before segment `before`, after segment `after` (`back` 1: the one before it, within that segment; '' when none). */
-  private charBefore(
-    out: ReadonlyArray<Segment>,
-    before: number,
-    back: 0 | 1,
-    after = -1,
-  ): string {
-    for (let i = before - 1; i > after; i--) {
-      const seg = out[i]!
-      if (seg.k === 'slice') {
-        if (seg.end > seg.start) {
-          return seg.end - 1 - back >= seg.start
-            ? this.code.charAt(seg.end - 1 - back)
-            : ''
-        }
-      } else if (seg.text !== '') {
-        return seg.text.charAt(seg.text.length - 1 - back)
-      }
-    }
-    return ''
+    return this.out.reserve()
   }
 
   /**
-   * A `;` before text rendered at `offset` when it starts a statement of a
-   * list, what renders before it does not end with a `;` and its first token
-   * could continue that (`const x = foo` + `(() => 1)()` would be a call of
-   * `foo`): an edit replacing a call with a parenthesised function, a
-   * placeholder, or the source statement
-   * after an edit that removed the one before it (`let y = foo`, removed
-   * `const local = 1;`, `(mk)()`). What renders before it may be generated, or
-   * the statement before the one the source wrote there.
+   * Rule L where an edit or an insert renders right after a boundary: a
+   * space when their characters would merge. One that renders nothing
+   * leaves the boundary meeting what follows it, at `next`: the source's
+   * character there, or what renders there next.
    */
-  private guardStatementStart(
-    offset: number,
-    out: Array<Segment>,
-    from: number,
-    nestedOnly = false,
-  ): void {
-    let first = ''
-    for (let i = from; i < out.length && first === ''; i++) {
-      const seg = out[i]!
-      const text =
-        seg.k === 'slice' ? this.code.slice(seg.start, seg.end) : seg.text
-      // the first token's first character: a comment (`/* @__PURE__ */`) is
-      // no `/`, and a text that is only one has none
-      first = text.charAt(LEADING_TRIVIA.exec(text)![0].length)
-    }
-    if (first === '' || !'([`+-/<'.includes(first)) {
+  private meetBoundary(at: number, last: string, next: number): void {
+    if (at === -1) {
       return
     }
-    // (the text before it first: the statement list is a descent of the AST)
-    if (!this.continuable(out, from)) {
-      return
-    }
-    const list = this.statementListAt(offset)
-    if (list !== undefined && (list === 'nested' || !nestedOnly)) {
-      out.splice(from, 0, { k: 'text', text: ';' })
+    const first = this.out.firstChar(at + 1)
+    if (first !== '') {
+      if (spaceAfter(last, first)) {
+        this.out.set(at, { k: 'text', text: ' ' })
+      }
+    } else if (spaceAfter(last, this.code.charAt(next))) {
+      this.out.set(at, { k: 'text', text: ' ' })
+    } else {
+      this.boundaryEnd = next
+      this.boundaryLast = last
     }
   }
 
-  /** The statement list a statement starting at `offset` stands in: the module's (`program`), a nested one, or none. */
-  private statementListAt(offset: number): 'program' | 'nested' | undefined {
-    const program = this.plan.analysis.file.program
-    const body = program.body
-    // (the module's statement holding `offset`)
+  // ---- statement separation ----
+
+  /**
+   * A statement of a list starts with what renders from segment `from` on
+   * (`offset`: its first token in the source; -1: a statement of the
+   * module the source does not have there, a piece), and `separate`:
+   * something other than its source predecessor renders before it. The one
+   * rule separating it from what renders before it, wherever that comes
+   * from (an edit, a removal, a generated unit, another statement of the
+   * output):
+   * - a `;` when its first token would continue a statement that does not
+   *   end with one (`const x = foo` + `(() => 1)()` is a call of `foo`);
+   * - a line break when it is a statement of the module and would share the
+   *   line of what precedes it (a statement without a `;` before it, a
+   *   comment, generated text);
+   * - `void` before a string statement the source has after other
+   *   statements, when what precedes it in the output is a directive
+   *   prologue (its list's start or directives): it would be a directive.
+   */
+  statementStart(offset: number, from: number, separate: boolean): void {
+    const out = this.out
+    const first = out.firstTokenChar(from)
+    if (first === '') {
+      return
+    }
+    const continues = continuesStatement(first)
+    const quote = first === "'" || first === '"'
+    if (!continues && !quote) {
+      if (
+        separate &&
+        (offset === -1 || this.startsModuleStatement(offset)) &&
+        out.lineOpen(from)
+      ) {
+        out.insert(from, '\n')
+      }
+      return
+    }
+    const st = this.statementAt(offset)
+    if (st === null) {
+      return
+    }
+    let at = from
+    if (separate && st.list.type === 'Program' && out.lineOpen(from)) {
+      out.insert(at++, '\n')
+    }
+    if (continues) {
+      if (out.continuable(from)) {
+        out.insert(at, ';')
+      }
+    } else if (st.node !== null && this.joinsPrologue(st, from)) {
+      out.insertAt(at, offset, 'void ')
+    }
+  }
+
+  /** Whether a statement of the module starts at `offset` (the starts, once per plan). */
+  private startsModuleStatement(offset: number): boolean {
+    this.moduleStarts ??= new Set(
+      this.plan.analysis.file.program.body.map((st) => st.start),
+    )
+    return this.moduleStarts.has(offset)
+  }
+
+  /** The module statement holding `offset` (undefined: none). */
+  private moduleStatementAt(offset: number): Node | undefined {
+    const body = this.plan.analysis.file.program.body
     let lo = 0
     let hi = body.length - 1
     let at = -1
@@ -1676,37 +1472,125 @@ class Renderer {
         hi = mid - 1
       }
     }
-    if (at < 0 || offset >= body[at]!.end) {
-      return undefined
+    return at < 0 || offset >= body[at]!.end ? undefined : body[at]
+  }
+
+  /** The statement starting at `offset` and its list (-1: a statement of the module); null: no statement of a list starts there. */
+  private statementAt(offset: number): ListedStatement | null {
+    const program = this.plan.analysis.file.program
+    if (offset === -1) {
+      return { node: null, list: program, functionBody: false }
     }
-    const st = body[at]!
+    const st = this.moduleStatementAt(offset)
+    if (st === undefined) {
+      return null
+    }
     if (st.start === offset) {
-      // (the module's first statement: nothing renders before it)
-      return offset === program.start ? undefined : 'program'
+      return { node: st, list: program, functionBody: false }
     }
-    return nestedStatementAt(st, offset) ? 'nested' : undefined
+    return nestedStatementAt(st, offset)
   }
 
   /**
-   * Whether the text before segment `from` ends with something a next token
-   * could continue: anything but a `;` or a block's start (taken for a comment's
-   * end when its line holds a `//`: another `;` costs nothing).
+   * Whether `st`, a string statement of the source that is no directive
+   * there, renders where it would join its list's directive prologue: in a
+   * module or a function body, after nothing but the list's start and its
+   * directives (comments aside).
    */
-  private continuable(out: ReadonlyArray<Segment>, from: number): boolean {
+  private joinsPrologue(st: ListedStatement, from: number): boolean {
+    const s = st.node!
+    if (
+      s.type !== 'ExpressionStatement' ||
+      typeof s.directive === 'string' ||
+      s.expression.type !== 'Literal' ||
+      typeof s.expression.value !== 'string' ||
+      (st.list.type !== 'Program' && !st.functionBody)
+    ) {
+      return false
+    }
+    // (the prologue: the list's opening `{`, then its directives)
+    let end = st.list.type === 'Program' ? 0 : st.list.start + 1
+    for (const x of (st.list as unknown as { body: Array<Node> }).body) {
+      if (typeof (x as { directive?: unknown }).directive !== 'string') {
+        break
+      }
+      end = x.end
+    }
+    const last = this.lastTokenBefore(from)
+    return last === -1 || (last >= 0 && last < end)
+  }
+
+  /** Where the source has the last character of the last token rendered before segment `from`, comments aside (-1: none; -2: generated text). */
+  private lastTokenBefore(from: number): number {
+    const comments = this.plan.analysis.file.comments
+    const segs = this.out.segments
     for (let i = from - 1; i >= 0; i--) {
-      const seg = out[i]!
-      const text = (
-        seg.k === 'slice' ? this.code.slice(seg.start, seg.end) : seg.text
-      ).trimEnd()
-      if (text !== '') {
-        const last = text[text.length - 1]!
-        return (
-          (last !== ';' && last !== '{') ||
-          text.slice(text.lastIndexOf('\n') + 1).includes('//')
-        )
+      const seg = segs[i]!
+      if (seg.k === 'text') {
+        if (seg.text.trim() !== '') {
+          return -2
+        }
+        continue
+      }
+      for (let p = seg.end - 1; p >= seg.start; p--) {
+        if (isSpace(this.code.charCodeAt(p))) {
+          continue
+        }
+        const c = commentAt(comments, p)
+        if (c === undefined) {
+          return p
+        }
+        p = c.start
       }
     }
-    return false
+    return -1
+  }
+
+  // ---- pragmas ----
+
+  /**
+   * J2.16: a pragma comment the source has after its first statement
+   * (`Header.latePragmas`: no pragma for a transform reading leading
+   * comments only) must not lead the output once what preceded it is gone:
+   * a token keeps it where the source had it. `from`: the first segment
+   * after the output's header.
+   */
+  keepPragmasLate(from: number): void {
+    const late = this.plan.analysis.header.latePragmas
+    if (late.length === 0) {
+      return
+    }
+    const out = this.out
+    const headerEnd = this.plan.analysis.header.end
+    for (let i = from; i < out.segments.length; i++) {
+      const seg = out.segments[i]!
+      if (seg.k === 'text') {
+        if (tokenStart(seg.text) < seg.text.length) {
+          return
+        }
+        continue
+      }
+      const start = Math.max(seg.start, headerEnd)
+      if (start >= seg.end) {
+        continue
+      }
+      const token = tokenStart(this.code, start, seg.end)
+      const c = late.find((r) => r.start >= start && r.start < token)
+      if (c !== undefined) {
+        // (before the slice when only whitespace precedes the comment in it)
+        out.insertAt(
+          i,
+          this.code.slice(seg.start, c.start).trim() === ''
+            ? seg.start
+            : c.start,
+          'export {}\n',
+        )
+        return
+      }
+      if (token < seg.end) {
+        return
+      }
+    }
   }
 
   private targetText(to: RefTarget, env: SubstEnv | null): string {
@@ -1764,6 +1648,21 @@ class Renderer {
   }
 }
 
+/**
+ * The shape a boundary rendered: what rendered on its core reported in place
+ * of the planned one (under a wrapper, the wrapper's shape with the
+ * reference the core reported).
+ */
+function rendered(b: Boundary, planned: Shape): Shape {
+  return b.shape !== -1
+    ? b.wrapped
+      ? withRef(planned, b.shape)
+      : b.shape
+    : b.ref !== -1
+      ? withRef(planned, b.ref)
+      : planned
+}
+
 /** The text of a reference rendered as `t` where it is called or tagged (rule V of `expression.ts`, role reference). */
 function calleeText(t: string): string {
   return needsValue(
@@ -1775,15 +1674,38 @@ function calleeText(t: string): string {
     : t
 }
 
-/** Whitespace and comments at a text's start (its first token follows them). */
-const LEADING_TRIVIA = /^(?:\s|\/\*[\s\S]*?\*\/|\/\/.*)*/
+/** The comment holding offset `p` (comments in source order). */
+function commentAt(
+  comments: ReadonlyArray<{ start: number; end: number }>,
+  p: number,
+): { start: number; end: number } | undefined {
+  let lo = 0
+  let hi = comments.length - 1
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    const c = comments[mid]!
+    if (p < c.start) {
+      hi = mid - 1
+    } else if (p >= c.end) {
+      lo = mid + 1
+    } else {
+      return c
+    }
+  }
+  return undefined
+}
 
 /**
- * Whether a statement of a statement list inside `statement` (a block's, a
- * static block's, a case's, a namespace body's) starts at `offset`: a descent from `statement`
- * through the nodes holding `offset`.
+ * The statement of a statement list inside `statement` (a block's, a
+ * static block's, a case's, a namespace body's) that starts at `offset`,
+ * with its list: a descent from `statement` through the nodes holding
+ * `offset`.
  */
-function nestedStatementAt(statement: Node, offset: number): boolean {
+function nestedStatementAt(
+  statement: Node,
+  offset: number,
+): ListedStatement | null {
+  let parent: Node | undefined
   let holder: Node | undefined = statement
   while (holder !== undefined) {
     const fields = holder as unknown as Record<string, unknown>
@@ -1797,14 +1719,24 @@ function nestedStatementAt(statement: Node, offset: number): boolean {
           : undefined
       if (inner !== undefined) {
         if (inner.start === offset && isStatementList(holder, key)) {
-          return true
+          return {
+            node: inner,
+            list: holder,
+            functionBody:
+              holder.type === 'BlockStatement' &&
+              parent !== undefined &&
+              (parent.type === 'FunctionDeclaration' ||
+                parent.type === 'FunctionExpression' ||
+                parent.type === 'ArrowFunctionExpression'),
+          }
         }
         break
       }
     }
+    parent = holder
     holder = inner
   }
-  return false
+  return null
 }
 
 /**
@@ -1872,28 +1804,4 @@ function mergeEnv(
     m.set(k, v)
   }
   return m
-}
-
-/** A statement an output rendered: as the source wrote it (`intact`, with the `;` that may end it) or rewritten. */
-interface RenderedStatement {
-  item: TopLevelItem
-  intact: boolean
-}
-
-/**
- * Whether a statement gets a `;` of its own: its first token would continue
- * a statement before it that has no `;` (a parenthesis, a bracket, a
- * template, a sign, a regular expression, JSX or a type assertion), and what
- * renders before it is not its intact source predecessor, which ended with
- * the `;` it relies on (semicolon-free code writes `;(x as any).y = 1`).
- */
-function needsLeadingSemicolon(
-  code: string,
-  item: TopLevelItem,
-  previous: Partial<RenderedStatement> | undefined,
-): boolean {
-  return (
-    '([`+-/<'.includes(code[item.nodeRange.start]!) &&
-    !(previous?.intact && previous.item?.index === item.index - 1)
-  )
 }

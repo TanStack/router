@@ -3,10 +3,10 @@
  * source text and drives the `OutputBuilder`. Emission is on demand and the
  * module never ends inside a line comment it did not end in already.
  */
-import { OutputBuilder } from './output-builder'
+import { OutputBuilder, SourceText } from './output-builder'
 import { specifierLiteral } from './strings'
 import { internalError } from './self-checks'
-import type { RawSourceMap, SourceText } from './output-builder'
+import type { RawSourceMap } from './output-builder'
 import type { EdgeRecord, OutputRecipe, Segment } from './plan'
 
 interface Emitted {
@@ -19,7 +19,10 @@ export function emitRecipe(
   source: SourceText,
   wantMap: boolean,
 ): Emitted {
-  const b = new OutputBuilder(source, recipe.mapSource, { map: wantMap })
+  const b = new OutputBuilder(source, recipe.mapSource, {
+    map: wantMap,
+    plainText: recipe.plainText,
+  })
   /** Whether the output ends with the source's own end (it then ends as the source does). */
   let sourceEnd = false
   for (const seg of recipe.segments) {
@@ -103,9 +106,8 @@ export function substituteSpecifier(
   }
 }
 
-/** The 1-based `line:column` of an offset of `code`. */
+/** The 1-based `line:column` of an offset of `code` (ECMAScript lines). */
 function lineColumn(code: string, offset: number): string {
-  const before = code.slice(0, offset)
-  const lineStart = before.lastIndexOf('\n') + 1
-  return `${before.split('\n').length}:${offset - lineStart + 1}`
+  const { line, column } = new SourceText(code).locate(offset)
+  return `${line + 1}:${column + 1}`
 }

@@ -78,10 +78,13 @@ emits its own output. Nothing depends on transform order.
   edge characters would merge with their neighbours, `impl` + `in`; a boundary opening where an enclosing one opens leaves its start to that one's opening, `n<(<></> as any)`). What renders on a boundary's kept node
   reports its shape: a substituted or renamed reference its own (Solid's `props.cb` is a member), a nested boundary
   or a planner's text the shape its edit or placeholder declares (a server fn's stub is a call), else an unknown one (grouped as an operand, valued where called, deleted, decorated or under `typeof`); a nested boundary that is all
-  of the kept node renders bare and the outer one wraps it once; under a group or a TypeScript wrapper of the kept
-  node (`inner() as Fn`) it is that wrapper's operand, wrapped there, and the outer one sees an unknown reference. The opening text is a segment reserved before the
+  of the kept node renders bare and the outer one wraps it once, seeing the shape the inner one resolved to; under a
+  group or a TypeScript wrapper of the kept node (`inner() as Fn`) it is that wrapper's operand, wrapped there, and
+  the outer one sees the reference of what it rendered (none once wrapped). Each open boundary is one record on a
+  stack (`Boundary` in `freeze.ts`): what renders on its kept node reports there. The opening text is a segment reserved before the
   body and written after it (no splice), mapped to the first token it wraps (one segment with that token when it is generated text mapped to the same offset, `(0, props.cb`); a closing `)` after generated text mapped to the source joins that text (`(0, props.cb)`, as a callee's `(0, x)`), any other closing text and spaces are unmapped (copied source text ends its mapping there).
-  `guardStatementStart` stays apart: it decides whether two statements join, after the wrapping.
+  Statement separation stays apart (`Renderer.statementStart`, below): it decides whether two statements join,
+  after the wrapping.
 - **One region tree per plan** (`RegionTable`, `rewrite.ts`): the module, every sub-region (one per range) and the
   range of every edit, placeholder and claim, shared by every output and checked against the units, so two ranges
   nest or are disjoint whatever outputs they apply in; a range that partly overlaps another is a conflict as it is
@@ -269,7 +272,17 @@ every output of an edited file). Rollup and Rolldown name a module's source by i
 Vite hosts' `outputOptions` compose `sourcemapPathTransform` with `withOwnSourcesNamedByFile` (`hosts/vite.ts`), which
 drops the owned query keys, so every output of a file names it once (R135); the webpack family names the resource
 path already. The header (hashbang, pragmas, license, directives) is handled by `header.ts`; derived outputs copy pragmas and
-directives, never license comments.
+directives, never license comments (a license comment's pragmas render alone, as a comment of their own).
+
+`output-builder.ts` is the one reader of characters: line terminators and whitespace, where two pieces meet (L of
+the boundaries, `spaceBefore`/`spaceAfter`), and what an output's segments render (`RecipeWriter`, which freeze
+writes into). One rule separates a statement from what renders before it, in every statement list and both
+assemblers (`Renderer.statementStart`), wherever a statement may follow something other than its source predecessor
+(text after an edit, a removal, a piece of the env module, a statement of a derived module): a `;` when its first
+token would continue what precedes, a line break when it is a statement of the module sharing the line of what
+precedes it, and `void` before a string the source has after other statements once it would join a directive
+prologue. A JSX pragma the source has after its first statement (`Header.latePragmas`) gets a token before it when
+an output would make it lead (`Renderer.keepPragmasLate`, J2.16).
 
 ### Values and summaries (`values.ts`, `summary.ts`, `resolve.ts`, `facts.ts`)
 
