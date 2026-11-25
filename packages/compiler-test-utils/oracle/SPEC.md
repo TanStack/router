@@ -903,12 +903,16 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   (ruling of review round 3, F1).
 - **J6.4 Only what the client bundle holds is reported.** Build: a violation is a mock in the final bundle (in a
   chunk of the bundler's own lists: Rolldown's `chunk.modules` with rendered code, Rspack's chunk graph with the
-  inner modules of a concatenated module); a mock in no chunk reports nothing (no warning). Nothing predicts the
+  inner modules of a concatenated module); a mock in no chunk reports nothing (no warning). The lists come before
+  the last passes over the code (Rolldown's chunk-level dead-code removal, Rspack's minifier): a mock only those
+  passes remove (read in a branch a constant from another module rules out) is reported, though the emitted code
+  lacks it, as on main for Vite; the limit only over-reports. Nothing predicts the
   real module's effects: the mock decides. A named, default or namespace import's mock is pure (kept where a binding
   of it survives). One that runs, kept wherever the import runs, whatever the tree-shaking options: a bare import
   (`import './x.server'`, `import {} from`, `export {} from`; not of an asset query), an `import()` or `require()`
   (one tree-shaking drops loads nothing), an import or re-export of type names only (kept as an import by a host's
-  `verbatimModuleSyntax`), a marker. A client entry's own marker is one whatever its form or what the host's
+  `verbatimModuleSyntax`), a marker; each declaration decides for its edge (one that runs next to one whose binding
+  the build drops still runs). A client entry's own marker is one whatever its form or what the host's
   TypeScript makes of it. A denied file mocked under its own id (its importers are code the compiler does not read:
   a package module, an import another plugin added, a pattern import) runs under its package's own `sideEffects`:
   an unused import of it in a module the build keeps is a violation, as on main; one the bundler drops (a bare

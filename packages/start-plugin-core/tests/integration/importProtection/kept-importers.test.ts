@@ -6,8 +6,11 @@
  * of it is a violation (in a chunk of its own or folded into its importer's);
  * an importer the build drops (an unused module of a `sideEffects: false`
  * package, a package only a dead `import()` loads) reports nothing, as
- * protection off ships nothing of it. Each case built with protection on and
- * off, Vite and Rsbuild.
+ * protection off ships nothing of it. So does a bare import the bundler
+ * drops in a used module of a `sideEffects: false` package; an unused
+ * import in a package module that runs is a violation (its mock runs, as
+ * the file does with protection off). Each case built with protection on
+ * and off, Vite and Rsbuild.
  */
 import { describe, expect, test } from 'vitest'
 import { startBundlers } from '../../build-harness'
@@ -68,6 +71,34 @@ const cases: Array<KeptCase & { on: Array<string> | null; off: boolean }> = [
     },
     on: null,
     off: false,
+  },
+  {
+    name: 'a used module of a sideEffects: false package importing a marked file bare',
+    files: {
+      ...dep(
+        {
+          'index.js': `export { x } from './client.js'\n`,
+          'client.js': `import './guard.js'\nexport const x = () => 'dep'\n`,
+          'guard.js': marked,
+        },
+        { sideEffects: false },
+      ),
+      'src/entry.ts': `import { x } from 'dep'\nexport const read = () => x()\n`,
+    },
+    on: null,
+    off: false,
+  },
+  {
+    name: 'an unused import of a marked file in a package module that runs',
+    files: {
+      ...dep({
+        'index.js': `import { secret } from './marked.js'\nexport const x = () => 'dep'\n`,
+        'marked.js': marked,
+      }),
+      'src/entry.ts': `import { x } from 'dep'\nexport const read = () => x()\n`,
+    },
+    on: ['node_modules/dep/index.js'],
+    off: true,
   },
 ]
 

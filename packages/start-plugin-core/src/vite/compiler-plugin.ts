@@ -7,7 +7,7 @@
  * invalidation operation on `hotUpdate`, the server-fn registry shared by
  * the envs, the dev lookup and production resolver modules, the custom-id
  * patching at `renderChunk`, and import protection's host side (edge
- * modules, dev reports, build witness and reports, the late pass for non-JS
+ * modules, dev reports, build chunk lists and reports, the late pass for non-JS
  * importers).
  *
  * The plugins share one `ViteCompilerState` (`compiler-state.ts`: the
@@ -49,7 +49,7 @@ import { heldIn } from '../import-protection/session'
 import {
   rolldownMocksInChunks,
   rolldownNodeGraph,
-} from '../import-protection/witness'
+} from '../import-protection/chunk-lists'
 import {
   inputMapOf,
   optimizedDependency,

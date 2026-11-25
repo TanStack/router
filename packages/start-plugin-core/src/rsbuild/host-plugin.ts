@@ -30,7 +30,7 @@ import {
   rspackHolds,
   rspackMocksInChunks,
   rspackNodeGraph,
-} from '../import-protection/witness'
+} from '../import-protection/chunk-lists'
 import { manifestFunctionsDiffering } from '../server-fns/resolver'
 import {
   LOCATED_DIAGNOSTICS,
@@ -61,7 +61,7 @@ import type {
 import type { StartCompilerEnvironment } from '../compiler/session'
 import type { RsbuildRouteGenerator } from './router-generator'
 import type { ServerFnFact } from '../server-fns/registry'
-import type { RspackNodeGraph } from '../import-protection/witness'
+import type { RspackNodeGraph } from '../import-protection/chunk-lists'
 import type { NodeGraph } from '../import-protection/graph-trace'
 import type { EdgeViolation } from '../import-protection/violations'
 import type {
@@ -906,7 +906,7 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                   }
                   if (session.start.ip!.config.log === 'always') {
                     // modules this compilation kept without compiling them report again: an
-                    // importer its violations, an edge module the pending ones it witnesses
+                    // importer its violations, an edge module the pending ones it stands for
                     for (const m of modules) {
                       const module = m as unknown as ModuleLike
                       if (

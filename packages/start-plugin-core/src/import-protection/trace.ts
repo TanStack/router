@@ -336,7 +336,7 @@ export function formatServedMismatch(
         ]
       : []),
     ``,
-    `  The build compiles each module once and serves it to every importer as it compiled it first: for an import it does not read (${unread}), every importer gets the mock; for the import that needs it, every importer gets it as it is.${served === 'mock' ? ' Here every importer got the mock.' : ` Here every importer got it as it is: it ships to the ${info.envType}.`} The build reports this either way, so its outcome does not depend on the order.`,
+    `  The build compiles each module once and serves it to every importer as it compiled it first: for an import it does not read (${unread}), every importer gets the mock; for the import that needs it, every importer gets it as it is.${served === 'mock' ? ' Here every importer got the mock.' : ` Here every importer got it as it is: it ships to the ${info.envType}.`} The build reports this when what it served is in the output: the mock wherever an import of it runs, the file as it is wherever code of it is kept. Which one it served follows the order it compiled the importers in, so a file nothing uses code of can fail in one order and build in the other.`,
     ``,
     `  Suggestions:`,
   )

@@ -1,5 +1,5 @@
 /**
- * The bundler witnesses whether a value import used only as a type is an
+ * The bundler decides whether a value import used only as a type is an
  * edge (SPEC J6.2, J6.4): TypeScript erases it unless
  * `verbatimModuleSyntax` holds for the importer *as the bundler's own
  * TypeScript transform resolves it*: Vite's oxc reads the nearest tsconfig,

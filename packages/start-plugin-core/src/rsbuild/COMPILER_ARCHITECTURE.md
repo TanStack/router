@@ -148,10 +148,10 @@ environment of its own (`<compiler>:<layer>`), which resolves with the compiler'
 `resolve` does not reach the compiler's resolver) and which reports name after its compiler. Its key names it, so a
 persisted edge-module request of a restored importer finds it before any module of the layer was seen
 (`envOfKey`). An import-protection edge module belongs to the environment its id names, whatever layer a user's rule
-puts the file in (`envOfModule`: an `.mjs` rule's), for the loader, the witness and the graph. A file both layers
+puts the file in (`envOfModule`: an `.mjs` rule's), for the loader, the chunk-list reader and the graph. A file both layers
 compile is a module of each environment, with its own plan, import-protection records, stale-set entry and
 registry snapshot: every operation of the host groups modules by environment before it deduplicates by resource
-(the drain, the restore, the witness, the graph, `hold`, the served ledger's rebuilds, the snapshots, the
+(the drain, the restore, the chunk-list reader, the graph, `hold`, the served ledger's rebuilds, the snapshots, the
 warnings). Import protection reads one graph per compilation (`rspackNodeGraph`, built on its first read):
 a node is a module of one environment, and its importers are nodes of their own environments (an issuer-layer
 rule: an SSR-layer module importing the RSC layer's server-fn module; a user's rule moving an imported file to its
@@ -249,7 +249,7 @@ forgotten once the compilation and its children no longer hold it. In developmen
 module's own violation is reported once its verdict is final, at `finishModules`; its compile reports nothing but,
 under `behavior: 'error'`, fails the module.
 In builds
-the mock is the survival witness: at `processAssets` the host reads which edge modules survived tree-shaking, tells
+the mock is what the build reads: at `processAssets` the host reads which edge modules the chunk graph holds, tells
 `onViolation` once per surviving import and publishes the reports. An edge `allowImport` allows is a transparent
 re-export from the start.
 

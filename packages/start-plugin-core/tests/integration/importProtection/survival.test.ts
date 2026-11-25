@@ -13,7 +13,7 @@ import { buildStart, startBundlers } from '../../build-harness'
 import { distinct, rejection } from '../../importProtection/start-apps'
 import { cases } from './survival-cases'
 import type { StartBuild } from '../../build-harness'
-import type { WitnessCase } from './survival-cases'
+import type { SurvivalCase } from './survival-cases'
 
 const timeout = 60_000
 
@@ -21,7 +21,7 @@ const timeout = 60_000
 const dirOf = (index: number) => `src/cases/c${index}`
 
 /** A case's files and globs under its directory. */
-function placed(c: WitnessCase, index: number) {
+function placed(c: SurvivalCase, index: number) {
   const at = (file: string) => file.replace(/^src\//, `${dirOf(index)}/`)
   return {
     files: Object.fromEntries(
@@ -38,7 +38,7 @@ function placed(c: WitnessCase, index: number) {
  * imports case `n`'s entry, and the client file rule is the default one
  * plus each case's own.
  */
-function appOf(selected: Array<[WitnessCase, number]>) {
+function appOf(selected: Array<[SurvivalCase, number]>) {
   const files: Record<string, string> = {}
   const denied: Array<string> = []
   const loaders: Array<string> = []
@@ -75,7 +75,7 @@ function edgesOf(build: Pick<StartBuild, 'root' | 'violations'>) {
 }
 
 /** The case's expected verdicts, by edge as `edgesOf` names them. */
-function expectedOf(c: WitnessCase, index: number, bundler: string) {
+function expectedOf(c: SurvivalCase, index: number, bundler: string) {
   const { at } = placed(c, index)
   const expected = {
     ...c.expect,
@@ -87,7 +87,7 @@ function expectedOf(c: WitnessCase, index: number, bundler: string) {
   })
 }
 
-const indexed = cases.map((c, index) => [c, index] as [WitnessCase, number])
+const indexed = cases.map((c, index) => [c, index] as [SurvivalCase, number])
 
 describe.each(startBundlers)('%s build', (bundler) => {
   let build: StartBuild

@@ -327,7 +327,7 @@ test(
 // The trace stops at an entry. In a production build the entry module is a
 // concatenated module (scope hoisting) without a `resource` of its own; the
 // Rsbuild graph view reads the entry's resource from its root module
-// (import-protection/witness.ts `rspackNodeGraph`). When a module imports the
+// (import-protection/chunk-lists.ts `rspackNodeGraph`). When a module imports the
 // entry back, the search still finds that root.
 describe.each(startBundlers)('%s build', (bundler) => {
   test(

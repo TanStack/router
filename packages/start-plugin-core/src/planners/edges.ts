@@ -548,38 +548,46 @@ export function importEdgesPlanner(
           j.edge.form === 'static' &&
           j.edge.kind === 'evaluation'
         const pending = config.mode === 'dev' && erasable
-        // (every specifier of every import of the edge written `type`: J6.2
-        // ignores it, unless the bundler's TypeScript keeps it as a bare
-        // import; one value specifier is judged as such)
-        const imports = erasable
-          ? ctx.analysis.imports.filter((i) =>
-              j.edge.locations.some(
-                (l) => l.range.start === i.specifierRange.start,
-              ),
-            )
-          : []
-        // (and a re-export of type names only, `export { type T } from`:
-        // TypeScript erases it, or keeps it as `export {} from`)
-        const reexports =
-          typescript && j.edge.form === 'reexport'
-            ? ctx.analysis.reexports.filter((r) =>
-                j.edge.locations.some(
-                  (l) => l.range.start === r.specifierRange.start,
-                ),
+        // the edge's declarations, each judged on its own (an edge merges
+        // every declaration of the specifier: one reading a binding does
+        // not make another one's evaluation go)
+        const declared = (start: number) =>
+          j.edge.locations.some((l) => l.range.start === start)
+        const imports =
+          j.edge.form === 'static'
+            ? ctx.analysis.imports.filter((i) =>
+                declared(i.specifierRange.start),
               )
             : []
+        const reexports =
+          j.edge.form === 'reexport'
+            ? ctx.analysis.reexports.filter((r) =>
+                declared(r.specifierRange.start),
+              )
+            : []
+        // every specifier written `type`: TypeScript erases the import, or
+        // keeps it bare (`verbatimModuleSyntax`)
         const typeOnlyImport = (i: (typeof imports)[number]) =>
           i.specifiers.length > 0 && i.specifiers.every((spec) => spec.typeOnly)
-        const typeOnlyReexport = (r: (typeof reexports)[number]) =>
+        // a named re-export of no value: `export {} from` evaluates the
+        // module in either language, and `export { type T } from` is erased
+        // or kept as one
+        const emptyReexport = (r: (typeof reexports)[number]) =>
           r.kind === 'named' && !r.typeOnly && r.names.length === 0
+        const typeOnlyReexport = (r: (typeof reexports)[number]) =>
+          typescript &&
+          emptyReexport(r) &&
+          !/^export\s*\{\s*\}/.test(
+            ctx.code.slice(r.statementRange.start, r.specifierRange.start),
+          )
         // (its suggestion: `import type`)
         const typeSpecifiers =
           (imports.length > 0 && imports.every(typeOnlyImport)) ||
           (reexports.length > 0 && reexports.every(typeOnlyReexport))
-        // one declaration of the edge that a host's TypeScript may keep as
-        // a bare import (`verbatimModuleSyntax`): its mock is evaluated
-        const keptBare =
-          imports.some(typeOnlyImport) || reexports.some(typeOnlyReexport)
+        // a declaration of the edge that evaluates the module whatever it
+        // reads of it, as a host may keep it: its mock is evaluated
+        const evaluates =
+          imports.some(typeOnlyImport) || reexports.some(emptyReexport)
         // a server rendering client-only code: whether it renders it as a component
         const ownStatic = envType === 'server' && j.offset !== undefined
         const offsets = j.edge.locations.map((l) => l.range.start)
@@ -610,7 +618,7 @@ export function importEdgesPlanner(
                 )
             : []
         const spec = specs.find((s) => /^[A-Z]/.test(s.localName)) ?? specs[0]
-        const content = await edgeModuleContent(edges, j, ctx, keptBare)
+        const content = await edgeModuleContent(edges, j, ctx, evaluates)
         const key = edgeModuleKey(content)
         if (!j.handoff) {
           ctx.substitute(j.edge.edgeKey, ip.ids.request(key, content))
@@ -713,21 +721,21 @@ export function importEdgesPlanner(
     edges: Readonly<PlanEdges>,
     j: Judged,
     ctx: PolicyContext,
-    /** A declaration of the edge is type-only: TypeScript erases it, or keeps it bare (`verbatimModuleSyntax`). */
-    keptBare: boolean,
+    /** A declaration of the edge evaluates the module as a host may keep it: a type-only import (bare under `verbatimModuleSyntax`), an empty named re-export. */
+    evaluates: boolean,
   ): Promise<EdgeModuleContent> {
     // the module's own marker: the marker module is empty
     const ownMarker = ownEntry(ip.markerSpecifiers, j.raw) !== undefined
     // an import that evaluates the module whatever it reads of it (bare,
-    // `import()`, `require()`, a type-only one TypeScript keeps bare, a
-    // marker): its mock runs, so the bundler keeps it wherever the import
+    // `import()`, `require()`, a type-only one TypeScript keeps bare,
+    // `export {} from`, a marker): its mock runs, so the bundler keeps it wherever the import
     // runs; an asset query of a file (its text or URL) runs nothing
     const evaluated =
       (j.resolved === null || !isAssetId(j.resolved)) &&
       (j.edge.form === 'bare' ||
         j.edge.form === 'dynamic' ||
         j.edge.form === 'require' ||
-        keptBare ||
+        evaluates ||
         ownMarker)
     const target =
       j.resolved !== null && !ownMarker && j.edge.form !== 'bare'

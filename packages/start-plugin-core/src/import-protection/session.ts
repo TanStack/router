@@ -53,7 +53,7 @@ import {
   violationInfo,
   violationsOf,
 } from './violations'
-import { mockLookup } from './witness'
+import { mockLookup } from './chunk-lists'
 import {
   formatServedConflict,
   formatServedMismatch,
@@ -85,7 +85,7 @@ import type {
   EdgeViolation,
   RspackImportProtectionBuildInfo,
 } from './violations'
-import type { MockLookup } from './witness'
+import type { MockLookup } from './chunk-lists'
 import type { ReportContext, ViolationInfo } from './trace'
 import type { ImportProtectionOptions } from '../schema'
 import type { CompileStartFrameworkOptions } from '../types'
@@ -741,7 +741,8 @@ function unknownEdgeLoad(
  * import, a transparent re-export), or the verdict on a denied file compiled
  * under its own id (`self`: its own violation; `real`: an unchecked importer
  * imports it, or an allowed import brought it). Every reader (the edge
- * module's code, the witness, the build report) reads it; none decides again.
+ * module's code, the chunk-list reader, the build report) reads it; none
+ * decides again.
  */
 interface Served {
   verdict: 'mock' | 'real'

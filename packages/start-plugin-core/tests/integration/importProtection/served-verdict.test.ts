@@ -305,8 +305,9 @@ describe('vite build', () => {
     timeout,
   )
 
-  // the other order: the file is served as it is to both, and the build
-  // says so the same way, so the outcome does not depend on the order
+  // the other order: the file is served as it is to both, and the glob
+  // importer uses its code: the build says so the same way (a file nothing
+  // uses code of builds in this order: KNOWN-BUGS)
   test(
     'two exempt importers, the plain one compiled first: the error build fails, naming the file, the importer that needs it and the pattern import',
     async () => {

@@ -118,8 +118,9 @@ function info not found` when one of them calls it, and the build says nothing, 
   refused (dev, and a `prodDevtools` build): "a template attaching a handler to a builder a $name block hands it is
   refused", "… fails the build"; the recipe: "$name compiles", "$name builds, and no server code reaches the client".
 - **Forms that reach a denied file's text past import protection, on a Vite client build, unreported, as on main**
-  (asset queries themselves are covered: `importProtection/asset-query.test.ts`). A clean `?worker`'s imports (Vite's
-  worker build has no Start plugin); `new URL('./x.server.ts', import.meta.url)`; a marked `.mdx`/`.vue` with an asset
+  (asset queries themselves are covered: `importProtection/asset-query.test.ts`). A worker's imports, `?worker` or
+  `new Worker(new URL('./w.ts', import.meta.url))` (Vite's worker build has no Start plugin: a denied or marked file
+  ships as it is; Rsbuild reports all four shapes); `new URL('./x.server.ts', import.meta.url)`; a marked `.mdx`/`.vue` with an asset
   query (no language, no marker read); a marked file that does not parse with an asset query. Rsbuild, the same: a plain
   `import.meta.webpackContext` of a non-code file (`*.server.json`). SPEC J6.1.
   `start-plugin-core/tests/integration/importProtection/known-bugs-asset-forms.test.ts`.
@@ -585,7 +586,12 @@ code.test.ts`: "a root route's components load with the route module" (Vite and 
   compiled it first** (a build compiles a module once; Rsbuild and the dev servers compile the file again): both get
   the mock when the pattern import came first, the real module otherwise. The build reports the shape under
   `behavior` either way (R142 (2), design 4 closing follow-up): it fails with `error`, warns with `mock`, naming the
-  file, the importer that needs it, the pattern import and the fixes; only when something of the file was kept.
+  file, the importer that needs it, the pattern import and the fixes; only when what it served is in the output: the
+  mock wherever an import of it runs, the file as it is wherever code of it is kept. So the outcome follows the order
+  when nothing uses the file's code: an unused import of it in the plain importer keeps the mock (an import of a file
+  under its own id runs it), not the file's code, so the build fails when the pattern import came first and builds in
+  the other order (a rule for both orders would predict what the file's own code does, which import protection does
+  not). No test (the outcome is the limit).
   `start-plugin-core/tests/integration/importProtection/served-verdict.test.ts`: "two exempt importers, the plain one
   compiled after the denied file: the %s build …" and "… the plain one compiled first: the error build fails …" (a
   user plugin holds one importer's `load`). With a checked pattern importer (or a checked module another plugin adds an

@@ -2,7 +2,7 @@
  * `allowImport` and `onViolation` on real builds (Vite and Rsbuild), through
  * Start's public option: what the client gets, what is reported, and how many
  * times each callback runs, for each kind of violation and each answer.
- * Development: dev.test.ts, policy.test.ts, witness.test.ts.
+ * Development: dev.test.ts, policy.test.ts, value-import-as-type.test.ts.
  */
 import { describe, expect, test } from 'vitest'
 import { buildStart } from '../../build-harness'

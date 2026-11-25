@@ -1,18 +1,18 @@
 /**
  * Assumption test (no tripwire: R136 superseded, "Assumption tests",
- * 2026-11-13). The assumption: a bundler's own graph after tree-shaking
- * tells whether a module survived (Rolldown's rendered exports, Rspack's
- * used exports, inner modules of a `ConcatenatedModule` included), which
- * neither bundler documents as a contract. The code relying on it: import
- * protection's survival witness (start-plugin-core `import-protection/
- * witness.ts`, design 4 §5, F5-4), which reports an import a production
- * build mocked when the mock survived. Here that structural answer is
- * compared with the emitted text: each importer imports a denied file of
- * its own, and a production mock carries its denied file's path (unless
- * `mockAccess` is `off`), so it is in a chunk exactly when the import was
- * reported.
- * Fails when the bundler's graph changes shape under the witness (a
- * scope-hoisted module, an async chunk). No upstream issue.
+ * 2026-11-13). The assumption: a bundler's chunk lists after linking tell
+ * whether a module is in the output (Rolldown's `chunk.modules` with
+ * rendered code, Rspack's chunk graph with the inner modules of a
+ * `ConcatenatedModule`), which neither bundler documents as a contract. The
+ * code relying on it: import protection's chunk-list readers
+ * (start-plugin-core `import-protection/chunk-lists.ts`, SPEC J6.4), which
+ * report an import a production build mocked when its mock is in a chunk.
+ * Here that structural answer is compared with the emitted text: each
+ * importer imports a denied file of its own, and a production mock carries
+ * its denied file's path (unless `mockAccess` is `off`), so it is in a chunk
+ * exactly when the import was reported.
+ * Fails when the bundler's chunk lists change shape (a scope-hoisted module,
+ * an async chunk). No upstream issue.
  */
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
@@ -28,7 +28,7 @@ export const unused = 1
 /**
  * Checked importers of denied files: used, unused, an effect, and the same
  * in an async chunk; and an unused import of a denied file another importer
- * uses (`src/unused-shared.ts`: the witness answers per import, not per
+ * uses (`src/unused-shared.ts`: the lists answer per import, not per
  * denied file; the text cannot tell its mock from `src/used.ts`'s).
  */
 const files = {

@@ -321,9 +321,11 @@ export const RSPACK_BUILD_INFO_KEY = 'tanstack.start.ip'
  * edge keys and edge-module ids of compile environments (no layer; an
  * Rspack RSC layer's module records the `rsc` environment's). 4: the
  * client-reference handoff (`EdgeViolation.handoff`, `clientReferences`).
- * 5: no effect witness. 6: one `EdgeModuleContent.evaluated` (no `runs`).
+ * 5: no effect reading. 6: one `EdgeModuleContent.evaluated` (no `runs`).
+ * 7: `evaluated` per declaration (`export {} from`, a type-only import next
+ * to a value one).
  */
-export const RSPACK_BUILD_INFO_VERSION = 6
+export const RSPACK_BUILD_INFO_VERSION = 7
 
 /**
  * What the Rspack loader stores in an importer's `buildInfo[RSPACK_BUILD_INFO_KEY]`

@@ -9,7 +9,7 @@
  * - importers under `src/exempt/` are ignored (`ignoreImporters`).
  */
 
-export interface WitnessCase {
+export interface SurvivalCase {
   name: string
   files: Record<string, string>
   entry?: string
@@ -22,7 +22,7 @@ export interface WitnessCase {
 const SECRET = `export const secret = () => 'MARK_SECRET' + Math.random().toString().slice(0, 0)\n`
 const log = (expr: string) => `console.log('OUT', ${expr})\n`
 
-export const cases: Array<WitnessCase> = [
+export const cases: Array<SurvivalCase> = [
   // live direct imports
   {
     name: 'a named import, used',
@@ -115,7 +115,7 @@ export const cases: Array<WitnessCase> = [
   },
   {
     // An exempt importer uses the target; the in-scope importer does not.
-    // A per-target witness (is the real module in the bundle?) reports here.
+    // A per-target reading (is the real module in the bundle?) reports here.
     name: 'unused, its target used by an exempt importer',
     files: {
       'src/secret.server.ts': SECRET,

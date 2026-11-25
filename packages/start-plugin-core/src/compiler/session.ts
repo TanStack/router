@@ -5,7 +5,7 @@
  * warning ledger; what one compile of a module is in an environment (its
  * planners, configuration and `EnvInfo`); what every compile is followed by
  * (registry record, import protection); one reporting policy. The hosts keep
- * the bundler wiring: hooks, module graph invalidation, witnesses, virtual
+ * the bundler wiring: hooks, module graph invalidation, chunk-list readers, virtual
  * modules, and Rspack's `buildInfo` replay.
  */
 import {

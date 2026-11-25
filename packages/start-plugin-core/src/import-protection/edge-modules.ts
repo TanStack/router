@@ -225,9 +225,9 @@ export interface EdgeModuleContent {
    * wherever the import runs (Vite `moduleSideEffects: true`, Rspack's
    * `EVALUATED_EDGE_QUERY` rule): an import that evaluates the module
    * whatever it reads (bare, `import()`, `require()`, a type-only one a
-   * host's TypeScript may keep bare, a marker; not of an asset query), and a
-   * module that is its own violation (its importers are code the compiler
-   * does not read; under its package's own `sideEffects`).
+   * host's TypeScript may keep bare, `export {} from`, a marker; not of an
+   * asset query), and a module that is its own violation (its importers are
+   * code the compiler does not read; under its package's own `sideEffects`).
    */
   evaluated?: true
   /** The rule that denied it: `allowImport` is told, even for an importer a persistent cache restored whose record is not read yet. */
