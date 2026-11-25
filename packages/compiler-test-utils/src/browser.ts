@@ -432,7 +432,8 @@ export async function openPage(
           // The page is reloading
           current = ''
         }
-        if (matches(current)) {
+        // (a text read after the bound counts for nothing)
+        if (matches(current) && Date.now() <= deadline) {
           return
         }
         if (Date.now() > deadline) {

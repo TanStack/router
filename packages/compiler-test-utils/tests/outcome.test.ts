@@ -150,6 +150,28 @@ describe('waitForOutcome', () => {
     expect(Date.now() - started).toBeLessThan(150)
   })
 
+  test('a check that answers after the bound, synchronously, is a timeout, not a success', async () => {
+    const started = Date.now()
+    let calls = 0
+    await expect(
+      waitForOutcome({
+        timeout: 100,
+        applied: () => {
+          calls++
+          // The second round's last check keeps the event loop past the
+          // bound; its answer would settle the wait
+          if (calls === 4) {
+            while (Date.now() - started < 150) {
+              // busy
+            }
+          }
+          return true
+        },
+        describe: () => 'blocked',
+      }),
+    ).rejects.toThrow(/within 100 ms\nblocked/)
+  })
+
   test('a probe that never settles fails at the bound, and so does a description that never settles', async () => {
     const started = Date.now()
     await expect(

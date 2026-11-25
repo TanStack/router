@@ -217,6 +217,20 @@ test('waitForText ends at its own bound when the element never appears', async (
   expect(Date.now() - started).toBeLessThan(5_000)
 })
 
+test('waitForText fails when the text shows only after its bound', async () => {
+  const page = await openPage('http://127.0.0.1:9/page', {
+    html: '<p>ready</p>',
+    registerCleanup: onTestFinished,
+  })
+  const waited = page.waitForText('ready', { timeout: 100 })
+  // (the process is busy past the bound before the page's text comes back)
+  const blocked = Date.now()
+  while (Date.now() - blocked < 200) {
+    // busy
+  }
+  await expect(waited).rejects.toThrow(/did not show ready within 100 ms/)
+})
+
 test(
   'pages that fail to open give back their slots',
   async () => {

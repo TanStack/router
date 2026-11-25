@@ -99,7 +99,9 @@ export async function waitForOutcome(wait: OutcomeWait): Promise<void> {
   /** A check's answer, before the deadline. */
   const check = async <T>(answer: () => T | Promise<T>) => {
     const answered = await settledWithin(answer, deadline - Date.now())
-    if (answered === undefined) {
+    // (an answer read after the deadline, e.g. by a check that kept the
+    // event loop past it, counts for nothing either)
+    if (answered === undefined || Date.now() > deadline) {
       throw await timedOut()
     }
     return answered.value
