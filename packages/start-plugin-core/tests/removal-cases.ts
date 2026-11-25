@@ -41,7 +41,7 @@ export const useRemovalHost = () =>
 export const SO = `import { createServerOnlyFn } from '@tanstack/react-start'\n`
 export const SF = `import { createServerFn } from '@tanstack/react-start'\n`
 
-/** The files every row may import: a server module, a recorder, a client module. */
+/** The files every row may import: a server module, a recorder, a client module, a module that registers when it runs. */
 const support = {
   'db.server.ts': `const value = () => ({ query: () => 's', s1: 's', secret: 's', unused: 1, value: 'dep', toString: () => 'sv' })
 export const getServerDb = value
@@ -74,6 +74,11 @@ export function getters(): any {
   'client-dep.ts': `export const keptFn = () => 'kept'
 export const sharedDef = () => ({ ok: 'ok', s1: 's' })
 export const sharedKey = () => 'shared'
+export const h = (type: unknown) => type
+`,
+  'register.ts': `import { record } from './record'
+record('registered')
+export class Registered {}
 `,
 }
 

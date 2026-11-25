@@ -775,11 +775,13 @@ export class ModuleAnalysis {
       this.importIndexOfStatement(s),
     )
 
-    // the type names decorator metadata reads, by offset (see `metadataNames`)
+    // the type names decorator metadata reads, by offset, and the
+    // constructors it reads (see `metadataNames`)
     const metadataReads = new Map<number, Scope>()
+    const metadataGlobals: Array<MetadataRead> = []
     for (const scope of file.scopes) {
       if (scope.kind === 'class' && scope.parent !== null) {
-        metadataNames(scope.node, scope.parent, metadataReads)
+        metadataNames(scope.node, scope.parent, metadataReads, metadataGlobals)
       }
     }
 
@@ -847,6 +849,19 @@ export class ModuleAnalysis {
       }
     }
     refAssigns(file, refTargets)
+    for (const { name, at, scope } of metadataGlobals) {
+      const b = valueBinding(scope, name)
+      if (b === null) {
+        names.add(name)
+      } else if (symbols.kind(symbols.ofBinding(b)) !== 'ambient') {
+        refs.push({
+          sym: symbols.ofBinding(b),
+          range: { start: at.start, end: at.end },
+          kind: 'value',
+          ctx: 'plain',
+        })
+      }
+    }
 
     // a `var` declared again: what that declaration gives it is a write, like
     // an assignment, except what its declaring unit starts it with (a nested
@@ -904,6 +919,30 @@ export class ModuleAnalysis {
             kind: 'value',
             ctx: 'plain',
           })
+        },
+      })
+    }
+    // a classic JSX transform calls the factories its pragmas name (`@jsx
+    // h`, `@jsxFrag Fragment`, React's by default) where JSX is: a read of
+    // each by value there
+    const factories = jsxFactories(this.header, this.source.code)
+    if (factories !== null) {
+      const factory = (name: string, at: Node) => {
+        const b = valueBinding(file.scopeOf(at), name)
+        if (b !== null && symbols.kind(symbols.ofBinding(b)) !== 'ambient') {
+          refs.push({
+            sym: symbols.ofBinding(b),
+            range: { start: at.start, end: at.end },
+            kind: 'value',
+            ctx: 'plain',
+          })
+        }
+      }
+      walk(file.program, {
+        JSXOpeningElement: (n) => factory(factories.element, n.name),
+        JSXOpeningFragment: (n) => {
+          factory(factories.element, n)
+          factory(factories.fragment, n)
         },
       })
     }
@@ -1093,23 +1132,60 @@ interface MetadataParam {
   left?: MetadataParam
 }
 
+/** What a keyword or a literal type's metadata is (`serializeTypeNode`): the constructor it names; null: `void 0`. */
+const METADATA_GLOBALS: Record<string, string | null> = {
+  TSStringKeyword: 'String',
+  TSTemplateLiteralType: 'String',
+  TSNumberKeyword: 'Number',
+  TSBigIntKeyword: 'BigInt',
+  TSSymbolKeyword: 'Symbol',
+  TSBooleanKeyword: 'Boolean',
+  TSTypePredicate: 'Boolean',
+  TSFunctionType: 'Function',
+  TSConstructorType: 'Function',
+  TSArrayType: 'Array',
+  TSTupleType: 'Array',
+  TSVoidKeyword: null,
+  TSUndefinedKeyword: null,
+  TSNeverKeyword: null,
+  TSNullKeyword: null,
+}
+const LITERAL_GLOBALS: Record<string, string> = {
+  string: 'String',
+  number: 'Number',
+  bigint: 'BigInt',
+  boolean: 'Boolean',
+}
+
+/** A name decorator metadata reads where the class is defined, by value (`MetadataReads`). */
+interface MetadataRead {
+  name: string
+  /** The decorated member: the read stands in its text. */
+  at: Node
+  scope: Scope
+}
+
 /**
- * The type names TypeScript's decorator metadata (`emitDecoratorMetadata`)
- * turns into runtime reads where the class is defined
- * (`__metadata("design:type", Model)`), by offset of the name, with the scope
- * the read resolves in: the type of a decorated property or accessor, the
- * parameter and return types of a method with a decorator on it or on a
- * parameter, the constructor's parameter types of a class with a decorator
- * on it or on a constructor parameter. Only a type reference serializes to
- * its name (`Model`, `(Model)`, `ns.Model` reads `ns`; `Array<Model>` reads
- * `Array`); a union, an intersection or `typeof` is `Object`. Whether the
- * project emits metadata is not asked: where it does not, the downstream
- * TypeScript transform erases what the name kept.
+ * What TypeScript's decorator metadata (`emitDecoratorMetadata`) reads by
+ * value where the class is defined (`__metadata("design:type", Model)`),
+ * with the scope the read resolves in: for the type of a decorated property
+ * or accessor, the parameter and return types of a method with a decorator
+ * on it or on a parameter, the constructor's parameter types of a class with
+ * a decorator on it or on a constructor parameter. A type reference reads its
+ * name (`Model`, `ns.Model` reads `ns`; `Array<Model>`: `Array`), by offset
+ * (`refs`), and `Object` when it is undefined (the syntactic emitters'
+ * `typeof Model === "undefined" ? Object : Model`); a keyword or a literal
+ * the constructor it serializes to (`string`: `String`, `number[]`: `Array`),
+ * which the module may declare (`globals`); anything else (a union, an
+ * intersection, `typeof`), `Object`, as Oxc, SWC and Babel emit it. Whether
+ * the project emits metadata is not asked: where it does not, the
+ * downstream TypeScript transform erases what the name kept.
  */
 function metadataNames(
   node: Node,
   outer: Scope,
-  out: Map<number, Scope>,
+  refs: Map<number, Scope>,
+  globals: Array<MetadataRead>,
 ): void {
   if (node.type !== 'ClassDeclaration' && node.type !== 'ClassExpression') {
     return
@@ -1117,26 +1193,67 @@ function metadataNames(
   const params = (m: { value: { params: unknown } }) =>
     m.value.params as ReadonlyArray<MetadataParam>
   const decorated = (p: MetadataParam) => (p.decorators?.length ?? 0) > 0
-  const addType = (annotation: unknown) => {
-    let type = (annotation as { typeAnnotation?: Node } | null)?.typeAnnotation
+  const read = (name: string, at: Node) =>
+    globals.push({ name, at, scope: outer })
+  const serialize = (type: Node | null | undefined, at: Node): void => {
     while (type?.type === 'TSParenthesizedType') {
       type = type.typeAnnotation
     }
-    if (type?.type !== 'TSTypeReference') {
+    if (type == null) {
+      read('Object', at)
       return
     }
-    let name: Node = type.typeName
-    while (name.type === 'TSQualifiedName') {
-      name = name.left
+    const global = METADATA_GLOBALS[type.type]
+    if (global !== undefined) {
+      if (global !== null) {
+        read(global, at)
+      }
+      return
     }
-    if (name.type === 'Identifier') {
-      out.set(name.start, outer)
+    switch (type.type) {
+      case 'TSTypeReference': {
+        let name: Node = type.typeName
+        while (name.type === 'TSQualifiedName') {
+          name = name.left
+        }
+        if (name.type === 'Identifier') {
+          refs.set(name.start, outer)
+        }
+        break
+      }
+      case 'TSLiteralType': {
+        const literal = type.literal
+        const name =
+          literal.type === 'Literal'
+            ? LITERAL_GLOBALS[typeof literal.value]
+            : literal.type === 'UnaryExpression'
+              ? 'Number'
+              : 'String'
+        if (name != null) {
+          read(name, at)
+        }
+        return
+      }
+      case 'TSTypeOperator':
+        if (type.operator === 'readonly') {
+          serialize(type.typeAnnotation, at)
+          return
+        }
+        if (type.operator === 'unique') {
+          read('Symbol', at)
+        }
+        break
+      default:
+        break
     }
+    read('Object', at)
   }
-  const addParams = (list: ReadonlyArray<MetadataParam>) => {
+  const annotation = (a: unknown) =>
+    (a as { typeAnnotation?: Node } | null)?.typeAnnotation
+  const addParams = (list: ReadonlyArray<MetadataParam>, at: Node) => {
     for (const p of list) {
       const param = p.parameter ?? p
-      addType((param.left ?? param).typeAnnotation)
+      serialize(annotation((param.left ?? param).typeAnnotation), at)
     }
   }
   for (const el of node.body.body) {
@@ -1144,22 +1261,66 @@ function metadataNames(
       case 'PropertyDefinition':
       case 'AccessorProperty':
         if (el.decorators.length > 0) {
-          addType(el.typeAnnotation)
+          serialize(annotation(el.typeAnnotation), el)
         }
         break
       case 'MethodDefinition':
         if (el.kind === 'constructor') {
           if (node.decorators.length > 0 || params(el).some(decorated)) {
-            addParams(params(el))
+            addParams(params(el), el)
           }
         } else if (el.decorators.length > 0 || params(el).some(decorated)) {
-          addParams(params(el))
-          addType(el.value.returnType)
+          addParams(params(el), el)
+          // (the return type: an async method's is `Promise`; a getter's
+          // is its type, `Object` unwritten; none written, `void 0`)
+          const returns = annotation(el.value.returnType)
+          if (el.value.async) {
+            read('Promise', el)
+          } else if (returns != null || el.kind === 'get') {
+            serialize(returns, el)
+          }
         }
         break
       default:
         break
     }
+  }
+}
+
+/**
+ * The names a classic JSX transform's calls start with (`h` of `@jsx h`,
+ * `Preact` of `@jsx Preact.h`), where a JSX pragma of the header asks for
+ * one; null: none does.
+ */
+function jsxFactories(
+  header: Header,
+  code: string,
+): { element: string; fragment: string } | null {
+  let element: string | null = null
+  let fragment: string | null = null
+  let classic = false
+  for (const { range } of header.pragmas) {
+    // (the names the comment gives, read loosely: a read of a name the
+    // host's transform ignores keeps a binding, it never drops one)
+    for (const m of code
+      .slice(range.start, range.end)
+      .matchAll(/@(jsxFrag|jsxRuntime|jsx)\s+([\w$.]+)/g)) {
+      if (m[1] === 'jsx') {
+        element = m[2]!
+      } else if (m[1] === 'jsxFrag') {
+        fragment = m[2]!
+      } else {
+        classic ||= m[2] === 'classic'
+      }
+    }
+  }
+  if (element === null && fragment === null && !classic) {
+    return null
+  }
+  const root = (name: string) => name.split('.')[0]!
+  return {
+    element: root(element ?? 'React'),
+    fragment: root(fragment ?? 'React'),
   }
 }
 

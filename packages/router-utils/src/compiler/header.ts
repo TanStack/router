@@ -32,6 +32,38 @@ export interface Header {
 }
 
 /**
+ * Whether an offset stands in one of `ranges` (a range holds its start, not
+ * its end): sorted and merged once, then a binary search per offset.
+ */
+export function rangeCover(ranges: Iterable<Range>): (at: number) => boolean {
+  const sorted = [...ranges].sort((a, b) => a.start - b.start)
+  const starts: Array<number> = []
+  const ends: Array<number> = []
+  for (const r of sorted) {
+    const last = ends.length - 1
+    if (last >= 0 && r.start <= ends[last]!) {
+      ends[last] = Math.max(ends[last]!, r.end)
+    } else {
+      starts.push(r.start)
+      ends.push(r.end)
+    }
+  }
+  return (at) => {
+    let lo = 0
+    let hi = starts.length
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1
+      if (starts[mid]! <= at) {
+        lo = mid + 1
+      } else {
+        hi = mid
+      }
+    }
+    return lo > 0 && at < ends[lo - 1]!
+  }
+}
+
+/**
  * A JSX pragma's name: a comment holding one is copied whole, as written,
  * wherever the file's JSX goes, and the host's JSX transform decides
  * whether it is in effect there as it does in the source (its own rules

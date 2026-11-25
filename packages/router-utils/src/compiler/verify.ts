@@ -8,6 +8,7 @@
  */
 import { isDeepStrictEqual } from 'node:util'
 import { ModuleAnalysis } from './analysis'
+import { Declarations } from './declarations'
 import { emitRecipe } from './emit'
 import { SourceText } from './output-builder'
 import { resolveSameFileSpecifier } from './identity'
@@ -123,9 +124,12 @@ export function verifyPlan(
     }
     // (g) no output reads a module binding of the source, or a generated
     // binding, it neither declares nor imports (the read would fall through
-    // to a global)
+    // to a global). An ambient declaration's text is erased: the heritage of
+    // a `declare class` reads nothing
+    const free = out.freeRefs.filter((f) => moduleNames.has(f.name))
+    const table = free.length > 0 ? new Declarations(analysis.file) : null
     const unbound = new Set(
-      out.freeRefs.filter((f) => moduleNames.has(f.name)).map((f) => f.name),
+      free.filter((f) => !table!.ambientAt(f.range.start)).map((f) => f.name),
     )
     for (const name of unbound) {
       problems.push(

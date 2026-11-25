@@ -214,9 +214,9 @@ function info not found` when one of them calls it, and the build says nothing, 
   declaration (an alias, an interface, a `declare`) is read when it is named or exported (D1, the decided T5–T8 rows:
   a `declare const` nobody names keeps what it names); `sv` and its import stay, as on `main`. SPEC G16. No test (the
   outcome is the limit). Workaround: export the type, or name it from code that runs.
-- **A value position TypeScript erases keeps what it reads** (`export declare class C extends Base {}` keeps
-  `Base`'s import; a computed key of an abstract or `declare` member): the parser reports these references as value
-  reads, and a value read keeps its value; as on `main`. SPEC G16. No test (the outcome is the limit; a Yuku request:
+- **A value position TypeScript erases keeps what it reads** (a computed key of an abstract or `declare` member):
+  the parser reports these references as value reads, and a value read keeps its value; as on `main`. (The heritage of
+  a `declare class` is ambient text: read when the class is named or exported.) SPEC G16. No test (the outcome is the limit; a Yuku request:
   `inTypePosition` for value syntax in ambient and erased members).
 - **A compile whose every attempt was overtaken can commit after the rebuild of its text** (settlement design, step
   1, decided by a run: the same-text rule is not built). A dependency saved during each of three attempts leaves the

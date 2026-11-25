@@ -20,6 +20,7 @@
 import { BindingFlags } from 'yuku'
 import { NEED_KINDS } from '../clusters'
 import { Declarations } from '../declarations'
+import { rangeCover } from '../header'
 import { hasRuntimeValue } from '../symbols'
 import type { Binding, Node, Reference, SourceFile } from 'yuku'
 import type { Declaration, Named } from '../declarations'
@@ -36,6 +37,8 @@ export const USED = 1
 export const ERASED = 2
 export const NAMED = 4
 const CAUSES = USED | ERASED | NAMED
+/** In `follow`'s record: the declaration was read for its imports too. */
+const WITH_IMPORTS = 8
 
 /** A removed text and what it gives the bindings it names (by value; in a type; whether a type declaration it names is followed). */
 interface Part extends Range {
@@ -75,6 +78,8 @@ class TypeRefs {
   /** Per local scope, by its range: the type-position references of its bindings. */
   private readonly byScope = new Map<number, Array<TypeRef>>()
   private locals: Map<number, Array<SymbolId>> | null = null
+  /** The local scopes once each, by start (an outer one first), and each one's nearest scope around it (-1: the module's). */
+  private tree: { scopes: Array<Range>; parent: Int32Array } | null = null
 
   constructor(
     private readonly file: SourceFile,
@@ -206,27 +211,57 @@ class TypeRefs {
       return
     }
     // the bindings of the scopes around the text (those of the scopes inside
-    // it leave with it)
-    let seen: Array<Range> | null = null
-    for (const scope of this.symbols.localScopes) {
+    // it leave with it): the last scope starting at or before the text, and
+    // the scopes around that one (scopes nest: every scope around the text
+    // is one of them)
+    const { scopes, parent } = this.scopeTree()
+    let lo = 0
+    let hi = scopes.length
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1
+      if (scopes[mid]!.start <= range.start) {
+        lo = mid + 1
+      } else {
+        hi = mid
+      }
+    }
+    for (let i = lo - 1; i >= 0; i = parent[i]!) {
+      const scope = scopes[i]!
       // (a scope on exactly the text's range is the text's own: inside it)
       if (
-        scope.start > range.start ||
-        scope.end < range.end ||
-        (scope.start === range.start && scope.end === range.end)
+        scope.end >= range.end &&
+        (scope.start !== range.start || scope.end !== range.end)
       ) {
-        continue
+        this.scan(this.scopeRefs(scope), range, visit)
       }
-      // (a scope listed twice is read once)
-      if (
-        seen !== null &&
-        seen.some((x) => x.start === scope.start && x.end === scope.end)
-      ) {
-        continue
-      }
-      ;(seen ??= []).push(scope)
-      this.scan(this.scopeRefs(scope), range, visit)
     }
+  }
+
+  private scopeTree(): { scopes: Array<Range>; parent: Int32Array } {
+    if (this.tree === null) {
+      // (a scope listed twice is read once)
+      const byKey = new Map<number, Range>()
+      for (const scope of this.symbols.localScopes) {
+        byKey.set(scope.start * 0x4000000 + scope.end, scope)
+      }
+      const scopes = [...byKey.values()].sort(
+        (a, b) => a.start - b.start || b.end - a.end,
+      )
+      const parent = new Int32Array(scopes.length)
+      const open: Array<number> = []
+      scopes.forEach((scope, i) => {
+        while (
+          open.length > 0 &&
+          scopes[open[open.length - 1]!]!.end < scope.end
+        ) {
+          open.pop()
+        }
+        parent[i] = open.length > 0 ? open[open.length - 1]! : -1
+        open.push(i)
+      })
+      this.tree = { scopes, parent }
+    }
+    return this.tree
   }
 }
 
@@ -290,30 +325,37 @@ export function closure(a: ClosureInput): Provenance {
     below: [],
     selfReading: new Set(),
   }
-  // an exported erased declaration (`export interface X`, `export { X }` of
-  // an alias, `export default X` of a `declare`, a type an exported namespace
-  // exports) renders in no output's JavaScript (main's `stripTypeExports`):
-  // its text is removed text like an erased handler's, and a value only it
-  // reads was used by the source (F1). Read where a type names a value
+  // type export syntax (`export type { X }`, `export { X }` of a type,
+  // `Unit.stripped`) and an exported erased declaration (`export interface
+  // X`, the alias `export { X }` exports, `export default X` of a `declare`,
+  // a type an exported namespace exports) render in no output's JavaScript
+  // (main's `stripTypeExports`): their text is removed text like an erased
+  // handler's, and a value or an import only it reads was used by the
+  // source (F1)
+  const erased = (r: Range) =>
+    parts.push({
+      start: r.start,
+      end: r.end,
+      value: USED | ERASED,
+      type: USED | ERASED,
+      relay: true,
+    })
+  for (const u of units) {
+    if (u.kind === 'type' && u.stripped) {
+      erased(u.range)
+    }
+  }
   const table = new Declarations(file)
-  if (t1.typesNameValues) {
-    for (const b of table.exportedErased()) {
-      for (const d of table.of(b)) {
-        if (d.kind === 'erased') {
-          parts.push({
-            start: d.node.start,
-            end: d.node.end,
-            value: USED | ERASED,
-            type: USED | ERASED,
-            relay: true,
-          })
-        }
+  for (const b of table.exportedErased(symbols.namespaceBlocks)) {
+    for (const d of table.of(b)) {
+      if (d.kind === 'erased') {
+        erased(d.node)
       }
     }
   }
 
-  // (a type the module erases frees a value only where a type position
-  // names one: `typesNameValues`)
+  // (a type in code that stays frees only a value of the module:
+  // `typesNameValues`)
   if (parts.length === 0 && !t1.typesNameValues) {
     return out
   }
@@ -348,14 +390,23 @@ export function closure(a: ClosureInput): Provenance {
       scope !== null && scope.start >= range.start && scope.end <= range.end
     )
   }
-  /** Per type declaration followed for a name that is a value too, or as a namespace's member, by offset: the causes it was read with. */
+  /**
+   * Per type declaration followed for a name that is a value too, or as a
+   * namespace's member, by offset: the causes it was read with, and
+   * `WITH_IMPORTS` once it was read for its imports too.
+   */
   let followed: Map<number, number> | null = null
-  /** Reads a type declaration: what it names was used. */
-  const follow = (decl: Node, b: number) => {
+  /**
+   * Reads a type declaration: what it names was used. `imports`: the imports
+   * it names too (not for a type that stays: whether such an import stays
+   * is the host's, however many aliases lead to it).
+   */
+  const follow = (decl: Node, b: number, imports: boolean) => {
+    const key = imports ? b | WITH_IMPORTS : b
     const before = (followed ??= new Map()).get(decl.start) ?? 0
-    if ((before | b) !== before) {
-      followed.set(decl.start, before | b)
-      types.in(decl, (inner) => typed(inner, b | USED, true))
+    if ((before | key) !== before) {
+      followed.set(decl.start, before | key)
+      types.in(decl, (inner) => typed(inner, b | USED, true, imports))
     }
   }
   /**
@@ -367,6 +418,7 @@ export function closure(a: ClosureInput): Provenance {
     d: Declaration,
     rest: ReadonlyArray<string>,
     b: number,
+    imports: boolean,
   ): boolean => {
     const ns = d.node
     if (ns.type !== 'TSModuleDeclaration') {
@@ -386,7 +438,7 @@ export function closure(a: ClosureInput): Provenance {
       i++
     }
     if (i >= rest.length) {
-      follow(ns, b)
+      follow(ns, b, imports)
       return true
     }
     if (ns.body?.type !== 'TSModuleBlock') {
@@ -400,10 +452,14 @@ export function closure(a: ClosureInput): Provenance {
       return false
     }
     // (what the member is there, a type or a namespace, is the table's)
-    return name(table.member(member, rest.slice(i + 1)), b)
+    return name(table.member(member, rest.slice(i + 1)), b, imports)
   }
   /** Follows the type declarations named; false: there are none. */
-  const name = ({ types, path }: Named, b: number): boolean => {
+  const name = (
+    { types, path }: Named,
+    b: number,
+    imports: boolean,
+  ): boolean => {
     if (types === null) {
       return false
     }
@@ -413,7 +469,7 @@ export function closure(a: ClosureInput): Provenance {
     if (path !== null) {
       let found = false
       for (const d of types) {
-        found = within(d, path, b) || found
+        found = within(d, path, b, imports) || found
       }
       if (found) {
         return true
@@ -422,12 +478,15 @@ export function closure(a: ClosureInput): Provenance {
     // the type declarations named: what they name was used; a value beside
     // them was not
     for (const d of types) {
-      follow(d.node, b)
+      follow(d.node, b, imports)
     }
     return true
   }
-  /** What a type-position reference gives what it names, from text with `b`. */
-  const typed = (ref: TypeRef, b: number, relay: boolean) => {
+  /** What a type-position reference gives what it names, from text with `b` (`imports`: `follow`'s). */
+  const typed = (ref: TypeRef, b: number, relay: boolean, imports = true) => {
+    if (!imports && symbols.isImport(ref.sym)) {
+      return
+    }
     if (ref.named.value) {
       reach(ref.sym, b)
     } else if (ref.named.aliases !== null) {
@@ -438,7 +497,7 @@ export function closure(a: ClosureInput): Provenance {
       }
     }
     if (relay) {
-      name(ref.named, b)
+      name(ref.named, b, imports)
     }
   }
   /** Reads a text with `value` (what a read by value gives) and `type` (what a type position gives). */
@@ -505,9 +564,10 @@ export function closure(a: ClosureInput): Provenance {
   // where it stands (TypeScript's `inTypePosition`, the parser's), and what
   // it names was used by the source. Not a named erased declaration's text
   // (an alias, an interface, a `declare`): that is read when the declaration
-  // is named or exported (D1, T5–T8). Not an import: whether it stays is the
-  // host's (`verbatimModuleSyntax`)
+  // is named or exported (D1, T5–T8). Not an import, directly or through
+  // aliases: whether it stays is the host's (`verbatimModuleSyntax`)
   if (t1.typesNameValues) {
+    const removed = rangeCover(parts)
     for (const ref of file.references) {
       if (!ref.inTypePosition) {
         continue
@@ -521,16 +581,14 @@ export function closure(a: ClosureInput): Provenance {
       }
       const at = ref.node.start
       // (removed text is read above, moved text names a type for itself)
-      if (
-        parts.some((p) => p.start <= at && at < p.end) ||
-        table.inNamedDeclaration(ref)
-      ) {
+      if (removed(at) || table.inNamedDeclaration(ref)) {
         continue
       }
       typed(
         { at, sym: b.id as SymbolId, named: table.resolve(b, ref) },
         USED | ERASED,
         true,
+        false,
       )
     }
   }
@@ -620,7 +678,7 @@ export function closure(a: ClosureInput): Provenance {
       // `import X = A.B` that is read as text): what it names was used too
       for (const d of table.of(binding)) {
         if (d.kind === 'erased' && d.spaces !== 0) {
-          follow(d.node, cause)
+          follow(d.node, cause, true)
         }
       }
       continue

@@ -12,8 +12,10 @@
  * definitions below the units and the closure read it.
  */
 import { BindingFlags } from 'yuku'
+import { rangeCover } from './header'
 import { declaredNames, namespaceName } from './source'
 import type { Binding, Node, Reference, Scope, SourceFile } from 'yuku'
+import type { Range } from './header'
 
 export const VALUE = 1
 export const TYPE = 2
@@ -324,8 +326,8 @@ export class Declarations {
   private declared: Set<number> | null = null
   /** Per scope id: whether it is an alias's or an interface's (`inNamedDeclaration`). */
   private readonly typeScopes = new Map<number, boolean>()
-  /** The ambient declarations' ranges (`inNamedDeclaration`). */
-  private ambientRanges: Array<{ start: number; end: number }> | null = null
+  /** Whether an offset stands in an ambient declaration (`ambientAt`). */
+  private ambientCover: ((at: number) => boolean) | null = null
 
   constructor(private readonly file: SourceFile) {}
 
@@ -346,18 +348,27 @@ export class Declarations {
         return true
       }
     }
-    if (this.ambientRanges === null) {
-      this.ambientRanges = []
+    return this.ambientAt(ref.node.start)
+  }
+
+  /**
+   * Whether an offset stands in an ambient declaration of a value (`declare
+   * const x: T`, `declare class C extends B`): text TypeScript erases, the
+   * heritage too, which the parser reads by value.
+   */
+  ambientAt(at: number): boolean {
+    if (this.ambientCover === null) {
+      const ranges: Array<Range> = []
+      // (every binding: beside a type of its name, `declare const x` + `type
+      // x`, the parser's ambient flag is not set)
       for (const b of this.file.bindings) {
-        if (b.has(BindingFlags.Ambient)) {
-          for (const d of this.ambient(b)) {
-            this.ambientRanges.push({ start: d.node.start, end: d.node.end })
-          }
+        for (const d of this.ambient(b)) {
+          ranges.push(d.node)
         }
       }
+      this.ambientCover = rangeCover(ranges)
     }
-    const at = ref.node.start
-    return this.ambientRanges.some((r) => r.start <= at && at < r.end)
+    return this.ambientCover(at)
   }
 
   /**
@@ -366,7 +377,10 @@ export class Declarations {
    * of an export (`export interface X`, `export { X }`, `export default X`,
    * an `export declare`), or a member an exported namespace exports.
    */
-  exportedErased(): Array<Binding> {
+  exportedErased(
+    /** Whether a binding is declared in a namespace's block (`SymbolTable.namespaceBlocks`): else no namespace exports a member. */
+    namespaces: boolean,
+  ): Array<Binding> {
     const exported = new Set<number>()
     for (const e of this.file.exports) {
       if (e.local) {
@@ -385,6 +399,9 @@ export class Declarations {
     }
     for (const id of exported) {
       add(this.file.bindings[id]!)
+    }
+    if (!namespaces) {
+      return out
     }
     for (const b of this.file.bindings) {
       if (

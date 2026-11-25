@@ -3,49 +3,95 @@
  * metadata (`emitDecoratorMetadata`: DI containers, ORMs, validation DTOs)
  * reads the type of a decorated member by value when the class is defined:
  * a class only that annotation names stays, and the client records it
- * instead of throwing a ReferenceError. Vite's Oxc reads the setting from the
- * tsconfig; Rsbuild's SWC from its decorator options.
+ * instead of throwing a ReferenceError; so does a constructor of the module
+ * that a keyword type serializes to (`string`: the module's `String`), which
+ * the client records instead of the built-in. A decorator itself is no
+ * read: a class only types name is removed with it. Vite's Oxc reads the
+ * setting from the tsconfig; Rsbuild's SWC from its decorator options.
  */
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../build-harness'
 
 const timeout = 60_000
 
-const files = {
-  'src/module.ts': `import { createServerFn } from '@tanstack/react-start'
+const tsconfig = JSON.stringify({
+  compilerOptions: {
+    target: 'ES2022',
+    module: 'ESNext',
+    moduleResolution: 'Bundler',
+    jsx: 'react-jsx',
+    strict: true,
+    experimentalDecorators: true,
+    emitDecoratorMetadata: true,
+    useDefineForClassFields: false,
+  },
+})
+
+const head = `import { createServerFn } from '@tanstack/react-start'
 ;(Reflect as any).metadata = (key: string, value: any) => (target: any) => {
   if (key === 'design:type') target.constructor.recorded = value.name
 }
 const seen = (..._args: Array<unknown>): any => {}
-class Model {}
+`
+const tail = `export const fn = createServerFn().handler(async () => 1)
+export const recorded = () => (Entity as any).recorded
+`
+
+const rows: Array<{ name: string; body: string; recorded: string }> = [
+  {
+    name: 'a class only a decorated member names in its type stays for its metadata',
+    body: `class Model {}
 export class Entity {
   @seen model!: Model
 }
-export const fn = createServerFn().handler(async () => 1)
-export const recorded = () => (Entity as any).recorded
 `,
-  'src/entry.ts': `export { recorded } from './module'\n`,
-  'tsconfig.json': JSON.stringify({
-    compilerOptions: {
-      target: 'ES2022',
-      module: 'ESNext',
-      moduleResolution: 'Bundler',
-      jsx: 'react-jsx',
-      strict: true,
-      experimentalDecorators: true,
-      emitDecoratorMetadata: true,
-      useDefineForClassFields: false,
-    },
-  }),
+    recorded: 'Model',
+  },
+  {
+    // (Astra 2: \`string\` serializes to the \`String\` where the class is)
+    name: 'a constructor of the module a keyword type serializes to stays',
+    body: `const String = class Actual {}
+export class Entity {
+  @seen name!: string
 }
+export const check = (x?: typeof String) => 1
+`,
+    recorded: 'Actual',
+  },
+  {
+    // a class only types name is removed with its decorators and static
+    // blocks (the user's decision on self-registering classes, 2026-11-25:
+    // accepted as built; Fable's review of 5d77f89358): the source records
+    // `x-el`, the client nothing
+    name: 'a decorated class only types name is removed with its decorator',
+    body: `const registry: Array<string> = []
+const register = (name: string) => (_target: unknown) => {
+  registry.push(name)
+}
+@register('x-el')
+class MyEl {}
+export class Entity {
+  static get recorded() {
+    return registry.join(',') || 'none'
+  }
+}
+export const check = (el?: MyEl) => 1
+`,
+    recorded: 'none',
+  },
+]
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  test(
-    'a class only a decorated member names in its type stays for its metadata',
-    async () => {
+  test.each(rows)(
+    '$name',
+    async ({ body, recorded }) => {
       const build = await buildStart({
         bundler,
-        files,
+        files: {
+          'src/module.ts': head + body + tail,
+          'src/entry.ts': `export { recorded } from './module'\n`,
+          'tsconfig.json': tsconfig,
+        },
         entry: 'src/entry.ts',
         // (unminified: the class keeps its name)
         minify: false,
@@ -59,7 +105,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
         }),
       })
       expect((await build.client.run('return entry.recorded()')).result).toBe(
-        'Model',
+        recorded,
       )
     },
     timeout,

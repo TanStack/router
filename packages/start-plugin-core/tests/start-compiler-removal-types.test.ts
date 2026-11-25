@@ -1828,3 +1828,166 @@ export const run = () => [seen.length, typeof NS.make()]
     },
   ])('$name', check)
 })
+
+// Reviews of "a type never keeps a value" (Fable, Astra, Gemini on
+// 5d77f89358): type exports and exported erased declarations are removed
+// text whatever else the module holds; an import that only types in code
+// that stays name is the host's, however many aliases lead to it; what
+// runs for JSX and for decorator metadata is read by value.
+describe('a type never keeps a value: reviews', () => {
+  const M = `export const f = createServerOnlyFn(() => 1)\nexport const run = () => 1\n`
+  test.each<Row>([
+    // (Fable 1, Gemini 1: no type in these modules names a local value)
+    ...[
+      ['an exported alias', 'export type A = typeof getServerVal'],
+      [
+        'an exported interface',
+        'export interface I { f: typeof getServerVal }',
+      ],
+      ['a type export of the import', 'export type { getServerVal }'],
+      ['an inline type export of the import', 'export { type getServerVal }'],
+      [
+        'an exported declare function',
+        'export declare function g(x: typeof getServerVal): void',
+      ],
+      [
+        "an exported namespace's type",
+        'export namespace N { export type T = typeof getServerVal }',
+      ],
+      [
+        'an export default interface',
+        'export default interface I { f: typeof getServerVal }',
+      ],
+      [
+        'an exported declare class extending the import',
+        'export declare class C extends getServerVal {}',
+      ],
+      [
+        'a declare class extending the import, exported as the default',
+        'declare class C extends getServerVal {}\nexport default C',
+      ],
+    ].map(
+      ([name, decl]): Row => ({
+        name: `${name} frees an import only it names`,
+        code: `${SO}import { getServerVal } from './db.server'\n${decl}\n${M}`,
+        expected: { value: 1 },
+        gone: true,
+      }),
+    ),
+    {
+      // (Gemini 1: and where a type names a local value)
+      name: 'a type export of the import frees it beside a type naming a value',
+      code: `${SO}import { getServerVal } from './db.server'
+export type { getServerVal }
+const local = 1
+export const f = createServerOnlyFn(() => 1)
+export const run = (x?: typeof local) => 1
+`,
+      expected: { value: 1 },
+      gone: true,
+    },
+    {
+      // (Astra 3: the heritage of an exported declare class, beside a type
+      // naming a value)
+      name: 'an exported declare class extending the import, beside a type naming a value',
+      code: `${SO}import { getServerVal as Base } from './db.server'
+export declare class D extends Base {}
+const local = 1
+export const f = createServerOnlyFn(() => 1)
+export const run = (x?: typeof local) => 1
+`,
+      expected: { value: 1 },
+      gone: true,
+    },
+    // (Fable 2, Gemini 2, Astra 1: an import types in code that stays name
+    // is the host's, here `verbatimModuleSyntax`'s, through any alias)
+    ...[
+      ['an alias', 'type Local = Registered', 'Local'],
+      ['two aliases', 'type A = Registered\ntype B = A', 'B'],
+      ['an interface', 'interface I { r: Registered }', 'I'],
+      ['an alias of its typeof', 'type Local = typeof Registered', 'Local'],
+    ].flatMap(
+      ([name, decl, type]): Array<Row> => [
+        {
+          name: `an import only ${name} names stays for a type that stays`,
+          code: `${SO}import { Registered } from './register'
+${decl}
+export const f = createServerOnlyFn(() => 1)
+export const run = (a?: ${type}) => 1
+`,
+          expected: { value: 1, calls: ['registered'] },
+        },
+        {
+          name: `an import only ${name} names stays for a type that stays, beside a type naming a value`,
+          code: `${SO}import { Registered } from './register'
+${decl}
+const local = 1
+export const f = createServerOnlyFn(() => 1)
+export const run = (a?: ${type}, b?: typeof local) => 1
+`,
+          expected: { value: 1, calls: ['registered'] },
+        },
+      ],
+    ),
+    {
+      name: 'an import a local alias in a function names stays for a type that stays',
+      code: `${SO}import { Registered } from './register'
+const local = 1
+export const f = createServerOnlyFn(() => 1)
+export function run(b?: typeof local) {
+  type Local = Registered
+  const use = (a?: Local) => 1
+  return use()
+}
+`,
+      expected: { value: 1, calls: ['registered'] },
+    },
+    // (Gemini 3: a classic JSX transform calls the factories)
+    {
+      name: 'a classic JSX factory only a type names',
+      code: `/** @jsxRuntime classic */
+/** @jsx h */
+${SO}const h = (type: unknown) => type
+type H = typeof h
+export const f = createServerOnlyFn(() => 1)
+export const run = (unused?: H) => <b />
+`,
+      expected: { value: 'b' },
+    },
+    {
+      name: 'a classic JSX fragment factory only a type names',
+      code: `/** @jsxRuntime classic */
+/** @jsx h */
+/** @jsxFrag Frag */
+${SO}const h = (type: unknown) => type
+const Frag = 'frag'
+export const f = createServerOnlyFn(() => 1)
+export const run = (unused?: typeof h | typeof Frag) => <>x</>
+`,
+      expected: { value: 'frag' },
+    },
+    {
+      name: 'an imported classic JSX factory erased code names',
+      code: `/** @jsxRuntime classic */
+/** @jsx h */
+${SO}import { h } from './client-dep'
+export const f = createServerOnlyFn(() => null as unknown as typeof h)
+export const run = () => <b />
+`,
+      expected: { value: 'b' },
+    },
+    {
+      // (Gemini minor: beside a type of its name the parser's ambient flag
+      // is not set; T7 keeps what it names)
+      name: 'a declare const nobody names, merged with a type of its name, keeps what it names',
+      code: `${SO}import { record } from './record'
+const sv = record('sv')
+declare const x: { a: typeof sv }
+type x = number
+export const f = createServerOnlyFn(() => 1)
+export const run = () => 1
+`,
+      expected: { value: 1, calls: ['sv'] },
+    },
+  ])('$name', check)
+})

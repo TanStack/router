@@ -234,16 +234,20 @@ reads the tree (`Removal` in `removal/index.ts`):
   renders is a unit's `stripped` (type-only export syntax, `isTypeOnlyExport`; an inline `type` import specifier, which
   follows its statement's value specifiers). A read the core
   synthesises from a name (a Solid `use:` directive) binds only to a declaration with a runtime value. A type name
-  decorator metadata serializes is a read by value where the class is defined (`metadataNames`). JSX is no read of
-  the classic runtime's factory.
+  decorator metadata serializes is a read by value where the class is defined, and so is the constructor a keyword
+  serializes to (`string`: the module's `String`; `metadataNames`). JSX reads the factories a classic pragma of the
+  header names (`@jsx h`, `@jsxFrag Frag`, React's for `@jsxRuntime classic`: `jsxFactories`), by value where it is.
 - **types**: a type never keeps a value. Every type position in code that stays (`Reference.inTypePosition`, the
   parser's) is erased text where it stands, and what it names was used by the source (an annotation, a cast, a type
-  argument, an overload signature, an abstract or `declare` member, in running code or not), except an import's name
-  (whether an import stays is the host's: `verbatimModuleSyntax`) and the text of a named erased declaration (an
-  alias, an interface, a `declare`), which is read when the declaration is named or exported (main's
-  `stripTypeExports`: `export interface X`, `export { X }`, `export default X`, an exported namespace's types;
-  `Declarations.exportedErased`). The pass runs where a type position names a value of the module
-  (`Tier1.typesNameValues`). A value only types name leaves with its initialiser, in every environment (user decision,
+  argument, an overload signature, an abstract or `declare` member, in running code or not), except an import,
+  named directly or through any chain of aliases (whether an import stays is the host's: `verbatimModuleSyntax`;
+  `follow` reads a declaration for its imports only from removed text), and the text of a named erased declaration
+  (an alias, an interface, a `declare`), which is read when the declaration is named or exported. Type export syntax
+  (`Unit.stripped`) and exported erased declarations (`export interface X`, `export { X }`, `export default X`, an
+  exported namespace's types; `Declarations.exportedErased`) are removed text in every module (main's
+  `stripTypeExports`), imports included. The pass runs where a type position names a value of the module
+  (`Tier1.typesNameValues`): elsewhere it reaches nothing. Its seeds are not erasure's `NAMED`: a route module keeps a
+  class, enum or namespace only types name (R163). A value only types name leaves with its initialiser, in every environment (user decision,
   2026-11-25); a decorated member's annotation that decorator metadata serializes is a read by value
   (`metadataNames`), so it stays. Along `ERASED` text a type declaration is a name: what an alias, an interface, a
   namespace of types or a `declare` of a value names was used. A reference names the declarations of its space only (D1): `x: Shape` the
@@ -552,7 +556,8 @@ nothing per compile.
   imports (a); a same-file import names a runtime export of its home (b); every surviving top-level statement is
   emitted once in its home and once per chunk that copies it, counting the source text an output renders, not a
   generated unit's own text (`Segment.gen`) (d); planner facts are JSON (f); no output reads a module binding of the
-  source, or a generated one, it neither declares nor imports (g); no output holds more declarators binding nothing
+  source, or a generated one, it neither declares nor imports, outside ambient text (g: the heritage of a `declare class`
+  is erased); no output holds more declarators binding nothing
   than the source (h). A violation fails the compile. Every test run sets
   it (the shared run-directory setup and the core's own config); unset, it costs one boolean per compile. It is the
   one switch of the compiler's self-checks (`self-checks.ts`): set, the internal asserts run and a violated invariant
