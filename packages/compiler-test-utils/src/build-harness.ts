@@ -1284,10 +1284,11 @@ export async function describeBuild(
  *   (e.g. seroval's `const RETURN = () => T`, used through
  *   `RETURN.toString()`);
  * - a dependency's module the build did not change: out of scope.
- * A name no module reads free is the bundler's when a module binds it (it
- * dropped a binding the transforms left in place, e.g. Rspack 2.2.7 and
- * the import bindings the kept unused code of a concatenated module reads:
- * out of scope), and a module's own guarded read when a module probes it
+ * A name no module reads free is the bundler's when a module binds it at
+ * its top level (it dropped a binding the transforms left in place, e.g.
+ * Rspack 2.2.7 and the import bindings the kept unused code of a
+ * concatenated module reads: out of scope; a binding inside a function, a
+ * parameter, stays with its function), and a module's own guarded read when a module probes it
  * with `typeof` (e.g. seroval's `typeof Buffer`); when no module binds or
  * probes it either, code outside the modules
  * (a bundle-level hook) introduced it, and it counts. Nothing is excepted
@@ -1391,8 +1392,9 @@ async function nameCounts(name: string, scope: ScopeEvidence) {
     if (!reads || reads.free.has(name)) {
       readers.push(resource)
     }
-    // (a module that probes the name with `typeof` reads it knowingly)
-    if (reads?.bound.has(name) || reads?.probed.has(name)) {
+    // (a module that probes the name with `typeof` reads it knowingly; a
+    // bundler drops only the bindings it places in the chunk's scope)
+    if (reads?.topLevel.has(name) || reads?.probed.has(name)) {
       bound = true
     }
   }

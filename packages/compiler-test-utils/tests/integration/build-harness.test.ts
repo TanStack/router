@@ -9,6 +9,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, onTestFinished, test } from 'vitest'
 import {
+  DanglingNameError,
   bundleApp as bundleAppIn,
   bundlers,
   createApp,
@@ -329,6 +330,50 @@ test('a Vite production build minifies the client, not SSR', async () => {
   ]).toEqual(['eager', 'nowhere'])
   expect((await ssr.run('return entry.read()')).result).toBe('MARK_LOCAL!')
 })
+
+// SPEC G8: a read outside every module (a bundle-level hook added it) of a
+// name no module reads free is a dangling name, whatever names the modules
+// bind inside their functions: only a module's top-level binding is one a
+// bundler can drop.
+test.each([
+  ['a parameter of the same name', 'productLabel'],
+  ['no binding of that name', 'text'],
+])(
+  'vite: a bundle-level read of a name is dangling with %s in a module',
+  async (_, parameter) => {
+    const built = bundleAppIn({
+      dir: testsDir,
+      registerCleanup: onTestFinished,
+      bundler: 'vite',
+      env: 'client',
+      minify: false,
+      files: {
+        'entry.ts': `export function label(${parameter}: string) {
+  return ${parameter}.toUpperCase()
+}
+`,
+      },
+      plugins: {
+        vite: () => [
+          {
+            name: 'append-footer',
+            renderChunk: (code: string) =>
+              `${code}\nconsole.log(productLabel)\n`,
+          },
+        ],
+      },
+    })
+    const error = await built.then(
+      () => undefined,
+      (thrown: unknown) => thrown,
+    )
+    expect(error).toBeInstanceOf(DanglingNameError)
+    expect(Object.values((error as DanglingNameError).names).flat()).toEqual([
+      'productLabel',
+    ])
+  },
+  timeout,
+)
 
 test('NODE_ENV is the mode during a build, or unset with nodeEnv: null', async () => {
   const seen: Record<string, string | undefined> = {}

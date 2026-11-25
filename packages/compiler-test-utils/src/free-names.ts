@@ -18,6 +18,12 @@ export interface ModuleNames {
   free: Set<string>
   /** Names of which some read resolves to a binding of the module. */
   bound: Set<string>
+  /**
+   * Names of which some read resolves to a binding of the module's top
+   * scope (an import, a top-level declaration): the bindings a bundler
+   * places in the chunk's scope.
+   */
+  topLevel: Set<string>
   /** Names the module probes with `typeof` (not in `free`, without `keepProbed`). */
   probed: Set<string>
 }
@@ -40,6 +46,7 @@ export function readNames(
   })
   const free = new Set<string>()
   const bound = new Set<string>()
+  const topLevel = new Set<string>()
   /** Names the module probes with `typeof`: it reads them knowing they may not exist. */
   const probed = new Set<string>()
   for (const reference of file.references) {
@@ -48,6 +55,9 @@ export function readNames(
     }
     if (reference.binding) {
       bound.add(reference.name)
+      if (reference.binding.scope.id === file.rootScope.id) {
+        topLevel.add(reference.name)
+      }
       continue
     }
     const parent = file.parentOf(reference.node)
@@ -68,6 +78,7 @@ export function readNames(
       .map((diagnostic) => diagnostic.message),
     free,
     bound,
+    topLevel,
     probed,
   }
 }
