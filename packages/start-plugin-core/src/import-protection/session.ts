@@ -836,6 +836,14 @@ interface RegisteredModule {
   violations: Map<string, EdgeViolation>
   /** Whether its code was handed to the listeners (a handoff's key has no module: `EdgeViolation.handoff`). */
   emitted: boolean
+  /**
+   * Dev `behavior: 'error'`: the violations of answers that defer it to the
+   * bundler's request (`EdgeViolation.pending`), every answer's, by
+   * `${importerId}\0${edgeKey}`. A request of the edge by an answer no
+   * commit recorded (overtaken) fails its caller with the error, reported
+   * nowhere else (`confirm`).
+   */
+  deferred?: Map<string, EdgeViolation>
 }
 
 /** A compile output, as `compileModule` returns it (structural). */
@@ -868,6 +876,8 @@ export interface IpRecord {
   edges: ReturnType<typeof judgedEdgesOf>
   /** The verdict on a module that is its own violation; null: it is none. */
   self: Served | null
+  /** Dev: the module's file, stale in this environment until an importer whose plan is stale is built (`staleImporterExplains`); null: none. */
+  stale: string | null
 }
 
 /** An edge module a judgement's code names (`defineEdges`), with `allowImport`'s decision on it (null: undecided, the mock). */
@@ -877,6 +887,8 @@ export interface EdgeDefinition {
   /** Its code is handed to the listeners (a handoff's key has none: `EdgeViolation.handoff`). */
   emit: boolean
   verdict: 'mock' | 'real' | null
+  /** Dev `behavior: 'error'`: the violation the bundler's request of the edge decides (`RegisteredModule.deferred`); null: none. */
+  deferred: EdgeViolation | null
 }
 
 /** One answer judged by import protection (`ImportProtectionEnv.judge`). */
@@ -887,16 +899,27 @@ export interface Judgement {
   mock?: { code: string; id: string }
   /** Fails the module, current or not (dev `behavior: 'error'`). */
   error: Error | null
-  /** What a commit tells (`onViolation`, the dev reporter), in order. */
-  reports: Array<() => Promise<void>>
+  /**
+   * What a commit tells (`onViolation`, the dev reporter), in order; each
+   * asks `current()` again after it waited (a callback can outlast its
+   * answer: a newer one overtook it).
+   */
+  reports: Array<Report>
 }
 
-/** Runs a commit's reports in order. */
+/** One report of a commit (`Judgement.reports`). */
+export type Report = (current: () => boolean) => Promise<void>
+
+/** Runs a commit's reports in order, each while its answer is current. */
 export async function runReports(
-  reports: ReadonlyArray<() => Promise<void>>,
+  reports: ReadonlyArray<Report>,
+  current: () => boolean = () => true,
 ): Promise<void> {
   for (const report of reports) {
-    await report()
+    if (!current()) {
+      return
+    }
+    await report(current)
   }
 }
 
@@ -1118,7 +1141,10 @@ class ImportProtectionEnv {
       // imported before is no edge any more, nor a real demand it made
       edges: judged,
       self: null,
+      stale: null,
     }
+    const defers =
+      this.ip.config.mode === 'dev' && this.ip.config.behavior === 'error'
     const edgeModules: Array<EdgeDefinition> = []
     for (const v of violations) {
       if (v.env === this.name) {
@@ -1127,6 +1153,7 @@ class ImportProtectionEnv {
           content: v.module.content,
           emit: !v.handoff,
           verdict: null,
+          deferred: defers && v.pending && v.behavior === 'error' ? v : null,
         })
       }
     }
@@ -1166,7 +1193,12 @@ class ImportProtectionEnv {
       )
     }
     judgement.mock = this.mockOf(self)
-    if (this.ip.config.mode !== 'dev' || this.explainedByStaleImporter(self)) {
+    if (this.ip.config.mode !== 'dev') {
+      return judgement
+    }
+    const stale = this.staleImporterExplains(self)
+    if (stale) {
+      judgement.record.stale = stale
       return judgement
     }
     const errors: Array<DevReport> = []
@@ -1178,9 +1210,11 @@ class ImportProtectionEnv {
       // `reportSettled`; the module's failure is its compile's, and a
       // settlement that serves it otherwise builds it again)
       if (!this.ip.settles) {
-        judgement.reports.push(async () => {
+        judgement.reports.push(async (current) => {
           await owner.notify(v)
-          owner.report(v)
+          if (current()) {
+            owner.report(v)
+          }
         })
       }
     }
@@ -1223,9 +1257,11 @@ class ImportProtectionEnv {
           if (v.behavior === 'error') {
             errors.push(this.devReport(v))
           }
-          judgement.reports.push(async () => {
+          judgement.reports.push(async (current) => {
             await this.notify(v)
-            this.report(v)
+            if (current()) {
+              this.report(v)
+            }
           })
         }
       }
@@ -1244,9 +1280,15 @@ class ImportProtectionEnv {
    */
   defineEdges(edgeModules: ReadonlyArray<EdgeDefinition>): void {
     for (const e of edgeModules) {
-      this.defineModule(e.key, e.content, e.emit)
+      const m = this.defineModule(e.key, e.content, e.emit)
       if (e.verdict) {
         this.served.set(e.key, { verdict: e.verdict, self: null })
+      }
+      if (e.deferred) {
+        ;(m.deferred ??= new Map()).set(
+          `${e.deferred.importerId}\u0000${e.deferred.edgeKey}`,
+          e.deferred,
+        )
       }
     }
   }
@@ -1274,6 +1316,9 @@ class ImportProtectionEnv {
     } else if (this.served.size > 0) {
       this.served.delete(normalizePath(importerId))
     }
+    if (record.stale) {
+      this.ip.stale?.add(this.name, record.stale)
+    }
   }
 
   /**
@@ -1295,10 +1340,11 @@ class ImportProtectionEnv {
   }
 
   /**
-   * After a compile of an id of this environment, current by construction
-   * (the hosts that settle no answer of their own: Rsbuild's loader, Vite's
-   * late pass and asset load): `judge`, `defineEdges`, `commit`, then the
-   * reports. The outcome's error fails the module; `mock` is served
+   * After a compile of an id of this environment, for the hosts that do not
+   * settle through `transform` yet (Rsbuild's loader, Vite's late pass and
+   * asset load): `judge`, `defineEdges`, `commit`, then the reports, for
+   * every answer, overtaken or not (until those hosts move: settlement steps
+   * 3 and 4). The outcome's error fails the module; `mock` is served
    * instead of its output.
    */
   afterCompile(
@@ -1564,23 +1610,23 @@ class ImportProtectionEnv {
    * importer's rebuild reports the import or allows it. The module is then
    * stale too, judged again once the importer is built (it is reported if
    * something else still brings it). The importers are those the guess
-   * reads: this environment's, and the handoff's.
+   * reads: this environment's, and the handoff's. Gives the module's file,
+   * which the commit makes stale (`IpRecord.stale`), or null.
    */
-  private explainedByStaleImporter(self: EdgeViolation): boolean {
+  private staleImporterExplains(self: EdgeViolation): string | null {
     const stale = this.ip.stale
     if (!stale) {
-      return false
+      return null
     }
     const target = self.resolved!
     for (const env of [this, ...this.ip.handoffSources(this.name, target)]) {
       for (const importerId of env.edges.importers(target)) {
         if (stale.holds(env.name, traceFile(importerId))) {
-          stale.add(this.name, traceFile(self.importerId))
-          return true
+          return traceFile(self.importerId)
         }
       }
     }
-    return false
+    return null
   }
 
   /** The denied client-reference imports of `target` by `importerId` recorded here, one per import (a specifier: `EdgeViolation.handoff`). @internal */
@@ -2110,7 +2156,19 @@ class ImportProtectionEnv {
         }
       }
     }
-    if (pending.length === 0 && !this.ip.config.allowImport) {
+    // an answer no commit recorded (overtaken) still fails its own caller,
+    // which requests the edge its code names; nothing reports it
+    const overtaken: Array<EdgeViolation> = []
+    for (const [key, v] of m.deferred ?? []) {
+      if (!m.violations.has(key)) {
+        overtaken.push(v)
+      }
+    }
+    if (
+      pending.length === 0 &&
+      overtaken.length === 0 &&
+      !this.ip.config.allowImport
+    ) {
       return null
     }
     return (async () => {
@@ -2132,6 +2190,9 @@ class ImportProtectionEnv {
         this.confirmed.add(key)
         await this.notify(v)
         errors.push(...this.report(v))
+      }
+      for (const v of overtaken) {
+        errors.push(this.devReport(v))
       }
       return this.errorOf(errors)
     })()

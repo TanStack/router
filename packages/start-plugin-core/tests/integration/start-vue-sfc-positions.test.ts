@@ -413,11 +413,15 @@ describe('vite dev', () => {
       })
       const failure = await compileError(startCase, 'client', file)
       expect(failure).toBeInstanceOf(Error)
-      expectAtRefusal(
-        [...diagnosticsOf(failure!.error), ...failure!.reported],
-        startCase.file(file),
-        row,
-      )
+      const diagnostics = [
+        ...diagnosticsOf(failure!.error),
+        ...failure!.reported,
+      ]
+      expectAtRefusal(diagnostics, startCase.file(file), row)
+      // (the error names the package its code is in)
+      expect(
+        diagnostics.some((d) => d.text.includes('installed package `kit`')),
+      ).toBe(true)
     },
     timeout,
   )

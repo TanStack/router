@@ -138,6 +138,21 @@ function info not found` when one of them calls it, and the build says nothing, 
   the value, and a wrapper is not followed (R92). SPEC J4.5. `start-plugin-core/tests/start-compiler-cases.test.ts`:
   "each output keeps its implementation of an isomorphic fn whose chain passes through a helper function". Fix: each
   output keeps its implementation, or the build fails at the helper.
+- **An overtaken importer's allowed import loads the file's mock unless the file is allowed as its own importer**
+  (settlement step 2 review, Astra 2; base too). Vite dev: `allowImport` allows `form.ts`'s import of a client-only
+  file on the server and answers while `form.ts` is saved without the import. The older request loads the edge
+  `allowImport` allowed, which re-exports the file; the file's own compile finds an allowed importer only in the
+  committed records (none: that answer was overtaken) and serves its mock, as the file's own violation. SPEC J6.6.
+  `start-plugin-core/tests/integration/start-dev-settlement.test.ts`: "an overtaken importer whose import allowImport
+  allowed loads the real export, without the file allowed as its own importer". Fix: the file's verdict for a request
+  through an allowed edge follows that edge's decision, not the records of current importers (a target's verdict per
+  edge, not per module).
+- **Vite dev, SSR: a compile error of an importer whose import made a denied file real sends the file to its mock, reported**
+  (settlement step 2 review, Fable 1; base too). The server environment reports no parse error (`report`: a parse
+  failure is an error in the client only), so the failed compile is a served answer with no import, and its commit
+  takes the allowed import away; `form.ts`'s next good save brings it back. SPEC J6.6. No row (the client row,
+  `start-dev-settlement-failed.test.ts`, covers the commit; the SSR outcome follows from what the server reports).
+  Fix: a module the compiler cannot parse keeps its record in every environment.
 - **A check that waits while an event lands accepts what it read before** (settlement design, step 0; whole-PR review
   C6-01, C6-03): a plan hit or a restored plan whose resolution the resolver read before a tsconfig change and
   answered after it is accepted (the hit emits the old target's output; the restore reports nothing stale); a

@@ -225,7 +225,9 @@ export type ModuleOutcome =
   | { kind: 'mock'; output: CompileOutput; code: string; mockId: string }
   /**
    * The module fails, current or not: the compile's errors (the first is
-   * the module's failure), or import protection's (dev `behavior: 'error'`).
+   * the module's failure; a current answer commits nothing: the module's
+   * record stays), or import protection's (dev `behavior: 'error'`; a
+   * current answer commits its judged record).
    */
   | {
       kind: 'failed'
@@ -297,11 +299,12 @@ export class StartCompilerSession {
   /** The last production client build's publication (`publishClientOutput`); null before the run's first. */
   private published: ClientPublication | null = null
   /**
-   * The modules with a committed record (`transform`'s commit), by
-   * `${env}\0${canonicalId}`: a module no longer admitted is left to the
-   * bundler without asking the core only when it has none.
+   * The modules with a committed record (`transform`'s commit): by file,
+   * each module as `${env}\0${id}` (the bundler's id: a derived output is a
+   * module of its own). A module no longer admitted is left to the bundler
+   * without asking the core only when it has none.
    */
-  private readonly committed = new Set<string>()
+  private readonly committed = new Map<string, Set<string>>()
   private readonly routerConfigs = new Map<
     'client' | 'server',
     RouterPlannerConfig
@@ -604,7 +607,8 @@ export class StartCompilerSession {
    * answer of the module exists: `settleModule`'s `current()`, read in the
    * commit's turn), the commit: the registry, import protection's importer
    * record, the committed-id set, then the warnings (claimed in the run's
-   * ledger), import protection's reports and `hooks.committed`. The caller
+   * ledger), import protection's reports (each while the answer is still
+   * current) and `hooks.committed`; a compile error commits nothing. The caller
    * always gets its own answer. A module not admitted is left to the
    * bundler without asking the core unless the session committed a record
    * of it or the core holds its key: then the core settles it (a request
@@ -617,11 +621,14 @@ export class StartCompilerSession {
     hooks: TransformHooks,
   ): Promise<{ outcome: ModuleOutcome; committed: boolean }> {
     const identity = identify(req.id)
-    const key = `${req.env.name}\u0000${identity.canonicalId}`
+    // (a module id's path as the core keys a file: the host's ids are
+    // normalized already)
+    const file = identity.path
+    const key = `${req.env.name}\u0000${req.id}`
     const admitted = this.compiles(identity.path, req.code)
     if (
       !admitted &&
-      !this.committed.has(key) &&
+      !this.committed.get(file)?.has(key) &&
       !liveKey(this.caches, {
         env: req.env.name,
         canonicalId: identity.canonicalId,
@@ -631,14 +638,22 @@ export class StartCompilerSession {
       return { outcome: PASSTHROUGH, committed: false }
     }
     return this.settleCore(req, host(), async ({ output, current }) => {
-      const answer =
-        admitted && output ? await this.answer(req, identity, output) : PASSED
+      let answer =
+        admitted && output ? this.answer(req, identity, output) : PASSED
+      if (answer instanceof Promise) {
+        answer = await answer
+      }
       if (!current()) {
         return { outcome: answer.outcome, committed: false }
       }
-      this.commit(req, identity.canonicalId, key, answer)
       const { outcome, diagnosis, judgement } = answer
-      if (diagnosis && outcome.kind !== 'failed') {
+      if (outcome.kind === 'failed' && outcome.errors.length > 0) {
+        // a compile error: the module's record stays as its last commit
+        // left it (the bundler keeps no output of this answer)
+        return { outcome, committed: false }
+      }
+      this.commit(req, identity, file, key, answer)
+      if (diagnosis) {
         for (const w of diagnosis.packageWarnings) {
           if (w.claim()) {
             hooks.warn(w.d, w.at, w.generated, w.module)
@@ -651,19 +666,22 @@ export class StartCompilerSession {
         }
       }
       if (judgement && judgement.reports.length > 0) {
-        await runReports(judgement.reports)
+        await runReports(judgement.reports, current)
       }
-      await hooks.committed?.()
+      const committed = hooks.committed?.()
+      if (committed) {
+        await committed
+      }
       return { outcome, committed: true }
     })
   }
 
-  /** `transform`'s answer on a compiled module: diagnosed, judged, its edge modules defined. */
-  private async answer(
+  /** `transform`'s answer on a compiled module: diagnosed, judged, its edge modules defined (a promise only when import protection asks something now). */
+  private answer(
     req: ModuleRequest,
     identity: ReturnType<typeof identify>,
     output: CompileOutput,
-  ): Promise<Answer> {
+  ): Answer | Promise<Answer> {
     const diagnosis = this.diagnose(
       output,
       identity.path,
@@ -685,12 +703,25 @@ export class StartCompilerSession {
       }
     }
     const ipEnv = this.ip?.env(req.env.name)
-    let judgement: Judgement | null = null
-    if (ipEnv) {
-      const judged = ipEnv.judge(req.id, output)
-      judgement = judged instanceof Promise ? await judged : judged
-      ipEnv.defineEdges(judgement.edgeModules)
+    if (!ipEnv) {
+      return this.judged(identity, req.code, output, null, diagnosis)
     }
+    const judged = ipEnv.judge(req.id, output)
+    const define = (judgement: Judgement) => {
+      ipEnv.defineEdges(judgement.edgeModules)
+      return this.judged(identity, req.code, output, judgement, diagnosis)
+    }
+    return judged instanceof Promise ? judged.then(define) : define(judged)
+  }
+
+  /** The outcome of a judged answer (`answer`). */
+  private judged(
+    identity: ReturnType<typeof identify>,
+    code: string,
+    output: CompileOutput,
+    judgement: Judgement | null,
+    diagnosis: Diagnosis,
+  ): Answer {
     let outcome: ModuleOutcome
     if (judgement?.error) {
       outcome = { kind: 'failed', output, errors: [], error: judgement.error }
@@ -705,29 +736,38 @@ export class StartCompilerSession {
       outcome = {
         kind: 'served',
         output,
-        unchanged: identity.derived === null && output.code === req.code,
+        unchanged: identity.derived === null && output.code === code,
       }
     }
     return { outcome, judgement, diagnosis }
   }
 
   /**
-   * A current answer's writes (`transform`): served or mock, the module's
-   * server functions (each output's own, as it compiled: a mock's too) and
-   * import protection's record, and the module enters the committed-id set;
-   * passthrough or failed, both are retired and it leaves the set.
+   * A current answer's writes (`transform`): served, mock, or failed by
+   * import protection (its judged record: the importer's edges hold), the
+   * module's server functions (each output's own, as it compiled: a mock's
+   * too), import protection's record, and the module enters the
+   * committed-id set; passthrough retires both and it leaves the set. Only
+   * the env module and a provider output (`provider`, `handler`: what it
+   * provides) write the registry; a split, shared or hydrate output never
+   * does. (A compile error commits nothing: `transform`.)
    */
   private commit(
     req: ModuleRequest,
-    canonicalId: string,
+    identity: ReturnType<typeof identify>,
+    file: string,
     key: string,
     { outcome, judgement }: Answer,
   ): void {
-    const kept = outcome.kind === 'served' || outcome.kind === 'mock'
-    if (!this.opts.serverFnsAtSettlement) {
+    const kept = outcome.kind !== 'passthrough'
+    const derived = identity.derived?.kind
+    if (
+      !this.opts.serverFnsAtSettlement &&
+      (derived === undefined || derived === 'provider' || derived === 'handler')
+    ) {
       this.registry.set(
         req.env,
-        canonicalId,
+        identity.canonicalId,
         kept ? serverFnFactsOf(outcome.output) : null,
       )
     }
@@ -736,10 +776,18 @@ export class StartCompilerSession {
       if (judgement) {
         ipEnv!.commit(req.id, judgement.record)
       }
-      this.committed.add(key)
+      let keys = this.committed.get(file)
+      if (!keys) {
+        keys = new Set()
+        this.committed.set(file, keys)
+      }
+      keys.add(key)
     } else {
       ipEnv?.retire(req.id)
-      this.committed.delete(key)
+      const keys = this.committed.get(file)
+      if (keys?.delete(key) && keys.size === 0) {
+        this.committed.delete(file)
+      }
     }
   }
 
@@ -793,11 +841,7 @@ export class StartCompilerSession {
   forget(path: string): void {
     this.registry.forget(path)
     this.ip?.forget(path)
-    for (const key of this.committed) {
-      if (key.slice(key.indexOf('\u0000') + 1).split('?')[0] === path) {
-        this.committed.delete(key)
-      }
-    }
+    this.committed.delete(path)
   }
 
   /**
@@ -1149,9 +1193,14 @@ export class StartCompilerSession {
   release(envName: string): void {
     releaseEnvironment(this.caches, envName)
     this.ip?.release(envName)
-    for (const key of this.committed) {
-      if (key.startsWith(`${envName}\u0000`)) {
-        this.committed.delete(key)
+    for (const [file, keys] of this.committed) {
+      for (const key of keys) {
+        if (key.startsWith(`${envName}\u0000`)) {
+          keys.delete(key)
+        }
+      }
+      if (keys.size === 0) {
+        this.committed.delete(file)
       }
     }
   }

@@ -365,6 +365,162 @@ export const read = () => valueOf(secret)
   )
 })
 
+describe('Vite dev: what an overtaken answer decides later', () => {
+  // `form.ts` is saved with a type-only import of the client-only
+  // `one.client.ts` that `verbatimModuleSyntax` keeps (import protection
+  // decides it when the bundler requests the edge) and an import whose
+  // resolution waits; it is saved again without them before that compile
+  // answers. Under `behavior: 'error'` the SSR import that asked for the
+  // older text still fails, though nothing records the removed import.
+  // Source: Astra's review of settlement step 2, issue 1
+  // (`step2-deferred-review.mjs`, mode `pending`).
+  test(
+    "an overtaken answer's import decided at the request: its caller fails under behavior 'error'",
+    async () => {
+      const gate = holdPoint()
+      const reports: Array<string> = []
+      const server = await startDevServer({
+        plugins: [holdResolution(gate, './slow', 'ssr')],
+        start: {
+          importProtection: {
+            behavior: 'error',
+            onViolation: (info: ViolationInfo) => {
+              reports.push(path.basename(info.importer.split('?')[0]!))
+            },
+          },
+        },
+        files: {
+          'tsconfig.json': JSON.stringify({
+            compilerOptions: { verbatimModuleSyntax: true },
+          }),
+          'src/one.client.ts': `export type T = string\nexport const one = () => 'MARK_ONE'\n`,
+          'src/slow.ts': `export const slow = 1\n`,
+          'src/form.ts': plainForm,
+        },
+      })
+      await server.transform('/src/form.ts', 'ssr')
+      await server.edit({
+        'src/form.ts': `import { type T } from './one.client'
+import { slow } from './slow'
+export const read = (): T | number => slow
+`,
+      })
+      const reached = gate.arm()
+      const older = server.import('/src/form.ts')
+      await reached
+      await server.edit({ 'src/form.ts': plainForm })
+      expect(await server.transform('/src/form.ts', 'ssr')).toContain(
+        'MARK_PLAIN',
+      )
+      gate.release()
+      await expect(older).rejects.toThrow()
+      await server.idle()
+      expect(reports).toEqual([])
+    },
+    timeout,
+  )
+
+  // `allowImport` allows `form.ts`'s import of the client-only
+  // `one.client.ts` and nothing else (not the file as its own importer);
+  // it answers while the file is saved again without the import. The SSR
+  // import that asked for the older text loads the edge `allowImport`
+  // allowed, which re-exports the file: the file's own compile finds no
+  // allowed importer recorded (the answer that asked was overtaken) and
+  // serves its mock.
+  // Source: Astra's review of settlement step 2, issue 2
+  // (`step2-import-review.mjs`, mode `allowed`).
+  test.fails(
+    'an overtaken importer whose import allowImport allowed loads the real export, without the file allowed as its own importer',
+    async () => {
+      const gate = holdPoint()
+      const server = await startDevServer({
+        start: {
+          importProtection: {
+            behavior: 'mock',
+            allowImport: async (info) => {
+              if (info.importer.split('?')[0]!.endsWith('/form.ts')) {
+                await gate.wait()
+                return true
+              }
+              return false
+            },
+          },
+        },
+        files: {
+          'src/secret.client.ts': `export const secret = () => 'MARK_SECRET'\n`,
+          'src/form.ts': plainForm,
+        },
+      })
+      await server.transform('/src/form.ts', 'ssr')
+      await server.edit({
+        'src/form.ts': `import { secret } from './secret.client'
+${valueOf}
+export const read = () => valueOf(secret)
+`,
+      })
+      const reached = gate.arm()
+      const older = server.import('/src/form.ts')
+      await reached
+      await server.edit({ 'src/form.ts': plainForm })
+      expect(await server.transform('/src/form.ts', 'ssr')).toContain(
+        'MARK_PLAIN',
+      )
+      gate.release()
+      expect((await older).read()).toBe('MARK_SECRET')
+    },
+    timeout,
+  )
+
+  // `form.ts` imports two client-only files; its compile is current and
+  // reports, and `onViolation` waits on the first import. The file is saved
+  // again without either import, and the newer text is served: the second
+  // import is not reported.
+  // Source: Astra's review of settlement step 2, issue 3
+  // (`step2-deferred-review.mjs`, mode `reports`).
+  test(
+    'a report held in onViolation: the answer it is of was overtaken, the next import is not reported',
+    async () => {
+      const gate = holdPoint()
+      const reports: Array<string> = []
+      const server = await startDevServer({
+        start: {
+          importProtection: {
+            behavior: 'mock',
+            onViolation: async (info: ViolationInfo) => {
+              reports.push(info.specifier)
+              await gate.wait()
+            },
+          },
+        },
+        files: {
+          'src/one.client.ts': `export const one = () => 'MARK_ONE'\n`,
+          'src/two.client.ts': `export const two = () => 'MARK_TWO'\n`,
+          'src/form.ts': plainForm,
+        },
+      })
+      await server.transform('/src/form.ts', 'ssr')
+      await server.edit({
+        'src/form.ts': `import { one } from './one.client'
+import { two } from './two.client'
+export const read = () => [one(), two()]
+`,
+      })
+      const reached = gate.arm()
+      const older = server.transform('/src/form.ts', 'ssr')
+      await reached
+      await server.edit({ 'src/form.ts': plainForm })
+      expect(await server.transform('/src/form.ts', 'ssr')).toContain(
+        'MARK_PLAIN',
+      )
+      gate.release()
+      await older
+      await server.idle()
+      expect(reports).toHaveLength(1)
+    },
+    timeout,
+  )
+})
+
 describe('Vite dev: outputs of one text', () => {
   // A server fn file with a denied import its module reads outside the
   // handler: the SSR module's output imports it (a violation, reported), the
