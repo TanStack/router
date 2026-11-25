@@ -16,7 +16,10 @@ import {
 import { afterAll, afterEach, describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
-import { violationRecorder } from '../../importProtection/start-apps'
+import {
+  problemsNaming,
+  violationRecorder,
+} from '../../importProtection/start-apps'
 import {
   runInClient,
   runViteClient,
@@ -244,8 +247,130 @@ describe.each(startBundlers)(
       },
       timeout,
     )
+
+    // Rsbuild's SWC under `verbatimModuleSyntax` keeps `export { type X }
+    // from` as a bare `export {} from`: the denied file is a real import
+    // there, which protection mocks; Vite's Oxc erases the statement. Either
+    // way nothing of the file ships. (The effect-model lane's question to
+    // the declarations lane.)
+    test(
+      'an all-type re-export of the denied file ships nothing of it',
+      async () => {
+        const build = await buildStart({
+          bundler,
+          files: {
+            ...verbatimApp,
+            'src/forms/reexport.ts': `export { type Secret } from '../types.server'
+export const reexported = 1
+`,
+            'src/entry.ts': `export { reexported } from './forms/reexport'\n`,
+          },
+          entry: 'src/entry.ts',
+          start: { importProtection: { behavior: 'mock', mockAccess: 'off' } },
+          ...(bundler === 'rsbuild' && {
+            rsbuildConfig: {
+              tools: {
+                swc: { jsc: { transform: { verbatimModuleSyntax: true } } },
+              },
+            },
+          }),
+        })
+        const { result } = await build.client.run(
+          `return [entry.reexported, globalThis.typesLoaded ?? null]`,
+        )
+        expect({
+          result,
+          shipped: build.client.where('MARK_TYPES_LOADED'),
+        }).toEqual({ result: [1, null], shipped: 'nowhere' })
+      },
+      timeout,
+    )
   },
 )
+
+/**
+ * A re-export whose specifiers are all type-only (`export { type X } from`)
+ * is TypeScript's, as `export type { X } from`: no edge, so a dev server
+ * (the default `mock` mode, which warns about a violation; a build reports
+ * after tree-shaking) reports nothing on any channel, and the client never
+ * loads the denied file. (Whole-PR review of the declarations lane: the
+ * import-protection edge of this form, handed over by the effect-model
+ * lane.)
+ */
+const allTypeReexport = {
+  'src/types.server.ts': `;(globalThis as any).typesLoaded = 'MARK_TYPES_LOADED'
+export type Secret = { value: string }
+export const secret = (): Secret => ({ value: 'MARK_SECRET' })
+`,
+  'src/forms/export-inline-type.ts': `export { type Secret } from '../types.server'
+export const exportInlineType = 1
+`,
+  'src/entry.ts': `export * from './forms/export-inline-type'
+;(globalThis as any).entryLoaded = true
+`,
+  'src/router.ts': `import './entry'
+export const getRouter = () => undefined
+`,
+}
+const allTypeFiles = ['src/forms/export-inline-type.ts', 'src/types.server.ts']
+const allTypeExpected = {
+  reported: [],
+  problems: [],
+  loaded: { entry: true, types: null },
+}
+const loadedScript = `return { entry: globalThis.entryLoaded ?? null, types: globalThis.typesLoaded ?? null }`
+
+describe('an all-type re-export', () => {
+  afterEach(() => {
+    delete (globalThis as Record<string, unknown>).entryLoaded
+  })
+
+  test(
+    'vite dev: reports nothing and loads nothing of the denied file',
+    async () => {
+      const recorder = violationRecorder()
+      const server = await startDevServer({
+        start: { importProtection: recorder.importProtection },
+        files: allTypeReexport,
+      })
+      const { result } = await runViteClient(
+        server,
+        '/src/router.ts',
+        loadedScript,
+      )
+      await server.idle()
+      expect({
+        reported: importersIn({ root: server.root, ...recorder }, 'client'),
+        problems: problemsNaming(server, allTypeFiles),
+        loaded: result,
+      }).toEqual(allTypeExpected)
+    },
+    timeout,
+  )
+
+  test(
+    'rsbuild dev: reports nothing and loads nothing of the denied file',
+    async () => {
+      const recorder = violationRecorder()
+      const server = await startRsbuildStartDevServer({
+        compileTimeout,
+        browser: true,
+        hmr: false,
+        files: allTypeReexport,
+        start: { importProtection: recorder.importProtection },
+      })
+      const { result } = await captureConsole(() =>
+        runInClient(server, loadedScript),
+      )
+      expect({
+        reported: importersIn({ root: server.root, ...recorder }, 'client'),
+        problems: problemsNaming(server, allTypeFiles),
+        loaded: (result as { result: unknown }).result,
+      }).toEqual(allTypeExpected)
+    },
+    timeout,
+  )
+})
 
 describe('vite dev, verbatimModuleSyntax', () => {
   test(

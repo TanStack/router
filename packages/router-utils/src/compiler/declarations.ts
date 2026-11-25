@@ -13,7 +13,7 @@
  */
 import { BindingFlags } from 'yuku'
 import { declaredNames, namespaceName } from './source'
-import type { Binding, Node, Reference, SourceFile } from 'yuku'
+import type { Binding, Node, Reference, Scope, SourceFile } from 'yuku'
 
 export const VALUE = 1
 export const TYPE = 2
@@ -59,13 +59,6 @@ export interface Declaration {
    *   `declare` of a value (the value's own text, without code).
    */
   kind: 'definition' | 'statement' | 'erased'
-  /**
-   * An overload signature (a bodyless `function f(x: T): R` beside the
-   * function's implementation): a definition, as the text of the function it
-   * belongs to, but TypeScript erases it, so what its types name is named by
-   * erased text, however the function is exported, or if it is not.
-   */
-  signature?: true
 }
 
 type Row = Omit<Declaration, 'id'>
@@ -115,13 +108,9 @@ export function classify(
               : 'statement',
       }
     case 'FunctionDeclaration':
-      return { node, spaces: VALUE, kind: runs(node.declare || ambient) }
     case 'TSDeclareFunction':
-      // (an overload is text of the function it belongs to; a `declare` of
-      // the function is erased whole)
-      return node.declare || ambient
-        ? { node, spaces: VALUE, kind: 'erased' }
-        : { node, spaces: VALUE, kind: 'definition', signature: true }
+      // (an overload is text of the function it belongs to)
+      return { node, spaces: VALUE, kind: runs(node.declare || ambient) }
     case 'ClassDeclaration':
       return {
         node,
@@ -333,8 +322,121 @@ export class Declarations {
     { target: Binding; names: Array<string> } | null
   >()
   private declared: Set<number> | null = null
+  /** Per scope id: whether it is an alias's or an interface's (`inNamedDeclaration`). */
+  private readonly typeScopes = new Map<number, boolean>()
+  /** The ambient declarations' ranges (`inNamedDeclaration`). */
+  private ambientRanges: Array<{ start: number; end: number }> | null = null
 
   constructor(private readonly file: SourceFile) {}
+
+  /**
+   * Whether a reference stands in a named erased declaration: an alias's or
+   * an interface's text, or an ambient declaration's (`declare const x:
+   * T`). Such text is read when its declaration is named or exported (D1,
+   * the T5–T8 rows); every other type in code that stays is erased text
+   * where it stands (`removal/closure.ts`).
+   */
+  inNamedDeclaration(ref: Reference): boolean {
+    for (
+      let scope: Scope | null = ref.scope;
+      scope !== null && scope.kind !== 'module';
+      scope = scope.parent
+    ) {
+      if (scope.kind === 'block' && this.declaresType(scope)) {
+        return true
+      }
+    }
+    if (this.ambientRanges === null) {
+      this.ambientRanges = []
+      for (const b of this.file.bindings) {
+        if (b.has(BindingFlags.Ambient)) {
+          for (const d of this.ambient(b)) {
+            this.ambientRanges.push({ start: d.node.start, end: d.node.end })
+          }
+        }
+      }
+    }
+    const at = ref.node.start
+    return this.ambientRanges.some((r) => r.start <= at && at < r.end)
+  }
+
+  /**
+   * The names the module exports that have an erased declaration (it renders
+   * in no output's JavaScript, as main's `stripTypeExports` has it): a local
+   * of an export (`export interface X`, `export { X }`, `export default X`,
+   * an `export declare`), or a member an exported namespace exports.
+   */
+  exportedErased(): Array<Binding> {
+    const exported = new Set<number>()
+    for (const e of this.file.exports) {
+      if (e.local) {
+        exported.add(e.local.id)
+      }
+    }
+    const out: Array<Binding> = []
+    const seen = new Set<number>()
+    const add = (b: Binding) => {
+      if (!seen.has(b.id)) {
+        seen.add(b.id)
+        if (this.of(b).some((d) => d.kind === 'erased')) {
+          out.push(b)
+        }
+      }
+    }
+    for (const id of exported) {
+      add(this.file.bindings[id]!)
+    }
+    for (const b of this.file.bindings) {
+      if (
+        b.has(BindingFlags.Exported) &&
+        b.scope.kind === 'tsModule' &&
+        this.exportedNamespace(b.scope, exported)
+      ) {
+        add(b)
+      }
+    }
+    return out
+  }
+
+  /** Whether a namespace's block belongs to a namespace the module exports, from the module or as a member of one. */
+  private exportedNamespace(scope: Scope, exported: Set<number>): boolean {
+    const block = scope.node
+    const decl =
+      block.type === 'TSModuleBlock' ? this.file.parentOf(block) : block
+    if (decl?.type !== 'TSModuleDeclaration' || decl.kind === 'global') {
+      return false
+    }
+    const id = namespaceName(decl)
+    if (id === null) {
+      return false
+    }
+    // (past the scopes of a dotted declaration, `namespace A.B.C`)
+    let outer = scope.parent
+    while (outer !== null && outer.node === decl) {
+      outer = outer.parent
+    }
+    if (outer === null || outer.kind === 'module') {
+      const b = this.file.rootScope.find(id.name)
+      return b !== null && exported.has(b.id)
+    }
+    const member = outer.kind === 'tsModule' ? outer.find(id.name) : null
+    return (
+      member !== null &&
+      member.has(BindingFlags.Exported) &&
+      this.exportedNamespace(outer, exported)
+    )
+  }
+
+  private declaresType(scope: Scope): boolean {
+    let type = this.typeScopes.get(scope.id)
+    if (type === undefined) {
+      const node = scope.node.type
+      type =
+        node === 'TSTypeAliasDeclaration' || node === 'TSInterfaceDeclaration'
+      this.typeScopes.set(scope.id, type)
+    }
+    return type
+  }
 
   /** Every declaration of a binding. */
   of(b: Binding): ReadonlyArray<Declaration> {

@@ -244,6 +244,8 @@ export const getCount = createServerFn().handler(() => redis.get('count'))
 
 A single `const` declaration also works: `const redis = connect()` leaves the client bundle with its import when only server code reads it. Naming the module `*.server.ts` lets [import protection](./import-protection.md) report it if client code ever imports it (a production build fails); for a package, add it to `importProtection.client.specifiers`.
 
+A type never keeps a value: a declaration that only types name (`const db = connect()` with `type Db = typeof db`, an annotation, a cast, an overload signature) leaves the module with its initializer in every environment, as one only server code reads does, so its call no longer runs. Read it from code that runs to keep it. An import that only types name is left to your TypeScript settings (`verbatimModuleSyntax` keeps it), and a type decorator metadata records (`emitDecoratorMetadata`) is a read, so its class stays.
+
 The one shape the compiler refuses is server code passed by a name that a statement of the module assigns again: the implementation itself, given to `.handler()`, `.validator()`, `.server()`, `createServerOnlyFn()` or a route's `server`, `headers` or `ssr` option (`let impl = a; impl = b; createServerOnlyFn(impl)`). The build fails at that argument, because the client would keep the assignments and the implementations they hold. It is not refused when the client uses the binding itself (it is exported, or other client code calls it, such as a form running the validator it also passes), since that code needs it anyway. The setup above, where server code reads a value a statement sets up, is not refused: move it as shown.
 
 ### Incorrect Loader Assumptions

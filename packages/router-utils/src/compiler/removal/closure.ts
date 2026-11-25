@@ -280,22 +280,6 @@ export function closure(a: ClosureInput): Provenance {
       relay: false,
     })
   }
-  // a type export (`Unit.typeExport`: the type export statements `main`
-  // strips before its removal rule, `stripTypeExports`, and the other
-  // spellings of one) renders in no output's JavaScript: its text is removed
-  // text like an erased handler's, and for the type declarations it names it
-  // is erased text. A value only it reads was used by the source and goes
-  // when nothing left reads it (F1)
-  for (const u of units) {
-    if (u.typeExport) {
-      parts.push({
-        ...u.range,
-        value: USED | ERASED,
-        type: USED | ERASED,
-        relay: true,
-      })
-    }
-  }
 
   // per symbol: the causes it is reached with (`USED | ERASED | NAMED`), and
   // three bits higher those its text was read with
@@ -306,12 +290,35 @@ export function closure(a: ClosureInput): Provenance {
     below: [],
     selfReading: new Set(),
   }
-  if (parts.length === 0) {
+  // an exported erased declaration (`export interface X`, `export { X }` of
+  // an alias, `export default X` of a `declare`, a type an exported namespace
+  // exports) renders in no output's JavaScript (main's `stripTypeExports`):
+  // its text is removed text like an erased handler's, and a value only it
+  // reads was used by the source (F1). Read where a type names a value
+  const table = new Declarations(file)
+  if (t1.typesNameValues) {
+    for (const b of table.exportedErased()) {
+      for (const d of table.of(b)) {
+        if (d.kind === 'erased') {
+          parts.push({
+            start: d.node.start,
+            end: d.node.end,
+            value: USED | ERASED,
+            type: USED | ERASED,
+            relay: true,
+          })
+        }
+      }
+    }
+  }
+
+  // (a type the module erases frees a value only where a type position
+  // names one: `typesNameValues`)
+  if (parts.length === 0 && !t1.typesNameValues) {
     return out
   }
 
   // ---- the worklist ----------------------------------------------------------
-  const table = new Declarations(file)
   const types = new TypeRefs(file, symbols, table)
   const work: Array<SymbolId> = []
   /** The module-level bindings reached, once each. */
@@ -492,6 +499,40 @@ export function closure(a: ClosureInput): Provenance {
         typed(ref, p.type, p.relay)
       }
     })
+  }
+
+  // a type never keeps a value: a type in code that stays is erased text
+  // where it stands (TypeScript's `inTypePosition`, the parser's), and what
+  // it names was used by the source. Not a named erased declaration's text
+  // (an alias, an interface, a `declare`): that is read when the declaration
+  // is named or exported (D1, T5–T8). Not an import: whether it stays is the
+  // host's (`verbatimModuleSyntax`)
+  if (t1.typesNameValues) {
+    for (const ref of file.references) {
+      if (!ref.inTypePosition) {
+        continue
+      }
+      const b = ref.binding
+      if (
+        b === null ||
+        b.has(BindingFlags.Import | BindingFlags.TypeParameter)
+      ) {
+        continue
+      }
+      const at = ref.node.start
+      // (removed text is read above, moved text names a type for itself)
+      if (
+        parts.some((p) => p.start <= at && at < p.end) ||
+        table.inNamedDeclaration(ref)
+      ) {
+        continue
+      }
+      typed(
+        { at, sym: b.id as SymbolId, named: table.resolve(b, ref) },
+        USED | ERASED,
+        true,
+      )
+    }
   }
 
   /** The bits each cluster's text was read with. */

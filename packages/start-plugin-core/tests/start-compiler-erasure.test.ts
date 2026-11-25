@@ -736,21 +736,23 @@ ${handler}`,
     expectNotLoaded(await served.serverLoads(), ['./db.server'])
   })
 
-  test('a value only a local type reads stays and runs', async () => {
+  // a type never keeps a value (user decision, 2026-11-25): an annotation
+  // of code that runs names what it names, through a local alias too; the
+  // value leaves with its evaluation, client and server
+  test("a value only a running function's annotation names leaves", async () => {
     const served = await serveCase(await host(), {
       ...schemaFiles,
       'module.tsx': `${head}type User = typeof UserSchema
 export function show(u: User) { return String(u) }
 ${handler}`,
     })
-    expect(await clientCalls(served, `await load('module.tsx')`)).toEqual([
-      'schema.server',
-      'makeSchema',
-    ])
-    expect(await serverCalls(served)).toEqual(['schema.server', 'makeSchema'])
+    expect(await clientCalls(served, `await load('module.tsx')`)).toEqual([])
+    expect(await serverCalls(served)).toEqual([])
   })
 
-  test('an import a parameter annotation or a class used as a type reads stays', async () => {
+  // imports are the host's: one only a type names stays an import, a class
+  // only a type names leaves (with the import only it read)
+  test('an import a parameter annotation names stays, a class used only as a type leaves', async () => {
     const served = await serveCase(await host(), {
       ...callsFile,
       'schema.server.ts': `import { calls } from './calls'
@@ -769,7 +771,6 @@ ${handler}`,
     })
     expect(await clientCalls(served, `await load('module.tsx')`)).toEqual([
       'schema.server',
-      'base.server',
     ])
   })
 })

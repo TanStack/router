@@ -521,9 +521,10 @@ function refreshStatements(ctx: PlanContext, groups: SplitGroups): void {
     if (
       item &&
       // (an import of types only is erased under every setting; one with
-      // inline `type` specifiers is kept under `verbatimModuleSyntax`)
+      // inline `type` specifiers, which no output renders, is kept under
+      // `verbatimModuleSyntax`)
       (item.kind !== 'ImportDeclaration' ||
-        (item.node as { importKind?: string }).importKind === 'type') &&
+        item.units.every((id) => !units[id]!.stripped)) &&
       item.units.length > 0 &&
       item.units.every((id) => units[id]!.kind === 'type')
     ) {

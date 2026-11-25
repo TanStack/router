@@ -323,6 +323,254 @@ export const run = () => 1
       expected: { value: 1 },
       gone: true,
     },
+    // a bodyless function-like of code that runs is TypeScript's text: what
+    // its types name was named by erased text, wherever it stands and however
+    // it is exported (Astra's second re-check of the declarations lane; main
+    // keeps every one of these). An ambient declaration's text is its
+    // value's, read when the value is named: the ambient rows below
+    ...[
+      {
+        name: 'a method overload signature',
+        decl: 'export class K { m(x: typeof sv): number; m(x: unknown) { return 1 } }',
+        run: 'new K().m(null)',
+      },
+      {
+        name: 'an abstract method',
+        decl: 'export abstract class A { abstract m(x: typeof sv): number }\nclass B extends A { m() { return 1 } }',
+        run: 'new B().m(null)',
+      },
+      {
+        name: 'an abstract method without parameters',
+        decl: 'export abstract class A { abstract m(): typeof sv }\nclass B extends A { m() { return null as any } }',
+        run: '(new B().m(), 1)',
+      },
+      {
+        name: 'an abstract property',
+        decl: 'export abstract class A { abstract p: typeof sv }\nclass B extends A { p = null as any }',
+        run: '(new B(), 1)',
+      },
+      {
+        name: 'an index signature of a class',
+        decl: 'export class K { [k: string]: typeof sv }',
+        run: '(new K(), 1)',
+      },
+      {
+        name: 'a declare field',
+        decl: 'export class K { declare p: typeof sv }',
+        run: '(new K(), 1)',
+      },
+      {
+        name: 'a type export of an exported namespace with runtime content',
+        decl: 'export namespace N { export const a = 1; export type T = typeof sv }',
+        run: 'N.a',
+      },
+      {
+        name: 'a reopened exported namespace of types',
+        decl: 'export namespace N { export const a = 1 }\nexport namespace N { export type T = typeof sv }',
+        run: 'N.a',
+      },
+      // (re-checks of eeaf6a62b3: the same rule, more spellings)
+      {
+        name: 'a reopened namespace exported by a specifier',
+        decl: 'namespace N { export const a = 1 }\nnamespace N { export type T = typeof sv }\nexport { N }',
+        run: 'N.a',
+      },
+      {
+        name: 'a namespace exported as the default',
+        decl: 'namespace N { export const a = 1; export type T = typeof sv }\nexport default N',
+        run: 'N.a',
+      },
+      {
+        name: 'a dotted exported namespace',
+        decl: 'export namespace A.B { export const a = 1; export type T = typeof sv }',
+        run: 'A.B.a',
+      },
+      {
+        name: "a namespace's type export naming a block-local alias",
+        decl: 'export namespace N { export const a = 1; type L = typeof sv; export type T = L }',
+        run: 'N.a',
+      },
+      {
+        name: 'a method signature naming a function-local alias',
+        decl: 'export function factory() { type Local = typeof sv; class K { m(x: Local): void; m(x: unknown) {} } return K }',
+        run: '(factory(), 1)',
+      },
+      // (`export { x }` and `export default x` of an ambient name: the
+      // statement is the host's, what the declaration's types name erased
+      // text)
+      {
+        name: 'an export specifier of a declare const',
+        decl: 'declare const x: typeof sv\nexport { x }',
+        run: '1',
+      },
+      {
+        name: 'an export specifier of a declare function',
+        decl: 'declare function g(x: typeof sv): void\nexport { g }',
+        run: '1',
+      },
+      {
+        name: 'an export default of a declare class',
+        decl: 'declare class C { m(): typeof sv }\nexport default C',
+        run: '1',
+      },
+      // (an exported `declare` is a type export, `main` strips it)
+      {
+        name: 'an exported declare function',
+        decl: 'export declare function d(x: typeof sv): void',
+        run: '1',
+      },
+    ].map(
+      ({ name, decl, run }): Row => ({
+        name: `${name} naming a value in a type`,
+        code: `${SO}import { getServerVal } from './db.server'
+const sv = getServerVal()
+${decl}
+export const f = createServerOnlyFn(() => 1)
+export const run = () => ${run}
+`,
+        expected: { value: 1 },
+        gone: true,
+      }),
+    ),
+    {
+      // the controls: a value read beside the erased text keeps the value
+      name: 'a method body that reads the value keeps it',
+      code: `${SO}import { getServerVal } from './db.server'
+const sv = getServerVal()
+export class K { m(x: typeof sv): string; m(x: unknown) { return typeof sv } }
+export const f = createServerOnlyFn(() => 1)
+export const run = () => new K().m(null)
+`,
+      expected: { value: 'object' },
+    },
+    // (re-checks of 7278f28ef1: a dotted namespace with values runs; a local
+    // value erased text names through a local alias stays, its body runs it)
+    {
+      name: 'a dotted exported namespace holding the value keeps it',
+      code: `${SO}import { getServerVal } from './db.server'
+const sv = getServerVal()
+export namespace A.B { export const a = sv }
+export const f = createServerOnlyFn(() => 1)
+export const run = () => typeof A.B.a
+`,
+      expected: { value: 'object' },
+    },
+    {
+      name: 'a three-segment exported namespace drops what only its type export names',
+      code: `${SO}import { getServerVal } from './db.server'
+const sv = getServerVal()
+export namespace A.B.C { export const a = 1; export type T = typeof sv }
+export const f = createServerOnlyFn(() => 1)
+export const run = () => A.B.C.a
+`,
+      expected: { value: 1 },
+      gone: true,
+    },
+    // a local value only a type names leaves, in a function that runs too:
+    // a type never keeps a value (user decision, 2026-11-25; the follow-up's
+    // rows said it stays)
+    {
+      name: 'a local value only an overload signature names leaves',
+      code: `${SO}import { record } from './record'
+export function h() {
+  const loc = record('loc')
+  type L = typeof loc
+  function g(x: L): void
+  function g(x: unknown) { return 1 }
+  return g(1)
+}
+export const f = createServerOnlyFn(() => 1)
+export const run = () => h()
+`,
+      expected: { value: 1 },
+    },
+    // (Astra's re-check of 54c4ef0dee: an alias to a nested namespace's
+    // member is followed to the member, as a direct `Inner.T` is)
+    ...[
+      { how: 'a qualified name', alias: 'type L = Inner.T' },
+      {
+        how: 'an import alias',
+        alias: 'import Alias = Inner.T\n  type L = Alias',
+      },
+    ].map(
+      ({ how, alias }): Row => ({
+        name: `a type export reaching a value through ${how} of a nested namespace`,
+        code: `${SO}import { getServerVal } from './db.server'
+const sv = getServerVal()
+export namespace N {
+  namespace Inner { export type T = typeof sv }
+  ${alias}
+  export type U = L
+  export const x = 2
+}
+export const f = createServerOnlyFn(() => 1)
+export const run = () => N.x
+`,
+        expected: { value: 2 },
+        gone: true,
+      }),
+    ),
+    {
+      // the control: the member names a value the kept code reads
+      name: 'a nested namespace value the kept code reads stays beside its alias',
+      code: `${SO}import { record } from './record'
+export namespace N {
+  namespace Inner { export const v = record('v'); export type T = typeof v }
+  type L = Inner.T
+  export type U = L
+  export const x = Inner.v
+}
+export const f = createServerOnlyFn(() => 1)
+export const run = () => N.x
+`,
+      expected: { value: 'v', calls: ['v'] },
+    },
+    // a running function's annotation names what it names: the value leaves
+    // (user decision, 2026-11-25)
+    {
+      name: "a running function's annotation frees the value it names",
+      code: `${SO}import { getServerVal } from './db.server'
+const sv = getServerVal()
+export function show(x: typeof sv | null) { return x === null ? 1 : 2 }
+export const f = createServerOnlyFn(() => 1)
+export const run = () => show(null)
+`,
+      expected: { value: 1 },
+      gone: true,
+    },
+    {
+      name: 'a default parameter that reads the value keeps it',
+      code: `${SO}import { getServerVal } from './db.server'
+const sv = getServerVal()
+export class K { m(x: typeof sv = sv) { return typeof x } }
+export const f = createServerOnlyFn(() => 1)
+export const run = () => new K().m()
+`,
+      expected: { value: 'object' },
+    },
+    {
+      name: 'a field that reads the value keeps it',
+      code: `${SO}import { getServerVal } from './db.server'
+const sv = getServerVal()
+export class K { declare q: typeof sv; p = sv }
+export const f = createServerOnlyFn(() => 1)
+export const run = () => typeof new K().p
+`,
+      expected: { value: 'object' },
+    },
+    {
+      name: 'a namespace merged with an overloaded function keeps the value it reads',
+      code: `${SO}import { getServerVal } from './db.server'
+const sv = getServerVal()
+function nf(x: typeof sv): number
+function nf(x: unknown) { return 1 }
+namespace nf { export const v = sv }
+export { nf }
+export const f = createServerOnlyFn(() => 1)
+export const run = () => typeof nf.v
+`,
+      expected: { value: 'object' },
+    },
     {
       // C4-01's control: both spellings beside a read of the value
       name: 'a value kept code reads stays beside both spellings',

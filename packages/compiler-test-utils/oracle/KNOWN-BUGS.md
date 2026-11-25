@@ -208,6 +208,16 @@ function info not found` when one of them calls it, and the build says nothing, 
   3 and 4). 0.28.1 and `main` (Babel) parsed deeper. No file of the corpus (216,934) or of the workspace's installed
   packages (64,642) reaches it. Rows: `start-build-unparsed-module.test.ts`, "code nested more than 256 levels deep";
   `start-build-late-pass.test.ts`, "%s build, an MDX module the compiler cannot parse".
+- **Ambient text nothing names keeps what only it names** (`declare function g(x: typeof sv): void`,
+  `declare namespace N { const a: typeof sv }`, a class of `declare global`, an unexported namespace's type export,
+  `declare module 'x' { … }`, and nothing names or exports them): a type never keeps a value, but a named erased
+  declaration (an alias, an interface, a `declare`) is read when it is named or exported (D1, the decided T5–T8 rows:
+  a `declare const` nobody names keeps what it names); `sv` and its import stay, as on `main`. SPEC G16. No test (the
+  outcome is the limit). Workaround: export the type, or name it from code that runs.
+- **A value position TypeScript erases keeps what it reads** (`export declare class C extends Base {}` keeps
+  `Base`'s import; a computed key of an abstract or `declare` member): the parser reports these references as value
+  reads, and a value read keeps its value; as on `main`. SPEC G16. No test (the outcome is the limit; a Yuku request:
+  `inTypePosition` for value syntax in ambient and erased members).
 - **A compile whose every attempt was overtaken can commit after the rebuild of its text** (settlement design, step
   1, decided by a run: the same-text rule is not built). A dependency saved during each of three attempts leaves the
   compile's answer unpublished (the file is left for its bundler to build again); if its host still acts on it while

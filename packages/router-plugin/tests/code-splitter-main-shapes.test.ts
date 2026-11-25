@@ -527,13 +527,16 @@ const reg: any = (routes.push('x'), { again: () => reg })`,
       html: '<p>1</p>',
     },
     {
-      name: 'a declaration only a type names',
+      // a type never keeps a value (user decision, 2026-11-25; main runs
+      // it): an annotation of code that stays names what it names, and the
+      // declaration leaves with its evaluation
+      name: 'a declaration only a type names leaves',
       decls: `const routes: Array<string> = []
 const defaults = (routes.push('home'), { a: 1 })
 type Defaults = typeof defaults
 export function format(d: Defaults) { return JSON.stringify(d) }`,
       read: 'routes.length',
-      html: '<p>1</p>',
+      html: '<p>0</p>',
     },
     // (review-phase1 r5; R163: a class stays and is copied as a statement is)
     {

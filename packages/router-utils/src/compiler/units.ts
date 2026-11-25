@@ -95,15 +95,6 @@ export interface Unit {
    * value specifiers.
    */
   stripped: boolean
-  /**
-   * For a type unit: a type export of this module's own names (an exported
-   * declaration TypeScript erases, a type-only `export { … }`, specifier of
-   * a local name or `export default X`); for a declaration unit: an overload
-   * signature, exported or not (the table's `signature`). It renders in no
-   * output's JavaScript, and for provenance its text is erased text
-   * (`removal/closure.ts`); a re-export reads nothing of the module.
-   */
-  typeExport: boolean
   /** Export names this unit provides directly (`export const a`, `export { a as b }`, `default`). */
   exported: Array<string>
   /** Import entries (Tier 0 index) for import units. */
@@ -290,7 +281,6 @@ export function buildUnits(
     spaces: 0,
     definition: false,
     stripped: false,
-    typeExport: false,
     exported: [],
     importIndex: null,
     declNameRanges: [],
@@ -342,7 +332,8 @@ export function buildUnits(
           itemRange,
         )
         u.stripped = u.kind === 'type'
-        if (node.exported) {
+        // (`export type * as Ns from` exports nothing at runtime)
+        if (u.kind !== 'type' && node.exported) {
           u.exported.push(
             node.exported.type === 'Identifier'
               ? node.exported.name
@@ -363,7 +354,6 @@ export function buildUnits(
           // `export type { X } from '…'`: export syntax no output renders
           const u = add(item, base(node, 'type', itemRange))
           u.stripped = true
-          u.typeExport = node.source === null
           break
         }
         if (node.source !== null) {
@@ -390,7 +380,6 @@ export function buildUnits(
               base(spec, 'type', { start: spec.start, end: spec.end }),
             )
             u.stripped = true
-            u.typeExport = true
             continue
           }
           const u = base(spec, 'export-specifier', {
@@ -404,8 +393,10 @@ export function buildUnits(
       }
       case 'ExportDefaultDeclaration': {
         const d = node.declaration
-        const row = classify(file, d)
-        if (row !== null && (row.signature || ('id' in d && d.id != null))) {
+        if (
+          classify(file, d) !== null &&
+          (d.type === 'TSDeclareFunction' || ('id' in d && d.id != null))
+        ) {
           // a named declaration (a function, its overload, a class, an
           // interface) or an overload signature: what it is, a type or a
           // value, is the table's (an anonymous signature exports nothing:
@@ -430,7 +421,6 @@ export function buildUnits(
           // default }` of it
           const u = add(item, base(node, 'type', itemRange))
           u.stripped = true
-          u.typeExport = true
           break
         }
         const u = base(node, 'export-default', itemRange)
@@ -499,11 +489,6 @@ export function buildUnits(
       )
       u.spaces = row!.spaces
       u.definition = row!.kind === 'definition'
-      // (an exported declaration TypeScript erases is a type export; an
-      // overload signature's types are erased text whatever exports it)
-      u.typeExport =
-        (u.kind === 'type' && item.exportKeyword !== null) ||
-        row!.signature === true
       return u
     }
     switch (decl.type) {

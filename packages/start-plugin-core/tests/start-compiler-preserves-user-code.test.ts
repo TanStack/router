@@ -575,24 +575,32 @@ export const getKind = createIsomorphicFn()
   .client(() => 'client')`,
   }
 
-  test.each([typeQuery, globalAugmentation])(
-    'client: $name',
-    async ({ code, call }) => {
-      const startCase = await effectCase(await host(), code)
-      expect(await recordClientSideEffects(startCase)).toEqual([call])
-    },
-  )
+  // (an ambient declaration nobody names is read when it is named: T7)
+  test('client: a global augmentation', async () => {
+    const startCase = await effectCase(await host(), globalAugmentation.code)
+    expect(await recordClientSideEffects(startCase)).toEqual([
+      globalAugmentation.call,
+    ])
+  })
+
+  // a type never keeps a value (user decision, 2026-11-25): an annotation of
+  // code that runs names what it names, here through a local alias; the
+  // declaration leaves with its evaluation, client and server (it stayed)
+  test(`client: ${typeQuery.name} names what it names`, async () => {
+    const startCase = await effectCase(await host(), typeQuery.code)
+    expect(await recordClientSideEffects(startCase)).toEqual([])
+  })
 
   // Handling a server fn call runs the module's initializer, once: what the
   // server records while it handles a client's call (the module is first
   // evaluated by that request).
-  test(`server: ${typeQuery.name}`, async () => {
+  test(`server: ${typeQuery.name} names what it names`, async () => {
     const startCase = await effectCase(await host(), typeQuery.code)
     const global = globalThis as Record<string, unknown>
     global[effectsKey] = []
     try {
       expect(await callFromClient(startCase, 'module.getPosts')).toEqual([])
-      expect(global[effectsKey]).toEqual([typeQuery.call])
+      expect(global[effectsKey]).toEqual([])
     } finally {
       delete global[effectsKey]
     }

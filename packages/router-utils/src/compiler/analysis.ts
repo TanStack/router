@@ -10,7 +10,7 @@
 import { BindingFlags, walk } from 'yuku'
 import { analyzeHeader } from './header'
 import { declaredNames, isExpressionWrapper, unwrapExpression } from './source'
-import { SymbolTable, valueBinding } from './symbols'
+import { SymbolTable, hasRuntimeValue, valueBinding } from './symbols'
 import { buildItems, buildUnits } from './units'
 import { isTypeOnlyExport } from './declarations'
 import { MutationModel } from './mutation'
@@ -216,6 +216,12 @@ export interface Tier1 {
   refs: RefIndex
   /** References to names without a binding (globals, `arguments`). */
   freeRefs: ReadonlyArray<FreeRef>
+  /**
+   * Whether a type position names a value of the module (`typeof x`, a class
+   * as a type), not an import's: only then can a type the module erases free
+   * a value (`removal/closure.ts`, "a type never keeps a value").
+   */
+  typesNameValues: boolean
   names: ReadonlySet<string>
   exportNames: ReadonlySet<string>
   declaringUnits: ReadonlyMap<SymbolId, ReadonlyArray<UnitId>>
@@ -782,9 +788,17 @@ export class ModuleAnalysis {
     /** Solid `ref={x}` reads of reassignable bindings (`refAssigns`). */
     const refTargets: Array<{ ref: ClassifiedRef; binding: Binding }> = []
     const names = new Set<string>(symbols.names())
+    let typesNameValues = false
     for (const ref of file.references) {
       let b: Binding | null
       if (ref.inTypePosition) {
+        if (!typesNameValues) {
+          const named = ref.binding
+          typesNameValues =
+            named !== null &&
+            !named.has(BindingFlags.Import | BindingFlags.TypeParameter) &&
+            hasRuntimeValue(named)
+        }
         // (a file without decorators never reads `ref.node` of a type)
         const outer =
           metadataReads.size === 0
@@ -912,6 +926,7 @@ export class ModuleAnalysis {
       symbols,
       refs: refIndex,
       freeRefs,
+      typesNameValues,
       names,
       exportNames,
       declaringUnits,

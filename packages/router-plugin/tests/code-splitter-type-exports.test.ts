@@ -94,3 +94,68 @@ export { label, type Thing as Alias } from './thing'`,
     expectNoProblems(await app.diagnostics())
   },
 )
+
+/** `track(name)` records each call and returns a fresh object (`seen()`). */
+const trackFile = `const calls: Array<string> = []
+export function track(name: string) {
+  calls.push(name)
+  return { name }
+}
+export const seen = () => calls
+`
+
+// An overload signature is TypeScript's text: what only it names in a type
+// leaves the route module, parameters or not, in a route nothing is split
+// from (Astra's re-check of the declarations lane: these regressed when the
+// compile looked for erased text only where other text was removed).
+test.each([
+  {
+    name: 'a parameterless overload exported by a specifier',
+    code: `function read(): typeof sv
+function read() { return 1 }
+export { read }`,
+    seen: [],
+  },
+  {
+    name: 'an anonymous parameterless default overload',
+    code: `export default function (): typeof sv
+export default function () { return 1 }`,
+    seen: [],
+  },
+  {
+    // the control: the implementation reads the value
+    name: 'a parameterless overload whose implementation reads the value',
+    code: `function read(): typeof sv
+function read() { return sv.name }
+export { read }`,
+    seen: ['sv'],
+  },
+])('$name', async ({ code, seen }) => {
+  const loaded = await loadRoute(
+    `${head}import { track } from './track'
+const sv = track('sv')
+${code}
+export const Route = createFileRoute('/')({})
+`,
+    { files: { 'track.ts': trackFile } },
+  )
+  expect(
+    await loaded.run(`const { seen } = await app('track.ts')
+return seen()`),
+  ).toEqual(seen)
+})
+
+// A dotted namespace with values is a value: a split component reading
+// it gets it (Fable's re-check of 7278f28ef1: the chunk read `N` without
+// declaring it).
+test('a split component reads a member of a dotted namespace', async () => {
+  const loaded = await loadRoute(
+    `${head}namespace N.M { export const a = 'MARK_DOTTED' }
+export const Route = createFileRoute('/')({ component: () => <p>{N.M.a}</p> })
+`,
+  )
+  expect(await loaded.isLazy('component')).toBe(true)
+  expect(await loaded.run(`return render('component')`)).toBe(
+    '<p>MARK_DOTTED</p>',
+  )
+})
