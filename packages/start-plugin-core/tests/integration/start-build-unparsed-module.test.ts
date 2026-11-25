@@ -11,9 +11,10 @@
  * The same holds for a module that names no `@tanstack/*` package, whose
  * builder comes from the app's own module (`import { base } from
  * './lib/base'`, re-exporting Start's builder): text Yuku rejects and the
- * bundler accepts (a TypeScript grammar error SWC lets through, or a `.cts`
- * module written with ES module syntax, which both bundlers accept) fails the
- * client build, naming the module and the position.
+ * bundler accepts (a TypeScript grammar error SWC lets through, code nested
+ * deeper than Yuku parses, or a `.cts` module written with ES module syntax,
+ * which both bundlers accept) fails the client build, naming the module and
+ * the position.
  */
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
@@ -89,6 +90,12 @@ const unparsable: Record<string, { file: string; text: string; line: number }> =
     'a type-only import of a default and named bindings': {
       file: 'src/fns.ts',
       text: `${baseImport}\nimport type T, { U } from './types'\nexport type V = T | U\n${handler}\n`,
+      line: 2,
+    },
+    // past Yuku's limit of 256 levels: an empty program and one diagnostic
+    'code nested more than 256 levels deep': {
+      file: 'src/fns.ts',
+      text: `${baseImport}\nexport const s = ${'('.repeat(300)}1${')'.repeat(300)}\n${handler}\n`,
       line: 2,
     },
     'a .cts module with ES module syntax': {

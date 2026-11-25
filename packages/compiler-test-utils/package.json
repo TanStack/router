@@ -69,7 +69,7 @@
     "vite": "catalog:",
     "vitest": "catalog:",
     "webpack": "^5.104.1",
-    "yuku": "0.28.1"
+    "yuku": "0.29.0"
   },
   "devDependencies": {
     "@types/node": "catalog:"

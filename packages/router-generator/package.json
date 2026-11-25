@@ -71,7 +71,7 @@
     "chokidar": "catalog:",
     "jiti": "^2.7.0",
     "prettier": "^3.9.6",
-    "yuku": "0.28.1",
+    "yuku": "0.29.0",
     "zod": "catalog:"
   },
   "devDependencies": {
