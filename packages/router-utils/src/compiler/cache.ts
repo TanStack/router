@@ -670,7 +670,12 @@ export class PlanCache {
   /** Path → its live keys' records. */
   private readonly byPath = new Map<string, Map<string, PlanRecord>>()
   readonly dependents = new DependentsIndex()
-  /** `TSR_COMPILER_NO_CACHE=plans`: no plan is a hit (measurement knob); dependencies are still kept. */
+  /**
+   * `TSR_COMPILER_NO_CACHE=plans`: no plan is a hit (`lookup`; measurement
+   * knob). A published plan is kept as with the cache on (its dependencies,
+   * its text for an event's comparison, the previous text a request is
+   * compared with), so only its reuse differs.
+   */
   private readonly disabled = cacheDisabled('plans')
   /**
    * Use counts for `compilerStats()`: validated plan hits; `staleHits`:
@@ -840,6 +845,10 @@ export class PlanCache {
 
   /** A hit by key and revision; the caller validates the dependency snapshot. */
   lookup(key: PlanKey, revision: string): CacheEntry | null {
+    if (this.disabled) {
+      // (the plan is kept, as published, for everything but its reuse)
+      return null
+    }
     const e = this.records.get(planKeyString(key))?.entry
     return e && e.revision === revision ? e : null
   }
@@ -850,8 +859,8 @@ export class PlanCache {
 
   /**
    * Publishes; refuses stale completions (generation moved or a newer
-   * revision was seen). With plan caching off, the plan is kept by its
-   * dependencies only (`restored`: never a hit, its dependents still reported).
+   * revision was seen). With plan caching off, the plan is kept all the same
+   * and never a hit (`lookup`).
    */
   set(entry: CacheEntry): boolean {
     const r = this.records.get(planKeyString(entry.key))
@@ -862,12 +871,8 @@ export class PlanCache {
     ) {
       return false
     }
-    if (this.disabled) {
-      r.restored = { key: entry.key, dependencies: entry.plan.dependencies }
-    } else {
-      r.entry = entry
-      r.restored = null
-    }
+    r.entry = entry
+    r.restored = null
     return true
   }
 

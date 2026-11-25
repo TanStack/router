@@ -536,7 +536,8 @@ API: names and output may change. Unset, they cost one `process.env` read when a
 nothing per compile.
 
 - `TSR_COMPILER_NO_CACHE=<list>`: disables caches, comma-separated: `plans` (no plan is a hit, every request
-  compiles again; each plan's dependencies are kept, so an edit still reports the modules that read it), `facts` (every raw-facts read of a file re-reads and re-analyses it), `targets` (target facts of
+  compiles again; a published plan is kept for all else, so an edit still reports the modules that read it, an event
+  of the text it was compiled from keeps it, and a request is compared with its text), `facts` (every raw-facts read of a file re-reads and re-analyses it), `targets` (target facts of
   imported modules are rebuilt on every read), `registry` (a route file's `Route` is read from the file instead of
   answered from the route registry's `routerConstructor`), or `all`. Output must be identical with any combination; only speed
   changes. Use it on a report of stale or wrong output after an edit (HMR serving old code, a split that ignores a

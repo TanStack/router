@@ -176,7 +176,10 @@ export class RawFactsCache {
   private readonly entries = new Map<string, FactsEntry>()
   /** Path → keys of `entries` at it (`markStale`/`forget` without a scan; every environment's entry of a virtual id). */
   private readonly byPath = new Map<string, Set<string>>()
-  /** `TSR_COMPILER_NO_CACHE=facts|targets`: every read rebuilds (measurement knobs). */
+  /**
+   * `TSR_COMPILER_NO_CACHE=facts|targets`: every read rebuilds (measurement
+   * knobs); `facts` keeps each entry for all but its reuse.
+   */
   private readonly noFacts = cacheDisabled('facts')
   private readonly noTargets = cacheDisabled('targets')
   /**
@@ -446,14 +449,11 @@ export class RawFactsCache {
 
   /** The facts of a module, read (on a miss) for environment `env`. */
   async get(canonicalId: string, env: string): Promise<RawFacts> {
-    if (this.noFacts) {
-      return this.isKnownSpecifier(canonicalId)
-        ? this.knownFacts(canonicalId)
-        : this.build(canonicalId, await this.read(canonicalId, env))
-    }
     const key = this.keyOf(canonicalId, env)
     let e = this.entries.get(key)
-    if (e && e.facts && !e.stale) {
+    // (`noFacts`: the entry is kept for all but its reuse: a file that stops
+    // parsing keeps the facts it last parsed to, as with the cache on)
+    if (e && e.facts && !e.stale && !this.noFacts) {
       this.counters.factsHits++
       return e.facts
     }
