@@ -67,10 +67,10 @@
     "globals": "^16.2.0",
     "vite": "catalog:",
     "vitest": "catalog:",
-    "webpack": "^5.104.1"
+    "webpack": "^5.104.1",
+    "yuku": "0.28.1"
   },
   "devDependencies": {
-    "@types/node": "catalog:",
-    "yuku": "0.28.1"
+    "@types/node": "catalog:"
   }
 }

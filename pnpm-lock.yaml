@@ -14226,13 +14226,13 @@ importers:
       webpack:
         specifier: ^5.104.1
         version: 5.110.3(@swc/core@1.15.33(@swc/helpers@0.5.23))(clean-css@5.3.3)(csso@5.0.5)(esbuild@0.28.2)(html-minifier-terser@6.1.0)(lightningcss@1.33.0)(postcss@8.5.29)(sharp@0.35.5(@types/node@25.0.9))(svgo@4.0.0)(webpack-cli@5.1.4)
+      yuku:
+        specifier: 0.28.1
+        version: 0.28.1
     devDependencies:
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
-      yuku:
-        specifier: 0.28.1
-        version: 0.28.1
 
   packages/compiler-vite-versions:
     dependencies:
