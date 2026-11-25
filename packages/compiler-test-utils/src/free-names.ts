@@ -24,6 +24,8 @@ export interface ModuleNames {
    * places in the chunk's scope.
    */
   topLevel: Set<string>
+  /** Names of `free` with a read outside every function of the module. */
+  freeAtTop: Set<string>
   /** Names the module probes with `typeof` (not in `free`, without `keepProbed`). */
   probed: Set<string>
 }
@@ -47,6 +49,7 @@ export function readNames(
   const free = new Set<string>()
   const bound = new Set<string>()
   const topLevel = new Set<string>()
+  const freeAtTop = new Set<string>()
   /** Names the module probes with `typeof`: it reads them knowing they may not exist. */
   const probed = new Set<string>()
   for (const reference of file.references) {
@@ -67,10 +70,16 @@ export function readNames(
       !(reference.name === 'arguments' && inArgumentsScope(reference.scope))
     ) {
       free.add(reference.name)
+      if (!inFunction(reference.scope)) {
+        freeAtTop.add(reference.name)
+      }
     }
   }
   if (!options.keepProbed) {
-    probed.forEach((name) => free.delete(name))
+    probed.forEach((name) => {
+      free.delete(name)
+      freeAtTop.delete(name)
+    })
   }
   return {
     errors: file.diagnostics
@@ -79,8 +88,19 @@ export function readNames(
     free,
     bound,
     topLevel,
+    freeAtTop,
     probed,
   }
+}
+
+/** Whether code of `scope` runs inside a function (or a class static block). */
+function inFunction(scope: Scope) {
+  for (const ancestor of scope.ancestors()) {
+    if (ancestor.kind === 'function' || ancestor.kind === 'staticBlock') {
+      return true
+    }
+  }
+  return false
 }
 
 /**

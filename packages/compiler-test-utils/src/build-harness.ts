@@ -1284,11 +1284,13 @@ export async function describeBuild(
  *   (e.g. seroval's `const RETURN = () => T`, used through
  *   `RETURN.toString()`);
  * - a dependency's module the build did not change: out of scope.
- * A name no module reads free is the bundler's when a module binds it at
- * its top level (it dropped a binding the transforms left in place, e.g.
- * Rspack 2.2.7 and the import bindings the kept unused code of a
- * concatenated module reads: out of scope; a binding inside a function, a
- * parameter, stays with its function), and a module's own guarded read when a module probes it
+ * A name no module reads free is the bundler's when a module binds it (it
+ * dropped a binding the transforms left in place, e.g. Rspack 2.2.7 and
+ * the import bindings the kept unused code of a concatenated module reads,
+ * or a minifier the unused `const`s of a function whose unreachable code
+ * it kept: out of scope), where the chunk reads it: a read outside every
+ * function of the chunk only by a binding of a module's top level (a
+ * parameter of the same name elsewhere excuses nothing), and a module's own guarded read when a module probes it
  * with `typeof` (e.g. seroval's `typeof Buffer`); when no module binds or
  * probes it either, code outside the modules
  * (a bundle-level hook) introduced it, and it counts. Nothing is excepted
@@ -1334,7 +1336,10 @@ async function checkDanglingNames(
     },
   }
   const dangling: Record<string, Array<string>> = {}
-  /** Whether each name counts (one decision per build). */
+  /**
+   * Whether each name counts (one decision per build, and per where the
+   * chunk reads it: outside every function, or only inside functions).
+   */
   const decided = new Map<string, Promise<boolean>>()
   for (const chunk of chunks) {
     const names: Array<string> = []
@@ -1346,10 +1351,12 @@ async function checkDanglingNames(
       if (clientGlobals.has(name)) {
         continue
       }
-      let counts = decided.get(name)
+      const atTop = read.freeAtTop.has(name)
+      const key = `${atTop ? 'top' : 'inner'}:${name}`
+      let counts = decided.get(key)
       if (!counts) {
-        counts = nameCounts(name, scope)
-        decided.set(name, counts)
+        counts = nameCounts(name, atTop, scope)
+        decided.set(key, counts)
       }
       if (await counts) {
         names.push(name)
@@ -1367,9 +1374,9 @@ async function checkDanglingNames(
 /**
  * Whether a name a chunk reads free is a defect (see `checkDanglingNames`):
  * attributed to the modules whose code after the build's transforms reads
- * it free.
+ * it free. `atTop`: the chunk reads it outside every function.
  */
-async function nameCounts(name: string, scope: ScopeEvidence) {
+async function nameCounts(name: string, atTop: boolean, scope: ScopeEvidence) {
   const parsed = scope.parsedModules
   if (!parsed) {
     // No evidence of the modules
@@ -1393,8 +1400,14 @@ async function nameCounts(name: string, scope: ScopeEvidence) {
       readers.push(resource)
     }
     // (a module that probes the name with `typeof` reads it knowingly; a
-    // bundler drops only the bindings it places in the chunk's scope)
-    if (reads?.topLevel.has(name) || reads?.probed.has(name)) {
+    // read outside every function of the chunk can only have lost a
+    // binding the bundler places in the chunk's scope, a module's top-level
+    // one: a minifier that drops a function's unused `const` keeps the
+    // function's reads in unreachable code of it)
+    if (
+      reads?.probed.has(name) ||
+      (atTop ? reads?.topLevel.has(name) : reads?.bound.has(name))
+    ) {
       bound = true
     }
   }
