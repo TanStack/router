@@ -8,7 +8,7 @@
  * (`RegionTable`, rewrite.ts).
  */
 import { BindingFlags } from 'yuku'
-import { classify, isTypeOnlyExport } from './declarations'
+import { classify, hasRuntimeValue, isTypeOnlyExport } from './declarations'
 import { extendOverTrailingLine, isLicenseComment } from './header'
 import {
   bindingNameRange,
@@ -329,15 +329,16 @@ export function buildUnits(
         break
       }
       case 'ExportNamedDeclaration': {
-        if (
-          node.exportKind === 'type' ||
-          (node.source !== null && isTypeOnlyExport(file, node))
-        ) {
-          // `export type …`; `export { type X } from '…'`: as
-          // `export type { X } from '…'`. Export syntax no output renders
-          // but an exported declaration, which the env module keeps
+        if (node.declaration !== null) {
+          // (what it declares, a type or a value, is the table's)
+          declarationUnits(item, node.declaration, true)
+          break
+        }
+        if (isTypeOnlyExport(file, node)) {
+          // `export type { X }`; `export { type X } from '…'`, as
+          // `export type { X } from '…'`: export syntax no output renders
           const u = add(item, base(node, 'type', itemRange))
-          u.stripped = node.declaration === null
+          u.stripped = true
           u.typeExport = node.source === null
           break
         }
@@ -347,10 +348,6 @@ export function buildUnits(
             u.exported.push(moduleExportName(spec.exported))
           }
           add(item, u)
-          break
-        }
-        if (node.declaration !== null) {
-          declarationUnits(item, node.declaration, true)
           break
         }
         for (const spec of node.specifiers) {
@@ -380,19 +377,14 @@ export function buildUnits(
       }
       case 'ExportDefaultDeclaration': {
         const d = node.declaration
-        if (
-          (d.type === 'FunctionDeclaration' || d.type === 'ClassDeclaration') &&
-          d.id !== null
-        ) {
-          const units0 = declarationUnits(item, d, false)
-          for (const u of units0) {
-            u.exported.push('default')
+        if ('id' in d && d.id != null && classify(file, d) !== null) {
+          // a named declaration (a function, its overload, a class, an
+          // interface): what it is, a type or a value, is the table's
+          for (const u of declarationUnits(item, d, false)) {
+            if (u.kind === 'declaration') {
+              u.exported.push('default')
+            }
           }
-          break
-        }
-        if (isTypeOnlyExport(file, node)) {
-          // `export default interface X {}`: a type export
-          declarationUnits(item, d, false)
           break
         }
         const u = base(node, 'export-default', itemRange)
@@ -467,24 +459,27 @@ export function buildUnits(
     }
     switch (decl.type) {
       case 'VariableDeclaration': {
-        if (row!.kind === 'erased') {
-          out.push(add(item, declared(decl, itemRange)))
-          break
-        }
+        // a `declare` is one text, the values' (`declare const a, b`): one
+        // unit
+        const whole = row!.kind === 'erased' ? declared(decl, itemRange) : null
         for (const d of decl.declarations) {
-          const u = declared(d, { start: d.start, end: d.end })
-          const ids = patternIdentifiers(d.id)
-          for (const id of ids) {
+          const u = whole ?? declared(d, { start: d.start, end: d.end })
+          for (const id of patternIdentifiers(d.id)) {
             const s = symOf(id)
             if (s !== null) {
               u.declares.push(s)
-              if (exported) {
+              if (exported && u.kind === 'declaration') {
                 u.exported.push(id.name)
               }
             }
             u.declNameRanges.push(bindingNameRange(file.source, id))
           }
-          out.push(add(item, u))
+          if (whole === null) {
+            out.push(add(item, u))
+          }
+        }
+        if (whole !== null) {
+          out.push(add(item, whole))
         }
         break
       }
@@ -495,7 +490,7 @@ export function buildUnits(
           const s = symOf(decl.id)
           if (s !== null) {
             u.declares.push(s)
-            if (exported) {
+            if (exported && u.kind === 'declaration') {
               u.exported.push(decl.id.name)
             }
           }
@@ -510,7 +505,7 @@ export function buildUnits(
           const s = symOf(decl.id)
           if (s !== null) {
             u.declares.push(s)
-            if (exported) {
+            if (exported && u.kind === 'declaration') {
               u.exported.push(decl.id.name)
             }
           }
@@ -524,7 +519,7 @@ export function buildUnits(
         const s = symOf(decl.id)
         if (s !== null) {
           u.declares.push(s)
-          if (exported) {
+          if (exported && u.kind === 'declaration') {
             u.exported.push(decl.id.name)
           }
         }
@@ -579,7 +574,7 @@ export function buildUnits(
       b.has(BindingFlags.Import) ||
       symbols.kind(sym) === 'ambient' ||
       declaringUnits.has(sym) ||
-      !b.has(BindingFlags.ValueSpace)
+      !hasRuntimeValue(b)
     ) {
       continue
     }

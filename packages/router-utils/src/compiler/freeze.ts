@@ -13,7 +13,7 @@ import { sameFileSpecifier } from './identity'
 import { dedupeEdges, sourceEdges } from './edges'
 import { specifierLiteral, specifierName } from './strings'
 import { statementRecipe } from './units'
-import { namespaceName } from './source'
+import { VALUE } from './declarations'
 import { extendOverTrailingLine, isLineTerminator, pragmasOf } from './header'
 import { erases } from './rewrite'
 import {
@@ -207,15 +207,16 @@ function includedUnitsOf(
     if (u.kind === 'type') {
       // type units stay in the env module (erased by TypeScript) whatever
       // their cluster, except the TypeScript-only syntax no output renders
-      // (`Unit.stripped`); ambient value declarations
-      // (`declare enum`, `declare var`, …) are copied: erased by
-      // TypeScript, but a TS transform resolves the names through them (Oxc
-      // inlines `declare enum` members), and so is a type unit a planner
+      // (`Unit.stripped`); ambient value declarations (a type unit that
+      // declares a value: `declare enum`, `declare var`, …, exported or
+      // not) are copied: erased by TypeScript, but a TS transform resolves
+      // the names through them (Oxc inlines `declare enum` members), and so
+      // is a type unit a planner
       // rooted in the output that the env module would keep (its text is
       // what the planner wants there)
       if (
         derived
-          ? isAmbientValueDeclaration(u.node) ||
+          ? (u.spaces & VALUE) !== 0 ||
             (!u.stripped && roots.some((r) => r.t === 'unit' && r.id === uid))
           : !u.stripped
       ) {
@@ -892,23 +893,6 @@ function outputView(
     },
     dynamic: ({ start, end }) =>
       segments.some((s) => s.k === 'slice' && s.start <= start && s.end >= end),
-  }
-}
-
-/** `declare enum|namespace|var|let|const|function|class` (an ambient declaration with a value-space name). */
-function isAmbientValueDeclaration(node: Node): boolean {
-  switch (node.type) {
-    case 'TSEnumDeclaration':
-    case 'VariableDeclaration':
-    case 'ClassDeclaration':
-    case 'FunctionDeclaration':
-      return node.declare === true
-    case 'TSDeclareFunction':
-      return node.declare
-    case 'TSModuleDeclaration':
-      return node.declare === true && namespaceName(node) !== null
-    default:
-      return false
   }
 }
 
