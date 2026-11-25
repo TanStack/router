@@ -129,8 +129,8 @@ function info not found` when one of them calls it, and the build says nothing, 
   the second resource's value. Main's splitter moves it into the chunk (once). Importing the binding from the env
   module instead (an effect unit) loses its disposal under V8 14.6 (Node 26, Chromium): a module's `using` binding that
   it exports is never disposed, an upstream V8 bug, not reported (an alias `const a = v; export { a }` disposes). SPEC
-  J2.0, J5.2. No pin (a fix depends on the V8 bug or on an alias export; whole-PR review C2-03, patch and V8 repro in
-  the lane notes). Fix: one acquisition and one disposal in every output.
+  J2.0, J5.2. No pin (a fix depends on the V8 bug or on an alias export; whole-PR review C2-03; repro:
+  `using v = { [Symbol.dispose]() { … } }; export { v }` in a module Node 26 imports never disposes). Fix: one acquisition and one disposal in every output.
 - **An isomorphic fn whose chain passes through a helper throws when its module loads**
   (`withBuilder(createIsomorphicFn().server(f)).client(g)`): the inner `.server(f)` compiles on its own into a plain
   function, so `.client` isn't there to call, on the client and on the server. No server code ships: `.server()` finished
@@ -154,6 +154,12 @@ function info not found` when one of them calls it, and the build says nothing, 
 
 ## Accepted limits
 
+- **`export { X }` of a name that is a type and a value keeps what only the type names on the client**
+  (`const sv = getServerVal(); type X = typeof sv; const X = 1; export { X }`): the specifier exports the value, so it
+  is no type export, and the alias it also names is not read as erased text; `sv` and its import stay, as on `main`
+  and before the declaration table. The statement forms (`export type X = …` beside `export const X`, an exported
+  interface beside an exported class) are clean. SPEC G16. No test (the outcome is the limit; whole-PR review of the
+  declarations lane, F3). Workaround: `export type { X }` and the value's export apart, or a type of another name.
 - **A hydrated Solid or Vue Start app with only the global error boundary: one save that changes a loader's data
   shape and the component reading it can leave the page blank or on the error** (route HMR decision 2, 11-23). In a
   hydrated Solid or Vue Start app with only the global error boundary, an edit that changes a loader's data shape and

@@ -11,7 +11,7 @@
  * `import()` is impure. The same classification yields the module's own effects at statement granularity (`ModuleAnalysis.effects()`).
  */
 import { BindingFlags } from 'yuku'
-import { isTypeOnlyExport } from './declarations'
+import { classify, isTypeOnlyExport } from './declarations'
 import { unwrapExpression } from './source'
 import { ownEntry } from './strings'
 import type {
@@ -658,9 +658,10 @@ export function statementHasEffects(
     case 'ArrowFunctionExpression':
       return false
     case 'TSEnumDeclaration':
-      // the members' initializers run as the module evaluates
+      // the members' initializers run as the module evaluates (a `declare`
+      // runs nothing)
       return (
-        !stmt.declare &&
+        classify(ctx.file, stmt)!.kind !== 'erased' &&
         stmt.body.members.some(
           (m) => m.initializer && !isPureExpression(ctx, m.initializer),
         )
@@ -671,6 +672,9 @@ export function statementHasEffects(
     case 'VariableDeclaration':
       return stmt.declarations.some((d) => !isPureDeclarator(ctx, d))
     case 'TSModuleDeclaration':
+      // (a `declare` runs nothing; a namespace of types holds no statement
+      // with effects. The table's `classify` answers the same, but would ask
+      // the namespace's binding by its node: an index Tier 0 never builds)
       return (
         !stmt.declare &&
         stmt.body !== undefined &&

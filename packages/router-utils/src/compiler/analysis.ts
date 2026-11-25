@@ -520,7 +520,7 @@ export class ModuleAnalysis {
               })
             }
           } else {
-            const typeOnly = stmt.exportKind === 'type'
+            const typeOnly = isTypeOnlyExport(file, stmt)
             for (const spec of stmt.specifiers) {
               const exported = moduleExportNameOf(spec.exported)
               exportEntries.push({

@@ -173,8 +173,8 @@ export function buildItems(
       } else if (node.source === null) {
         shape = 'export-list'
       } else if (
-        node.exportKind !== 'type' &&
-        node.specifiers.some((spec) => spec.exportKind === 'type')
+        !isTypeOnlyExport(file, node) &&
+        node.specifiers.some((spec) => isTypeOnlyExport(file, spec))
       ) {
         shape = 'reexport-list'
       }
@@ -337,7 +337,7 @@ export function buildUnits(
       case 'ExportAllDeclaration': {
         const u = base(
           node,
-          node.exportKind === 'type' ? 'type' : 'reexport',
+          isTypeOnlyExport(file, node) ? 'type' : 'reexport',
           itemRange,
         )
         u.stripped = u.kind === 'type'
@@ -368,7 +368,10 @@ export function buildUnits(
         if (node.source !== null) {
           const u = base(node, 'reexport', itemRange)
           for (const spec of node.specifiers) {
-            u.exported.push(moduleExportName(spec.exported))
+            // (an inline `type` specifier exports nothing at runtime)
+            if (!isTypeOnlyExport(file, spec)) {
+              u.exported.push(moduleExportName(spec.exported))
+            }
           }
           add(item, u)
           break
@@ -712,7 +715,9 @@ export function statementRecipe(
   })
   const text = (t: string): Frag => ({ k: 'text', parts: [t] })
   if (item.shape === 'reexport-list') {
-    // its one unit, kept: without its type-only specifiers (`isTypeOnlyExport`)
+    // its one unit, kept: without its type-only specifiers (`isTypeOnlyExport`
+    // says which; a re-exported specifier is type-only by its syntax alone,
+    // read here as the table reads it)
     const node = item.node as Extract<Node, { type: 'ExportNamedDeclaration' }>
     const out: Array<Frag> = [
       slice(item.range.start, item.nodeRange.start),

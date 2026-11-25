@@ -214,8 +214,8 @@ function includedUnitsOf(
       // any tsconfig, inlines the members of a `declare enum` and a
       // `declare const enum`, Rsbuild's SWC those of a `declare const
       // enum`), and the env module inlines what a derived output without
-      // the declaration would read from a name that exists nowhere
-      // (research-ambient-declarations.md). So is a type unit a planner
+      // the declaration would read from a name that exists nowhere at
+      // runtime (a `ReferenceError`). So is a type unit a planner
       // rooted in the output that the env module would keep (its text is
       // what the planner wants there)
       if (

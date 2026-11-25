@@ -5,8 +5,8 @@
 // those of a `declare const enum`. The route module keeps the declaration and
 // inlines; a split chunk reading the enum gets a copy of it, exported or not,
 // or it reads a name that exists nowhere at runtime (a `ReferenceError`).
-// Source: research-ambient-declarations.md (decision 8, D-09), whole-PR
-// review C2-10.
+// Source: a study of every host transform with and without the declaration
+// (Oxc, SWC, esbuild, tsc, Babel), whole-PR review C2-10.
 import { describe, expect, it } from 'vitest'
 import { build, head, routeApp } from '../build-harness'
 
