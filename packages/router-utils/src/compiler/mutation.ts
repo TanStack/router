@@ -82,11 +82,11 @@ function counts(
  * outside the module's server-only text (`PlanContext.serverText`, every
  * planner's), and nothing the client keeps for its own sake reads it. That
  * is no export, and no read outside the server-only text, the binding's own
- * declarator, and the assignments: each write's smallest clause (its
- * statement, `h = wrap(h)`, or the loop head or condition holding it) with
- * the tests of the control statements around it up to its function
- * (`if (!h) h = …`, `while (!h) { h = … }`), never a body
- * (`assignmentText`). Such assignments are statements, which the client
+ * declarator, and the assignments (`assignmentText`): each write's
+ * smallest clause (its statement, `h = wrap(h)`, or the loop head or
+ * condition holding it), and in the tests of the control statements around
+ * it up to its function, a presence or type check of the binding
+ * (`if (!h) h = …`, `while (!h) { h = … }`, `switch (typeof h)`). Such assignments are statements, which the client
  * output keeps with what they read (R154), so the server code they assign
  * ships to the client. A planner refuses every argument it names, in every
  * compile (SPEC J4.5): the verdict reads the source only. A binding the
@@ -129,14 +129,12 @@ export function reassignedServerCode(
   ) {
     return null
   }
-  const own = [
-    ...kept.flatMap((w) => assignmentText(ctx, w.range)),
-    ...declaratorText(ctx, sym).map((range) => ({ range, open: false })),
-  ]
+  const texts = kept.map((w) => assignmentText(ctx, w.range))
+  const own = [...texts.flatMap((t) => t.clause), ...declaratorText(ctx, sym)]
+  const guards = texts.flatMap((t) => t.guards)
   const ofAssignment = (r: Range) =>
-    own.some(
-      (t) => within(r, [t.range]) && !(t.open && inFunctionOf(ctx, r, t.range)),
-    )
+    within(r, own) ||
+    guards.some((g) => within(r, [g.test]) && checksPresence(ctx, r, g))
   return t1.refs
     .valueRefsOf(sym)
     .some((r) => !within(r.range, serverText) && !ofAssignment(r.range))
@@ -144,65 +142,127 @@ export function reassignedServerCode(
     : sym
 }
 
-/** Whether `at` is in a function or class nested in `text` (code that runs another time). */
-function inFunctionOf(ctx: PlanContext, at: Range, text: Range): boolean {
-  const file = ctx.analysis.file
-  for (
-    let n = ctx.t1.nodeAt(at.start);
-    n !== null && within(n, [text]);
-    n = file.parentOf(n)
-  ) {
-    if (BOUNDARY.has(n.type)) {
-      return true
-    }
-  }
-  return false
+/** A test around a write (`assignmentText`); `discriminant`: a `switch`'s. */
+interface Guard {
+  test: Node
+  discriminant: boolean
 }
 
 /**
  * The text a write at `at` belongs to: the smallest clause holding it (its
  * statement, or the head clause of a loop or `if` it is in: a `for` init,
  * test or update, a `for…in`/`for…of` target or object, a condition), and
- * the tests of every control statement around that clause (`if` tests, loop
- * conditions, a `switch`'s discriminant and case tests; a `for` update's
- * own loop test too), never their bodies and never past the function or
- * class around it. A head clause or test is `open`: a function or class in
- * it is not the assignment (`if (register(() => h())) { h = … }`).
+ * the tests of every control statement around it but that clause (`if`
+ * tests, loop conditions, a `switch`'s discriminant and case tests), never
+ * their bodies and never past the function or class around it.
  */
 function assignmentText(
   ctx: PlanContext,
   at: Range,
-): Array<{ range: Range; open: boolean }> {
+): { clause: Array<Range>; guards: Array<Guard> } {
   const file = ctx.analysis.file
   let below = ctx.t1.nodeAt(at.start)
   if (below === null) {
-    return [{ range: at, open: false }]
+    return { clause: [at], guards: [] }
   }
-  const text: Array<{ range: Range; open: boolean }> = []
-  let clause = false
+  let clause: Node | null = null
+  const guards: Array<Guard> = []
   for (let n = file.parentOf(below); ; below = n, n = file.parentOf(n)) {
     if (n === null || n.type === 'Program' || BOUNDARY.has(n.type)) {
-      if (!clause) {
-        text.push({ range: below, open: false })
-      }
-      return text
+      return { clause: [clause ?? below], guards }
     }
-    const inHead = headsOf(n).some((h) => sameNode(h, below!))
-    if (!clause && (inHead || isStatement(below))) {
-      clause = true
-      text.push({ range: below, open: inHead })
-    }
-    // (the tests of what holds the clause; a `for` update runs after its test)
     if (
-      clause &&
-      (!inHead ||
-        (n.type === 'ForStatement' &&
-          n.update !== null &&
-          sameNode(n.update, below)))
+      clause === null &&
+      (headsOf(n).some((h) => sameNode(h, below!)) || isStatement(below))
     ) {
-      text.push(...testsOf(n).map((range) => ({ range, open: true })))
+      clause = below
+    }
+    if (clause !== null) {
+      for (const test of testsOf(n)) {
+        if (!sameNode(test, clause)) {
+          guards.push({
+            test,
+            discriminant:
+              n.type === 'SwitchStatement' && sameNode(test, n.discriminant),
+          })
+        }
+      }
     }
   }
+}
+
+/**
+ * Whether the read at `at` is a presence or type check of the binding in a
+ * guard's test: the binding itself, compared to `null` or `undefined`, or
+ * its `typeof` compared to a string (or as the `switch` discriminant), under
+ * `!`, `&&`, `||`, `??` and parentheses. Any other read (a call, a member,
+ * an argument, an assigned value) is a use, as anywhere else.
+ */
+function checksPresence(ctx: PlanContext, at: Range, guard: Guard): boolean {
+  const file = ctx.analysis.file
+  let n = ctx.t1.nodeAt(at.start)
+  while (n !== null && !sameNode(n, guard.test)) {
+    const p = file.parentOf(n)
+    if (p === null) {
+      return false
+    }
+    if (p.type === 'UnaryExpression' && p.operator === 'typeof') {
+      const q = file.parentOf(p)
+      if (guard.discriminant && sameNode(p, guard.test)) {
+        return true
+      }
+      if (q === null || !isEquality(q) || !isString(otherSide(q, p))) {
+        return false
+      }
+      n = q
+      continue
+    }
+    const passes =
+      p.type === 'ParenthesizedExpression' ||
+      p.type === 'LogicalExpression' ||
+      (p.type === 'UnaryExpression' && p.operator === '!') ||
+      (isEquality(p) && isNullish(otherSide(p, n)))
+    if (!passes) {
+      return false
+    }
+    n = p
+  }
+  return n !== null
+}
+
+function isEquality(n: Node): n is Extract<Node, { type: 'BinaryExpression' }> {
+  return (
+    n.type === 'BinaryExpression' &&
+    (n.operator === '==' ||
+      n.operator === '===' ||
+      n.operator === '!=' ||
+      n.operator === '!==')
+  )
+}
+
+/** The operand of an equality that is not `side`. */
+function otherSide(
+  n: Extract<Node, { type: 'BinaryExpression' }>,
+  side: Range,
+): Node {
+  return sameNode(n.left, side) ? n.right : n.left
+}
+
+function isNullish(n: Node): boolean {
+  const v = unwrapExpression(n)
+  return (
+    (v.type === 'Literal' && v.value === null && v.raw === 'null') ||
+    (v.type === 'Identifier' && v.name === 'undefined') ||
+    (v.type === 'UnaryExpression' && v.operator === 'void')
+  )
+}
+
+function isString(n: Node): boolean {
+  const v = unwrapExpression(n)
+  return (
+    (v.type === 'Literal' && typeof v.value === 'string') ||
+    (v.type === 'TemplateLiteral' && v.expressions.length === 0)
+  )
 }
 
 /** The clauses of a control statement that are not its body. */

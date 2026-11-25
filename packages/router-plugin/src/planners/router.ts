@@ -198,7 +198,8 @@ function reportReassignedServerOptions(
     } else if (handlers) {
       const object = createHandlersArgument(node)
       if (object) {
-        visit(object, { ...at, factory: true }, false)
+        // (the object itself, or a name for it: no key at its place)
+        visit(object, { ...at, factory: true, keyed: false }, false)
       }
     }
   }

@@ -543,6 +543,22 @@ export const fn = createServerFn().validator(validate).handler(async () => 'ok')
 `,
     ],
     [
+      'a validator a `for` test calls, its update picking the next, the result returned',
+      `type Validator = (input: string) => string
+let validate: Validator = (input) => input.trim()
+export function preview(input: string, fallbacks: Array<Validator>) {
+  let normalized: string
+  for (
+    let i = 0;
+    (normalized = validate(input)) === '' && i < fallbacks.length;
+    validate = fallbacks[i++]!
+  ) {}
+  return normalized
+}
+export const fn = createServerFn().validator(validate).handler(async () => 'ok')
+`,
+    ],
+    [
       'a binding a default export assigns and a function reads',
       `let h = () => db.y()
 export const read = () => h()
@@ -708,6 +724,18 @@ export const Route = createFileRoute('/reassigned-create-handlers-spread')({
 `,
     at: '...more',
   },
+  'src/routes/reassigned-create-handlers-name.tsx': {
+    source: `${routeHead}let more: Record<string, () => Response> = { GET: () => new Response(db.y()) }
+more = { GET: () => new Response(db.x()) }
+export const Route = createFileRoute('/reassigned-create-handlers-name')({
+  server: {
+    handlers: ({ createHandlers }) => createHandlers(more),
+  },
+  component: () => <p>page</p>,
+})
+`,
+    at: 'createHandlers(more)',
+  },
   'src/routes/reassigned-create-handlers.tsx': {
     source: `${routeHead}let get = async () => new Response(db.y())
 get = async () => new Response(db.x())
@@ -814,21 +842,25 @@ describe("Vite: a route's server options by a name the module assigns", () => {
   })
 
   // a spread is the argument: no key to name
-  test('the error at a spread in a createHandlers object names no key', async () => {
-    const { host: dev } = await host()
-    const error = await dev
-      .transform('/src/routes/reassigned-create-handlers-spread.tsx', 'client')
-      .then(
+  test.each([
+    'src/routes/reassigned-create-handlers-spread.tsx',
+    'src/routes/reassigned-create-handlers-name.tsx',
+  ])(
+    'the error at %s, an argument without a key, names no key',
+    async (file) => {
+      const { host: dev } = await host()
+      const error = await dev.transform(`/${file}`, 'client').then(
         () => undefined,
         (e: unknown) => e,
       )
-    const text = diagnosticsOf(error)
-      .map((d) => d.text)
-      .join('\n')
-    expect(text).toContain(
-      'Write it in place at this argument, keeping the `createHandlers` callback and its middleware',
-    )
-  })
+      const text = diagnosticsOf(error)
+        .map((d) => d.text)
+        .join('\n')
+      expect(text).toContain(
+        'Write it in place at this argument, keeping the `createHandlers` callback and its middleware',
+      )
+    },
+  )
 
   test.each(Object.keys(refusedRoutes))(
     '%s is refused in every compile',
