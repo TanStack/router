@@ -148,3 +148,68 @@ test('one instance: a split id of a file of its routes directory that is no rout
     )?.code ?? ''
   expect(served.trim()).toBe('export {};')
 })
+
+// The same empty module whatever else holds: with splitting off, in the
+// SSR environment; for a file that does not parse; and its map maps nothing
+// when a plugin before the router mapped the file's code (an upstream map
+// does not reach the empty module). Source: Astra's review of settlement
+// step 1, finding 3 (`step1-vite.mjs`).
+test('one instance: the empty module of a split id of a file that is no route holds with splitting off, unparseable text and an upstream map', async () => {
+  const { root, options } = await twoTreeApp({
+    'src/routes/-plain.ts': `export const ORIGINAL = 'MARK_ORIGINAL'\n`,
+    'src/routes/-broken.ts': `export const broken = ;\n`,
+  })
+  const upstream: PluginOption = {
+    name: 'test:upstream-map',
+    enforce: 'pre',
+    transform(code, id) {
+      if (id.includes('/-plain.ts?')) {
+        return {
+          code,
+          map: {
+            version: 3,
+            sources: ['upstream-original.ts'],
+            sourcesContent: [code],
+            names: [],
+            mappings: 'AAAA',
+          },
+        }
+      }
+      return null
+    },
+  }
+  const server = await createServer({
+    root,
+    configFile: false,
+    logLevel: 'silent',
+    server: { middlewareMode: true, ws: false },
+    optimizeDeps: { noDiscovery: true },
+    plugins: [
+      upstream,
+      tanstackRouter({ ...options[0], autoCodeSplitting: false }),
+    ],
+  })
+  onTestFinished(() => server.close())
+  const served = []
+  for (const [env, file] of [
+    ['client', '-plain.ts'],
+    ['ssr', '-plain.ts'],
+    ['client', '-broken.ts'],
+  ] as const) {
+    const out = await server.environments[env].transformRequest(
+      `/src/routes/${file}?tsr-split=component`,
+    )
+    // (Vite's SSR transform of the empty module is no code at all)
+    served.push([
+      env,
+      file,
+      out?.code.trim() === (env === 'ssr' ? '' : 'export {};'),
+      out?.map?.mappings ?? null,
+    ])
+  }
+  expect(served).toEqual([
+    ['client', '-plain.ts', true, ''],
+    ['ssr', '-plain.ts', true, ''],
+    ['client', '-broken.ts', true, ''],
+  ])
+})

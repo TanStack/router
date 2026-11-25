@@ -17,6 +17,7 @@ import {
   SCRIPT_ASSET_QUERY_RE,
   ViteRunSessions,
   displayPath,
+  emptyModuleOutput,
   identify,
   isFinalBuild,
   loadDerivedSource,
@@ -359,14 +360,14 @@ export function createRouterCompilerVitePlugin(
           return null
         }
         const file = normalizePath(identity.path)
-        // a derived id of a file of ours that is no longer a route module
-        // (J2.13) compiles too: the core settles it as the empty module.
-        // Another instance's route is that instance's to compile
-        if (
-          !compiler.routeEntry(file) &&
-          !(identity.derived && compiler.owns(file))
-        ) {
-          return null
+        if (!compiler.routeEntry(file)) {
+          // a derived id of a file of ours that is no longer a route module
+          // (J2.13) is the core's empty module, whatever the environment and
+          // whether or not the file still parses (a map that maps nothing);
+          // another instance's route is that instance's to compile
+          return identity.derived && compiler.owns(file)
+            ? emptyModuleOutput(identity.path, true)
+            : null
         }
         const environment = this.environment
         const envType = environment.config.consumer
