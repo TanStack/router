@@ -20,7 +20,7 @@
  *   node packages/compiler-test-utils/oracle/cache-equivalence.mjs [--out <dir>] [--skip-build] [--only <target>]
  *
  * Each run's Vitest JSON report and log are in `<dir>/<on|off>/`. Exit code
- * 0: the runs agree.
+ * 0: the runs agree and no test fails in either.
  */
 import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
@@ -139,9 +139,8 @@ function run({ target, filters }, mode) {
   }
   for (const file of JSON.parse(fs.readFileSync(report, 'utf8')).testResults) {
     const rel = path.relative(process.cwd(), file.name)
-    if (file.assertionResults.length === 0) {
-      outcomes.set(`${rel} (file)`, { status: file.status, pin: false })
-    }
+    // (a file fails on its own too: a hook, or the stats check at its end)
+    outcomes.set(`${rel} (file)`, { status: file.status, pin: false })
     for (const test of file.assertionResults) {
       outcomes.set(`${rel} > ${test.fullName}`, {
         status: test.status,
@@ -157,6 +156,8 @@ function run({ target, filters }, mode) {
 
 const differ = []
 const pins = []
+/** Tests that failed in both runs: the runs agree, but on no green baseline. */
+const failing = []
 for (const r of RUNS) {
   const on = run(r, 'on')
   const off = run(r, 'off')
@@ -164,6 +165,9 @@ for (const r of RUNS) {
     const a = on.get(key)?.status ?? 'absent'
     const b = off.get(key)?.status ?? 'absent'
     if (a === b) {
+      if (a === 'failed' || a === 'missing') {
+        failing.push(`  ${key}`)
+      }
       continue
     }
     ;(off.get(key)?.pin ? pins : differ).push(`  ${key}: ${a} → ${b}`)
@@ -179,7 +183,13 @@ if (differ.length > 0) {
     `\nOutcomes that differ with every cache off (on → off):\n${differ.join('\n')}`,
   )
 }
-const failed = differ.length > 0 || (pins.length > 0 && !opts.pins)
+if (failing.length > 0) {
+  console.log(
+    `\nTests that fail in both runs (no baseline to compare):\n${failing.join('\n')}`,
+  )
+}
+const failed =
+  differ.length > 0 || failing.length > 0 || (pins.length > 0 && !opts.pins)
 console.log(
   `\ncache-equivalence: ${failed ? 'the runs differ' : 'the runs agree'}`,
 )

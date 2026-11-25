@@ -307,9 +307,10 @@ describe('vite build --watch: a client rebuild that fails', () => {
 
   // Another plugin's `writeBundle` fails after the client's files are
   // written: the previous files are gone, and the document names the new
-  // ones, with their bytes on disk.
+  // ones, with their bytes on disk (as on head, whose client build is
+  // published before the failure).
   // Source: Astra's re-check of the settlement design (rev 3), finding 1.
-  test.fails(
+  test(
     "another plugin's writeBundle fails: the document names the new client files, on disk",
     async () => {
       const { during, after, build } = await failedRebuild(
