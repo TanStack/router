@@ -50,18 +50,60 @@ export interface OutcomeWait {
     | Promise<{ actual: unknown; expected: unknown }>
 }
 
-const sleep = (ms: number) =>
-  new Promise<void>((resolve) => setTimeout(resolve, ms))
+/** How long a failure may take to read the hosts' state, at most. */
+const describeBound = 1_000
+
+/** `answer`, or `undefined` when it does not settle within `ms`. */
+async function settledWithin<T>(
+  answer: () => T | Promise<T>,
+  ms: number,
+): Promise<{ value: T } | undefined> {
+  if (ms <= 0) {
+    return undefined
+  }
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const answered = Promise.resolve().then(answer)
+  // (an answer that comes after the bound is no one's)
+  answered.catch(() => {})
+  try {
+    return await Promise.race([
+      answered.then((value) => ({ value })),
+      new Promise<undefined>((resolve) => {
+        timer = setTimeout(() => resolve(undefined), ms)
+      }),
+    ])
+  } finally {
+    clearTimeout(timer)
+  }
+}
 
 /**
  * Resolves once the outcome holds and the hosts are quiet, checked twice in
  * a row (a host that goes quiet for an instant between two steps of the
  * same edit is not done); rejects with a problem as soon as one shows, at
  * the timeout, or (`failWhenQuietFor`) once the hosts stayed quiet that long
- * without the outcome.
+ * without the outcome. The timeout bounds the whole wait: a check that has
+ * not answered by then (a dev server that never goes idle) ends it, and one
+ * that answers after it counts for nothing. A failure reads the hosts'
+ * state (`describe`, `observed`) for at most a second.
  */
 export async function waitForOutcome(wait: OutcomeWait): Promise<void> {
   const deadline = Date.now() + wait.timeout
+  const description = async () =>
+    (await settledWithin(wait.describe, describeBound))?.value ??
+    `(the hosts' state could not be read within ${describeBound} ms)`
+  const timedOut = async () =>
+    new Error(
+      `the edit did not reach its outcome within ${wait.timeout} ms\n${await description()}`,
+    )
+  /** A check's answer, before the deadline. */
+  const check = async <T>(answer: () => T | Promise<T>) => {
+    const answered = await settledWithin(answer, deadline - Date.now())
+    if (answered === undefined) {
+      throw await timedOut()
+    }
+    return answered.value
+  }
   let settledChecks = 0
   /** Since when, and for how many checks, the hosts were quiet without the outcome. */
   let quietWithout: { since: number; checks: number } | undefined
@@ -69,15 +111,15 @@ export async function waitForOutcome(wait: OutcomeWait): Promise<void> {
     const problems = wait.problems?.() ?? []
     if (problems.length > 0) {
       throw new AssertionError({
-        message: `the edit failed: ${problems.join('\n')}\n${await wait.describe()}`,
+        message: `the edit failed: ${problems.join('\n')}\n${await description()}`,
         actual: problems,
         expected: [],
         operator: 'deepStrictEqual',
       })
     }
-    const applied = await wait.applied()
-    const quiet = await (wait.quiet?.() ?? true)
-    const done = applied && quiet && (await wait.applied())
+    const applied = await check(wait.applied)
+    const quiet = await check(() => wait.quiet?.() ?? true)
+    const done = applied && quiet && (await check(wait.applied))
     settledChecks = done ? settledChecks + 1 : 0
     if (settledChecks >= 2) {
       return
@@ -89,9 +131,11 @@ export async function waitForOutcome(wait: OutcomeWait): Promise<void> {
         quietWithout.checks >= 5 &&
         Date.now() - quietWithout.since >= wait.failWhenQuietFor
       ) {
-        const observed = await wait.observed?.()
+        const observed = wait.observed
+          ? (await settledWithin(wait.observed, describeBound))?.value
+          : undefined
         throw new AssertionError({
-          message: `the edit reached its final state without its outcome: the hosts had nothing of it in flight for ${wait.failWhenQuietFor} ms\n${await wait.describe()}`,
+          message: `the edit reached its final state without its outcome: the hosts had nothing of it in flight for ${wait.failWhenQuietFor} ms\n${await description()}`,
           ...(observed && {
             actual: observed.actual,
             expected: observed.expected,
@@ -102,11 +146,12 @@ export async function waitForOutcome(wait: OutcomeWait): Promise<void> {
     } else {
       quietWithout = undefined
     }
-    if (Date.now() > deadline) {
-      throw new Error(
-        `the edit did not reach its outcome within ${wait.timeout} ms\n${await wait.describe()}`,
-      )
+    const remaining = deadline - Date.now()
+    if (remaining <= 0) {
+      throw await timedOut()
     }
-    await sleep(25)
+    await new Promise<void>((resolve) =>
+      setTimeout(resolve, Math.min(25, remaining)),
+    )
   }
 }

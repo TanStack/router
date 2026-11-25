@@ -128,6 +128,41 @@ describe('waitForOutcome', () => {
     expect(Date.now() - started).toBeLessThan(1_000)
   })
 
+  // One bound for the whole observation: a probe that answers late, or
+  // never, does not stretch it, and expiry wins over a late success.
+  test('an outcome that shows only after the bound is a timeout, not a success', async () => {
+    const started = Date.now()
+    let calls = 0
+    await expect(
+      waitForOutcome({
+        timeout: 60,
+        applied: async () => {
+          calls++
+          if (calls < 3) {
+            return false
+          }
+          await sleep(150)
+          return true
+        },
+        describe: () => 'late',
+      }),
+    ).rejects.toThrow(/within 60 ms\nlate/)
+    expect(Date.now() - started).toBeLessThan(150)
+  })
+
+  test('a probe that never settles fails at the bound, and so does a description that never settles', async () => {
+    const started = Date.now()
+    await expect(
+      waitForOutcome({
+        timeout: 100,
+        applied: () => true,
+        quiet: () => new Promise<boolean>(() => {}),
+        describe: () => new Promise<string>(() => {}),
+      }),
+    ).rejects.toThrow(/within 100 ms/)
+    expect(Date.now() - started).toBeLessThan(2_500)
+  })
+
   // An edit that ended without its outcome is a failed expectation (a known-
   // bug pin passes on it); a wait that could not tell is not.
   test('an edit without its outcome fails as an assertion with what was expected and seen; the bound as an error', async () => {

@@ -6,20 +6,30 @@
  * an update nothing accepts reloads the page. A page can be given its
  * document, and an init script runs before the page's own code.
  */
+import { rm, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { chromium } from '@playwright/test'
 import { expect, onTestFinished, test } from 'vitest'
-import { openPage, runInPage, runPageLimit } from '../../src/browser'
+import { createAppDirectory } from '../../src/app-directory'
+import {
+  openPage,
+  openPageLimit,
+  runInPage,
+  runPageLimit,
+} from '../../src/browser'
 import { createDevServer } from '../../src/dev-server'
 import { createPluginHost } from '../../src/plugin-host'
 import { createRsbuildDevServer } from '../../src/rsbuild-dev-server'
+import { runNodeProgram } from '../../src/run-node'
 import type { AddressInfo } from 'node:net'
 import type { Rspack } from '@rsbuild/core'
 
 const timeout = 60_000
 
 const testsDir = path.dirname(fileURLToPath(import.meta.url))
+const packageDirectory = path.dirname(path.dirname(testsDir))
 
 /**
  * An entry that shows the texts of `text.js` and `other.js`, and applies
@@ -193,6 +203,90 @@ test('a run whose script never settles fails within its bound, and the next run 
       .result,
   ).toBe(2)
 })
+
+test('waitForText ends at its own bound when the element never appears', async () => {
+  const page = await openPage('http://127.0.0.1:9/page', {
+    html: '<p>ready</p>',
+    registerCleanup: onTestFinished,
+  })
+  page.page.setDefaultTimeout(20_000)
+  const started = Date.now()
+  await expect(
+    page.waitForText('ready', { selector: '#missing', timeout: 150 }),
+  ).rejects.toThrow(/did not show ready within 150 ms/)
+  expect(Date.now() - started).toBeLessThan(5_000)
+})
+
+test(
+  'pages that fail to open give back their slots',
+  async () => {
+    // A port nothing listens on: every open fails at its navigation
+    const server = createServer()
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+    const { port } = server.address() as AddressInfo
+    await new Promise((resolve) => server.close(resolve))
+    for (let attempt = 0; attempt <= openPageLimit; attempt++) {
+      await expect(openPage(`http://127.0.0.1:${port}/`)).rejects.toThrow()
+    }
+    const page = await openPage('http://127.0.0.1:9/page', {
+      html: '<p>opened</p>',
+      registerCleanup: onTestFinished,
+    })
+    expect(await page.text()).toBe('opened')
+  },
+  timeout,
+)
+
+test(
+  'a browser that failed to launch is launched again on the next use',
+  async () => {
+    const root = await createAppDirectory(packageDirectory, '.browser-launch-')
+    onTestFinished(() => rm(root, { recursive: true, force: true }))
+    const executable = path.join(root, 'chromium')
+    const chromiumBuild =
+      process.env.TANSTACK_COMPILER_TESTS_CHROMIUM ?? chromium.executablePath()
+    await writeFile(
+      path.join(root, 'launch.test.ts'),
+      `import { symlink } from 'node:fs/promises'
+import { expect, test } from 'vitest'
+import { openPage } from ${JSON.stringify(path.join(packageDirectory, 'src/browser.ts'))}
+
+test('launch', async () => {
+  // No browser at the configured path yet: the launch fails
+  await expect(openPage('about:blank')).rejects.toThrow()
+  await symlink(${JSON.stringify(chromiumBuild)}, ${JSON.stringify(executable)})
+  const page = await openPage('about:blank')
+  await page.close()
+})
+`,
+    )
+    const { stdout } = await runNodeProgram(
+      `import { startVitest } from 'vitest/node'
+const vitest = await startVitest('test', [], {
+  root: ${JSON.stringify(root)},
+  config: false,
+  watch: false,
+  reporters: [],
+})
+const errors = vitest.state
+  .getFiles()
+  .flatMap((file) => file.tasks)
+  .flatMap((task) => task.result?.errors ?? [])
+  .map((error) => error.message)
+await vitest.close()
+process.stdout.write('\\n' + JSON.stringify(errors))
+process.exit(0)
+`,
+      {
+        cwd: root,
+        env: { ...process.env, TANSTACK_COMPILER_TESTS_CHROMIUM: executable },
+        timeout: 60_000,
+      },
+    )
+    expect(JSON.parse(stdout.trim().split('\n').at(-1)!)).toEqual([])
+  },
+  timeout,
+)
 
 // What a test process opens in its browser is bounded (Chromium fails
 // requests under too many pages), and runs of concurrent tests do not share

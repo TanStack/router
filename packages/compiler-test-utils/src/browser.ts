@@ -71,11 +71,23 @@ const chromiumExecutable = process.env.TANSTACK_COMPILER_TESTS_CHROMIUM
 
 let browser: Promise<Browser> | undefined
 
+/**
+ * The process's browser, launched on first use; a launch that failed is
+ * tried again on the next use.
+ */
 function launch() {
-  browser ??= chromium.launch({
-    headless: true,
-    ...(chromiumExecutable ? { executablePath: chromiumExecutable } : {}),
-  })
+  if (!browser) {
+    const launching = chromium.launch({
+      headless: true,
+      ...(chromiumExecutable ? { executablePath: chromiumExecutable } : {}),
+    })
+    browser = launching
+    launching.catch(() => {
+      if (browser === launching) {
+        browser = undefined
+      }
+    })
+  }
   return browser
 }
 
@@ -139,6 +151,12 @@ async function takeRunPage(): Promise<Page> {
   if (!runContext) {
     const context = launch().then((opened) => opened.newContext())
     runContext = context
+    // (a context that failed to open is opened again by the next run)
+    context.catch(() => {
+      if (runContext === context) {
+        runContext = undefined
+      }
+    })
     onFileFinished(() => closeRunPages(context))
   }
   return (await runContext).newPage()
@@ -157,7 +175,7 @@ async function closeRunPages(context: Promise<BrowserContext>) {
       runContext = undefined
       idlePages.length = 0
     }
-    await (await context).close()
+    await (await context.catch(() => undefined))?.close()
   } finally {
     for (const release of releases) {
       release()
@@ -299,7 +317,8 @@ export async function runInPage<T = unknown>(input: {
 /**
  * Opens `url` in a new page of a headless Chromium and resolves once it
  * loaded (after `initScript`, when given, ran first in the page). `close()`,
- * which `registerCleanup` also receives, closes the page.
+ * which `registerCleanup` also receives, closes the page. A page that fails
+ * to open is closed before the call rejects.
  */
 export async function openPage(
   url: string,
@@ -338,55 +357,64 @@ export async function openPage(
     return closed
   }
   options.registerCleanup?.(close)
-  if (options.initScript !== undefined) {
-    await context.addInitScript(options.initScript)
-  }
-  const { html } = options
-  if (html !== undefined) {
-    await context.route(url, (route) =>
-      route.fulfill({ contentType: 'text/html', body: html }),
-    )
-  }
-  const page = await context.newPage()
+  let page: Page
   let loads = 0
   const errors: Array<string> = []
   const messages: Array<string> = []
-  page.on('load', () => {
-    loads++
-  })
-  page.on('pageerror', (error) => {
-    errors.push(error.stack ?? error.message)
-  })
-  page.on('console', (message) => {
-    messages.push(`${message.type()}: ${message.text()}`)
-    if (message.type() === 'error' && !faviconMiss(message)) {
-      errors.push(message.text())
+  try {
+    if (options.initScript !== undefined) {
+      await context.addInitScript(options.initScript)
     }
-  })
-  // How many of the page's requests have not finished yet, for page code that
-  // waits for the code it requested. A new document ends the old one's
-  // requests, whether or not the browser reports them as finished or failed.
-  const inFlight = new Set<unknown>()
-  page.on('request', (request) => inFlight.add(request))
-  page.on('requestfinished', (request) => inFlight.delete(request))
-  page.on('requestfailed', (request) => inFlight.delete(request))
-  page.on('framenavigated', (frame) => {
-    if (frame === page.mainFrame()) {
-      inFlight.clear()
+    const { html } = options
+    if (html !== undefined) {
+      await context.route(url, (route) =>
+        route.fulfill({ contentType: 'text/html', body: html }),
+      )
     }
-  })
-  await page.exposeFunction('__harnessInFlight', () => inFlight.size)
-  await page.goto(url)
+    page = await context.newPage()
+    page.on('load', () => {
+      loads++
+    })
+    page.on('pageerror', (error) => {
+      errors.push(error.stack ?? error.message)
+    })
+    page.on('console', (message) => {
+      messages.push(`${message.type()}: ${message.text()}`)
+      if (message.type() === 'error' && !faviconMiss(message)) {
+        errors.push(message.text())
+      }
+    })
+    // How many of the page's requests have not finished yet, for page code that
+    // waits for the code it requested. A new document ends the old one's
+    // requests, whether or not the browser reports them as finished or failed.
+    const inFlight = new Set<unknown>()
+    page.on('request', (request) => inFlight.add(request))
+    page.on('requestfinished', (request) => inFlight.delete(request))
+    page.on('requestfailed', (request) => inFlight.delete(request))
+    page.on('framenavigated', (frame) => {
+      if (frame === frame.page().mainFrame()) {
+        inFlight.clear()
+      }
+    })
+    await page.exposeFunction('__harnessInFlight', () => inFlight.size)
+    await page.goto(url)
+  } catch (error) {
+    await close().catch(() => {})
+    throw error
+  }
 
-  const text = async (selector = 'body') =>
-    (await page.locator(selector).first().textContent()) ?? ''
+  const text = async (selector = 'body', timeout?: number) =>
+    (await page
+      .locator(selector)
+      .first()
+      .textContent(timeout === undefined ? {} : { timeout })) ?? ''
 
   return {
     page,
     loads: () => loads,
     errors,
     console: messages,
-    text,
+    text: (selector) => text(selector),
     waitForText: async (expected, waitOptions = {}) => {
       const selector = waitOptions.selector ?? 'body'
       const timeout = waitOptions.timeout ?? 15_000
@@ -398,7 +426,8 @@ export async function openPage(
       let current = ''
       for (;;) {
         try {
-          current = await text(selector)
+          // (within the wait's bound: Playwright's own default is 30 s)
+          current = await text(selector, Math.max(1, deadline - Date.now()))
         } catch {
           // The page is reloading
           current = ''
