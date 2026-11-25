@@ -91,18 +91,14 @@ class TypeRefs {
     if (b.has(BindingFlags.TypeParameter)) {
       return
     }
-    const value = hasRuntimeValue(b)
     // (the value references hold none of an ambient binding, `analysis.ts`:
     // every one of them is read here)
     const unindexed = this.symbols.kind(b.id as SymbolId) === 'ambient'
     const refs: ReadonlyArray<Reference> = b.references
     for (const ref of refs) {
-      // (a name of a type declaration is a type reference wherever it stands)
-      if (
-        !ref.inTypePosition &&
-        !unindexed &&
-        (value || ref.space !== 'type')
-      ) {
+      // (a reference in the type space is in a type position: Yuku's
+      // `inTypePosition` says it is erased with the types)
+      if (!ref.inTypePosition && !unindexed) {
         continue
       }
       const at = ref.node.start

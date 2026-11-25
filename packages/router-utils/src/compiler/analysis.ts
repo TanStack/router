@@ -927,7 +927,7 @@ export class ModuleAnalysis {
     }
     const namespace = b.import?.kind === 'namespace'
     for (const ref of b.references) {
-      if (ref.inTypePosition || ref.space === 'type') {
+      if (ref.inTypePosition) {
         continue
       }
       const node = ref.node
@@ -1020,7 +1020,7 @@ export class ModuleAnalysis {
     const names = new Set<string>(symbols.names())
     for (const ref of file.references) {
       let b: Binding | null
-      if (ref.inTypePosition || ref.space === 'type') {
+      if (ref.inTypePosition) {
         // (a file without decorators never reads `ref.node` of a type)
         const outer =
           metadataReads.size === 0
