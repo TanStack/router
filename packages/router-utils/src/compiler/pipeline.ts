@@ -19,6 +19,7 @@ import {
   DependencyLedger,
   EXTERNAL_RESOLUTION,
   StaleSets,
+  checkSnapshot,
   stable,
 } from './cache'
 import { emitRecipe, substituteSpecifier } from './emit'
@@ -318,39 +319,45 @@ async function answer(
   for (;;) {
     const hit = cache.lookup(key, rev)
     if (hit) {
-      // what was checked at the current versions stands (not asked again)
-      const checked = await stable(
+      // what was checked at the current versions stands (not asked again);
+      // one round: a hit whose check overlapped an event compiles, and its
+      // attempt's acceptance is the check
+      const checked = await checkSnapshot(
         hit.plan.dependencies,
         fingerprintSourceFor(caches, host, env.name),
         caches,
         hit,
-        (at) => {
-          hit.resolvedAt = at.resolvedAt
-          hit.factsAt = at.factsAt
-          cache.counters.planHits++
-          return {
-            out: noted(emitFrom(hit, requested, input, caches)),
-            generation: cache.generation(key),
-          }
+        {
+          still: () => cache.lookup(key, rev) === hit,
+          accept: (at) => {
+            hit.resolvedAt = at.resolvedAt
+            hit.factsAt = at.factsAt
+            cache.counters.planHits++
+            return {
+              out: noted(emitFrom(hit, requested, input, caches)),
+              generation: cache.generation(key),
+            }
+          },
+          refuse: (fact) => {
+            cache.delete(key)
+            // this request compiles the file again; its other outputs,
+            // which the bundler holds from the plan, follow
+            caches.stale.add(env.name, identity.path)
+            if (caches.invalidations.size === 0) {
+              // `invalidate()` checks every fact again, and leaves
+              // resolutions and route-registry digests to the next request
+              cache.counters[fact ? 'staleHits' : 'lazyHits']++
+            }
+          },
         },
-        () => cache.lookup(key, rev) === hit,
       )
       if (checked.kind === 'accepted') {
         return checked.value
       }
-      if (checked.kind === 'moved') {
-        cache.delete(key)
-        // this request compiles the file again; its other outputs, which
-        // the bundler holds from the plan, follow
-        caches.stale.add(env.name, identity.path)
-        if (caches.invalidations.size === 0) {
-          // `invalidate()` checks every fact again, and leaves resolutions
-          // and route-registry digests to the next request
-          cache.counters[checked.fact ? 'staleHits' : 'lazyHits']++
-        }
+      if (checked.kind !== 'unsettled') {
+        // evicted, or evicted and published again, meanwhile: look again
+        continue
       }
-      // evicted, or evicted and published again, meanwhile: look again
-      continue
     }
     const flight = cache.flight(key)
     if (flight && flight.revision === rev) {
@@ -493,19 +500,21 @@ async function settle(
       fingerprintSourceFor(caches, host, key.env),
       caches,
       entry,
-      (at) => {
-        entry.resolvedAt = at.resolvedAt
-        entry.factsAt = at.factsAt
-        if (cache.set(entry)) {
-          ledger.publish()
-        }
+      {
+        // (a newer text, a removal or an eviction moved it)
+        still: () => cache.generation(key) === generation,
+        accept: (at) => {
+          entry.resolvedAt = at.resolvedAt
+          entry.factsAt = at.factsAt
+          if (cache.set(entry)) {
+            ledger.publish()
+          }
+        },
       },
-      () => cache.generation(key) === generation,
     )
     if (checked.kind === 'accepted' || cache.latestRevision(key) !== rev) {
-      // accepted (published unless a newer text arrived meanwhile), or
-      // superseded (a newer save, the file removed: never published, but
-      // its requests are answered)
+      // published, or superseded (a newer save, the file removed: never
+      // published, but its requests are answered)
       return { settled: { kind: 'plan', entry }, generation: entry.generation }
     }
     overtaken = entry
@@ -632,49 +641,60 @@ async function runAttempt(
 
   // ---- A: prefetch -----------------------------------------------------------
   const prefetched = new Map<string, unknown>()
-  const resolveFrom = async (
+  // One answer per fact for the whole attempt, however many reads ask it
+  // (a dependency saved between two reads, and saved back before the check,
+  // must not reach the plan as two texts): the first read's, which the
+  // ledger records and the snapshot check asks again
+  const answers = new Map<string, Promise<unknown>>()
+  const once = <T>(id: string, read: () => Promise<T>): Promise<T> => {
+    let answer = answers.get(id) as Promise<T> | undefined
+    if (!answer) {
+      answer = read()
+      answers.set(id, answer)
+    }
+    return answer
+  }
+  const resolveFrom = (
     specifier: string,
     importer: string,
-  ): Promise<string | null> => {
-    // one answer per attempt: the ledger's recorded resolution is reused
-    const known = ledger.resolved(env.name, importer, specifier)
-    if (known !== undefined) {
-      return known === EXTERNAL_RESOLUTION ? null : known
-    }
-    const resolved = await resolveForAnalysis(
-      caches,
-      host,
-      env.name,
-      importer,
-      specifier,
-    )
-    if (env.mode === 'dev' && importer === identity.canonicalId) {
-      // a dev server's pending requests get in between the resolutions of
-      // the module's own imports, as they did while every resolution was
-      // resolver I/O: an analysis answered from the memo in microtasks
-      // alone makes a server function call during an edit wait for the
-      // whole update (+3 ms). Following another module's re-exports (a
-      // barrel) gives no turn: one per re-export only slowed a barrel-heavy
-      // dev compile by a fifth
-      await new Promise((turn) => setImmediate(turn))
-    }
-    ledger.record({
-      kind: 'resolution',
-      env: env.name,
-      importer,
-      specifier,
-      resolved,
+  ): Promise<string | null> =>
+    once(`resolve\0${importer}\0${specifier}`, async () => {
+      const resolved = await resolveForAnalysis(
+        caches,
+        host,
+        env.name,
+        importer,
+        specifier,
+      )
+      if (env.mode === 'dev' && importer === identity.canonicalId) {
+        // a dev server's pending requests get in between the resolutions
+        // of the module's own imports, as they did while every resolution
+        // was resolver I/O: an analysis answered from the memo in
+        // microtasks alone makes a server function call during an edit
+        // wait for the whole update (+3 ms). Following another module's
+        // re-exports (a barrel) gives no turn: one per re-export only
+        // slowed a barrel-heavy dev compile by a fifth
+        await new Promise((turn) => setImmediate(turn))
+      }
+      ledger.record({
+        kind: 'resolution',
+        env: env.name,
+        importer,
+        specifier,
+        resolved,
+      })
+      // an external has nothing readable behind it
+      return resolved === EXTERNAL_RESOLUTION ? null : resolved
     })
-    // an external has nothing readable behind it
-    return resolved === EXTERNAL_RESOLUTION ? null : resolved
-  }
   /** A wait on a module's raw facts (`HostServices.awaitVirtual`). */
   const awaitFacts = <T>(canonicalId: string, read: Promise<T>): Promise<T> =>
     host.awaitVirtual && isVirtualId(canonicalId)
       ? host.awaitVirtual(canonicalId, read)
       : read
   const rawFactsOf = (canonicalId: string) =>
-    awaitFacts(canonicalId, host.rawFacts.get(canonicalId, env.name))
+    once(`facts\0${canonicalId}`, () =>
+      awaitFacts(canonicalId, host.rawFacts.get(canonicalId, env.name)),
+    )
   const summaryOf = async (canonicalId: string) => {
     const facts = await rawFactsOf(canonicalId)
     ledger.record({
@@ -695,9 +715,8 @@ async function runAttempt(
     return summary
   }
   const targetFactsOf = async (canonicalId: string) => {
-    const facts = await awaitFacts(
-      canonicalId,
-      host.rawFacts.getTarget(canonicalId, env.name),
+    const facts = await once(`target\0${canonicalId}`, () =>
+      awaitFacts(canonicalId, host.rawFacts.getTarget(canonicalId, env.name)),
     )
     ledger.record({
       kind: 'target-facts',
@@ -707,9 +726,8 @@ async function runAttempt(
     return facts.targetFacts
   }
   const targetMarkerOf = async (canonicalId: string) => {
-    const marker = await awaitFacts(
-      canonicalId,
-      host.rawFacts.marker(canonicalId, env.name),
+    const marker = await once(`marker\0${canonicalId}`, () =>
+      awaitFacts(canonicalId, host.rawFacts.marker(canonicalId, env.name)),
     )
     ledger.record({ kind: 'target-marker', canonicalId, marker })
     return marker

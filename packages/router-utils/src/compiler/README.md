@@ -371,11 +371,13 @@ text compiles waits for it and emits its own output from the result.
     re-validates dependents' fingerprints with each environment's own resolver (a resolver that throws makes the plan
     stale, and its next compile reports the error). A plan answers for its file's text: the file's change evicts its
     plans of another text in every environment (`PlanCache.supersede`). The event never sets the key's latest text
-    from the file's raw text (an upstream plugin may hand the compiler another text: a banner); an event of another
-    text than the latest request's moves the key's generation, so a compile running attempts again. An own-file event whose text
-    cannot be compared with the plans' (the file removed, or a file the compiler does not read: a module another plugin
-    compiles from it, compiled in place, such as `.mdx` or a Vue SFC's blocks, whose every event reads the same)
-    supersedes the key outright: its plans go, and no compile running publishes until a request notes its text. A plan
+    from the file's raw text (an upstream plugin may hand the compiler another text: a banner). An event of another
+    text than the latest request's, or of a text the compiler cannot compare (a file it does not read: a module another
+    plugin compiles from it, compiled in place, such as `.mdx` or a Vue SFC's blocks, whose every event reads the same),
+    is of a text no request settled: the key's generation moves (a compile running attempts again, an open answer is
+    not current) and the file enters the stale set until a request settles the event's text. An event of the latest
+    request's text moves nothing. Only the file's removal clears the latest text (`PlanCache.removed`): no compile
+    running publishes until a request notes its text. A plan
     of the text the event read stays, with its rows (a touch, a request of the new text ahead of its event); an evicted one's file enters the
     stale set, for a bundler that skipped building it (webpack's content-hash snapshot of a file written unchanged
     after a loader before the compiler rewrote it; the takers let the event's own file go). A compile of a key's
@@ -420,19 +422,25 @@ text compiles waits for it and emits its own output from the result.
     published plan keeps one `exports` record per module it looked names up in: the names and their keys, or none
     when the module exports none of them (a barrel's star targets are visited for every name, so one record per name
     grew with names × targets), and the module's `export *` list when a lookup walked it.
-- **One snapshot check** (`stable(snapshot)`, for an attempt before publication, a plan hit and `restorePlans`): a
-  snapshot is the dependencies read plus the `fileSetVersion` and `RawFactsCache.version` they were checked at
-  (`CacheEntry.resolvedAt`, `factsAt`). The asynchronous part asks what may have moved: resolutions once the file set
-  moved, raw facts once their version did. Acceptance is synchronous, in the caller's turn: both versions unmoved since
-  the check began, the route-registry digests read again (a watch build's registry publication calls no
-  `invalidate`), and the entry judged still the one (a hit: still the key's plan; an attempt: the key's generation
-  unmoved). A version that moved during the check makes it check again. A failed hit is counted from that one check.
-  The raw-facts version moves on every `markStale`, `forget`, `retain` drop, `expireVirtual` and `releaseVirtual`,
-  which is how anything that changes a raw-facts answer reaches the cache (a host that saw a file missing marks it
-  stale when it may have appeared).
-- **Every eviction moves the key's generation** (`PlanCache.delete`: a failed hit, an invalidation, a registry change,
-  an own-file event of another text): an attempt begun before it does not publish, and an answer taken before it is
-  not current.
+- **One snapshot check** (`stable(snapshot)`, for an attempt before publication and `restorePlans`; one round of it,
+  `checkSnapshot`, for a plan hit): a snapshot is the dependencies read plus the `fileSetVersion` and
+  `RawFactsCache.version` they were checked at (`CacheEntry.resolvedAt`, `factsAt`). The asynchronous part asks what
+  may have moved: resolutions once the file set moved, raw facts once their version did. The caller acts in the turn
+  the verdict is reached: it refuses (a fingerprint not current: a failed hit evicts and is counted there) or accepts
+  (both versions unmoved since the round began, the route-registry digests read again: a watch build's registry
+  publication calls no `invalidate`), and only while the entry judged is still the one (a hit: still the key's plan;
+  an attempt: the key's generation unmoved). A version that moved during a round makes an attempt's or a restore's
+  check ask again what it answers; a hit whose round overlapped an event is no hit, and compiles (its attempt's check is
+  the one check: an event storm costs a compile, not a loop of hit checks). An attempt reads one answer of each fact,
+  however many reads ask it (`runAttempt`): what the ledger records is what the plan was made of. The raw-facts
+  version moves on every `markStale`, `forget`, `retain` drop, `expireVirtual` and `releaseVirtual`, which is how
+  anything that changes a raw-facts answer reaches the cache (a host that saw a file missing marks it stale when it
+  may have appeared; a virtual module's miss is kept, as its text would be: no file event names it).
+- **The generation.** Evicting a plan of the key's latest text moves it (`PlanCache.delete`: a failed hit, an
+  invalidation, a registry change, an own-file event of another text): an attempt begun before it does not publish,
+  and an answer taken before it is not current. A plan of an older text, or a restored one, has no current answer:
+  its eviction moves nothing. An own-file event of another text than the latest request's, or of a text the compiler
+  cannot compare, moves it too (`PlanCache.supersede`), and one of the latest request's text moves nothing.
 - `restorePlans(caches, plans, hosts)`: a host with a persistent bundler cache persists each output's plan key and
   dependencies (`CompileOutput.persisted`) with its module; a later process checks them for the modules the cache
   restores without compiling: a current plan (`stable`, installed in its accepting turn unless the key has a plan or a

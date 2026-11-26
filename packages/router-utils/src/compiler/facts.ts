@@ -27,7 +27,9 @@
  * version is not asked again (`CacheEntry.factsAt`), so a change made any
  * other way serves stale plans.
  * That includes a file a read found missing: its facts are not kept, and the
- * host that saw the miss marks it stale when the file may have appeared.
+ * host that saw the miss marks it stale when the file may have appeared. A
+ * virtual module's miss is kept, as its text would be (no file event names
+ * it).
  */
 import { digestOf, identify, isCommonJsPath, revision } from './identity'
 import { parseModule } from './source'
@@ -507,8 +509,14 @@ export class RawFactsCache {
         if (entry.reading === reading) {
           entry.reading = null
         }
-        if (text === null && this.entries.get(key) === entry) {
-          // a missing file's facts are not kept (`forget`)
+        if (
+          text === null &&
+          !isVirtualId(canonicalId) &&
+          this.entries.get(key) === entry
+        ) {
+          // a missing file's facts are not kept (`forget`): its creation
+          // has an event. A virtual module's miss is kept: no file event
+          // names it, only its host's update or `expireVirtual` does
           this.deleteEntry(key)
         }
       }

@@ -185,70 +185,117 @@ interface Versions {
 }
 
 /**
- * What a snapshot check settled on: accepted (the value `accept` gave in
- * the accepting turn), a fingerprint no longer current (`fact`: a raw fact,
- * not only a resolution or a route-registry digest, which a request asks
- * again by design), or the entry judged no longer the one (`still`).
+ * What a caller does with a snapshot check's verdict, each in the turn the
+ * verdict is reached (nothing runs between the check and the act).
+ */
+export interface SnapshotJudge<T> {
+  /** The entry judged is still the one (a hit: still the key's plan; an attempt: the key's generation unmoved). */
+  still: () => boolean
+  /** The snapshot is current: accepted at `at`. */
+  accept: (at: StandingAt) => T
+  /**
+   * A fingerprint is not current (`fact`: a raw fact, not only a
+   * resolution or a route-registry digest, which a request asks again by
+   * design).
+   */
+  refuse?: (fact: boolean) => void
+}
+
+/**
+ * What one round of a snapshot check settled on: accepted (`accept`'s
+ * value), refused, the entry judged no longer the one, or unsettled: a
+ * version moved during the round, so what it read may be of before (`at`:
+ * the versions the round began at).
  */
 export type Stability<T> =
   | { kind: 'accepted'; value: T }
-  | { kind: 'moved'; fact: boolean }
+  | { kind: 'refused' }
   | { kind: 'gone' }
+  | { kind: 'unsettled'; at: StandingAt }
+
+/**
+ * One round of `stable`: asks what may have moved since `at` (resolutions
+ * once the file set moved, raw facts once their version did), then acts in
+ * the same turn: `refuse` when a fingerprint is not current, `accept` when
+ * both versions are unmoved since the round began and the route-registry
+ * digests read again are current (a registry publication reaches
+ * `invalidate` only on a dev server: a watch build sees it here). A plan
+ * hit takes one round: a hit whose check overlapped an event compiles.
+ */
+export async function checkSnapshot<T>(
+  fps: ReadonlyArray<DependencyFingerprint>,
+  src: FingerprintSource,
+  versions: Versions,
+  at: StandingAt,
+  judge: SnapshotJudge<T>,
+): Promise<Stability<T>> {
+  const begun: StandingAt = {
+    resolvedAt: versions.fileSetVersion,
+    factsAt: versions.rawFacts.version,
+  }
+  const failed = await failedKind(
+    fps,
+    src,
+    at.resolvedAt !== begun.resolvedAt,
+    at.factsAt !== begun.factsAt,
+  )
+  if (!judge.still()) {
+    return GONE
+  }
+  if (failed === null) {
+    if (
+      versions.fileSetVersion !== begun.resolvedAt ||
+      versions.rawFacts.version !== begun.factsAt
+    ) {
+      return { kind: 'unsettled', at: begun }
+    }
+    if (registryCurrent(fps, src)) {
+      return { kind: 'accepted', value: judge.accept(begun) }
+    }
+  }
+  judge.refuse?.(failed === 'fact')
+  return REFUSED
+}
 
 /**
  * `stable(snapshot)`, the one check of a plan's dependencies `fps`, read
- * at `at`, for an attempt before publication, a plan hit and a restored
- * plan. The asynchronous part asks what may have moved since `at`
- * (resolutions once the file set moved, raw facts once their version
- * did). Acceptance is synchronous, in the caller's turn (`accept`): both
- * versions unmoved since the check began, the route-registry digests read
- * again (a registry publication reaches `invalidate` only on a dev server:
- * a watch build sees it here), and `still()`. A version that moved during
- * the check makes it check again what that version answers.
+ * at `at`, for an attempt before publication and a restored plan: rounds
+ * of `checkSnapshot` until one is not unsettled (each asks again what the
+ * version that moved answers).
  */
 export async function stable<T>(
   fps: ReadonlyArray<DependencyFingerprint>,
   src: FingerprintSource,
   versions: Versions,
   at: StandingAt,
-  accept: (at: StandingAt) => T,
-  still: () => boolean = () => true,
-): Promise<Stability<T>> {
+  judge: SnapshotJudge<T>,
+): Promise<Exclude<Stability<T>, { kind: 'unsettled' }>> {
   for (let standing = at; ; ) {
-    const begun: StandingAt = {
-      resolvedAt: versions.fileSetVersion,
-      factsAt: versions.rawFacts.version,
+    const checked = await checkSnapshot(fps, src, versions, standing, judge)
+    if (checked.kind !== 'unsettled') {
+      return checked
     }
-    const failed = await failedKind(
-      fps,
-      src,
-      standing.resolvedAt !== begun.resolvedAt,
-      standing.factsAt !== begun.factsAt,
-    )
-    if (!still()) {
-      return GONE
-    }
-    if (failed !== null) {
-      return { kind: 'moved', fact: failed === 'fact' }
-    }
-    if (
-      versions.fileSetVersion === begun.resolvedAt &&
-      versions.rawFacts.version === begun.factsAt
-    ) {
-      for (const fp of fps) {
-        if (
-          fp.kind === 'route-registry' &&
-          src.routeRegistryDigest(fp.path) !== fp.digest
-        ) {
-          return { kind: 'moved', fact: false }
-        }
-      }
-      return { kind: 'accepted', value: accept(begun) }
-    }
-    standing = begun
+    standing = checked.at
   }
 }
 
+/** Whether every route-registry digest of `fps` is current (a synchronous read). */
+function registryCurrent(
+  fps: ReadonlyArray<DependencyFingerprint>,
+  src: FingerprintSource,
+): boolean {
+  for (const fp of fps) {
+    if (
+      fp.kind === 'route-registry' &&
+      src.routeRegistryDigest(fp.path) !== fp.digest
+    ) {
+      return false
+    }
+  }
+  return true
+}
+
+const REFUSED: Stability<never> = { kind: 'refused' }
 const GONE: Stability<never> = { kind: 'gone' }
 
 /**
@@ -549,10 +596,9 @@ function parentOf(path: string): string | null {
 /**
  * Records the facts a compile acquires and registers them as in-flight
  * dependencies; the complete snapshot (`published`) is validated before
- * publication. A fact is recorded once per compile: a resolution asked again
- * in the same attempt reads the recorded answer (`resolved`), so one attempt
- * sees one answer and the snapshot validation decides whether it is still
- * current.
+ * publication. A fact is recorded once per attempt, and the attempt reads
+ * one answer of it (`runAttempt`), so the snapshot check decides whether
+ * that answer is still current.
  */
 export class DependencyLedger {
   readonly entries: Array<DependencyFingerprint> = []
@@ -644,24 +690,6 @@ export class DependencyLedger {
     return out
   }
 
-  /** The answer of a resolution this compile recorded (undefined: not asked yet). */
-  resolved(
-    env: string,
-    importer: string,
-    specifier: string,
-  ): string | null | undefined {
-    const fp = this.byId.get(
-      fingerprintId({
-        kind: 'resolution',
-        env,
-        importer,
-        specifier,
-        resolved: null,
-      }),
-    )
-    return fp && fp.kind === 'resolution' ? fp.resolved : undefined
-  }
-
   /** The plan is published: its rows replace the key's previous plan's. */
   publish(): void {
     this.index.publish(this.key, this.indexKeys)
@@ -745,9 +773,8 @@ interface PlanRecord {
   /** Moved by a newer revision or an invalidation: attempts begun before it are stale. */
   generation: number
   /**
-   * The key's latest known text: its last request's, or its file's as its
-   * last event read it (`PlanCache.supersede`; none when that event had no
-   * text to compare). Only a compile of it publishes.
+   * The key's latest known text: its last request's (none after its file's
+   * removal: `PlanCache.removed`). Only a compile of it publishes.
    */
   latest: string | undefined
   /** Requests in progress (two quick saves overlap; a plan hit may wait on its validation). */
@@ -892,32 +919,54 @@ export class PlanCache {
 
   /**
    * The key's file changed; `revision`: its text as the event read it, or
-   * `undefined` when the event has no text to compare (the file is gone,
-   * or the compiler does not read it). A plan of another text is of a
-   * former one: evicted. An event of another text than the latest
-   * request's moves the generation (an attempt in flight compiles again),
-   * but never sets the latest text: the file's raw text is not what the
-   * bundler hands the compiler (a plugin before it may add a banner), and
-   * the next request notes its own (`begin`). Without a text, no compile
-   * publishes until then. True when a plan was evicted.
+   * `undefined` when the compiler cannot compare it (a file it does not
+   * read: a module another plugin compiles from it, compiled in place).
+   * An event of the latest request's text moves nothing: a plan of an
+   * older text goes (that request moved the generation past it). An event
+   * of another text, or of one it cannot compare, is of a text no request
+   * settled: its plans of another text go, the generation moves (an
+   * attempt in flight compiles again, an open answer is not current), and
+   * the file is stale until a request settles the event's text. The event
+   * never sets the latest text: the file's raw text need not be what the
+   * bundler hands the compiler (a plugin before it may add a banner). True
+   * when the file is stale.
    */
   supersede(key: PlanKey, revision: string | undefined): boolean {
     const r = this.records.get(planKeyString(key))
     if (!r) {
       return false
     }
-    if (revision === undefined) {
-      r.latest = undefined
-      return this.delete(key)
+    const kept =
+      revision !== undefined && r.restored === null
+        ? r.entry?.revision === revision
+        : r.entry === null && r.restored === null
+    if (revision !== undefined && r.latest === revision) {
+      return kept ? false : this.delete(key)
     }
-    if (r.entry?.revision !== revision) {
-      return this.delete(key)
+    if (!kept) {
+      this.delete(key)
     }
-    // (the bundler compiled this text before its event arrived: kept)
-    if (r.latest !== revision) {
+    if (this.records.get(planKeyString(key)) === r) {
       r.generation++
     }
-    return false
+    return true
+  }
+
+  /**
+   * The key's file is gone: its plans go, and no compile publishes until a
+   * request notes its text (`begin`). True when a plan was evicted.
+   */
+  removed(key: PlanKey): boolean {
+    const r = this.records.get(planKeyString(key))
+    if (!r) {
+      return false
+    }
+    r.latest = undefined
+    const had = this.delete(key)
+    if (this.records.get(planKeyString(key)) === r) {
+      r.generation++
+    }
+    return had
   }
 
   /** A request of `key` ended (its compile published or not); the last one takes the key's asks along. */
@@ -990,9 +1039,13 @@ export class PlanCache {
   }
 
   /**
-   * Evicts a key's published or restored plan; true when it had one. Every
-   * eviction moves the key's generation: an attempt begun before it, and an
-   * answer taken before it, are of what was evicted.
+   * Evicts a key's published or restored plan; true when it had one. The
+   * eviction of a plan of the key's latest text moves the generation: an
+   * attempt begun before it, and an answer taken before it, are of what was
+   * evicted. A plan of an older text has no current answer (the request of
+   * the newer text moved the generation past it), and a restored plan none
+   * at all (it is never a hit): their eviction moves nothing, so nothing of
+   * the latest text compiles again for it.
    */
   delete(key: PlanKey): boolean {
     const ks = planKeyString(key)
@@ -1001,10 +1054,11 @@ export class PlanCache {
       return false
     }
     const had = r.entry !== null || r.restored !== null
+    const moves = r.entry !== null && r.entry.revision === r.latest
     r.entry = null
     r.restored = null
     this.dependents.drop(key, 'published')
-    if (!this.retire(ks, r)) {
+    if (!this.retire(ks, r) && moves) {
       r.generation++
     }
     return had

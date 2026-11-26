@@ -599,7 +599,9 @@ async function applyChange(
     // ends with the file's own event, in every environment
     for (const cache of caches.plans.values()) {
       for (const key of cache.keysAt(path)) {
-        if (cache.supersede(key, text)) {
+        if (
+          kind === 'unlink' ? cache.removed(key) : cache.supersede(key, text)
+        ) {
           // evicted outside its own compile: the bundler builds the
           // file's modules again from its event; one that skipped them
           // (webpack, a content-hash snapshot of a file written unchanged)
@@ -904,7 +906,10 @@ export async function restorePlans(
         fingerprintSourceFor(caches, hostOf(plan.key), env),
         caches,
         NEVER_CHECKED,
-        () => planCacheFor(caches, env).restore(plan),
+        {
+          still: () => true,
+          accept: () => planCacheFor(caches, env).restore(plan),
+        },
       )
       if (checked.kind !== 'accepted') {
         stale.push(plan.key)

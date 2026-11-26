@@ -13,7 +13,12 @@
  * compile of its module (C6-09).
  */
 import { describe, expect, it } from 'vitest'
-import { invalidate, restorePlans } from '../src/compiler'
+import {
+  expireVirtual,
+  invalidate,
+  restorePlans,
+  revision,
+} from '../src/compiler'
 import {
   MemoryHost,
   dedent,
@@ -753,5 +758,403 @@ describe('a restored plan, and an untouched compile of its module', () => {
     host.write('/app/b.ts', 'export function make() {}\n')
     await invalidate(host.caches, { path: '/app/b.ts', kind: 'change' }, host)
     expect(host.caches.stale.take(CLIENT.name)).toEqual([])
+  })
+
+  // The control: with no compile of the module, the restored plan is what
+  // the module depends on, and the change stales it.
+  // Source: Fable's review of settlement step 6a, finding 5.
+  it('without a compile, a change of what the restored plan read stales its module', async () => {
+    const files = {
+      '/app/a.ts': "import { make } from './b'\nexport const x = make\n",
+      '/app/b.ts': 'export const make = 1\n',
+    }
+    const first = new MemoryHost({ files, recognizer: RECOGNIZER })
+    const persisted = (await first.compile('/app/a.ts', [toySummaryPlanner()]))!
+      .persisted!
+    const host = new MemoryHost({ files, recognizer: RECOGNIZER })
+    expect(await restorePlans(host.caches, [persisted], host)).toEqual([])
+    host.write('/app/b.ts', 'export function make() {}\n')
+    await invalidate(host.caches, { path: '/app/b.ts', kind: 'change' }, host)
+    expect(host.caches.stale.take(CLIENT.name)).toEqual(['/app/a.ts'])
+  })
+})
+
+/**
+ * A planner reading `./b`'s `make` export whose next prefetch, once `hold`
+ * is called, waits after its reads until `proceed`; it counts attempts.
+ */
+function heldReader() {
+  let attempts = 0
+  let armed: { reached: () => void; proceed: Promise<void> } | null = null
+  const planner = (): Planner => ({
+    name: 'toy',
+    tier: 1,
+    gate: () => true,
+    async prefetch(_t0, ctx) {
+      attempts++
+      const target = await ctx.resolve('./b')
+      const found = await ctx.resolver.resolve(target!, 'make')
+      if (armed) {
+        const held = armed
+        armed = null
+        held.reached()
+        await held.proceed
+      }
+      ctx.set(found.k)
+    },
+    plan(ctx) {
+      ctx.setFacts('toy', ctx.prefetched.get('toy') ?? null)
+    },
+  })
+  const hold = () => {
+    const proceed = gate()
+    const reached = new Promise<void>((r) => {
+      armed = { reached: r, proceed: proceed.opened }
+    })
+    return { reached, proceed: proceed.open }
+  }
+  return { planner, hold, attempts: () => attempts }
+}
+
+// Step 6a review, finding 1 (Fable, Astra, Gemini): a plan hit of an older
+// text fails its check while the newer text's compile publishes in the same
+// turn rank; the refusal is acted on in the turn it was judged, so the
+// newer plan stays and its answer stays current.
+// Source: Fable's `p2-moved-gap.probe.ts`.
+describe('an older text whose plan hit fails while the newer text publishes', () => {
+  // (`together`: both resolver answers at once; `newer first`: the newer
+  // text publishes before the older hit's check reads its answer)
+  it.for(['together', 'newer first'] as const)(
+    'the newer plan stays published and its answer current (%s)',
+    async (order) => {
+      const PAGE = '/app/page.ts'
+      const OLD = "import { make } from './w'\nexport const use = make\n"
+      const NEW =
+        "import { make } from './v'\nexport const use = make\nexport const more = 1\n"
+      const target = { w: '/app/a.ts' }
+      const host = new MemoryHost({
+        files: {
+          [PAGE]: OLD,
+          '/app/a.ts': SERVER_ONLY,
+          '/app/b.ts': 'export const make = 1\n',
+          '/app/tsconfig.json': '{}\n',
+        },
+        recognizer: RECOGNIZER,
+        resolve: (specifier) =>
+          specifier === './w'
+            ? target.w
+            : specifier === './v'
+              ? '/app/b.ts'
+              : null,
+      })
+      const inner = host.resolve.bind(host)
+      const armed = new Map<
+        string,
+        { reached: () => void; release: Promise<void> }
+      >()
+      host.resolve = async (specifier, importer) => {
+        const answer = await inner(specifier, importer)
+        const held = armed.get(specifier)
+        if (held) {
+          armed.delete(specifier)
+          held.reached()
+          await held.release
+        }
+        return answer
+      }
+      const arm = (specifier: string, release: Promise<void>) =>
+        new Promise<void>((reached) =>
+          armed.set(specifier, { reached, release }),
+        )
+      let holdPrefetch = false
+      const inPrefetch = gate()
+      const leavePrefetch = gate()
+      const holder = (): Planner => ({
+        name: 'holder',
+        tier: 1,
+        gate: () => true,
+        async prefetch(_t0, ctx) {
+          await ctx.resolve('./v')
+          if (holdPrefetch) {
+            holdPrefetch = false
+            inPrefetch.open()
+            await leavePrefetch.opened
+          }
+        },
+        plan() {},
+      })
+      const all = () => [toySummaryPlanner(), toyEnvPlanner(), holder()]
+      await host.compile(PAGE, all())
+      // the alias now names b.ts: asked at the plan's next request
+      target.w = '/app/b.ts'
+      host.write('/app/tsconfig.json', '{ "x": 1 }\n')
+      await invalidate(
+        host.caches,
+        { path: '/app/tsconfig.json', kind: 'change' },
+        host,
+      )
+      // the older text's request: its hit's check waits on `./w`
+      const releaseW = gate()
+      const reachedW = arm('./w', releaseW.opened)
+      const older = host.settle(PAGE, all(), () => undefined, { code: OLD })
+      await reachedW
+      // the newer text's request: its check asks `./v` again (the file set
+      // moved during its attempt)
+      host.write(PAGE, NEW)
+      holdPrefetch = true
+      let newerCurrent: boolean | undefined
+      const newer = host.settle(PAGE, all(), async (s) => {
+        await new Promise((r) => setTimeout(r, 5))
+        newerCurrent = s.current()
+      })
+      await inPrefetch.opened
+      host.write('/app/c.ts', 'export const c = 1\n')
+      await invalidate(host.caches, { path: '/app/c.ts', kind: 'add' }, host)
+      const releaseV = gate()
+      const reachedV = arm('./v', releaseV.opened)
+      leavePrefetch.open()
+      await reachedV
+      if (order === 'together') {
+        releaseW.open()
+        releaseV.open()
+      } else {
+        releaseV.open()
+        await new Promise((r) => setTimeout(r, 1))
+        releaseW.open()
+      }
+      await Promise.all([older, newer])
+      expect(newerCurrent).toBe(true)
+      const cache = host.caches.plans.get(CLIENT.name)!
+      expect(cache.keys().map((k) => cache.get(k)?.revision)).toEqual([
+        revision(NEW),
+      ])
+    },
+  )
+})
+
+// Step 6a review, finding 2 (Gemini, Fable): an own-file event of the
+// latest request's text moves nothing: an open settlement of that text
+// stays current, and a compile of it in flight takes one attempt.
+// Source: Gemini's probes 2a and 2c; Fable's `p1-own-event.probe.ts`.
+describe("an own-file event of the latest request's text", () => {
+  const OLD = "import { make } from './b'\nexport const x = make\n"
+  const NEW = "import { make } from './b'\nexport const y = make\n"
+  const files = { '/app/a.ts': OLD, '/app/b.ts': 'export const make = 1\n' }
+
+  it('an open untouched settlement of that text stays current', async () => {
+    const host = new MemoryHost({ files, recognizer: RECOGNIZER })
+    const UNTOUCHED = 'export const x = 1\n'
+    host.write('/app/a.ts', UNTOUCHED)
+    let current: boolean | undefined
+    await host.settle('/app/a.ts', [toySummaryPlanner()], async (s) => {
+      expect(s.kind).toBe('untouched')
+      await invalidate(host.caches, { path: '/app/a.ts', kind: 'change' }, host)
+      current = s.current()
+    })
+    expect(current).toBe(true)
+  })
+
+  it.for([
+    ['no plan of the file yet', false],
+    ['a plan of the old text', true],
+  ] as const)(
+    'a compile of that text in flight takes one attempt (%s)',
+    async ([, prior]) => {
+      const host = new MemoryHost({ files, recognizer: RECOGNIZER })
+      const reader = heldReader()
+      if (prior) {
+        await host.compile('/app/a.ts', [reader.planner()])
+      }
+      host.write('/app/a.ts', NEW)
+      const before = reader.attempts()
+      const { reached, proceed } = reader.hold()
+      let current: boolean | undefined
+      const compiling = host.settle('/app/a.ts', [reader.planner()], (s) => {
+        current = s.current()
+      })
+      await reached
+      await invalidate(host.caches, { path: '/app/a.ts', kind: 'change' }, host)
+      proceed()
+      await compiling
+      expect(reader.attempts() - before).toBe(1)
+      expect(current).toBe(true)
+    },
+  )
+})
+
+// Step 6a review, finding 3 (Astra, Gemini, Fable): an event of another
+// text than the latest request's, or of a text the compiler cannot compare
+// (a module compiled in place: `.vue`, `.mdx`), moves the generation and
+// leaves the file in the stale set until a request settles the event's
+// text; only a removal clears the latest text.
+describe("an own-file event of another text than the latest request's", () => {
+  const DEP = 'export const make = 1\n'
+
+  // Source: Fable's `p3-c603.probe.ts` (a).
+  it('a module compiled in place: its compile publishes, and a change of what it reads rebuilds it', async () => {
+    const PAGE = '/app/page.vue'
+    const host = new MemoryHost({
+      files: {
+        [PAGE]: "import { make } from './b'\nexport const x = make\n",
+        '/app/b.ts': DEP,
+      },
+      recognizer: RECOGNIZER,
+    })
+    const reader = heldReader()
+    const extra = { lang: 'ts', inPlace: true } as const
+    const { reached, proceed } = reader.hold()
+    const compiling = host.compile(PAGE, [reader.planner()], extra)
+    await reached
+    await invalidate(host.caches, { path: PAGE, kind: 'change' }, host)
+    proceed()
+    await compiling
+    expect(host.caches.stale.take(CLIENT.name)).toEqual([PAGE])
+    host.write('/app/b.ts', 'export function make() {}\n')
+    await invalidate(host.caches, { path: '/app/b.ts', kind: 'change' }, host)
+    expect(host.caches.stale.take(CLIENT.name)).toEqual([PAGE])
+  })
+
+  // An answer the bundler acts on when the event lands: not current, even
+  // with no plan to evict (an untouched module).
+  // Source: Gemini's probe 9; the mutation run of the step 6a fixes.
+  it('an open untouched answer is not current after the event', async () => {
+    const PAGE = '/app/page.ts'
+    const host = new MemoryHost({
+      files: { [PAGE]: 'export const x = 1\n', '/app/b.ts': DEP },
+      recognizer: RECOGNIZER,
+    })
+    let current: boolean | undefined
+    await host.settle(PAGE, [toySummaryPlanner()], async (s) => {
+      expect(s.kind).toBe('untouched')
+      host.write(PAGE, 'export const y = 2\n')
+      await invalidate(host.caches, { path: PAGE, kind: 'change' }, host)
+      current = s.current()
+    })
+    expect(current).toBe(false)
+    expect(host.caches.stale.take(CLIENT.name)).toEqual([PAGE])
+  })
+
+  // Source: Gemini's probe 3a, Astra's finding 2.
+  it('a compile of the old text in flight, and the event of a new text no request asked for: the file is built again', async () => {
+    const PAGE = '/app/page.ts'
+    const host = new MemoryHost({
+      files: {
+        [PAGE]: "import { make } from './b'\nexport const x = make\n",
+        '/app/b.ts': DEP,
+      },
+      recognizer: RECOGNIZER,
+    })
+    const reader = heldReader()
+    const { reached, proceed } = reader.hold()
+    const compiling = host.compile(PAGE, [reader.planner()])
+    await reached
+    host.write(PAGE, "import { make } from './b'\nexport const y = make\n")
+    await invalidate(host.caches, { path: PAGE, kind: 'change' }, host)
+    proceed()
+    await compiling
+    expect(host.caches.stale.take(CLIENT.name)).toEqual([PAGE])
+  })
+})
+
+// Step 6a review (Astra, finding 3): one attempt reads one answer of a
+// fact, however many times it asks. A dependency saved between two reads of
+// its exports, and saved back before the check: the attempt's answer and the
+// next hit's are a cold compile's (no read of the saved text).
+// Source: Astra's `probe.mjs` (`readConflict`).
+describe('two reads of one dependency during a save and its revert', () => {
+  it('the compile answers what a cold compile does', async () => {
+    const OLDER = 'export const older = 1\n'
+    const files = {
+      '/app/page.ts': "import { older } from './dep'\nexport const x = older\n",
+      '/app/dep.ts': OLDER,
+    }
+    const first = gate()
+    const next = gate()
+    const second = gate()
+    const finish = gate()
+    let hold = true
+    const reads = (): Planner => ({
+      name: 'reads',
+      tier: 0,
+      gate: () => true,
+      plan() {},
+      async policy(_plan, _output, _edges, ctx) {
+        const a = (await ctx.targetFacts('/app/dep.ts')).exportNames
+        const held = hold
+        if (held) {
+          first.open()
+          await next.opened
+        }
+        const b = (await ctx.targetFacts('/app/dep.ts')).exportNames
+        if (held) {
+          hold = false
+          second.open()
+          await finish.opened
+        }
+        if (a.join() !== b.join()) {
+          ctx.diagnostic({
+            severity: 'warning',
+            by: 'reads',
+            code: 'mismatch',
+            message: `${a.join()} then ${b.join()}`,
+          })
+        }
+      },
+    })
+    const host = new MemoryHost({ files, recognizer: RECOGNIZER })
+    const pending = host.compile('/app/page.ts', [reads()])
+    await first.opened
+    host.write('/app/dep.ts', 'export const newer = 2\n')
+    await invalidate(host.caches, { path: '/app/dep.ts', kind: 'change' }, host)
+    next.open()
+    await second.opened
+    host.write('/app/dep.ts', OLDER)
+    await invalidate(host.caches, { path: '/app/dep.ts', kind: 'change' }, host)
+    finish.open()
+    const out = await pending
+    const again = await host.compile('/app/page.ts', [reads()])
+    const cold = await new MemoryHost({
+      files,
+      recognizer: RECOGNIZER,
+    }).compile('/app/page.ts', [reads()])
+    expect(out!.diagnostics).toEqual(cold!.diagnostics)
+    expect(again!.diagnostics).toEqual(cold!.diagnostics)
+  })
+})
+
+// Step 6a review (Gemini, finding 4): a virtual module that read as
+// missing, then loads (a Vite watch rebuild: `expireVirtual`, no event
+// names it). The plan that read the miss is not reused.
+// Source: Gemini's probe 5a.
+describe('a virtual module that read as missing and then loads', () => {
+  it('a watch rebuild compiles its importer against the loaded module', async () => {
+    const files = {
+      '/app/a.ts':
+        "import { make } from 'virtual:foo'\nexport const x = make\n",
+    }
+    const virtual: Record<string, string> = {}
+    const reader = (): Planner => ({
+      name: 'toy',
+      tier: 1,
+      gate: () => true,
+      async prefetch(_t0, ctx) {
+        const found = await ctx.resolver.resolve('virtual:foo', 'make')
+        ctx.set(found.k === 'found' ? found.value : found.k)
+      },
+      plan(ctx) {
+        ctx.setFacts('toy', ctx.prefetched.get('toy') ?? null)
+      },
+    })
+    const host = new MemoryHost({ files, recognizer: RECOGNIZER, virtual })
+    await host.compile('/app/a.ts', [reader()])
+    virtual['virtual:foo'] = SERVER_ONLY
+    expireVirtual(host.caches, CLIENT.name)
+    const out = await host.compile('/app/a.ts', [reader()])
+    const cold = await new MemoryHost({
+      files,
+      recognizer: RECOGNIZER,
+      virtual,
+    }).compile('/app/a.ts', [reader()])
+    expect(out!.facts.planners).toEqual(cold!.facts.planners)
   })
 })
