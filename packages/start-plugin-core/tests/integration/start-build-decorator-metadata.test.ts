@@ -96,6 +96,18 @@ export class Entity {
     only,
   })),
   {
+    // (Fable's re-check of 463e6587a6: SWC emits metadata for an abstract
+    // member, Oxc drops it; a decorator there closes the gate too)
+    name: 'a class only a decorated abstract member names stays',
+    body: `class Two {}
+export abstract class Entity {
+  @seen abstract x: Two
+}
+`,
+    recorded: 'Two',
+    only: 'rsbuild',
+  },
+  {
     // (Fable's review of 5d77f89358: a self-registering class)
     name: 'a decorated class only types name stays, with its registration',
     body: `const registry: Array<string> = []

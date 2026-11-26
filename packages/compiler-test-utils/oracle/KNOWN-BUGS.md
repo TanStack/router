@@ -206,6 +206,12 @@ function info not found` when one of them calls it, and the build says nothing, 
   with its initialiser; what only server code reads still leaves. Rows: `start-build-decorator-metadata.test.ts`,
   `start-compiler-removal-types.test.ts` "a function-local React only a type names stays". Workaround: none needed
   (as `main`); move such a value to a module without decorators to have it removed.
+- **A local alias of an imported `React` only types name leaves under a classic JSX runtime set by config** (no pragma;
+  `import React from 'react'; const r = React; export const C = (x?: typeof r) => <div />`): an imported `React`
+  does not close the type rule's gate (that would turn it off in nearly every React module), so `r` leaves, and the
+  import with it; the classic runtime's `React.createElement` then reads an undeclared `React`. Worse than the branch
+  before the type rule (it kept both), rare. Source: Gemini's re-check of the narrowed rule. No test. Workaround:
+  name `React` directly in the type (`typeof React`), or name the factory with a pragma (`/** @jsx React.createElement */`).
 - **A classic JSX factory other than `React` set by config, with no pragma, leaves when only types name it** (Rsbuild
   `tools.swc.jsc.transform.react: { runtime: 'classic', pragma: 'h' }`, a tsconfig `jsxFactory`; `const h = …` with
   `typeof h` in code that stays): only a pragma's factory and a `React` of the module's own are known; the client

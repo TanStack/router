@@ -1967,6 +1967,20 @@ export const run = (unused?: typeof h | typeof Frag) => <>x</>
       expected: { value: 'frag' },
     },
     {
+      // (Astra's re-check of 463e6587a6: the factory is the pragma's whole
+      // identifier, Unicode included)
+      name: 'a non-ASCII classic JSX factory and fragment only a type names',
+      code: `/** @jsxRuntime classic */
+/** @jsx hΩ */
+/** @jsxFrag Fragé */
+${SO}const hΩ = (type: unknown) => type
+const Fragé = 'frag'
+export const f = createServerOnlyFn(() => 1)
+export const run = (unused?: typeof hΩ | typeof Fragé) => [<b />, <>x</>]
+`,
+      expected: { value: ['b', 'frag'] },
+    },
+    {
       name: 'an imported classic JSX factory erased code names',
       code: `/** @jsxRuntime classic */
 /** @jsx h */

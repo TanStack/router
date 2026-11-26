@@ -1139,10 +1139,13 @@ interface MetadataParam {
  * the read resolves in: the type of a decorated property or accessor, the
  * parameter and return types of a method with a decorator on it or on a
  * parameter, the constructor's parameter types of a class with a decorator
- * on it or on a constructor parameter. Only a type reference serializes to
- * its name (`Model`, `(Model)`, `ns.Model` reads `ns`; `Array<Model>` reads
- * `Array`); a union, an intersection or `typeof` is `Object`. True: the
- * class has a decorator (on it, a member or a parameter). Whether the
+ * on it or on a constructor parameter (an abstract member's too: SWC emits
+ * it). A type reference standing alone reads its name (`Model`, `(Model)`,
+ * `ns.Model` reads `ns`; `Array<Model>` reads `Array`); what else a type
+ * serializes to is the emitter's (a union of a class and `never` reads the
+ * class on SWC, a union of strings the `String` in scope): the module's
+ * gate stays closed instead (`typesNameValues`). True: the class has a
+ * decorator (on it, a member or a parameter). Whether the
  * project emits metadata is not asked: where it does not, the downstream
  * TypeScript transform erases what the name kept.
  */
@@ -1184,12 +1187,15 @@ function metadataNames(
     switch (el.type) {
       case 'PropertyDefinition':
       case 'AccessorProperty':
+      case 'TSAbstractPropertyDefinition':
+      case 'TSAbstractAccessorProperty':
         if (el.decorators.length > 0) {
           emits = true
           addType(el.typeAnnotation)
         }
         break
       case 'MethodDefinition':
+      case 'TSAbstractMethodDefinition':
         if (el.kind === 'constructor') {
           if (node.decorators.length > 0 || params(el).some(decorated)) {
             emits = true
@@ -1209,6 +1215,13 @@ function metadataNames(
 }
 
 /**
+ * A pragma's name and what it says: an identifier as JavaScript defines one
+ * (Unicode included), dotted (`Preact.h`).
+ */
+const PRAGMA_NAMES =
+  /@(jsxFrag|jsxRuntime|jsx)\s+([$_\p{ID_Start}][$\u200c\u200d\p{ID_Continue}]*(?:\.[$_\p{ID_Start}][$\u200c\u200d\p{ID_Continue}]*)*)/gu
+
+/**
  * The names a classic JSX transform's calls start with (`h` of `@jsx h`,
  * `Preact` of `@jsx Preact.h`), where a JSX pragma of the header asks for
  * one; null: none does.
@@ -1223,9 +1236,7 @@ function jsxFactories(
   for (const { range } of header.pragmas) {
     // (the names the comment gives, read loosely: a read of a name the
     // host's transform ignores keeps a binding, it never drops one)
-    for (const m of code
-      .slice(range.start, range.end)
-      .matchAll(/@(jsxFrag|jsxRuntime|jsx)\s+([\w$.]+)/g)) {
+    for (const m of code.slice(range.start, range.end).matchAll(PRAGMA_NAMES)) {
       if (m[1] === 'jsx') {
         element = m[2]!
       } else if (m[1] === 'jsxFrag') {
