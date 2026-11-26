@@ -8,7 +8,9 @@
  * no Start package and finishes a builder another module exports is compiled
  * too.
  */
+import { readFile, readdir } from 'node:fs/promises'
 import { createRequire } from 'node:module'
+import path from 'node:path'
 import mdx from '@mdx-js/rollup'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import {
@@ -611,6 +613,44 @@ export { default as help } from './help.mdx'
       })
       const { result } = await build.client.run('return entry.help.title')
       expect(result).toBe('MARK_JSON_TITLE')
+    },
+    timeout,
+  )
+})
+
+// `new URL('./sample.js', import.meta.url)` with no app rule: Rspack's own
+// `dependency: 'url'` rule makes the file an `asset/resource`, whose bytes
+// are the file's text. Start's loader rules leave it to the asset pass.
+// (Rsbuild minifies an emitted `.js` asset: off, to read the exact text.)
+// Source: Astra's re-check of settlement step 4 (2a5ba1a0e8).
+describe('rsbuild build, a script new URL() makes an asset', () => {
+  test(
+    'emits the file’s exact text',
+    async () => {
+      const sample = `import { createIsomorphicFn } from '@tanstack/react-start'
+export const role = createIsomorphicFn()
+  .server(() => 'MARK_URL_SERVER')
+  .client(() => 'MARK_URL_CLIENT')
+`
+      const build = await buildStart({
+        bundler: 'rsbuild',
+        files: {
+          'src/sample.js': sample,
+          'src/entry.ts': `export const href = new URL('./sample.js', import.meta.url).href
+`,
+        },
+        entry: 'src/entry.ts',
+        rsbuildConfig: { output: { minify: false } },
+      })
+      const { result } = await build.client.run('return entry.href')
+      const name = path.basename(new URL(String(result)).pathname)
+      const emitted = (
+        await readdir(build.client.outDir, { recursive: true })
+      ).filter((file) => path.basename(file) === name)
+      expect(emitted).toHaveLength(1)
+      expect(
+        await readFile(path.join(build.client.outDir, emitted[0]!), 'utf8'),
+      ).toBe(sample)
     },
     timeout,
   )

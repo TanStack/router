@@ -2,7 +2,7 @@
  * The file rule judges the denied file itself, wherever it lives; the scope is
  * about importers. On a client, a pattern reaching a denied file outside the
  * scope or exempted by `exclude`, a plain glob of a denied data file and
- * Rsbuild's `new URL` of a denied text file are mocked and reported. An importer
+ * Rsbuild's `new URL` of a denied text file or script are mocked and reported. An importer
  * outside the scope keeps the real module of a denied file outside it too
  * (J6.7), `excludeFiles` skips the file rule and the marker, a dependency's own
  * files stay out of it, and other plugins' virtual assets load untouched.
@@ -109,6 +109,13 @@ const rsbuildRows: Array<[string, string, Files, Record<string, unknown>?]> = [
     'a denied text file, new URL',
     exposing(`[new URL('./notes.server.txt', import.meta.url).href]`),
     textFile,
+  ],
+  // (Rspack types it `asset/resource`; Start's loader rules leave it to the
+  // asset pass. Source: settlement step 4 re-check)
+  [
+    'a denied script, new URL',
+    exposing(`[new URL('./s.server.ts', import.meta.url).href]`),
+    secretsIn('src'),
   ],
 ]
 
