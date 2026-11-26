@@ -1323,7 +1323,9 @@ class ImportProtectionEnv {
 
   /**
    * Retires an id's importer record: a current answer that compiled nothing
-   * of it (untouched, failed, or no longer admitted) holds no import.
+   * of it (untouched, or no longer admitted) holds no import. A failed answer
+   * keeps the record (a compile error) or commits its judged one (an
+   * import-protection error).
    */
   retire(importerId: string): void {
     if (this.byImporter.has(importerId)) {
