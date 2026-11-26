@@ -118,6 +118,8 @@ When the plugin sees a marker import, it records the file as restricted. If that
 
 Markers are useful when a file doesn't follow the `.server.*` / `.client.*` naming convention but still contains environment-specific code.
 
+Write the marker as a static import. A dynamic `import('@tanstack/react-start/server-only')` (or `require()`) marks nothing: it is checked as an import of its own module where that module keeps it, so with the `error` behavior the build fails there, but with the `mock` behavior only that import is mocked and the rest of the module ships. A static `import '@tanstack/react-start/server-only'` protects the whole file.
+
 A marker is a statement of its file, so it holds wherever the file is and whoever imports it:
 
 - It is honoured in every package: your app, a workspace package, an installed package (`excludeFiles` skips file-name rules only).

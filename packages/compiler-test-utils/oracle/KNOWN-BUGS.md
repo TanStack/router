@@ -364,6 +364,12 @@ function info not found` when one of them calls it, and the build says nothing, 
   (`vite:afterUpdate`), after the accept callbacks where Solid's and Vue's refresh patch the components: before that,
   the route could load its new data into the old component. A route module that evaluates without an update of its
   own (imported again by another module's update) waits for the next update. No test (the outcome is the limit).
+- **A dynamic marker import mocks only itself under `behavior: 'mock'`** (when-does-this-run rule 1, user 11-26). A
+  dynamic `import()`/`require()` of `server-only` or `client-only` does not mark its module: under
+  `behavior: 'mock'` only that import is mocked, and the rest of the module ships, as on main with Vite (main on
+  Rsbuild mocked the whole module). A static `import '@tanstack/react-start/server-only'` protects the whole file.
+  The `error` behavior fails the build at the marker import, as on main. Row: `build-markers.test.ts` "in mock mode,
+  a dynamic marker import is mocked alone".
 - **React route HMR: a hoisted component factory call runs before the rest of its route statement** (when-does-this-run
   rule 2, 11-26). In a development client, `component: memo(Page)` becomes `const TsrComponent = memo(Page)` before the
   statement, past the earlier options, in both directions: a factory that reads a value an earlier option writes reads

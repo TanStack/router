@@ -446,15 +446,17 @@ export function importEdgesPlanner(
         const importerPath = identify(from).path
         let rule = matchSpecifier(rules, raw)
         // an entry's own marker denies it here (a server-only-marked client
-        // entry): its marker import is the violating edge, located at the
-        // marker. A marked non-entry module is judged through its importers
-        // (an exempt importer gets it, J6.7).
+        // entry), and so does a marker edge of a module without a static
+        // marker (a dynamic `import()`/`require()` of one, wherever this
+        // output keeps it): the marker import is the violating edge, located
+        // at the marker. A marked non-entry module is judged through its
+        // importers (an exempt importer gets it, J6.7).
         const ownMarker = ownEntry(ip.markerSpecifiers, raw)
         if (
           rule === null &&
           ownMarker !== undefined &&
           markerViolates(envType, ownMarker) &&
-          ip.isEntry(importerPath)
+          (ip.isEntry(importerPath) || plan.facts.marker === null)
         ) {
           rule = { type: 'marker' }
         }
@@ -682,12 +684,8 @@ export function importEdgesPlanner(
   function markerConflict(ctx: PolicyContext) {
     const { analysis } = ctx
     const kind = (specifier: string) => ownEntry(ip.markerSpecifiers, specifier)
-    // (an import, a re-export, a top-level import() or require(): what marks a module)
-    const markers = [
-      ...analysis.imports,
-      ...analysis.reexports,
-      ...analysis.dynamicEdges,
-    ]
+    // (an import or a re-export: what marks a module)
+    const markers = [...analysis.imports, ...analysis.reexports]
       .filter((i) => kind(i.specifier) !== undefined)
       .sort((a, b) => a.specifierRange.start - b.specifierRange.start)
     const first = markers[0]

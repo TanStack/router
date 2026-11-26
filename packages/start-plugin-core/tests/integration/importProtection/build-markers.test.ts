@@ -372,6 +372,118 @@ console.log('client')
     timeout,
   )
 
+  // A dynamic marker import marks nothing: it is a violation of its own
+  // module wherever the client keeps it, located at the marker, as on main.
+  // On bded194ac9 one in a function was neither marked nor reported, and the
+  // module shipped.
+  // Source: when-does-this-run rule 1 (reviews and user decision of 11-26).
+  const dynamicMarker = `import('@tanstack/react-start/server-only')`
+  test.each([
+    ["the module's top level", `await ${dynamicMarker}`],
+    [
+      'a function the client keeps',
+      `export const load = () => ${dynamicMarker}`,
+    ],
+    ['a class field', `export class C {\n  x = ${dynamicMarker}\n}`],
+    [
+      'a static block',
+      `export class C {\n  static {\n    void ${dynamicMarker}\n  }\n}`,
+    ],
+    [
+      'a computed class key',
+      `export class C {\n  [String(${dynamicMarker})]() {}\n}`,
+    ],
+    [
+      'a TypeScript namespace',
+      `export namespace N {\n  export const p = ${dynamicMarker}\n}`,
+    ],
+  ])(
+    'imported dynamically in %s, the build fails at the marker import',
+    async (_, statement) => {
+      const entry = `import { secret } from './marked'
+export const read = () => secret()
+`
+      const error = await rejection(
+        buildStart({
+          bundler,
+          files: {
+            'src/marked.ts': `${statement}
+export const secret = () => 'MARK_SECRET'
+`,
+            'src/entry.ts': entry,
+          },
+          entry: 'src/entry.ts',
+        }),
+      )
+      const line =
+        statement
+          .split('\n')
+          .findIndex((text) => text.includes('server-only')) + 1
+      expectViolationsAt(error, [
+        { environment: 'client', use: `src/marked.ts:${line}` },
+      ])
+    },
+    timeout,
+  )
+
+  // The client build removes a server fn's handler: a marker imported there
+  // marks nothing, as on main.
+  test(
+    'imported dynamically in a server fn handler, the module is no marked module: the client gets it',
+    async () => {
+      expect(
+        await clientRead(
+          bundler,
+          {
+            'src/marked.ts': `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => {
+  await ${dynamicMarker}
+  return 'server'
+})
+export const secret = () => 'MARK_SECRET'
+`,
+            'src/entry.ts': `import { secret } from './marked'
+export const read = () => secret()
+`,
+          },
+          {},
+        ),
+      ).toEqual({ hasRealCode: true, ranReal: true, warnings: [] })
+    },
+    timeout,
+  )
+
+  // The stated limit (KNOWN-BUGS "A dynamic marker import mocks only itself
+  // under behavior: 'mock'"): the import is mocked and reported, the rest of
+  // the module ships, as on main with Vite. A static marker import protects
+  // the whole file.
+  test(
+    'in mock mode, a dynamic marker import is mocked alone: the client gets the rest of the module, and the import is reported',
+    async () => {
+      const build = await buildStart({
+        bundler,
+        files: {
+          'src/marked.ts': `export const load = () => ${dynamicMarker}
+export const secret = () => 'MARK_SECRET'
+`,
+          'src/entry.ts': `import { load, secret } from './marked'
+export const read = () => secret()
+export { load }
+`,
+        },
+        entry: 'src/entry.ts',
+        start: { importProtection: { behavior: 'mock' } },
+      })
+      expect(
+        (await build.client.run(`return String(entry.read())`)).result,
+      ).toBe('MARK_SECRET')
+      expectViolationsAt(build, [
+        { environment: 'client', use: 'src/marked.ts:1' },
+      ])
+    },
+    timeout,
+  )
+
   // The build fails and names the broken file at its line (an actionable
   // error, SPEC G5); other diagnostics may come with it.
   test(
