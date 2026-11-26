@@ -545,11 +545,6 @@ static made = … }` off the client also when the kept loader, the split compone
   each moves into the chunk's component. `main` checks no hook at all. Workaround: name hooks `use…` and call them in a
   child component. No test (the outcome is the limit).
 
-- **A component-local `var` declared again with a value after the boundary is no write** (hotspot 5, Fable impl
-  review O1; as `main`): `var x = 0; const el = <Hydrate>…{() => x}…</Hydrate>; var x = 1` builds and the function
-  reads `0`, since a function's re-declared `var` is not in the mutation model (a module's is). With an assignment of
-  `x` as well, the children stay in place (decision 12). Contrived. No test (the outcome is the limit).
-
 - **React children `main` splits stay in place** (decision 12, 11-25: "not a real case"): children writing a
   captured local (a render counter in a `.map()` callback, `pageNumber++`, read only there), a function of the
   children reading a local the component reassigns (wherever the writes are, a write before the boundary included),
