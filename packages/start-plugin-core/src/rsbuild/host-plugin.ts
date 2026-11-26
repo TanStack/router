@@ -813,8 +813,9 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
                 if (module.resource && buildInfo && holdsRecord(buildInfo)) {
                   session.noteRestored(
                     envOf(module).name,
-                    `\0${module.resource}`,
+                    module.resource,
                     buildInfo,
+                    true,
                   )
                 }
               }

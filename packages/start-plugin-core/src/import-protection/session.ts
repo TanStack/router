@@ -736,13 +736,12 @@ function unknownEdgeLoad(
 }
 
 /**
- * What an environment handed to the bundler (the served ledger), written when
- * it was handed: an edge module's state (`real`: `allowImport` allowed its
- * import, a transparent re-export), or the verdict on a denied file compiled
- * under its own id (`self`: its own violation; `real`: an unchecked importer
- * imports it, or an allowed import brought it). Every reader (the edge
- * module's code, the chunk-list reader, the build report) reads it; none
- * decides again.
+ * The verdict on a denied file compiled under its own id, as the
+ * environment handed it to the bundler (the served ledger, written by the
+ * commit of the file's answer): `self`, its own violation; `real`, an
+ * unchecked importer imports it, or an allowed import brought it. An edge
+ * module's state is its definition's (`EdgeState`). Every reader (the chunk-list
+ * reader, the build report) reads it; none decides again.
  */
 interface Served {
   verdict: 'mock' | 'real'

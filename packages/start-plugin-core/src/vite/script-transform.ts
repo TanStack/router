@@ -59,6 +59,7 @@ export function scriptTransform(
         moduleType: 'js',
         pass,
         id,
+        identity,
         code,
         env,
         inputMap: readInputMap,

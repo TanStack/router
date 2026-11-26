@@ -64,14 +64,18 @@ entry, an include, a container) or an RSC client-reference connection reaches, d
 what a watch-written cache restored.
 
 1. **A module's record is what the loader served**, written once per loader run at its exit
-   (`StartRsbuildCompilerSession.record`): compiled and served as it is (its plan, when the cache outlives the
+   (`StartRsbuildCompilerSession.record`, the session's sink: the loader hands each module to
+   `StartCompilerSession.transform`, which calls the sink with every answer's outcome, current or not, before the
+   commit of a current one): compiled and served as it is (its plan, when the cache outlives the
    process, its server functions, the warnings its compile found, a package's Start use, import protection's record);
    served as its mock (the same, without server functions); not compiled (served as its bytes: nothing, and what an
    earlier compile left is removed, import protection's record included); failed (its located errors only). The asset
    and edge passes write through it too. A provider module (`?tss-serverfn-handler`, `?tss-serverfn-split`) always
    records what it provides, also nothing: an empty provider and one not built yet are different facts. One index
-   (`recorded`) says which modules hold a record, with three sub-indexes for its readers (`fnModules`, `warned`,
-   `packageUses`), pruned with the plans (`retain`). A compile overtaken by a newer one of the same id (not
+   (`recorded`, by resource and instance: the host's, as long-lived as the compilers' modules, not the session's
+   committed-id set, which holds current commits only) says which modules' `buildInfo` holds a record, with three
+   sub-indexes for its readers (`fnModules`, `warned`, `packageUses`), pruned with the plans (`retain`) and restored
+   from `buildInfo` on a cache restart (`noteRestored`). A compile overtaken by a newer one of the same id (not
    `current()` when its record is written: the module's request stays open until then) takes nothing out of the index.
 2. **The registry is derived at settlement from the modules the compilation holds, by one writer**
    (`deriveServerFns`; the session's `serverFnsAtSettlement`: on this host a compile registers nothing, Vite is

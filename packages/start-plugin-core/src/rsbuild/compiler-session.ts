@@ -60,6 +60,7 @@ import type {
   ModuleOutcome,
   StartCompilerEnvironment,
   StartCompilerSessionOptions,
+  TransformHooks,
 } from '../compiler/session'
 import type { LoaderChainLike } from './vue'
 import type { EdgeModuleListener } from '../import-protection/session'
@@ -136,12 +137,12 @@ interface BuildInfoParts {
   found?: Array<FoundWarning>
   /** A Start use in a package (`PACKAGE_USE_PART`). */
   packageUse?: boolean
-  /** Import protection's record of the module (`ImportProtectionEnv.buildInfo`). */
+  /** Import protection's record of the module (`ImportProtectionEnv.buildInfoOf`). */
   ip?: { key: string; value: unknown } | null
   /**
    * A newer answer of the module overtook this one (`current()`, read at the
    * record): it may finish after the newer one, so it takes nothing out of
-   * the session's index of records.
+   * the host's index of records (`recorded`).
    */
   overtaken?: boolean
 }
@@ -600,25 +601,28 @@ export class StartRsbuildCompilerSession {
     }
   }
 
-  /*
-   * Which modules hold a record of Start's is the session's committed-id
-   * set (`StartCompilerSession.hasCommitted`): written by the commit of a
-   * current answer and by the restore scan (`noteRestored`). A loader exit
-   * touches the `buildInfo` of a module with nothing to record only when
-   * the module is in it (reading `buildInfo` creates it, for every module of
-   * the app otherwise). The indexes below are the readers' (by
-   * `<env>\0<resource>`): added to by every record, removed from only by a
-   * current one.
+  /**
+   * The modules (`<env>\0<resource>`, a child compiler's `<env>\0\0<resource>`)
+   * whose `buildInfo` holds parts of Start's record (`record`), written by
+   * their loader runs in this process or restored (`noteRestored`): the
+   * host's index of its per-module store, as long-lived as the compilers'
+   * modules (it outlives a run's Start session; the session's committed-id
+   * set is another fact, its current commits). A loader exit touches the
+   * `buildInfo` of a module with nothing to record only when the module is
+   * in it (reading `buildInfo` creates it, for every module of the app
+   * otherwise), and the readers below are its parts: added to by every
+   * record, removed from only by a current one.
    */
+  private readonly recorded = new Set<string>()
 
-  /** The compiler's own modules whose record holds server functions (the registry's fold reads those). */
+  /** Of `recorded`: the compiler's own modules whose record holds server functions (the registry's fold reads those). */
   readonly fnModules = new Set<string>()
 
-  /** The modules whose latest compile found warnings (the seal pass reads those). */
+  /** Of `recorded`: the modules whose latest compile found warnings (the seal pass reads those). */
   readonly warned = new Set<string>()
 
   /**
-   * The modules whose latest compile recognised a Start use
+   * Of `recorded`: the modules whose latest compile recognised a Start use
    * in a package (`PACKAGE_USE_PART`): those the host's package warning
    * decides.
    */
@@ -628,15 +632,17 @@ export class StartRsbuildCompilerSession {
    * A module of compile environment `env` restored from the persistent cache
    * with the record of its latest compile (`buildInfo`, `holdsRecord`): the
    * index learns it, and its next compile in this process replaces it.
+   * `child`: a child compiler's module (a worker's).
    */
   noteRestored(
     env: string,
     resource: string,
     buildInfo: Record<string, unknown>,
+    child = false,
   ): void {
-    const key = `${env}\0${resource}`
-    this.start.noteCommitted(env, canonicalResource(resource))
-    if (partOf(buildInfo, SERVER_FNS_PART) !== undefined) {
+    const key = `${env}\0${child ? '\0' : ''}${resource}`
+    this.recorded.add(key)
+    if (!child && partOf(buildInfo, SERVER_FNS_PART) !== undefined) {
       this.fnModules.add(key)
     }
     if (partOf(buildInfo, FOUND_WARNINGS_PART) !== undefined) {
@@ -682,8 +688,7 @@ export class StartRsbuildCompilerSession {
     if (!child) {
       index(this.fnModules, outcome.fns !== undefined)
     }
-    const instance = child ? ('child' as const) : undefined
-    if (!any && !this.start.hasCommitted(at.env, at.id, instance)) {
+    if (!any && !this.recorded.has(key)) {
       // (nothing to record, nothing recorded: `buildInfo` is not read)
       return
     }
@@ -691,11 +696,7 @@ export class StartRsbuildCompilerSession {
     if (!buildInfo) {
       return
     }
-    if (any) {
-      this.start.noteCommitted(at.env, at.id, instance)
-    } else if (!outcome.overtaken) {
-      this.start.dropCommitted(at.env, at.id, instance)
-    }
+    index(this.recorded, any)
     if (errors.length > 0) {
       buildInfo[LOCATED_DIAGNOSTICS.field] = errors
     } else {
@@ -956,7 +957,12 @@ export class StartRsbuildCompilerSession {
     // the index of the records of modules the compilation no longer depends on
     const envs = new Set([...this.envsOf(compiler)].map((env) => env.name))
     this.start.retainCommitted(envs, keepEnv)
-    for (const set of [this.fnModules, this.warned, this.packageUses]) {
+    for (const set of [
+      this.recorded,
+      this.fnModules,
+      this.warned,
+      this.packageUses,
+    ]) {
       for (const key of set) {
         const at = key.indexOf('\0')
         if (
@@ -1171,7 +1177,7 @@ export class StartRsbuildCompilerSession {
       // the bundler requested this edge module from the importer's post-SWC
       // code: `allowImport` decides between the real module and the mock
       const ipEnv = ip?.env(env.name)
-      const key = this.recordKey(env, ctx)
+      const key = this.recordKey(env, ctx, canonicalResource(ctx.resource))
       if (!key.child) {
         env.compiled.add(ctx.resource)
       }
@@ -1186,33 +1192,27 @@ export class StartRsbuildCompilerSession {
       return { code, map: null }
     }
     const id = canonicalResource(ctx.resource)
-    const key = this.recordKey(env, ctx)
-    const instance = key.child ? ('child' as const) : undefined
+    const identity = identify(id)
     if (options.pass === 'asset') {
-      if (identify(id).lang !== null) {
+      if (identity.lang !== null) {
         // the file's code (`x.ts?inline`): compiled by the loader
         return { code: '', map: null }
       }
       // never compiled, and an import the compiler does not read may have
       // brought it here: a denied file's text is served as its mock
+      const key = this.recordKey(env, ctx, id)
       const { outcome } = await this.start.transform(
-        { moduleType: 'asset', id, env, instance },
-        () => this.hostFor(env),
         {
-          sink: (o, record, current) => {
-            if (o.kind !== 'passthrough' && !key.child) {
-              env.compiled.add(ctx.resource)
-            }
-            this.record(ctx, key, {
-              ip: record.ip,
-              overtaken: !current,
-            })
-          },
+          moduleType: 'asset',
+          id,
+          env,
+          ...(key.child && { instance: 'child' as const }),
         },
+        () => this.hostFor(env),
+        { sink: this.sinkOf(ctx, env, key, identity) },
       )
-      return this.served(ctx, key, outcome) ?? { code: '', map: null }
+      return this.served(ctx, outcome) ?? { code: '', map: null }
     }
-    const identity = identify(id)
     const late = options.pass === 'late'
     if (
       late
@@ -1222,18 +1222,10 @@ export class StartRsbuildCompilerSession {
       return passthrough
     }
     // From here on every exit is this module's outcome, recorded once
-    // (`record`, the session's sink): compiled and served as it is,
+    // (`record`, through the session's sink): compiled and served as it is,
     // compiled and served as its mock, not compiled (served as its bytes),
     // or failed
-    // a provider module (the derived module the resolver imports the
-    // wrappers from) always says what it provides, also nothing: its
-    // defining module's record is of another module
-    const provides =
-      identity.derived?.kind === 'provider' ||
-      identity.derived?.kind === 'handler'
-    const none: ServerFnBuildInfo | undefined = provides
-      ? { version: 4, canonicalId: identity.canonicalId, facts: [] }
-      : undefined
+    const key = this.recordKey(env, ctx, id)
     const source = loaderText(bytes)
     let parsedInputMap: InputSourceMap | null | undefined
     const readInputMap = (): InputSourceMap | null => {
@@ -1249,8 +1241,9 @@ export class StartRsbuildCompilerSession {
       {
         moduleType: 'js',
         pass: late ? 'late' : 'main',
-        instance,
+        ...(key.child && { instance: 'child' as const }),
         id,
+        identity,
         code: source,
         env,
         inputMap: readInputMap,
@@ -1258,78 +1251,17 @@ export class StartRsbuildCompilerSession {
         // webpack-sources counts the map's lines at LF only
         lines: 'lf',
         ...((late || isVueSfc(identity.path)) && { originalMap: readInputMap }),
-        // (a module the app types `asset/source`: its text is its export)
-        asset: () => ctx._module?.type?.startsWith('asset') === true,
+        // (Rspack's type of the module: `asset/source`, its text is its
+        // export; a type that is no script, `json`, is Rspack's to parse)
+        typeOf: () => moduleTypeOf(ctx._module?.type),
       },
       () => this.hostFor(env),
-      {
-        sink: (o, record, current) => {
-          // (a module served as its bytes counts when it had a record: its
-          // exit retires it)
-          if (
-            !key.child &&
-            (o.kind !== 'passthrough' ||
-              this.start.hasCommitted(env.name, id, instance))
-          ) {
-            env.compiled.add(ctx.resource)
-          }
-          const overtaken = !current
-          if (o.kind === 'passthrough') {
-            this.record(ctx, key, { fns: none, overtaken })
-            return
-          }
-          if (o.kind === 'failed') {
-            // the module fails: its errors, and nothing its previous build left
-            this.record(ctx, key, {
-              errors: o.error
-                ? (o.error as DevViolationError).reports.map((report) => ({
-                    severity: 'error' as const,
-                    message: report.message,
-                    ...report.at,
-                  }))
-                : o.errors.map((e) =>
-                    locatedDiagnostic('error', e.d.message, e.at),
-                  ),
-              overtaken,
-            })
-            return
-          }
-          this.record(ctx, key, {
-            plan:
-              env.compiler.persistsModules && record.plan
-                ? record.plan
-                : undefined,
-            // (a module served as its mock declares nothing in this environment)
-            fns: record.fns
-              ? {
-                  version: 4,
-                  canonicalId: identity.canonicalId,
-                  facts: record.fns,
-                }
-              : none,
-            found: record.warnings.map(({ d, at }) => {
-              const { line, column } = locatedDiagnostic(
-                'warning',
-                d.message,
-                at,
-              )
-              return {
-                message: d.message,
-                ...(d.code !== undefined && { code: d.code }),
-                ...(line !== undefined && { line, column }),
-              }
-            }),
-            packageUse: record.packageUse,
-            ip: record.ip,
-            overtaken,
-          })
-        },
-      },
+      { sink: this.sinkOf(ctx, env, key, identity) },
     )
     if (outcome.kind === 'passthrough') {
       return passthrough
     }
-    const mock = this.served(ctx, key, outcome)
+    const mock = this.served(ctx, outcome)
     if (mock) {
       return mock
     }
@@ -1354,6 +1286,84 @@ export class StartRsbuildCompilerSession {
   }
 
   /**
+   * The session's sink of one loader run (`TransformHooks.sink`, every
+   * answer's, current or not): the module's `buildInfo` parts of its outcome
+   * (`record`), one mapping for a module and an asset. Served as its bytes:
+   * nothing, but a provider module's server functions (always said, also
+   * none); failed: its located errors only (a compile's, or import
+   * protection's reports); otherwise what it served (a mock declares no
+   * server function in this environment). A module the loader built counts
+   * as compiled here (`EnvState.compiled`), and one served as its bytes when
+   * it held a record (its exit retires it).
+   */
+  private sinkOf(
+    ctx: LoaderContextLike,
+    env: EnvState,
+    key: RecordKey,
+    identity: ReturnType<typeof identify>,
+  ): NonNullable<TransformHooks['sink']> {
+    // a provider module (the derived module the resolver imports the
+    // wrappers from) always says what it provides, also nothing: its
+    // defining module's record is of another module
+    const none: ServerFnBuildInfo | undefined =
+      identity.derived?.kind === 'provider' ||
+      identity.derived?.kind === 'handler'
+        ? { version: 4, canonicalId: identity.canonicalId, facts: [] }
+        : undefined
+    return (o, record, current) => {
+      if (
+        !key.child &&
+        (o.kind !== 'passthrough' || this.recorded.has(key.key))
+      ) {
+        env.compiled.add(ctx.resource)
+      }
+      const overtaken = !current
+      if (o.kind === 'passthrough') {
+        this.record(ctx, key, { fns: none, overtaken })
+        return
+      }
+      if (o.kind === 'failed') {
+        // the module fails: its errors, and nothing its previous build left
+        this.record(ctx, key, {
+          errors: o.error
+            ? (o.error as DevViolationError).reports.map((report) => ({
+                severity: 'error' as const,
+                message: report.message,
+                ...report.at,
+              }))
+            : o.errors.map((e) =>
+                locatedDiagnostic('error', e.d.message, e.at),
+              ),
+          overtaken,
+        })
+        return
+      }
+      this.record(ctx, key, {
+        plan:
+          env.compiler.persistsModules && record.plan ? record.plan : undefined,
+        fns: record.fns
+          ? {
+              version: 4,
+              canonicalId: identity.canonicalId,
+              facts: record.fns,
+            }
+          : none,
+        found: record.warnings.map(({ d, at }) => {
+          const { line, column } = locatedDiagnostic('warning', d.message, at)
+          return {
+            message: d.message,
+            ...(d.code !== undefined && { code: d.code }),
+            ...(line !== undefined && { line, column }),
+          }
+        }),
+        packageUse: record.packageUse,
+        ip: record.ip,
+        overtaken,
+      })
+    }
+  }
+
+  /**
    * A module's outcome as the loader serves it: the mock of a module that
    * is its own violation (its virtual file a dependency: a verdict rewrites
    * it, and the module is built again as it is), or its failure, thrown
@@ -1362,7 +1372,6 @@ export class StartRsbuildCompilerSession {
    */
   private served(
     ctx: LoaderContextLike,
-    key: { key: string; child: boolean },
     outcome: ModuleOutcome,
   ): LoaderResult | null {
     if (outcome.kind === 'failed') {
@@ -1388,13 +1397,17 @@ export class StartRsbuildCompilerSession {
   }
 
   /** The key of a module's record: its compile environment and resource; a child compiler's module apart. */
-  private recordKey(env: EnvState, ctx: LoaderContextLike): RecordKey {
+  private recordKey(
+    env: EnvState,
+    ctx: LoaderContextLike,
+    id: string,
+  ): RecordKey {
     const child = ctx._compiler?.isChild() === true
     return {
       key: `${env.name}\0${child ? '\0' : ''}${ctx.resource}`,
       child,
       env: env.name,
-      id: canonicalResource(ctx.resource),
+      id,
     }
   }
 
@@ -1409,7 +1422,6 @@ export class StartRsbuildCompilerSession {
     ctx: LoaderContextLike,
     key: RecordKey,
     error: DevViolationError,
-    overtaken = false,
   ): Error {
     this.record(ctx, key, {
       errors: error.reports.map((report) => ({
@@ -1417,7 +1429,6 @@ export class StartRsbuildCompilerSession {
         message: report.message,
         ...report.at,
       })),
-      overtaken,
     })
     const failure = new Error(error.message)
     failure.name = LOCATED_DIAGNOSTICS.errorName
@@ -1564,6 +1575,14 @@ export class CompilationFiles {
   forget(envName: string): void {
     this.byEnv.delete(envName)
   }
+}
+
+/** What Rspack's type of a module is to the session (`ScriptRequest.typeOf`): a script, an asset, or a type that is no script (`json`). */
+function moduleTypeOf(type: string | undefined): 'js' | 'asset' | 'other' {
+  if (type === undefined || type.startsWith('javascript')) {
+    return 'js'
+  }
+  return type.startsWith('asset') ? 'asset' : 'other'
 }
 
 /** A file event of a compilation: an edit, a creation, a removal. */

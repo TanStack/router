@@ -582,3 +582,36 @@ export { default as text } from './page.mdx?raw'
     timeout,
   )
 })
+
+// A `.mdx` the app types `json` (an Rspack rule): Rspack parses it as JSON,
+// and Start's late pass leaves it to Rspack (it reads the module's type, as
+// for `asset/source`).
+// Source: Astra's review of settlement step 4, finding 2
+// (`step4-rsbuild.mjs`, scenario `json`).
+describe('rsbuild build, a module the app types as JSON', () => {
+  test(
+    'is Rspack’s to parse: the client gets the object',
+    async () => {
+      const build = await buildStart({
+        bundler: 'rsbuild',
+        files: {
+          'src/help.mdx': `{"content":"import and export","title":"MARK_JSON_TITLE"}`,
+          'src/entry.ts': `// @ts-expect-error (a JSON module)
+export { default as help } from './help.mdx'
+`,
+        },
+        entry: 'src/entry.ts',
+        rsbuildConfig: {
+          tools: {
+            rspack: {
+              module: { rules: [{ test: /\.mdx$/, type: 'json' }] },
+            },
+          },
+        },
+      })
+      const { result } = await build.client.run('return entry.help.title')
+      expect(result).toBe('MARK_JSON_TITLE')
+    },
+    timeout,
+  )
+})

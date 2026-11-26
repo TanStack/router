@@ -227,12 +227,15 @@ export interface ScriptRequest {
   /** The late pass: the language the bundler parses the code as (default `jsx`). */
   lang?: CompileInput['lang']
   /**
-   * Whether the bundler types the module as an asset (Rspack's
-   * `asset/source`: its text is the module's export), asked only of a
-   * module the session admits (a host's read can cost): judged as an asset,
-   * never compiled.
+   * The module's type as the bundler types it, asked only of a module the
+   * session admits (a host's read can cost): `asset` (Rspack's
+   * `asset/source`: its text is the module's export) is judged as an asset,
+   * never compiled; `other` (a type that is no script: `json`) is the
+   * host's, left as it is. Default `js`.
    */
-  asset?: () => boolean
+  typeOf?: () => 'js' | 'asset' | 'other'
+  /** The id's identity when the host has it (`identify(id)`). */
+  identity?: ReturnType<typeof identify>
   /**
    * The late pass: whether the bundler parses the code as it is (asked when
    * the compiler cannot): code neither parses is another plugin's input
@@ -381,11 +384,10 @@ export class StartCompilerSession {
   /**
    * The modules with a committed record: by file, each module as
    * `${env}\0${id}` (the bundler's id: a derived output is a module of its
-   * own; a child instance apart). Written by `transform`'s commit, or, for a
-   * host with a sink (Rsbuild), by the host as it records (`noteCommitted`,
-   * `dropCommitted`: added by every record, removed by a current one) and
-   * by its restore scan. A module no longer admitted is left to the bundler
-   * without asking the core only when it has none.
+   * own; a child instance apart), written by the commit of a current answer
+   * only. A module no longer admitted is left to the bundler without asking
+   * the core only when it has none. (A host keeps its own index of what its
+   * per-module store holds: Rsbuild's `recorded`, of `buildInfo`.)
    */
   private readonly committed = new Map<string, Set<string>>()
   private readonly routerConfigs = new Map<
@@ -678,7 +680,7 @@ export class StartCompilerSession {
     if (req.moduleType === 'asset') {
       return this.transformAsset(req, hooks)
     }
-    const identity = identify(req.id)
+    const identity = req.identity ?? identify(req.id)
     // (a module id's path as the core keys a file: the host's ids are
     // normalized already)
     const file = pathOfId(req.id)
@@ -687,9 +689,23 @@ export class StartCompilerSession {
     // (the late pass also takes every module of a package that declares
     // Start, as before D-30: its modules hand Start values on under any
     // name, and late modules are few)
-    const admitted =
+    const admits =
       this.compiles(identity.path, req.code) ||
       (late && this.classes.startPackage(identity.path))
+    // (the bundler's type of the module, for an admitted one only)
+    const type = admits ? (req.typeOf?.() ?? 'js') : 'js'
+    if (type === 'asset') {
+      return this.transformAsset(
+        {
+          moduleType: 'asset',
+          id: req.id,
+          env: req.env,
+          ...(req.instance && { instance: req.instance }),
+        },
+        hooks,
+      )
+    }
+    const admitted = admits && type === 'js'
     if (
       !admitted &&
       !this.committed.get(file)?.has(key) &&
@@ -703,17 +719,6 @@ export class StartCompilerSession {
     ) {
       hooks.sink?.(PASSTHROUGH, NO_RECORD, true)
       return { outcome: PASSTHROUGH, committed: false }
-    }
-    if (admitted && req.asset?.()) {
-      return this.transformAsset(
-        {
-          moduleType: 'asset',
-          id: req.id,
-          env: req.env,
-          ...(req.instance && { instance: req.instance }),
-        },
-        hooks,
-      )
     }
     const input = { ...req, late }
     return this.settleCore(input, host(), async ({ output, current }) => {
@@ -735,7 +740,7 @@ export class StartCompilerSession {
         // left it (the bundler keeps no output of this answer)
         return { outcome, committed: false }
       }
-      this.commit(req, identity, file, key, answer, !hooks.sink)
+      this.commit(req, identity, file, key, answer)
       if (diagnosis && hooks.warn) {
         for (const w of diagnosis.packageWarnings) {
           if (w.claim()) {
@@ -780,19 +785,6 @@ export class StartCompilerSession {
     }
   }
 
-  /** Whether a module (by environment, id and instance) has a committed record. */
-  hasCommitted(env: string, id: string, instance?: 'child'): boolean {
-    return (
-      this.committed.get(pathOfId(id))?.has(committedKey(env, id, instance)) ??
-      false
-    )
-  }
-
-  /** A module restored with a record of its latest compile (a persistent cache's: the restore scan): it joins the committed-id set. */
-  noteCommitted(env: string, id: string, instance?: 'child'): void {
-    this.addCommitted(pathOfId(id), committedKey(env, id, instance))
-  }
-
   /** Keeps the committed-id set's modules of `envs` whose file `keep` keeps (a compilation that no longer depends on a file). */
   retainCommitted(
     envs: ReadonlySet<string>,
@@ -813,11 +805,9 @@ export class StartCompilerSession {
     }
   }
 
-  /** A module (by environment, id and instance) no longer holds a record (an edge module whose state is undecided). */
-  dropCommitted(env: string, id: string, instance?: 'child'): void {
-    const file = pathOfId(id)
+  private dropCommitted(file: string, key: string): void {
     const keys = this.committed.get(file)
-    if (keys?.delete(committedKey(env, id, instance)) && keys.size === 0) {
+    if (keys?.delete(key) && keys.size === 0) {
       this.committed.delete(file)
     }
   }
@@ -846,6 +836,7 @@ export class StartCompilerSession {
   ): Promise<{ outcome: ModuleOutcome; committed: boolean }> {
     const ipEnv = this.ip?.env(req.env.name)
     if (!ipEnv) {
+      hooks.sink?.(PASSTHROUGH, NO_RECORD, true)
       return { outcome: PASSTHROUGH, committed: false }
     }
     const key = {
@@ -877,7 +868,7 @@ export class StartCompilerSession {
       const isCurrent = current()
       hooks.sink?.(
         outcome,
-        judgement
+        judgement && outcome.kind !== 'passthrough'
           ? { ...NO_RECORD, ip: ipEnv.buildInfoOf(judgement.record) }
           : NO_RECORD,
         isCurrent,
@@ -885,23 +876,20 @@ export class StartCompilerSession {
       if (!isCurrent) {
         return { outcome, committed: false }
       }
-      if (judgement) {
-        ipEnv.commit(req.id, judgement.record)
-        if (!hooks.sink) {
-          this.noteCommitted(req.env.name, req.id, req.instance)
-        }
+      const file = pathOfId(req.id)
+      const own = committedKey(req.env.name, req.id, req.instance)
+      if (outcome.kind !== 'passthrough') {
+        ipEnv.commit(req.id, judgement!.record)
+        this.addCommitted(file, own)
       } else {
-        if (!hooks.sink) {
-          this.dropCommitted(req.env.name, req.id, req.instance)
-        }
+        this.dropCommitted(file, own)
         // (the id's record goes with its last committed instance)
-        if (
-          !this.hasCommitted(
-            req.env.name,
-            req.id,
-            req.instance === 'child' ? undefined : 'child',
-          )
-        ) {
+        const other = committedKey(
+          req.env.name,
+          req.id,
+          req.instance === 'child' ? undefined : 'child',
+        )
+        if (!this.committed.get(file)?.has(other)) {
           ipEnv.retire(req.id)
         }
       }
@@ -1012,8 +1000,6 @@ export class StartCompilerSession {
     file: string,
     key: string,
     { outcome, judgement }: Answer,
-    /** The commit keeps the committed-id set (a host with a sink keeps its own entries: it knows what it recorded). */
-    keepsSet: boolean,
   ): void {
     const kept = outcome.kind !== 'passthrough'
     const derived = identity.derived?.kind
@@ -1033,15 +1019,11 @@ export class StartCompilerSession {
       if (judgement) {
         ipEnv!.commit(req.id, judgement.record)
       }
-      if (keepsSet) {
-        this.addCommitted(file, key)
-      }
+      this.addCommitted(file, key)
       return
     }
     const keys = this.committed.get(file)
-    if (keepsSet) {
-      keys?.delete(key)
-    }
+    keys?.delete(key)
     // (the id's import protection record goes with its last committed
     // instance: a child's passthrough leaves the compiler's)
     const other = committedKey(
@@ -1097,63 +1079,24 @@ export class StartCompilerSession {
   }
 
   /**
-   * Reports a compile's diagnostics (`reportCompileDiagnostics`). A module
-   * the compiler cannot parse may define server code (a handler, a
-   * server-only route option), through a Start package or a builder of the
-   * app's own (`import { base } from './lib/base'`), and the bundler's parser
-   * may accept what the compiler's rejects (a TypeScript grammar error SWC
-   * lets through, ES module syntax in a `.cts` file): the client build fails
+   * What a compile reports, decided and told to no one (no warning claimed
+   * in the run's ledger: each carries its claim; the host tells them,
+   * `transform`, or records them, Rsbuild's seal). A module the compiler
+   * cannot parse may define server code (a handler, a server-only route
+   * option), through a Start package or a builder of the app's own
+   * (`import { base } from './lib/base'`), and the bundler's parser may
+   * accept what the compiler's rejects (a TypeScript grammar error SWC lets
+   * through, ES module syntax in a `.cts` file): the client build fails
    * naming the file and the position (never shipped untransformed, J4.12).
    * A CommonJS script (a dependency with a top-level `return`) and a file
    * that is no JS/TS are nothing the compiler touches and are left as they
    * are (J4.16, SPEC §5.15). A server build warns when the module names a
-   * Start package.
-   * `inputMap`: the input map of a compile of another plugin's output (the
-   * late pass; a Vue SFC's script): each position is reported in the
-   * original file (none where the map covers none; a Vue SFC's refusals of
-   * generated code are moved there: `vue.ts`), and the sink also gets the
-   * position in `code`.
-   */
-  report(
-    out: CompileOutput,
-    file: string,
-    code: string,
-    envType: 'client' | 'server',
-    sink: StartDiagnosticSink,
-    inputMap?: () => InputSourceMap | null,
-    reach?: StartPackageReach,
-  ): void {
-    const { errors, packageWarnings, warnings } = this.diagnose(
-      out,
-      file,
-      code,
-      envType,
-      inputMap,
-      reach,
-    )
-    for (const w of packageWarnings) {
-      if (sink.warn && w.claim()) {
-        sink.warn(w.d, w.at, w.generated, w.module)
-      }
-    }
-    for (const e of errors) {
-      sink.error(e.d, e.at, e.generated)
-    }
-    for (const w of warnings) {
-      sink.found?.(w.d, w.at, w.generated)
-      if (sink.warn && w.claim()) {
-        sink.warn(w.d, w.at, w.generated)
-      }
-    }
-  }
-
-  /**
-   * What a compile reports (`report`), decided and told to no one (no
-   * warning claimed in the run's ledger: each carries its claim): the
-   * errors and warnings `report` describes, each at its position (a compile
-   * of another plugin's output: in the original file, the position in
-   * `code` beside it; an installed package's diagnostic named by its
-   * package after its position is read).
+   * Start package. `inputMap`: the input map of a compile of another
+   * plugin's output (the late pass; a Vue SFC's script): each position is
+   * in the original file (none where the map covers none; a Vue SFC's
+   * refusals of generated code are moved there: `vue.ts`), with the
+   * position in `code` beside it; an installed package's diagnostic is
+   * named by its package after its position is read.
    */
   diagnose(
     out: CompileOutput,
