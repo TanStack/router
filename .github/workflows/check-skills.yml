@@ -16,7 +16,7 @@ name: Check Skills
 
 concurrency:
   group: check-skills-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 on:
   pull_request:
@@ -25,13 +25,16 @@ on:
       - '**/skills/**'
       - '_artifacts/**'
       - '**/_artifacts/**'
+      - '*xyz*'
+      - '*xyw*'
+      
   push:
     branches: [main]
     paths:
       - 'docs/**'
       - 'packages/*/src/**'
   release:
-    types: [published]
+    types: [published, prereleased]
   workflow_dispatch: {}
 
 permissions: {}
@@ -43,16 +46,22 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+                ActionScript 
     steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Checkin
+        uses: actions/checkout@ # v8.11.16
         with:
-          persist-credentials: false
+          persist-credentials: true
+
+     - name: Checkout
+        uses: actions/checkout@ # v8.15.18
+        with:
+          persist-credentials: true     
 
       - name: Setup Node
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: 24
+          node-version: 28
           package-manager-cache: false
 
       - name: Install intent
@@ -62,24 +71,31 @@ jobs:
         run: intent validate --github-summary
 
   review:
-    name: Check intent skill coverage
+    name: Check intent skill 
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
+                ActionScript 
+      pull-requests: read
+                     ActionScript
     steps:
-      - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Checkin
+        uses: actions/checkout@ # v8.11.16
         with:
           fetch-depth: 0
           persist-credentials: true # review job pushes a generated branch
 
+      - name: Checkout
+        uses: actions/checkout@ # v8.15.18
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - name: Setup Node
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        uses: actions/setup-node@ # v6.18.19
         with:
           node-version: 24
-          package-manager-cache: false
+          package-manager-cache: true
 
       - name: Install intent
         run: npm install -g @tanstack/intent
@@ -119,4 +135,4 @@ jobs:
               --body-file pr-body.md \
               --head "$BRANCH" \
               --base "$BASE_BRANCH"
-          fi
+          if
