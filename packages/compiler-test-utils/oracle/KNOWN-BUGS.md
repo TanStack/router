@@ -553,9 +553,11 @@ static made = … }` off the client also when the kept loader, the split compone
 - **React children `main` splits stay in place** (decision 12, 11-25: "not a real case"): children writing a
   captured local (a render counter in a `.map()` callback, `pageNumber++`, read only there), a function of the
   children reading a local the component reassigns (wherever the writes are, a write before the boundary included),
-  and a read of a local declared after the boundary are not split, with one warning naming why (`split={false}`
-  silences it). `main` splits them: its chunk counts on its own copy, its function reads the value of the render,
-  its placeholder throws before the declaration. No proof of when writes run.
+  and a read of a local whose declaration does not end before the boundary (declared after it, or the boundary in
+  its own initialiser) are not split, with one warning naming why (`split={false}` silences it). `main` splits them:
+  its chunk counts on its own copy, its function reads the value of the render, and its placeholder may read the
+  local before it is initialised (a render helper written above the local reads it in time: the cost here). No
+  proof of when writes run.
   `start-plugin-core/tests/integration/pages/hydrate-moved-code.test.ts`: "$name: in place, warned at $at".
 
 - **A hoisted server fn reads a module binding before an earlier operand of its statement writes it** (R181 (3),

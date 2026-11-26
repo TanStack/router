@@ -31,8 +31,10 @@
 import { hash } from 'node:crypto'
 import { relative } from 'node:path'
 import {
+  Declarations,
   LookupPath,
   UNKNOWN,
+  VALUE,
   derivedIdOf,
   isKnownSpecifier,
   listEnd,
@@ -1086,17 +1088,24 @@ function extract(
     t1.mutation.isReassigned(sym, (r) => liveEnv.live(r))
   const snapshotWhy = (sym: SymbolId) =>
     `a function in them reads \`${symbols.name(sym)}\`, which the enclosing component reassigns, and split children receive its value when the boundary renders`
-  // a capture declared after the boundary (not a function declaration): the
-  // placeholder would read it before its declaration runs
-  const declaredAfter = (ref: ClassifiedRef): boolean => {
-    if (symbols.initialisation(ref.sym) === 'start') {
+  // a capture whose runtime declaration does not end before the boundary
+  // starts (a hoisted function's value is there from the start): the
+  // placeholder may read it before it is initialised
+  let table: Declarations | undefined
+  const incomplete = (sym: SymbolId): boolean => {
+    const binding = symbols.binding(sym)
+    if (binding === null || symbols.initialisation(sym) === 'start') {
       return false
     }
-    const node = t1.nodeAt(ref.range.start)
-    const binding = node ? ctx.analysis.file.referenceOf(node)?.binding : null
-    return (
-      !!binding && binding.declarations.every((d) => d.start > b.element.start)
-    )
+    table ??= new Declarations(ctx.analysis.file)
+    return table
+      .of(binding)
+      .some(
+        (d) =>
+          (d.spaces & VALUE) !== 0 &&
+          d.kind !== 'erased' &&
+          d.node.end > b.element.start,
+      )
   }
   // the first reason after the walk: a write of the children (the cause of
   // a snapshot) is reported first
@@ -1124,9 +1133,9 @@ function extract(
     }
     if (!why && readsSnapshot(ref.sym, ref.range)) {
       why = { text: snapshotWhy(ref.sym), at: ref.range }
-    } else if (!why && declaredAfter(ref)) {
+    } else if (!why && incomplete(ref.sym)) {
       why = {
-        text: `they read \`${symbols.name(ref.sym)}\`, declared after the boundary, and split children would receive it before its declaration runs`,
+        text: `they read \`${symbols.name(ref.sym)}\`, whose declaration does not end before the boundary, and the split code may read it before it is initialised`,
         at: ref.range,
       }
     }

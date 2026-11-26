@@ -64,7 +64,8 @@ place without the warning):
 
 - children assigning a local of the component (`count++`): split children
   would receive its value, not the variable;
-- children reading a local declared after the boundary;
+- children reading a local whose declaration does not end before the
+  boundary (declared after it, or holding the boundary in its own value);
 - a nested boundary assigning, through `ref`, a local declared outside both
   boundaries (the outer boundary stays in place);
 - children, or a component only they render, assigning a module variable

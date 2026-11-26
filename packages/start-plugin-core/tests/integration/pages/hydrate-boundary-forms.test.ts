@@ -765,6 +765,24 @@ export const Page = () => <Hydrate><button onClick={() => { flag = 1 }}>{String(
   return <Hydrate when={load()}><section><Hydrate when={load()}><input ref={input} /></Hydrate></section></Hydrate>
 }`,
     },
+    // a module `let` only two boundaries use, one assigning it: each chunk
+    // would hold its own copy (decision 5's two chunks; Gemini review of
+    // decision 12). The writer stays in place; the reader's chunk copies
+    // the `let` the module now assigns (KNOWN-BUGS, as `main`)
+    {
+      name: 'assigning a module let only another boundary reads',
+      framework: 'react',
+      code: `${head}let counter = 0
+export function Page() {
+  return (
+    <div>
+      <Hydrate when={load()}><button onClick={() => { counter += 1 }}>inc</button></Hydrate>
+      <Hydrate when={load()}><button onClick={() => console.log(counter)}>read</button></Hydrate>
+    </div>
+  )
+}`,
+      chunks: 1,
+    },
     // Solid's `ref={box}` assigns `box`: the chunk would assign its own
     // copy of a module `let` the module reads (on `main`, the module reads
     // `undefined`)

@@ -849,7 +849,7 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   every compilation that attempts the extraction (client and server alike). Children the split would hand a copy of
   a binding instead of the binding are not extracted (decision 12): children assigning a captured local; on React, a
   function of the children reading a local the component reassigns, directly or through a nested boundary (R123,
-  R161 D2); a capture declared after the boundary (a function declaration excepted); on Solid, a `ref` in a nested
+  R161 D2); a capture whose declaration does not end before the boundary starts (a hoisted function excepted); on Solid, a `ref` in a nested
   boundary naming a local declared outside both; children, or code only they use, assigning a module binding the
   chunk imports, or its copy of one the module also keeps (J5.2). Such a boundary renders in place as with
   `split={false}` and keeps its compiler id in every environment (J5.4); the client compilation reports one warning

@@ -368,7 +368,8 @@ describe('what the children own splits and renders like the source', () => {
 // React passes a capture's value when the placeholder renders: a function
 // of the children reading a local the component reassigns would read that
 // snapshot, a write in the children would assign a copy, and a read of a
-// local declared after the boundary would run before it is. The client
+// local whose declaration does not end before the boundary may run before
+// it is initialised. The client
 // keeps such children in place, with one warning (decision 12), and they
 // render like the source.
 describe('React: children the split would give a copy of a local', () => {
@@ -404,7 +405,7 @@ describe('React: children the split would give a copy of a local', () => {
     },
     {
       // the placeholder would read `save` before its declaration runs
-      // (`main` throws there)
+      // (`main` splits it, and its placeholder reads it too early)
       name: 'a function reading a const declared after the boundary',
       code: `${head}export function Page() {
   const view = <Hydrate when={load()}><button onClick={() => save()}>b</button></Hydrate>
@@ -416,6 +417,63 @@ describe('React: children the split would give a copy of a local', () => {
       at: 'save()}',
       props: {},
       result: ['saved'],
+    },
+    // the runtime declaration, not a type of the same name before it
+    // (Astra review of decision 12)
+    {
+      name: 'a const declared after the boundary, a type of its name before it',
+      code: `${head}export function Page() {
+  type label = string
+  const el = <Hydrate when={load()}><button onClick={() => { (globalThis as any).read.push(label) }}>b</button></Hydrate>
+  const label: label = 'after'
+  return el
+}`,
+      at: 'label) }}',
+      props: {},
+      result: ['after'],
+    },
+    // the boundary in the initialiser of the local it reads: the
+    // declaration starts before the boundary and ends after it (Gemini
+    // review of decision 12)
+    {
+      name: 'a const holding the boundary',
+      code: `${head}export function Page() {
+  const view = <Hydrate when={load()}><button onClick={() => { (globalThis as any).read.push(typeof view) }}>b</button></Hydrate>
+  return view
+}`,
+      at: 'view) }}',
+      props: {},
+      result: ['object'],
+    },
+    {
+      name: 'an object holding the boundary',
+      code: `${head}export function Page() {
+  const obj = { view: <Hydrate when={load()}><button onClick={() => { (globalThis as any).read.push(typeof obj) }}>b</button></Hydrate> }
+  return obj.view
+}`,
+      at: 'obj) }}',
+      props: {},
+      result: ['object'],
+    },
+    {
+      name: 'a destructured array holding the boundary',
+      code: `${head}export function Page() {
+  const [, view] = [0, <Hydrate when={load()}><button onClick={() => { (globalThis as any).read.push(typeof view) }}>b</button></Hydrate>]
+  return view
+}`,
+      at: 'view) }}',
+      props: {},
+      result: ['object'],
+    },
+    {
+      name: 'a var holding the boundary',
+      code: `${head}export function Page() {
+  var view = <Hydrate when={load()}><button onClick={() => { (globalThis as any).read.push(typeof view) }}>b</button></Hydrate>
+  return view
+}`,
+      at: 'view) }}',
+      props: {},
+      result: ['object'],
     },
     {
       name: 'a write in the children (a render counter in a map callback)',
@@ -436,6 +494,22 @@ describe('React: children the split would give a copy of a local', () => {
       ...read,
     })
     expect(client.result).toEqual(result)
+  })
+
+  // a directive reads its local like any capture (Gemini review of
+  // decision 12)
+  test('Solid: a directive declared after the boundary: in place, warned at the directive', async () => {
+    const code = `${solidHead}export function Page() {
+  const view = <Hydrate when={load()}><p use:tip>hi</p></Hydrate>
+  const tip = (el: HTMLElement) => {
+    el.dataset.tipped = 'yes'
+  }
+  return view
+}`
+    const startCase = await (
+      await solidHost()
+    ).start.case({ 'module.tsx': code })
+    await expectNotSplit(startCase, code, 'tip>hi')
   })
 
   test('Solid: a write in the children (a render counter in a map callback): in place, warned at the write', async () => {

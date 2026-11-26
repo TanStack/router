@@ -744,7 +744,8 @@ place without the warning):
   function would not see later assignments (to split them, keep the value in
   a ref, `const timer = useRef<number>(undefined)`, and read and assign
   `timer.current`);
-- children reading a local declared after the boundary;
+- children reading a local whose declaration does not end before the
+  boundary (declared after it, or holding the boundary in its own value);
 - children, or a component only they render, assigning a module variable
   other code uses: the chunk would assign its own copy (to split them, move
   the variable to a module of its own, with a function that assigns it).

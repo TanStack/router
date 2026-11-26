@@ -1198,8 +1198,9 @@ export function computePlacement(input: PlacementInput): Placement {
       if (
         !copying(h) &&
         set.has(c) &&
-        (!set.has(d) || holdsUnwritten(h, d, c)) &&
-        home.get(d) !== 'removed' &&
+        // its copy, which another output holds unwritten; or the binding
+        // it imports (one the env module removes is nobody's to import)
+        (set.has(d) ? holdsUnwritten(h, d, c) : home.get(d) !== 'removed') &&
         // (a write in text that output erases, a client's stubbed server-fn
         // handler, assigns nothing there)
         writeAssigns(graph, w, (at) => graph.viewOf(h).isErasedAt(at))

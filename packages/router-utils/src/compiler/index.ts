@@ -61,6 +61,7 @@ export type {
   DiagnosticSink,
 } from './diagnostics'
 export { valueBinding } from './symbols'
+export { Declarations, VALUE } from './declarations'
 export { derivedIdOf } from './rewrite'
 export type { SymbolId } from './symbols'
 export type { Range } from './header'
