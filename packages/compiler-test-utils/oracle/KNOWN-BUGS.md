@@ -163,7 +163,7 @@ function info not found` when one of them calls it, and the build says nothing, 
   next event** (settlement step 6b re-checks, Fable and Astra; Gemini). An editor that truncates a file and writes it
   later than the in-place-save wait (`SAVE_RETRIES` × `SAVE_RETRY_MS`, 100 ms, once per event: the event's wait or a
   reader's, never both) leaves the importers compiled against the empty module, as is, until another event of the
-  file. Both real watchers (chokidar, Watchpack) send a second event for a write that late, so in practice it is one
+  file. Both real watchers measured (chokidar, Rspack's native watcher) send a second event for a write that late, so in practice it is one
   build against the empty file, then the right one. No row (the outcome is the limit).
 - **A restore checked while a request of its key runs and ends installs its plan afterwards** (settlement step 6a
   review, Astra; on `a37f4609fd` too). `restorePlans` checks a persisted plan, and installs it when its check accepts,
