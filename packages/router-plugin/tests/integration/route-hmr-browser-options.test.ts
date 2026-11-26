@@ -117,18 +117,18 @@ export const Route = createFileRoute('/')({
     },
   )
 
-  // S2: a higher-order call after options that evaluate nothing (literals,
-  // functions, identifiers) is hoisted and registered as a family
-  test('written inline as memo(...) after literal, function and identifier options: an edit shows in place without mounting it again', async (context: TestContext) => {
+  // a higher-order call is hoisted and registered as a family, after
+  // options that evaluate code too
+  test('written inline as memo(...) after options that call functions: an edit shows in place without mounting it again', async (context: TestContext) => {
     await expectEditInPlace(
       {
         file: 'routes/index.tsx',
         route: (version) =>
           `import { createFileRoute } from '@tanstack/react-router'
 import { memo, useState } from 'react'
-const title = 'page'
+const configure = (title: string) => ({ title })
 export const Route = createFileRoute('/')({
-  staticData: { title, tags: ['a', 1] },
+  staticData: configure('page'),
   beforeLoad: () => ({}),
   component: memo(function () {
     ${countMounts('page')}
@@ -196,17 +196,7 @@ export const Route = createFileRoute('/')({
     return <p ref={ref}>inline VERSION</p>
   })`,
       ],
-      // (S2: kept in place after an option that runs code; it updates
-      // as any route option does)
-      [
-        'memo(() => ...) after a call',
-        `import { memo } from 'react'
-const configure = () => ({ title: 'page' })`,
-        `memo(() => <p>inline VERSION</p>)`,
-        `staticData: configure(),
-  `,
-      ],
-    ].map(([name, imports, component, before = '']) => ({
+    ].map(([name, imports, component]) => ({
       name: name!,
       file: 'routes/index.tsx',
       autoCodeSplitting: false,
@@ -214,7 +204,7 @@ const configure = () => ({ title: 'page' })`,
         `import { createFileRoute } from '@tanstack/react-router'
 ${imports}
 export const Route = createFileRoute('/')({
-  ${before}component: ${component!.replace('VERSION', version)},
+  component: ${component!.replace('VERSION', version)},
 })
 `,
       shows: (version: string) => `inline ${version}`,

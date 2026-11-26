@@ -364,6 +364,11 @@ function info not found` when one of them calls it, and the build says nothing, 
   (`vite:afterUpdate`), after the accept callbacks where Solid's and Vue's refresh patch the components: before that,
   the route could load its new data into the old component. A route module that evaluates without an update of its
   own (imported again by another module's update) waits for the next update. No test (the outcome is the limit).
+- **React route HMR: a hoisted component factory call runs before the rest of its route statement** (when-does-this-run
+  rule 2, 11-26). In a development client, `component: memo(Page)` becomes `const TsrComponent = memo(Page)` before the
+  statement, past the earlier options, in both directions: a factory that reads a value an earlier option writes reads
+  it unwritten, and one that writes a value an earlier option reads writes it first. A call after an earlier
+  declarator of the same declaration (`const Helper = Page, Route = …`) stays inline. No test (the outcome is the limit).
 - **Route HMR: what a record of a route file costs** (route HMR design, 11-23). A second router of the same route tree
   that is never mounted (created and dropped) loads the edited route on every edit until the garbage collector frees
   it (the routers of the page are held weakly). A route module and its lazy route file saved together load the route

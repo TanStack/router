@@ -8,7 +8,7 @@
  * becomes a registrable binding — inline functions and higher-order calls
  * are hoisted into `const Tsr<Key> = …` before the statement holding the
  * options (a claim, so the original body is relocated, not reprinted; a
- * call only when that keeps the order code runs in, `onlyInertBefore`),
+ * hoisted call runs before the rest of the statement: KNOWN-BUGS),
  * lowercase module-level components are renamed module-wide (the runtime
  * takes the new component after React Refresh's pass; a family is what
  * keeps its state). Solid and Vue need nothing: their refresh runtimes'
@@ -25,7 +25,6 @@
 import {
   DEST_INITIALIZER,
   SHAPE_FUNCTION,
-  isExpressionWrapper,
   stringLiteral,
   unwrapExpression,
 } from '@tanstack/router-utils/compiler'
@@ -40,7 +39,6 @@ import {
 import { COMPONENT_KEYS, methodPrefixOf, ownThisOf } from './decisions'
 import { ROUTER_PLANNER } from './config'
 import type { HmrStyle } from './config'
-import type { RouteModuleInfo } from './route'
 import type { RouterRound } from './router'
 import type {
   GenFrag,
@@ -49,7 +47,7 @@ import type {
   SymbolId,
   Unit,
 } from '@tanstack/router-utils/compiler'
-import type { CallExpression, Comment, Node, VariableDeclarator } from 'yuku'
+import type { Comment } from 'yuku'
 
 /** The component options route HMR keeps: the splittable ones and `shellComponent`. */
 const HMR_COMPONENT_KEYS: ReadonlyArray<string> = [
@@ -137,10 +135,10 @@ export function planHmrHoists(ctx: PlanContext, round: RouterRound): void {
       // (a method using its own `this` or `super` stays a method: as a
       // function expression its `super` is a syntax error, #8688)
       (option.kind === 'method' && ownThisOf(ctx, value) !== null) ||
-      // (a call runs where it is written, after the rest of the statement
-      // evaluated before it: S2)
+      // (a hoisted call runs before the whole statement: past an earlier
+      // declarator of it, it may read a binding not yet initialised)
       (unwrapExpression(value).type === 'CallExpression' &&
-        !onlyInertBefore(ctx, route, value))
+        afterEarlierDeclarator(ctx, route.optionsUnit))
     ) {
       // (a value React Refresh registers no family for stays inline: an
       // edit remounts it)
@@ -198,121 +196,16 @@ export function planHmrHoists(ctx: PlanContext, round: RouterRound): void {
 }
 
 /**
- * Rule S2: whether a call hoisted out of the route statement (to before it)
- * runs in the order the file runs it. It does when everything the statement
- * evaluates before the call is inert (`isInert`): walking up from the call
- * to the top-level statement, the computed keys and values of the earlier
- * properties of each object literal, the callee and earlier arguments of
- * each call, the earlier elements of each array literal and the earlier
- * declarators of the declaration. A parent of any other kind evaluates
- * something this doesn't follow: not inert. Syntax classes only: what an
- * identifier names, or a function does when called, isn't read.
+ * Whether the declarator `unit` holds follows another declarator of its
+ * declaration (`const a = …, Route = …`): a hoist lands before the whole
+ * declaration.
  */
-function onlyInertBefore(
-  ctx: PlanContext,
-  route: RouteModuleInfo,
-  value: Node,
-): boolean {
-  const { file } = ctx.analysis
-  const factory = unwrapExpression(
-    (route.optionsCall as CallExpression).callee as Node,
+function afterEarlierDeclarator(ctx: PlanContext, unit: Unit): boolean {
+  const declaration = ctx.analysis.file.parentOf(unit.node)
+  return (
+    declaration?.type === 'VariableDeclaration' &&
+    declaration.declarations[0] !== unit.node
   )
-  const inert = (node: Node | null | undefined): boolean =>
-    !node || isInert(node, factory)
-  let child = value
-  let parent = file.parentOf(child)
-  while (parent && parent.type !== 'Program') {
-    const at = child.start
-    const before = (list: ReadonlyArray<Node | null>) =>
-      list.filter((n) => n !== null && n.end <= at)
-    let earlier: Array<Node | null | undefined>
-    switch (parent.type) {
-      case 'Property':
-        earlier = parent.computed && parent.key.end <= at ? [parent.key] : []
-        break
-      case 'ObjectExpression':
-        earlier = before(parent.properties).flatMap((p) =>
-          p!.type === 'Property'
-            ? [p!.computed ? p!.key : null, p!.value]
-            : [p],
-        )
-        break
-      case 'ArrayExpression':
-        earlier = before(parent.elements)
-        break
-      case 'CallExpression':
-        if (parent.optional) {
-          // (a short circuit may skip what the hoist would run)
-          return false
-        }
-        earlier =
-          parent.callee.end > at
-            ? []
-            : [parent.callee, ...before(parent.arguments)]
-        break
-      case 'VariableDeclaration':
-        earlier = before(parent.declarations).map(
-          (d) => (d as VariableDeclarator).init,
-        )
-        break
-      case 'VariableDeclarator':
-      case 'ExportNamedDeclaration':
-        earlier = []
-        break
-      default:
-        if (!isExpressionWrapper(parent) || parent.type === 'ChainExpression') {
-          return false
-        }
-        earlier = []
-    }
-    if (!earlier.every(inert)) {
-      return false
-    }
-    child = parent
-    parent = file.parentOf(child)
-  }
-  return true
-}
-
-/**
- * S2's inert operands: a literal (an object, array or template literal of
- * inert operands included; a spread is not inert), a function, arrow or
- * identifier, or the router's own factory (`factory`, the callee of the
- * options call: `createFileRoute('/x')` with literal arguments, or
- * `createRootRoute`, also through the router's namespace). TypeScript
- * wrappers and parentheses around them change nothing.
- */
-function isInert(node: Node, factory: Node): boolean {
-  const n = unwrapExpression(node)
-  if (n.start === factory.start && n.end === factory.end) {
-    return (
-      n.type !== 'CallExpression' ||
-      n.arguments.every((a) => unwrapExpression(a).type === 'Literal')
-    )
-  }
-  switch (n.type) {
-    case 'Literal':
-    case 'Identifier':
-    case 'FunctionExpression':
-    case 'ArrowFunctionExpression':
-      return true
-    case 'TemplateLiteral':
-      return n.expressions.every((e) => isInert(e, factory))
-    case 'ArrayExpression':
-      return n.elements.every(
-        (e) =>
-          e === null || (e.type !== 'SpreadElement' && isInert(e, factory)),
-      )
-    case 'ObjectExpression':
-      return n.properties.every(
-        (p) =>
-          p.type === 'Property' &&
-          (!p.computed || isInert(p.key, factory)) &&
-          isInert(p.value, factory),
-      )
-    default:
-      return false
-  }
 }
 
 /**
