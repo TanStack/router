@@ -63,7 +63,6 @@ export function scriptTransform(
         env,
         inputMap: readInputMap,
         wantMap:
-          pass === 'late' ||
           s.start.opts.mode === 'dev' ||
           environment.config.build.sourcemap !== false,
         ...(mapped && { originalMap: readInputMap }),

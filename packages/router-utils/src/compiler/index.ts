@@ -140,6 +140,7 @@ export {
   compileModule,
   createCompilerCaches,
   emptyModuleOutput,
+  holdKey,
   settleModule,
 } from './pipeline'
 export type { Settlement } from './pipeline'

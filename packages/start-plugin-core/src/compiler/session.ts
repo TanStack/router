@@ -17,6 +17,7 @@ import {
   digestOf,
   displayPath,
   fileModifiedAt,
+  holdKey,
   identify,
   langFromId,
   liveKey,
@@ -236,8 +237,10 @@ export interface ScriptRequest {
 /**
  * An asset id (`x.ts?raw`, `x.svg?url`, `?inline`, `?worker`, a file the
  * bundler loads as no script): never compiled, judged by import protection
- * alone (a denied file's text is served as its mock). It has no key in the
- * core: no newer answer can overtake one.
+ * alone (a denied file's text is served as its mock). The core holds its
+ * key while it is judged (`holdKey`): an event of its file overtakes the
+ * answer, which then commits and reports nothing; two loads with no event
+ * between them both commit, in either order.
  */
 export interface AssetRequest {
   moduleType: 'asset'
@@ -663,19 +666,27 @@ export class StartCompilerSession {
     // normalized already)
     const file = identity.path
     const key = `${req.env.name}\u0000${req.id}`
-    const admitted = this.compiles(identity.path, req.code)
+    const late = req.pass === 'late'
+    // (the late pass also takes every module of a package that declares
+    // Start, as before D-30: its modules hand Start values on under any
+    // name, and late modules are few)
+    const admitted =
+      this.compiles(identity.path, req.code) ||
+      (late && this.classes.startPackage(identity.path))
     if (
       !admitted &&
       !this.committed.get(file)?.has(key) &&
       !liveKey(this.caches, {
         env: req.env.name,
         canonicalId: identity.canonicalId,
-        configKey: this.configFor(req.env).configKey,
+        configKey: late
+          ? lateConfigKey(this.configFor(req.env).configKey)
+          : this.configFor(req.env).configKey,
       })
     ) {
       return { outcome: PASSTHROUGH, committed: false }
     }
-    const input = { ...req, late: req.pass === 'late' }
+    const input = { ...req, late }
     return this.settleCore(input, host(), async ({ output, current }) => {
       let answer =
         admitted && output ? this.answer(req, identity, output) : PASSED
@@ -718,8 +729,10 @@ export class StartCompilerSession {
   /**
    * `transform` of an asset id: import protection's verdict on it
    * (`ImportProtectionEnv.assetOutput`: a denied file's text is its mock),
-   * judged and committed at once (no key in the core: always current).
-   * Nothing writes the registry or the committed-id set.
+   * judged while the core holds its key (`holdKey`), committed (or the
+   * record retired, when nothing denies it) and reported only while no event
+   * of its file overtook it. Nothing writes the registry or the committed-id
+   * set.
    */
   private async transformAsset(
     req: AssetRequest,
@@ -729,37 +742,49 @@ export class StartCompilerSession {
     if (!ipEnv) {
       return { outcome: PASSTHROUGH, committed: false }
     }
-    const out = await ipEnv.assetOutput(req.id, (path) =>
-      this.rawFacts.marker(path, req.env.name),
-    )
-    if (!out) {
-      ipEnv.retire(req.id)
-      return { outcome: PASSTHROUGH, committed: true }
+    const key = {
+      env: req.env.name,
+      canonicalId: identify(req.id).canonicalId,
+      configKey: ASSET_CONFIG_KEY,
     }
-    let judgement = ipEnv.judge(req.id, out)
-    if (judgement instanceof Promise) {
-      judgement = await judgement
-    }
-    ipEnv.defineEdges(judgement.edgeModules)
-    ipEnv.commit(req.id, judgement.record)
-    if (judgement.reports.length > 0) {
-      await runReports(judgement.reports)
-    }
-    const committed = hooks.committed?.()
-    if (committed) {
-      await committed
-    }
-    const outcome: ModuleOutcome = judgement.error
-      ? { kind: 'failed', output: null, errors: [], error: judgement.error }
-      : judgement.mock
-        ? {
-            kind: 'mock',
-            output: null,
-            code: judgement.mock.code,
-            mockId: judgement.mock.id,
-          }
-        : PASSTHROUGH
-    return { outcome, committed: true }
+    return holdKey(this.caches, key, async (current) => {
+      const out = await ipEnv.assetOutput(req.id, (path) =>
+        this.rawFacts.marker(path, req.env.name),
+      )
+      let judgement = out && ipEnv.judge(req.id, out)
+      if (judgement instanceof Promise) {
+        judgement = await judgement
+      }
+      if (judgement) {
+        ipEnv.defineEdges(judgement.edgeModules)
+      }
+      const outcome: ModuleOutcome = judgement?.error
+        ? { kind: 'failed', output: null, errors: [], error: judgement.error }
+        : judgement?.mock
+          ? {
+              kind: 'mock',
+              output: null,
+              code: judgement.mock.code,
+              mockId: judgement.mock.id,
+            }
+          : PASSTHROUGH
+      if (!current()) {
+        return { outcome, committed: false }
+      }
+      if (judgement) {
+        ipEnv.commit(req.id, judgement.record)
+      } else {
+        ipEnv.retire(req.id)
+      }
+      if (judgement && judgement.reports.length > 0) {
+        await runReports(judgement.reports, current)
+      }
+      const committed = hooks.committed?.()
+      if (committed) {
+        await committed
+      }
+      return { outcome, committed: true }
+    })
   }
 
   /**
@@ -1503,6 +1528,9 @@ function leftToTheBundler(
     parseModule(code, { lang, sourceType: 'commonjs', semantic: false }).ok
   )
 }
+
+/** The configuration key of an asset id's held key (`transformAsset`): no compile's. */
+const ASSET_CONFIG_KEY = 'asset'
 
 /** A ledger that claims nothing (`diagnose`: a warning is claimed when it is told). */
 const UNCLAIMED = { once: () => true }

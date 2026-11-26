@@ -138,6 +138,12 @@ function info not found` when one of them calls it, and the build says nothing, 
   the value, and a wrapper is not followed (R92). SPEC J4.5. `start-plugin-core/tests/start-compiler-cases.test.ts`:
   "each output keeps its implementation of an isomorphic fn whose chain passes through a helper function". Fix: each
   output keeps its implementation, or the build fails at the helper.
+- **Vite: a Vue SFC's `<script lang="ts">` block in an installed package is compiled by neither pass** (settlement
+  step 3 review, Gemini; base too). Its id (`Comp.vue?vue&type=script&lang.ts`) has a language, so the late pass
+  leaves it to the main transform, and the main transform's dependency filters take only script paths
+  (`DEPENDENCY_SCRIPT_RE`: `node_modules/….ts`, not `….vue?…lang.ts`): a server fn's handler there ships to the client,
+  declared package or not. The app's own SFCs are compiled (their ids pass the main filter). SPEC J4.16. No row.
+  Fix: the dependency filter takes a `.vue` id whose `lang` query names a script.
 - **An overtaken importer's allowed import loads the file's mock unless the file is allowed as its own importer**
   (settlement step 2 review, Astra 2; base too). Vite dev: `allowImport` allows `form.ts`'s import of a client-only
   file on the server and answers while `form.ts` is saved without the import. The older request loads the edge

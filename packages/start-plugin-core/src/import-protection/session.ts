@@ -1337,6 +1337,7 @@ class ImportProtectionEnv {
    * import-protection error).
    */
   retire(importerId: string): void {
+    this.releaseDeferredOf(importerId)
     if (this.byImporter.has(importerId)) {
       this.importersByFile.delete(importerId, traceFile(importerId))
       this.forgetImporter(importerId)
@@ -2048,12 +2049,15 @@ class ImportProtectionEnv {
         continue
       }
       keys.add(v.module.key)
-      const m = this.defineModule(v.module.key, v.module.content, !v.handoff)
-      const k = `${v.importerId}\u0000${v.edgeKey}`
-      m.violations.set(k, v)
-      // (a commit records it: no longer an answer's alone)
-      m.deferred?.delete(k)
+      this.defineModule(
+        v.module.key,
+        v.module.content,
+        !v.handoff,
+      ).violations.set(`${v.importerId}\u0000${v.edgeKey}`, v)
     }
+    // the importer's deferred violations: a commit records them, or its
+    // answer no longer has them
+    this.releaseDeferredOf(importerId)
     const previous = this.byImporter.get(importerId)?.keys
     if (!previous) {
       this.importersByFile.add(importerId, traceFile(importerId))
@@ -2371,6 +2375,13 @@ class ImportProtectionEnv {
     this.releaseDeferred(path, () => true)
   }
 
+  /** Releases the deferred violations of one importer (`RegisteredModule.deferred`): a commit or a retirement of it. */
+  private releaseDeferredOf(importerId: string): void {
+    if (this.deferredByFile.size > 0) {
+      this.releaseDeferred(traceFile(importerId), (id) => id === importerId)
+    }
+  }
+
   /** Releases the deferred violations of importers of `file` that `gone` says are gone (`RegisteredModule.deferred`). */
   private releaseDeferred(
     file: string,
@@ -2382,12 +2393,20 @@ class ImportProtectionEnv {
     }
     for (const key of keys) {
       const deferred = this.modules.get(key)?.deferred
+      // (the key stays indexed under the file while one of its importers
+      // still defers there)
+      let remains = false
       for (const [k, v] of deferred ?? []) {
-        if (traceFile(v.importerId) === file && gone(v.importerId)) {
+        if (traceFile(v.importerId) !== file) {
+          continue
+        }
+        if (gone(v.importerId)) {
           deferred!.delete(k)
+        } else {
+          remains = true
         }
       }
-      if (!deferred || deferred.size === 0) {
+      if (!remains) {
         keys.delete(key)
       }
     }

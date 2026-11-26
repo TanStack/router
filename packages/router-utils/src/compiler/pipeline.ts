@@ -211,6 +211,36 @@ export async function settleModule<T>(
 }
 
 /**
+ * Holds a key live while `use` runs, for a host's request the core does not
+ * compile (an asset id a host judges by its file's facts alone): it has no
+ * text of its own, so `current()` says that no event of the key's file
+ * (`invalidate`: the file's text moved) and no request of another revision
+ * came since it began. Two requests of one key with no event between them
+ * are both current.
+ */
+export async function holdKey<T>(
+  caches: CompilerCaches,
+  key: PlanKey,
+  use: (current: () => boolean) => T | Promise<T>,
+): Promise<T> {
+  const cache = planCacheFor(caches, key.env)
+  cache.begin(key, HELD_REVISION)
+  const generation = cache.generation(key)
+  try {
+    return await use(
+      () =>
+        cache.latestRevision(key) === HELD_REVISION &&
+        cache.generation(key) === generation,
+    )
+  } finally {
+    cache.end(key)
+  }
+}
+
+/** The revision of a held key (`holdKey`): no text's. */
+const HELD_REVISION = '\u0000held'
+
+/**
  * The empty module, the code and map of a derived id whose module has no
  * such output (an untouched module, a plan without it, a file that is no
  * longer a route module). Its map maps nothing (`wantMap`): a map upstream
