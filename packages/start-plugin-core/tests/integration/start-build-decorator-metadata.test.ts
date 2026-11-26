@@ -37,7 +37,13 @@ const tail = `export const fn = createServerFn().handler(async () => 1)
 export const recorded = () => (Entity as any).recorded
 `
 
-const rows: Array<{ name: string; body: string; recorded: string }> = [
+const rows: Array<{
+  name: string
+  body: string
+  recorded: string
+  /** The one bundler the row builds with. */
+  only?: (typeof startBundlers)[number]
+}> = [
   {
     name: 'a class only a decorated member names in its type stays for its metadata',
     body: `class Model {}
@@ -58,6 +64,29 @@ export const check = (x?: typeof String) => 1
 `,
     recorded: 'Actual',
   },
+  // (Astra's and Gemini's re-checks of 52b0c43a0e: what a method, a union,
+  // an intersection or a negative bigint serializes to is the module's own
+  // constructor of that name; any of them a class with metadata may read)
+  ...(
+    [
+      ['a decorated method', 'Function', '@seen run() {}'],
+      ['a union of string literals', 'String', `@seen kind!: 'a' | 'b'`],
+      ['an intersection of strings', 'String', '@seen kind!: string & string'],
+      // (Rsbuild only: Oxc's legacy metadata panics on a negative bigint
+      // type, `oxc_transformer` 0.156 `decorator/legacy/metadata.rs:612`)
+      ['a negative bigint literal', 'BigInt', '@seen big!: -1n', 'rsbuild'],
+    ] as const
+  ).map(([what, ctor, member, only]) => ({
+    name: `the module's ${ctor} that ${what} serializes to stays`,
+    body: `const ${ctor} = class Actual {}
+export class Entity {
+  ${member}
+}
+export const check = (x?: typeof ${ctor}) => 1
+`,
+    recorded: 'Actual',
+    only,
+  })),
   {
     // a class only types name is removed with its decorators and static
     // blocks (the user's decision on self-registering classes, 2026-11-25:
@@ -82,7 +111,7 @@ export const check = (el?: MyEl) => 1
 ]
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  test.each(rows)(
+  test.each(rows.filter((row) => (row.only ?? bundler) === bundler))(
     '$name',
     async ({ body, recorded }) => {
       const build = await buildStart({

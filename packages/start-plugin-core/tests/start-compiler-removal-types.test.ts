@@ -1976,6 +1976,27 @@ export const run = () => <b />
 `,
       expected: { value: 'b' },
     },
+    // (Fable's re-check of 52b0c43a0e: a `declare` stays as written, and
+    // an import its text names is the host's unless removed text leads to
+    // it, as on a0f6fcc39f and main)
+    {
+      name: 'an import a declare const names stays when a type that stays names it',
+      code: `${SO}import { Registered } from './register'
+declare const x: Registered
+export const f = createServerOnlyFn(() => 1)
+export const run = (a?: typeof x) => 1
+`,
+      expected: { value: 1, calls: ['registered'] },
+    },
+    {
+      name: 'an import a declare class extends stays when a type that stays names it',
+      code: `${SO}import { Registered } from './register'
+declare class D extends Registered {}
+export const f = createServerOnlyFn(() => 1)
+export const run = (d?: D) => 1
+`,
+      expected: { value: 1, calls: ['registered'] },
+    },
     {
       // (Gemini minor: beside a type of its name the parser's ambient flag
       // is not set; T7 keeps what it names)

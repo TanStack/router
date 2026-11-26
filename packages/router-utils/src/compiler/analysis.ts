@@ -775,13 +775,20 @@ export class ModuleAnalysis {
       this.importIndexOfStatement(s),
     )
 
-    // the type names decorator metadata reads, by offset, and the
-    // constructors it reads (see `metadataNames`)
+    // the type names decorator metadata reads, by offset, and the classes
+    // that emit it (see `metadataNames`)
     const metadataReads = new Map<number, Scope>()
-    const metadataGlobals: Array<MetadataRead> = []
+    let metadataClasses: Array<{ node: Node; outer: Scope }> | null = null
     for (const scope of file.scopes) {
-      if (scope.kind === 'class' && scope.parent !== null) {
-        metadataNames(scope.node, scope.parent, metadataReads, metadataGlobals)
+      if (
+        scope.kind === 'class' &&
+        scope.parent !== null &&
+        metadataNames(scope.node, scope.parent, metadataReads)
+      ) {
+        ;(metadataClasses ??= []).push({
+          node: scope.node,
+          outer: scope.parent,
+        })
       }
     }
 
@@ -849,17 +856,21 @@ export class ModuleAnalysis {
       }
     }
     refAssigns(file, refTargets)
-    for (const { name, at, scope } of metadataGlobals) {
-      const b = valueBinding(scope, name)
-      if (b === null) {
-        names.add(name)
-      } else if (symbols.kind(symbols.ofBinding(b)) !== 'ambient') {
-        refs.push({
-          sym: symbols.ofBinding(b),
-          range: { start: at.start, end: at.end },
-          kind: 'value',
-          ctx: 'plain',
-        })
+    // a class that emits metadata reads, where it is defined, the module's
+    // own binding of any global the metadata can name (`string`: `String`)
+    for (const { node, outer } of metadataClasses ?? []) {
+      for (const name of METADATA_GLOBALS) {
+        const b = valueBinding(outer, name)
+        if (b === null) {
+          names.add(name)
+        } else if (symbols.kind(symbols.ofBinding(b)) !== 'ambient') {
+          refs.push({
+            sym: symbols.ofBinding(b),
+            range: { start: node.start, end: node.end },
+            kind: 'value',
+            ctx: 'plain',
+          })
+        }
       }
     }
 
@@ -1132,159 +1143,97 @@ interface MetadataParam {
   left?: MetadataParam
 }
 
-/** What a keyword or a literal type's metadata is (`serializeTypeNode`): the constructor it names; null: `void 0`. */
-const METADATA_GLOBALS: Record<string, string | null> = {
-  TSStringKeyword: 'String',
-  TSTemplateLiteralType: 'String',
-  TSNumberKeyword: 'Number',
-  TSBigIntKeyword: 'BigInt',
-  TSSymbolKeyword: 'Symbol',
-  TSBooleanKeyword: 'Boolean',
-  TSTypePredicate: 'Boolean',
-  TSFunctionType: 'Function',
-  TSConstructorType: 'Function',
-  TSArrayType: 'Array',
-  TSTupleType: 'Array',
-  TSVoidKeyword: null,
-  TSUndefinedKeyword: null,
-  TSNeverKeyword: null,
-  TSNullKeyword: null,
-}
-const LITERAL_GLOBALS: Record<string, string> = {
-  string: 'String',
-  number: 'Number',
-  bigint: 'BigInt',
-  boolean: 'Boolean',
-}
-
-/** A name decorator metadata reads where the class is defined, by value (`MetadataReads`). */
-interface MetadataRead {
-  name: string
-  /** The decorated member: the read stands in its text. */
-  at: Node
-  scope: Scope
-}
+/**
+ * The globals decorator metadata can name (TypeScript's `serializeTypeNode`,
+ * SWC's and Oxc's legacy metadata): what a keyword, a literal, an array, a
+ * function type, a union or an async method serializes to.
+ */
+const METADATA_GLOBALS = [
+  'Object',
+  'Function',
+  'Array',
+  'Boolean',
+  'String',
+  'Number',
+  'BigInt',
+  'Symbol',
+  'Promise',
+]
 
 /**
- * What TypeScript's decorator metadata (`emitDecoratorMetadata`) reads by
- * value where the class is defined (`__metadata("design:type", Model)`),
- * with the scope the read resolves in: for the type of a decorated property
- * or accessor, the parameter and return types of a method with a decorator
- * on it or on a parameter, the constructor's parameter types of a class with
- * a decorator on it or on a constructor parameter. A type reference reads its
- * name (`Model`, `ns.Model` reads `ns`; `Array<Model>`: `Array`), by offset
- * (`refs`), and `Object` when it is undefined (the syntactic emitters'
- * `typeof Model === "undefined" ? Object : Model`); a keyword or a literal
- * the constructor it serializes to (`string`: `String`, `number[]`: `Array`),
- * which the module may declare (`globals`); anything else (a union, an
- * intersection, `typeof`), `Object`, as Oxc, SWC and Babel emit it. Whether
- * the project emits metadata is not asked: where it does not, the
- * downstream TypeScript transform erases what the name kept.
+ * The type names TypeScript's decorator metadata (`emitDecoratorMetadata`)
+ * turns into runtime reads where the class is defined
+ * (`__metadata("design:type", Model)`), by offset of the name, with the scope
+ * the read resolves in: the type of a decorated property or accessor, the
+ * parameter and return types of a method with a decorator on it or on a
+ * parameter, the constructor's parameter types of a class with a decorator
+ * on it or on a constructor parameter. A type reference serializes to its
+ * name (`Model`, `(Model)`, `ns.Model` reads `ns`; `Array<Model>` reads
+ * `Array`). True: the class emits metadata, which may also read any of
+ * `METADATA_GLOBALS` (the caller's). Whether the project emits metadata is
+ * not asked: where it does not, the downstream TypeScript transform erases
+ * what the name kept.
  */
 function metadataNames(
   node: Node,
   outer: Scope,
-  refs: Map<number, Scope>,
-  globals: Array<MetadataRead>,
-): void {
+  out: Map<number, Scope>,
+): boolean {
   if (node.type !== 'ClassDeclaration' && node.type !== 'ClassExpression') {
-    return
+    return false
   }
   const params = (m: { value: { params: unknown } }) =>
     m.value.params as ReadonlyArray<MetadataParam>
   const decorated = (p: MetadataParam) => (p.decorators?.length ?? 0) > 0
-  const read = (name: string, at: Node) =>
-    globals.push({ name, at, scope: outer })
-  const serialize = (type: Node | null | undefined, at: Node): void => {
+  const addType = (annotation: unknown) => {
+    let type = (annotation as { typeAnnotation?: Node } | null)?.typeAnnotation
     while (type?.type === 'TSParenthesizedType') {
       type = type.typeAnnotation
     }
-    if (type == null) {
-      read('Object', at)
+    if (type?.type !== 'TSTypeReference') {
       return
     }
-    const global = METADATA_GLOBALS[type.type]
-    if (global !== undefined) {
-      if (global !== null) {
-        read(global, at)
-      }
-      return
+    let name: Node = type.typeName
+    while (name.type === 'TSQualifiedName') {
+      name = name.left
     }
-    switch (type.type) {
-      case 'TSTypeReference': {
-        let name: Node = type.typeName
-        while (name.type === 'TSQualifiedName') {
-          name = name.left
-        }
-        if (name.type === 'Identifier') {
-          refs.set(name.start, outer)
-        }
-        break
-      }
-      case 'TSLiteralType': {
-        const literal = type.literal
-        const name =
-          literal.type === 'Literal'
-            ? LITERAL_GLOBALS[typeof literal.value]
-            : literal.type === 'UnaryExpression'
-              ? 'Number'
-              : 'String'
-        if (name != null) {
-          read(name, at)
-        }
-        return
-      }
-      case 'TSTypeOperator':
-        if (type.operator === 'readonly') {
-          serialize(type.typeAnnotation, at)
-          return
-        }
-        if (type.operator === 'unique') {
-          read('Symbol', at)
-        }
-        break
-      default:
-        break
+    if (name.type === 'Identifier') {
+      out.set(name.start, outer)
     }
-    read('Object', at)
   }
-  const annotation = (a: unknown) =>
-    (a as { typeAnnotation?: Node } | null)?.typeAnnotation
-  const addParams = (list: ReadonlyArray<MetadataParam>, at: Node) => {
+  const addParams = (list: ReadonlyArray<MetadataParam>) => {
     for (const p of list) {
       const param = p.parameter ?? p
-      serialize(annotation((param.left ?? param).typeAnnotation), at)
+      addType((param.left ?? param).typeAnnotation)
     }
   }
+  let emits = node.decorators.length > 0
   for (const el of node.body.body) {
     switch (el.type) {
       case 'PropertyDefinition':
       case 'AccessorProperty':
         if (el.decorators.length > 0) {
-          serialize(annotation(el.typeAnnotation), el)
+          emits = true
+          addType(el.typeAnnotation)
         }
         break
       case 'MethodDefinition':
         if (el.kind === 'constructor') {
           if (node.decorators.length > 0 || params(el).some(decorated)) {
-            addParams(params(el), el)
+            emits = true
+            addParams(params(el))
           }
         } else if (el.decorators.length > 0 || params(el).some(decorated)) {
-          addParams(params(el), el)
-          // (the return type: an async method's is `Promise`; a getter's
-          // is its type, `Object` unwritten; none written, `void 0`)
-          const returns = annotation(el.value.returnType)
-          if (el.value.async) {
-            read('Promise', el)
-          } else if (returns != null || el.kind === 'get') {
-            serialize(returns, el)
-          }
+          emits = true
+          addParams(params(el))
+          addType(el.value.returnType)
         }
         break
       default:
         break
     }
   }
+  return emits
 }
 
 /**
@@ -1323,6 +1272,8 @@ function jsxFactories(
     fragment: root(fragment ?? 'React'),
   }
 }
+
+const REACT_FACTORIES = { element: 'React', fragment: 'React' }
 
 /** Whether `node` is the value of a JSX `ref` attribute (`ref={x}`, through parentheses and casts). */
 function isRefAttributeValue(file: SourceFile, node: Node): boolean {

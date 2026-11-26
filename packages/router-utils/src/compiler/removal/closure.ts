@@ -15,7 +15,9 @@
  *   alias or an interface a name: text that names it has used what it names;
  * - `NAMED`: text the env module erases names it, by value or in a type, or
  *   text another planner's output claims reads it by value (R163: what
- *   erasure, not splitting, may take from a route module).
+ *   erasure, not splitting, may take from a route module);
+ * - `REMOVED`: removed text leads to it (not only a type that stays): a
+ *   `declare` of it, text that stays as written, names imports for it.
  */
 import { BindingFlags } from 'yuku'
 import { NEED_KINDS } from '../clusters'
@@ -36,9 +38,10 @@ import type { NamedText } from './named'
 export const USED = 1
 export const ERASED = 2
 export const NAMED = 4
-const CAUSES = USED | ERASED | NAMED
+const REMOVED = 8
+const CAUSES = USED | ERASED | NAMED | REMOVED
 /** In `follow`'s record: the declaration was read for its imports too. */
-const WITH_IMPORTS = 8
+const WITH_IMPORTS = 16
 
 /** A removed text and what it gives the bindings it names (by value; in a type; whether a type declaration it names is followed). */
 interface Part extends Range {
@@ -319,7 +322,7 @@ export function closure(a: ClosureInput): Provenance {
   const parts: Array<Part> = []
   for (const p of envView.erasedParts()) {
     const everywhere = every === envView || every.isErasedAt(p.start)
-    const cause = USED | NAMED | (everywhere ? ERASED : 0)
+    const cause = USED | NAMED | REMOVED | (everywhere ? ERASED : 0)
     parts.push({ ...p, value: cause, type: cause, relay: everywhere })
   }
   for (const claim of rewrites.claims.values()) {
@@ -336,14 +339,14 @@ export function closure(a: ClosureInput): Provenance {
     // followed from it, D1)
     parts.push({
       ...rewrites.regions.get(claim.region).range,
-      value: USED | (erasure ? NAMED : 0),
-      type: USED,
+      value: USED | REMOVED | (erasure ? NAMED : 0),
+      type: USED | REMOVED,
       relay: false,
     })
   }
 
-  // per symbol: the causes it is reached with (`USED | ERASED | NAMED`), and
-  // three bits higher those its text was read with
+  // per symbol: the causes it is reached with (`CAUSES`), and four bits
+  // higher those its text was read with
   const bits = new Uint8Array(symbols.size)
   const out: Provenance = {
     fromRemoved: new Set(),
@@ -362,8 +365,8 @@ export function closure(a: ClosureInput): Provenance {
     parts.push({
       start: r.start,
       end: r.end,
-      value: USED | ERASED,
-      type: USED | ERASED,
+      value: USED | ERASED | REMOVED,
+      type: USED | ERASED | REMOVED,
       relay: true,
     })
   // (an exported erased declaration is a type unit of the module's own, not
@@ -542,6 +545,8 @@ export function closure(a: ClosureInput): Provenance {
     relay: boolean,
     /** Text another output claims inside it is a seed of its own. */
     claimed: boolean,
+    /** `follow`'s: what it names among the imports too. */
+    imports = true,
   ) => {
     const { regions } = rewrites
     const own = (at: number) => {
@@ -562,6 +567,7 @@ export function closure(a: ClosureInput): Provenance {
       if (
         NEED_KINDS.has(ref.kind) &&
         !inside(ref.sym, range) &&
+        (imports || !symbols.isImport(ref.sym)) &&
         own(ref.range.start)
       ) {
         reach(ref.sym, value)
@@ -569,7 +575,7 @@ export function closure(a: ClosureInput): Provenance {
     }
     types.in(range, (ref) => {
       if (!inside(ref.sym, range) && own(ref.at)) {
-        typed(ref, type, relay)
+        typed(ref, type, relay, imports)
       }
     })
     named.in(range, (n) => {
@@ -645,12 +651,16 @@ export function closure(a: ClosureInput): Provenance {
     // what its text names in the source, rendered or not: the index
     // placement reads every cluster's text through (`reads.ts`), generated
     // text and the places of claims included
-    // (a local a top-level declaration's text reads is declared inside it)
+    // (a local a top-level declaration's text reads is declared inside it;
+    // TypeScript's text, a `declare`, stays as written: the imports it
+    // reads are the host's unless removed text leads to it)
+    const imports =
+      (b & REMOVED) !== 0 || cl.units.some((u) => units[u]!.kind !== 'type')
     for (const s of a.reads.clusterReads(c, 'env', false)) {
       if (cl.declares.has(s)) {
         out.selfReading.add(c)
       }
-      if (symbols.isModuleLevel(s)) {
+      if (symbols.isModuleLevel(s) && (imports || !symbols.isImport(s))) {
         reach(s, b)
       }
     }
@@ -689,10 +699,10 @@ export function closure(a: ClosureInput): Provenance {
   while (work.length > 0) {
     const s = work.pop()!
     const cause = bits[s]! & CAUSES
-    if (cause === bits[s]! >> 3) {
+    if (cause === bits[s]! >> 4) {
       continue
     }
-    bits[s] = cause | (cause << 3)
+    bits[s] = cause | (cause << 4)
     const kind = symbols.kind(s)
     if (kind === 'generated') {
       const c = clusterOfSym.get(s)
@@ -720,7 +730,16 @@ export function closure(a: ClosureInput): Provenance {
     // a `declare` of the value has no code: its text is the value's
     for (const d of table.ambient(binding)) {
       const relay = (cause & ERASED) !== 0
-      readText(d.node, cause, relay ? cause : cause & ~NAMED, relay, false)
+      // (its text stays as written: the imports it names are the host's
+      // unless removed text leads to it)
+      readText(
+        d.node,
+        cause,
+        relay ? cause : cause & ~NAMED,
+        relay,
+        false,
+        (cause & REMOVED) !== 0,
+      )
     }
     if (symbols.isModuleLevel(s)) {
       const c = clusterOfSym.get(s)
