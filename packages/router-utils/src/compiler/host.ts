@@ -492,8 +492,9 @@ function knownAt(caches: CompilerCaches, path: string): boolean {
 
 /**
  * Whether something depends on the text of `path`: a raw fact of it, a read
- * in flight, a plan or a compile of it or one that read it (what an empty
- * read waits for the text for: `readChange`).
+ * in flight, a request or a plan of it, or a plan that read it (what an
+ * empty read waits for the text for, `readChange`; a compile in flight that
+ * reads the file after the event waits for its text itself, `readSaved`).
  */
 function dependedOn(caches: CompilerCaches, path: string): boolean {
   if (caches.rawFacts.holds(path)) {
@@ -640,31 +641,17 @@ async function applyChange(
     relevant: (fp: DependencyFingerprint) => boolean,
     seen = new Set<string>(),
   ): Promise<void> => {
-    for (const entry of cache.dependents.get(indexKey)) {
-      const ks = `${cache.env}|${planKeyString(entry.key)}`
+    for (const key of cache.dependents.get(indexKey)) {
+      const ks = `${cache.env}|${planKeyString(key)}`
       if (seen.has(ks)) {
         continue
       }
       seen.add(ks)
-      if (
-        entry.asked &&
-        indexKey !== UNRESOLVED_DEPENDENCY &&
-        cache.flight(entry.key)
-      ) {
-        // a compile running now asked for what changed: it starts again. A
-        // failed resolution it met is its own to ask again (the file set
-        // moved since: its snapshot asks it), so the event leaves it running.
-        // A request whose compile settled (its host acts on the answer) keeps
-        // its asks until it ends, and nothing of it starts again: its plan is
-        // checked below like any published one
-        cache.bump(entry.key)
-      }
-      if (!entry.published) {
-        continue
-      }
-      const host = hostOf(entry.key)
+      // (a compile running now has no rows: its snapshot check asks again
+      // what this event moved, the file set or the raw facts)
+      const host = hostOf(key)
       const src = fingerprintSourceFor(caches, host, cache.env)
-      const judged = cache.dependenciesOf(entry.key)
+      const judged = cache.dependenciesOf(key)
       const fps = judged?.filter(relevant)
       if (!fps) {
         continue
@@ -681,15 +668,15 @@ async function applyChange(
         }
       }
       if (stale) {
-        if (cache.dependenciesOf(entry.key) !== judged) {
+        if (cache.dependenciesOf(key) !== judged) {
           // the plan judged is gone meanwhile (an event of another path
           // evicted it, its file's removal took it out of the stale sets) or
           // replaced (a compile published one of the current files): what
           // replaced it decided its modules
           continue
         }
-        cache.delete(entry.key)
-        caches.stale.add(cache.env, identify(entry.key.canonicalId).path)
+        cache.delete(key)
+        caches.stale.add(cache.env, identify(key.canonicalId).path)
       }
     }
   }
@@ -934,8 +921,8 @@ export function expireVirtual(caches: CompilerCaches, env: string): void {
     return
   }
   for (const path of paths) {
-    for (const entry of cache.dependents.get(path)) {
-      cache.delete(entry.key)
+    for (const key of cache.dependents.get(path)) {
+      cache.delete(key)
     }
   }
 }

@@ -222,11 +222,12 @@ export class RawFactsCache {
   /** Path → reads of it in flight: their texts are not in `seen` yet. */
   private readonly reads = new Map<string, number>()
   /**
-   * Path → the modification time of the file when a file event's read found
-   * it empty and waited for its text in vain (`readChange`): an event that
-   * finds it so again is a repeat of that one.
+   * Path → the modification time of the file (null: unknown) when a file
+   * event's read found it empty and waited for its text in vain
+   * (`readChange`): an event that finds it so again at a known time is a
+   * repeat of that one, and a reader does not wait again (`maySave`).
    */
-  private readonly emptyAt = new Map<string, number>()
+  private readonly emptyAt = new Map<string, number | null>()
   /** Use counts for `compilerStats()`: requests served from the cache, and reads. */
   private readonly counters = { factsHits: 0, factsReads: 0, eventReads: 0 }
   private changes = 0
@@ -267,7 +268,9 @@ export class RawFactsCache {
    */
   markStale(path: string, read?: EventRead): void {
     this.changes++
-    if (read !== undefined && !this.noFacts) {
+    // (with the facts knob off too: an event's empty read is what `maySave`
+    // asks of the file)
+    if (read !== undefined) {
       if (read.text === null) {
         this.seen.delete(path)
         this.emptyAt.delete(path)
@@ -323,6 +326,9 @@ export class RawFactsCache {
     let text: string | null = ''
     if (readable) {
       text = await this.readEvent(path)
+      // (`emptyAt` holds the path only while this event's read is the one
+      // that waited in vain, or a repeat of it)
+      let waitedInVain = false
       if (text === '' && dependedOn()) {
         // a whole number of seconds is unknown: on a filesystem of coarse
         // times (HFS+, ext3, FAT, some network shares) a save stamps the
@@ -340,12 +346,15 @@ export class RawFactsCache {
             await new Promise((resolve) => setTimeout(resolve, SAVE_RETRY_MS))
             text = await this.readEvent(path)
           }
-          if (text === '' && at !== null) {
+          if (text === '') {
             this.emptyAt.set(path, at)
+            waitedInVain = true
           }
+        } else {
+          waitedInVain = true
         }
       }
-      if (text !== '') {
+      if (!waitedInVain) {
         this.emptyAt.delete(path)
       }
     }
@@ -587,8 +596,10 @@ export class RawFactsCache {
     if (this.isKnownSpecifier(canonicalId)) {
       return null
     }
+    // (kept with the knob off too, as `get` keeps its entries under
+    // `noFacts`: an expiry or a change event of the module finds it)
     const entry = e ?? this.entryOf(canonicalId, null)
-    if (!e && !this.noTargets) {
+    if (!e) {
       this.setEntry(key, entry)
     }
     const reading = this.textOf(entry, canonicalId, env)
@@ -600,9 +611,7 @@ export class RawFactsCache {
     if (
       text != null &&
       (this.mayHaveMarker(text) ||
-        (text === '' &&
-          entry.facts !== null &&
-          this.heldModule(canonicalId, entry.facts)))
+        (text === '' && this.maySave(canonicalId, entry.facts)))
     ) {
       return (await this.getTarget(canonicalId, env)).targetFacts.marker
     }
@@ -614,11 +623,12 @@ export class RawFactsCache {
         !this.noTargets
       ) {
         // (a virtual module's miss is kept as its text would be: no file
-        // event names it, only its host's update or `expireVirtual`; a
-        // load that threw is no evidence, and is not kept)
+        // event names it, only its host's update or `expireVirtual`. A load
+        // that threw is no evidence: its entry stays, not markerless)
         entry.markerless = true
       } else if (
         text === null &&
+        !isVirtualId(canonicalId) &&
         !entry.facts &&
         this.entries.get(key) === entry
       ) {
@@ -784,6 +794,11 @@ export class RawFactsCache {
         this.reads.delete(path)
       }
     }
+    if (text !== '') {
+      // (a read that found text, or no file, ends what an event's empty
+      // read confirmed: `maySave`)
+      this.emptyAt.delete(path)
+    }
     if (!this.noFacts) {
       // (in the same step as the read's end: an event never finds a read
       // that ended and is not in `seen`)
@@ -791,7 +806,6 @@ export class RawFactsCache {
       const seen = this.seen.get(path)
       if (text === null) {
         this.seen.delete(path)
-        this.emptyAt.delete(path)
       } else if (
         seen === undefined ||
         (seen !== UNKNOWN && seen !== revision(text))
@@ -818,12 +832,7 @@ export class RawFactsCache {
     first: Promise<Text>,
   ): Promise<Text> {
     let text = await first
-    if (
-      text !== '' ||
-      prior === null ||
-      isVirtualId(canonicalId) ||
-      !this.heldModule(canonicalId, prior)
-    ) {
+    if (text !== '' || !this.maySave(canonicalId, prior)) {
       return text
     }
     for (let n = 0; n < SAVE_RETRIES && text === ''; n++) {
@@ -831,6 +840,29 @@ export class RawFactsCache {
       text = await this.read(canonicalId, env)
     }
     return text
+  }
+
+  /**
+   * Whether an empty read of a module may be its in-place save between the
+   * truncation and the write (`readSaved` reads it again for a moment): its
+   * file held a module (`prior`), or the last event of the file read it
+   * empty without waiting for its text (the event is no evidence that it
+   * is empty: a compile that reads it after the event waits for the text).
+   * An event that waited in vain (`emptyAt`) is: the file is empty, and
+   * no reader waits again for that event. A file the
+   * compiler does not read (an asset, `?raw`: no language) reads as `''`
+   * and never waits.
+   */
+  private maySave(canonicalId: string, prior: RawFacts | null): boolean {
+    const id = identify(canonicalId)
+    if (isVirtualId(canonicalId) || id.lang === null) {
+      return false
+    }
+    return (
+      !this.emptyAt.has(id.path) &&
+      ((prior !== null && this.heldModule(canonicalId, prior)) ||
+        this.seen.get(id.path) === EMPTY_REVISION)
+    )
   }
 
   /** Whether `facts` are of a module other than an empty file's. */

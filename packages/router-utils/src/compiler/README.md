@@ -345,10 +345,10 @@ text compiles waits for it and emits its own output from the result.
   request in progress) are indexed by path, so `invalidate()` finds a changed file's plans without scanning.
 - `DependencyLedger`: dependencies are recorded as facts are acquired (resolutions, the exports a lookup read and a
   module's `export *` list when a lookup went through it, whole summaries for a listing of a namespace's exports or a
-  module without a summary, target facts, route registry digests, failed resolutions), and a `DependentsIndex` maps them back to plans. A row holds two facts: the
-  key's published plan depends on the path (until it is evicted or replaced), and a compile of the key running now
-  asked for it (until the key's last request ends: two quick saves overlap). An event restarts the compiles that asked,
-  and checks the published plan.
+  module without a summary, target facts, route registry digests, failed resolutions), and a `DependentsIndex` maps a
+  published (or restored) plan's dependencies back to it, until it is evicted or replaced. An event checks the plans
+  that depend on its path; a compile running has no rows: its snapshot check asks again what the event moved (the file
+  set, the raw facts), and refuses or accepts in its own turn.
 - `invalidate(caches, change, hosts)` is **the** invalidation operation: hosts call it for every file event they see
   (every hook, every environment) and for registry changes. Calls for one path run one after the other;
   `caches.settled()` resolves once none runs. The call returns nothing.

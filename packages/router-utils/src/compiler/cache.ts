@@ -1,7 +1,8 @@
 /**
- * Caches (see README.md, "Caches and invalidation"): `PlanCache` with validated
- * hits, the `DependencyLedger` with in-flight registration and snapshot
- * validation, and the dependents index. Only plain data is retained.
+ * Caches (see README.md, "Caches and invalidation"): `PlanCache` with checked
+ * hits, the `DependencyLedger` of an attempt's reads, the one snapshot check
+ * (`stable`), and the dependents index of published plans. Only plain data is
+ * retained.
  */
 import { pathOfId, planKeyString } from './identity'
 import { exportKeyOf, summaryDigest } from './summary'
@@ -335,26 +336,16 @@ async function failedKind(
       : null
 }
 
-interface DependentEntry {
-  key: PlanKey
-  /** The key's published (or restored) plan depends on the path. */
-  published: boolean
-  /** A compile of the key running now asked for it (`PlanCache.end` drops the asks). */
-  asked: boolean
-}
-
 /**
  * Reverse index: dependency path (or a bucket of resolutions without one) →
- * plan keys, with each key's own buckets (`planKey → paths`) so publishing
- * and evicting a plan touch its rows only. A row holds two facts: the key's
- * published plan depends on the path, and a compile of the key running now
- * asked for it. Compiles of one key overlap (two quick saves) and share
- * their asks, which live until the key's last request ends (`PlanCache.end`).
- * A row with neither fact is removed, and so is an empty bucket: the index
- * holds rows of live plans and compiles only.
+ * the keys whose published (or restored) plan depends on it, with each
+ * key's own buckets (`planKey → paths`) so publishing and evicting a plan
+ * touch its rows only. An empty bucket is removed: the index holds rows of
+ * live plans only. A compile in flight has no rows: its snapshot check
+ * (`stable`) decides whether what it read is still current.
  */
 class DependentsIndex {
-  private readonly byPath = new Map<string, Map<string, DependentEntry>>()
+  private readonly byPath = new Map<string, Map<string, PlanKey>>()
   private readonly byKey = new Map<string, Set<string>>()
   /**
    * The dependency paths by the name a created file shares with them
@@ -365,8 +356,8 @@ class DependentsIndex {
   private readonly byStem = new Map<string, string | Set<string>>()
   private readonly byDir = new Map<string, Set<string>>()
 
-  /** The row of (path, key), created with neither fact. */
-  private row(path: string, key: PlanKey): DependentEntry {
+  /** The row of (path, key). */
+  private row(path: string, key: PlanKey): void {
     let m = this.byPath.get(path)
     if (!m) {
       m = new Map()
@@ -374,10 +365,8 @@ class DependentsIndex {
       this.place(path)
     }
     const ks = planKeyString(key)
-    let e = m.get(ks)
-    if (!e) {
-      e = { key, published: false, asked: false }
-      m.set(ks, e)
+    if (!m.has(ks)) {
+      m.set(ks, key)
       let paths = this.byKey.get(ks)
       if (!paths) {
         paths = new Set()
@@ -385,19 +374,14 @@ class DependentsIndex {
       }
       paths.add(path)
     }
-    return e
   }
 
-  /** A compile of `key` asked for a fact under `path`. */
-  ask(path: string, key: PlanKey): void {
-    this.row(path, key).asked = true
-  }
-
-  get(path: string): Array<DependentEntry> {
+  /** The keys whose plan depends on `path`. */
+  get(path: string): Array<PlanKey> {
     return [...(this.byPath.get(path)?.values() ?? [])]
   }
 
-  /** Whether a plan or a compile depends on `path`. */
+  /** Whether a plan depends on `path`. */
   has(path: string): boolean {
     return this.byPath.has(path)
   }
@@ -515,36 +499,25 @@ class DependentsIndex {
 
   /**
    * Publication of a key's plan whose dependencies index under `paths`: the
-   * key's published rows become exactly those (asks stay).
+   * key's rows become exactly those.
    */
   publish(key: PlanKey, paths: ReadonlySet<string>): void {
     const ks = planKeyString(key)
     for (const path of [...(this.byKey.get(ks) ?? [])]) {
       if (!paths.has(path)) {
-        this.unset(path, ks, 'published')
+        this.remove(path, ks)
       }
     }
     for (const path of paths) {
-      this.row(path, key).published = true
+      this.row(path, key)
     }
   }
 
-  /** Drops a key's published rows (eviction) or its asks (its last request ended). */
-  drop(key: PlanKey, fact: 'published' | 'asked'): void {
+  /** Drops a key's rows (its plan is evicted). */
+  drop(key: PlanKey): void {
     const ks = planKeyString(key)
     for (const path of [...(this.byKey.get(ks) ?? [])]) {
-      this.unset(path, ks, fact)
-    }
-  }
-
-  /** Clears one fact of a row; a row with neither goes. */
-  private unset(path: string, ks: string, fact: 'published' | 'asked'): void {
-    const e = this.byPath.get(path)?.get(ks)
-    if (e) {
-      e[fact] = false
-      if (!e.published && !e.asked) {
-        this.remove(path, ks)
-      }
+      this.remove(path, ks)
     }
   }
 
@@ -595,24 +568,17 @@ function parentOf(path: string): string | null {
 }
 
 /**
- * Records the facts a compile acquires and registers them as in-flight
- * dependencies; the complete snapshot (`published`) is validated before
- * publication. A fact is recorded once per attempt, and the attempt reads
- * one answer of it (`runAttempt`), so the snapshot check decides whether
- * that answer is still current.
+ * Records the facts an attempt acquires; the complete snapshot
+ * (`published`) is checked before publication (`stable`). A fact is
+ * recorded once per attempt, and the attempt reads one answer of it
+ * (`runAttempt`), so the snapshot check decides whether that answer is
+ * still current.
  */
 export class DependencyLedger {
   readonly entries: Array<DependencyFingerprint> = []
   private readonly byId = new Map<string, DependencyFingerprint>()
   /** What lookups read of a module: name → `exportKeyOf` answer (null: no such export), and its `export *` list if they walked it. */
   private readonly exportReads = new Map<string, ExportReads>()
-  /** The dependents-index buckets of `entries` and `exportReads`. */
-  private readonly indexKeys = new Set<string>()
-
-  constructor(
-    readonly key: PlanKey,
-    private readonly index: DependentsIndex,
-  ) {}
 
   record(fp: DependencyFingerprint): void {
     const id = fingerprintId(fp)
@@ -621,7 +587,6 @@ export class DependencyLedger {
     }
     this.byId.set(id, fp)
     this.entries.push(fp)
-    this.indexPath(fingerprintIndexKey(fp))
   }
 
   /** A lookup read export `name` of a module (`key`: its `exportKeyOf` answer, null when it has none). */
@@ -645,16 +610,8 @@ export class DependencyLedger {
     if (!reads) {
       reads = { keys: new Map(), stars: undefined }
       this.exportReads.set(canonicalId, reads)
-      this.indexPath(pathOfId(canonicalId))
     }
     return reads
-  }
-
-  private indexPath(indexKey: string | null): void {
-    if (indexKey !== null && !this.indexKeys.has(indexKey)) {
-      this.indexKeys.add(indexKey)
-      this.index.ask(indexKey, this.key)
-    }
   }
 
   /**
@@ -689,11 +646,6 @@ export class DependencyLedger {
       )
     }
     return out
-  }
-
-  /** The plan is published: its rows replace the key's previous plan's. */
-  publish(): void {
-    this.index.publish(this.key, this.indexKeys)
   }
 }
 
@@ -889,15 +841,6 @@ export class PlanCache {
     return this.records.has(planKeyString(key))
   }
 
-  /** Makes attempts in flight for `key` stale (nothing to do when there are none). */
-  bump(key: PlanKey): void {
-    const ks = planKeyString(key)
-    const r = this.records.get(ks)
-    if (r && !this.retire(ks, r)) {
-      r.generation++
-    }
-  }
-
   latestRevision(key: PlanKey): string | undefined {
     return this.records.get(planKeyString(key))?.latest
   }
@@ -971,7 +914,7 @@ export class PlanCache {
     return had
   }
 
-  /** A request of `key` ended (its compile published or not); the last one takes the key's asks along. */
+  /** A request of `key` ended (its compile published or not). */
   end(key: PlanKey): void {
     const ks = planKeyString(key)
     const r = this.records.get(ks)
@@ -979,9 +922,6 @@ export class PlanCache {
       return
     }
     r.active = Math.max(0, r.active - 1)
-    if (r.active === 0) {
-      this.dependents.drop(key, 'asked')
-    }
     this.retire(ks, r)
   }
 
@@ -1033,9 +973,11 @@ export class PlanCache {
     }
     r.entry = entry
     r.restored = null
-    // the compile is no longer in flight once it published: an event from
-    // now on checks its plan as any published one (`revalidate`), and does
-    // not restart a compile whose answer is taken
+    // its rows replace the key's previous plan's
+    this.dependents.publish(entry.key, indexKeysOf(entry.plan.dependencies))
+    // the compile is no longer in flight once it published: a request of its
+    // text from now on is a hit, and what it read is the plan's rows (an
+    // event checks them as any published plan's), not the flight's reads
     r.flight = null
     return true
   }
@@ -1059,7 +1001,7 @@ export class PlanCache {
     const moves = r.entry !== null && r.entry.revision === r.latest
     r.entry = null
     r.restored = null
-    this.dependents.drop(key, 'published')
+    this.dependents.drop(key)
     if (!this.retire(ks, r) && moves) {
       r.generation++
     }

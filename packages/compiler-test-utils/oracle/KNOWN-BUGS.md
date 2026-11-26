@@ -159,10 +159,12 @@ function info not found` when one of them calls it, and the build says nothing, 
   takes the allowed import away; `form.ts`'s next good save brings it back. SPEC J6.6. No row (the client row,
   `start-dev-settlement-failed.test.ts`, covers the commit; the SSR outcome follows from what the server reports).
   Fix: a module the compiler cannot parse keeps its record in every environment.
-- **A comment-only save of a dependency while a compile checks its snapshot restarts the compile** (settlement
-  design, step 0; a cost): the `asked` rows restart it though no fact it read moved. Core row (no public input holds
-  these reads): `router-utils/tests/freshness.test.ts`, "a comment-only edit: the compile is not attempted again".
-  Fix: the snapshot alone decides (step 6b deletes the `asked` rows).
+- **A file saved in place more than about 100 ms after its truncation, with no second event, reads empty until its
+  next event** (settlement step 6b re-checks, Fable and Astra; Gemini). An editor that truncates a file and writes it
+  later than the in-place-save wait (`SAVE_RETRIES` × `SAVE_RETRY_MS`, 100 ms, once per event: the event's wait or a
+  reader's, never both) leaves the importers compiled against the empty module, as is, until another event of the
+  file. Both real watchers (chokidar, Watchpack) send a second event for a write that late, so in practice it is one
+  build against the empty file, then the right one. No row (the outcome is the limit).
 - **A restore checked while a request of its key runs and ends installs its plan afterwards** (settlement step 6a
   review, Astra; on `a37f4609fd` too). `restorePlans` checks a persisted plan, and installs it when its check accepts,
   unless the key then has a plan or a request. A request that settled and ended during the check (an untouched

@@ -457,7 +457,7 @@ async function settle(
     const generation = cache.generation(key)
     const fileSetVersion = caches.fileSetVersion
     const factsVersion = caches.rawFacts.version
-    const ledger = new DependencyLedger(key, cache.dependents)
+    const ledger = new DependencyLedger()
     const result = await runAttempt(
       input,
       identity,
@@ -501,9 +501,7 @@ async function settle(
         accept: (at) => {
           entry.resolvedAt = at.resolvedAt
           entry.factsAt = at.factsAt
-          if (cache.set(entry)) {
-            ledger.publish()
-          }
+          cache.set(entry)
         },
       },
     )
