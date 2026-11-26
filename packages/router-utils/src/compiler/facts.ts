@@ -80,7 +80,7 @@ interface RawFactsOptions {
    * (asking one that runs concurrently, e.g. in `vite build --watch`, fails
    * that build). `null`: the host has no such module (a miss, kept as a
    * text would be). A load that throws is no evidence: read as missing for
-   * that read, kept nowhere, read again at the next ask.
+   * that read, its entry kept without facts, read again at every ask.
    */
   loadVirtual: (id: string, env: string) => Promise<string | null>
   recognizer?: RecognizerTable
@@ -112,7 +112,8 @@ interface RawFactsOptions {
  * A module's text as a read found it: null when the module is missing (a
  * file that does not exist, a virtual module its host has no text for),
  * `undefined` when its host's `loadVirtual` threw: no evidence of either,
- * read as missing for that read and never kept.
+ * read as missing for that read; its entry stays without facts, so every
+ * read loads it again and an expiry or a change event finds it.
  */
 type Text = string | null | undefined
 
@@ -513,21 +514,23 @@ export class RawFactsCache {
           : built
       // a newer read may have superseded this one
       if (entry.pending === holder.p) {
-        entry.facts = facts
+        // (a load that threw is no fact: the entry stays, without facts, so
+        // that every read loads it again and an expiry or a change event of
+        // the module finds it)
+        entry.facts = text === undefined ? null : facts
         entry.stale = false
         entry.pending = null
         if (entry.reading === reading) {
           entry.reading = null
         }
         if (
-          (text === undefined ||
-            (text === null && !isVirtualId(canonicalId))) &&
+          text === null &&
+          !isVirtualId(canonicalId) &&
           this.entries.get(key) === entry
         ) {
           // a missing file's facts are not kept (`forget`): its creation
           // has an event. A virtual module's miss is kept: no file event
-          // names it, only its host's update or `expireVirtual` does. A
-          // load that threw is no evidence: read again at the next ask
+          // names it, only its host's update or `expireVirtual` does
           this.deleteEntry(key)
         }
       }
@@ -614,8 +617,13 @@ export class RawFactsCache {
         // event names it, only its host's update or `expireVirtual`; a
         // load that threw is no evidence, and is not kept)
         entry.markerless = true
-      } else if (!entry.facts && this.entries.get(key) === entry) {
-        // a missing file is not kept (`forget`)
+      } else if (
+        text === null &&
+        !entry.facts &&
+        this.entries.get(key) === entry
+      ) {
+        // a missing file is not kept (`forget`); a load that threw keeps
+        // its entry, not markerless: read again at the next ask
         this.deleteEntry(key)
       }
     }

@@ -1102,7 +1102,7 @@ describe('a virtual module that read as missing and then loads', () => {
 // no event re-checks the plan, its check asks again). The check refuses:
 // the plan is evicted (the file is stale, an open answer of it is not
 // current), never replaced by a compile of its own text.
-describe('a plan hit whose resolution moves during its check', () => {
+describe('a resolution that moves during a check', () => {
   const PAGE = '/app/page.ts'
   const ALT = '/app/alt/w.ts'
   function setup() {
@@ -1175,6 +1175,33 @@ describe('a plan hit whose resolution moves during its check', () => {
     await open
     expect(after).toBe(false)
     expect(host.caches.stale.take(CLIENT.name)).toEqual([PAGE])
+  })
+
+  // The same move during an attempt's check: the check asks again and
+  // refuses, and the compile attempts again (the bundler is answered the
+  // new target, never the old plan published).
+  it('a compile whose resolution moves during its check answers the new target', async () => {
+    const { host, arm, retarget } = setup()
+    const { reached, release } = arm()
+    const compiling = host.compile(PAGE, planners())
+    await reached
+    await retarget()
+    release()
+    expect(factsOf(await compiling)).toEqual(await cold())
+    expect(factsOf(await host.compile(PAGE, planners()))).toEqual(await cold())
+  })
+
+  // And during a restored plan's check: the plan is reported stale (its
+  // bundler builds the module again), not restored.
+  it('a restored plan whose resolution moves during its check is reported stale', async () => {
+    const persisted = (await setup().host.compile(PAGE, planners()))!.persisted!
+    const { host, arm, retarget } = setup()
+    const { reached, release } = arm()
+    const restoring = restorePlans(host.caches, [persisted], host)
+    await reached
+    await retarget()
+    release()
+    expect(await restoring).toEqual([persisted.key])
   })
 
   it('a request of the same text arriving during its compile joins it: one attempt', async () => {
@@ -1292,6 +1319,37 @@ describe("a virtual module's marker read as missing, and the module loading", ()
   // with no hot update naming the module later): the next request after a
   // facts move reads the module again, and sees its marker.
   // Source: Fable's `recheck2/p7-virtual-miss-unannounced.probe.ts`.
+  // The thrown load's entry stays: a watch rebuild's expiry finds it.
+  // Source: Astra's and Gemini's look at the thrown-load rule
+  // (`rejected-event.mjs`).
+  it('a watch rebuild after a load that threw and then recovers sees the marker', async () => {
+    const loaded: Record<string, string> = {}
+    let fail = true
+    const virtual = new Proxy(loaded, {
+      get(target, id: string) {
+        if (fail) {
+          fail = false
+          throw new Error('the plugin is not ready')
+        }
+        return target[id]
+      },
+    })
+    const host = new MemoryHost({
+      files,
+      recognizer: RECOGNIZER,
+      virtual,
+      markerSpecifiers,
+    })
+    expect(
+      messages(await host.compile('/app/page.ts', [markerReader()])),
+    ).toEqual([])
+    loaded['virtual:generated'] = LOADED
+    expireVirtual(host.caches, CLIENT.name)
+    expect(
+      messages(await host.compile('/app/page.ts', [markerReader()])),
+    ).toEqual(await cold(loaded))
+  })
+
   it('a load that threw is read again: the next request after a save sees the marker', async () => {
     const loaded: Record<string, string> = {}
     let fail = true
