@@ -76,8 +76,10 @@ export async function expectNotSplit(
 ) {
   const mark = startCase.diagnostics().length
   const served = await startCase.served(moduleFile, 'client')
+  // (the host's channel also carries what other cases compiled meanwhile)
   expectDiagnostic(startCase.diagnostics().slice(mark), {
     severity: 'warning',
+    file: startCase.file(moduleFile),
     position: diagnosticPosition(source, at),
     times: 1,
   })
