@@ -269,45 +269,6 @@ console.log(fn)
     expect(texts).not.toContain('assigned elsewhere')
   })
 
-  // the setup function keeps the `let` and its assignments on the client: a
-  // server-only fn on it is refused for the assignment (no creation rule
-  // applies to it)
-  // Vue's development output hands every binding of the block to the
-  // template (a getter and a setter each): the client keeps the binding, and
-  // reads it, so a server-only fn on a `let` is not refused here, assigned or
-  // not; the inlined production template reads only what it renders (below)
-  test.each([
-    {
-      name: 'a `let` nothing assigns again',
-      script: `// (nothing assigns it)
-let impl = (): string => 'MARK_SERVER_SECRET'`,
-      template: '<p>page</p>',
-    },
-    {
-      name: 'a formatter the block updates and the template renders',
-      script: `let impl = (v: string): string => v
-if (import.meta.env.DEV) impl = (v: string): string => v.trim()`,
-      template: "<p>{{ impl('page') }}</p>",
-    },
-    {
-      name: 'a `let` the block assigns again',
-      script: `let impl = (): string => 'MARK_SERVER_SECRET'
-impl = (): string => 'MARK_SERVER_SECRET_2'`,
-      template: '<p>page</p>',
-    },
-  ])(
-    'a server-only fn on $name of a <script setup lang="ts"> block compiles',
-    async ({ script, template }) => {
-      const startCase = await sfcCase(reassignedSfc('ts', script, template))
-      for (const environment of ['client', 'ssr'] as const) {
-        expect(
-          await compileError(startCase, environment, 'Page.vue'),
-          environment,
-        ).toBeUndefined()
-      }
-    },
-  )
-
   test.each(recipes)('$name compiles', async ({ sfc }) => {
     const startCase = await sfcCase(sfc)
     expect(await compileError(startCase, 'client', 'Page.vue')).toBeUndefined()
@@ -425,17 +386,5 @@ impl = (): string => 'MARK_SERVER_SECRET_2'`,
       root: error.root,
       position: { line: 5 },
     })
-  }, 60_000)
-
-  test('a formatter the block updates and the template renders builds', async () => {
-    const built = await build(
-      reassignedSfc(
-        'ts',
-        `let impl = (v: string): string => v + 'MARK_FORMATTED'
-if (import.meta.env.DEV) impl = (v: string): string => v.trim()`,
-        "<p>{{ impl('page') }}</p>",
-      ),
-    )
-    expect(built.client.where('MARK_FORMATTED')).not.toBe('nowhere')
   }, 60_000)
 })

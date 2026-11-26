@@ -8,14 +8,13 @@
  * `.server()` and `.validator()`, an isomorphic fn's `.server()`,
  * `createServerOnlyFn()`, and a route's `server` and `headers` options. The
  * client, SSR, and with RSC the separate provider each refuse it at the
- * argument.
+ * argument. So is a route's `ssr` name.
  *
- * Not refused: a binding the client reads anyway (code other than server
- * code and the statements assigning it reads it, or the module exports it:
- * the client keeps it whatever the compiler does), one only server code
- * assigns (the assignments leave the client with it), a `let` nothing
- * assigns again (a Solid callback ref is no assignment), and the rewrite the
- * error suggests (one `const`). A server fn its module does not create once
+ * No read, guard or export of the binding withdraws it (user decision,
+ * 2026-11-26). Not refused: a binding only server code assigns (the
+ * assignments leave the client with it), a `let` nothing assigns again (a
+ * Solid callback ref is no assignment), and the rewrite the error suggests
+ * (one `const`). A server fn its module does not create once
  * (in a function or a block) keeps its own refusal; one in code an
  * environment erases is not reported there.
  */
@@ -178,6 +177,61 @@ export const api = { fn: createServerFn().handler(h) }
 ]
 
 /**
+ * No read, guard or export of the binding withdraws the refusal (user
+ * decision, 2026-11-26; cases 2, 3, 4 and 8 of the comparison with main,
+ * which ships the server code in each): a guard that is not a presence check
+ * of the binding, a guard through a helper, a guard through `Boolean`, and a
+ * binding the client reads itself. The fix is one `const`.
+ */
+const exemptionsGone: Array<{ name: string; source: string; at: string }> = [
+  {
+    name: 'a handler a write guarded by `instanceof` assigns',
+    source: `let h: any
+if (!(h instanceof Function)) h = async () => db.x()
+export const fn = createServerFn().handler(h)
+`,
+    at: '.handler(',
+  },
+  {
+    name: 'a handler a write guarded through a helper assigns',
+    source: `const isFn = (v: unknown) => typeof v === 'function'
+let h: any
+if (!isFn(h)) h = async () => db.x()
+export const fn = createServerFn().handler(h)
+`,
+    at: '.handler(',
+  },
+  {
+    name: 'a handler a write guarded by `Boolean` assigns',
+    source: `let h: any
+if (!Boolean(h)) h = async () => db.x()
+export const fn = createServerFn().handler(h)
+`,
+    at: '.handler(',
+  },
+  {
+    name: 'a handler the client reads too',
+    source: `async function a() { return 'a' }
+async function b() { return db.x() }
+let h = a
+if ((globalThis as any).flip) h = b
+export const name = () => h.name
+export const fn = createServerFn().handler(h)
+`,
+    at: '.handler(',
+  },
+  {
+    name: 'createServerOnlyFn(…) on a binding a write guarded through a helper assigns',
+    source: `const isFn = (v: unknown) => typeof v === 'function'
+let impl: any
+if (!isFn(impl)) impl = () => db.x()
+export const so = createServerOnlyFn(impl)
+`,
+    at: 'createServerOnlyFn(impl)',
+  },
+]
+
+/**
  * Every other position that takes server code, with the binding assigned
  * again (`refused`), the same chosen by one `const` (`rewritten`), and the
  * argument's text (`at`).
@@ -311,6 +365,17 @@ describe('Vite: every compile refuses server code passed by a name the module as
     await expectRefused(startCase, source, ['client', 'ssr'], at)
   })
 
+  test.each(exemptionsGone)(
+    '$name is refused',
+    async ({ source: body, at }) => {
+      const source = head + body
+      const startCase = await (
+        await host()
+      ).case({ ...dbFile, 'module.tsx': source })
+      await expectRefused(startCase, source, ['client', 'ssr'], at)
+    },
+  )
+
   // the provider keeps handlers in place in a module awaiting at its top level
   test('a module awaiting at its top level', async () => {
     const source = `${head}${writes[0]![1]}export const ready = await Promise.resolve(true)\n`
@@ -418,35 +483,6 @@ describe('Vite: every compile refuses server code passed by a name the module as
   })
 
   // the local reads itself in its own declarator only
-  // a function's parameter, assigned and read by the client: SSR compiles it
-  // whether the function is declared or an arrow (the client refuses the
-  // parameter: `start-escape:server-param`)
-  test.each([
-    [
-      'a function declaration',
-      `export function make(impl?: () => unknown) {
-  impl = impl ?? (() => db.x())
-  const read = createServerOnlyFn(impl)
-  return { read, also: () => impl!() }
-}
-`,
-    ],
-    [
-      'an arrow function',
-      `export const make = (impl?: () => unknown) => {
-  impl = impl ?? (() => db.x())
-  const read = createServerOnlyFn(impl)
-  return { read, also: () => impl!() }
-}
-`,
-    ],
-  ])('a parameter of %s the client reads compiles on SSR', async (_, body) => {
-    const startCase = await (
-      await host()
-    ).case({ ...dbFile, 'module.tsx': head + body })
-    await expectCompiles(startCase, ['ssr'])
-  })
-
   test('createServerOnlyFn(…) on a local that reads itself in its declarator', async () => {
     const source = `${head}export function make(replica: boolean) {
   let impl = (): unknown => impl
@@ -499,176 +535,6 @@ export const fn = createServerFn().handler(h)
 `,
     })
     expectNotLoaded(await served.loads(), ['./db'])
-  })
-
-  // the client reads the binding anyway: it keeps it, and its assignments,
-  // whatever the compiler does with the server fn
-  test.each([
-    [
-      'a validator a component reads too',
-      `let schema = (data: unknown) => String(data)
-if (import.meta.env.DEV) schema = (data: unknown) => String(data).trim()
-export const fn = createServerFn().validator(schema).handler(async () => 'ok')
-export function Form() {
-  return <p>{schema('form')}</p>
-}
-`,
-    ],
-    [
-      "a validator a classic `for` loop's initialiser picks and its body calls",
-      `type Validator = (input: string) => string
-let validate: Validator = (s) => s
-export function preview(input: string, validators: Array<Validator>) {
-  let i = 0
-  const result: Array<string> = []
-  for (validate = validators[0] ?? validate; i < validators.length; i++) {
-    result.push(validate(input))
-  }
-  return result
-}
-export const fn = createServerFn().validator(validate).handler(async () => 'ok')
-`,
-    ],
-    [
-      'a validator a `while` condition picks and its body calls',
-      `type Validator = (input: string) => string
-let validate: Validator = (s) => s
-export function preview(input: string, validators: Array<Validator>) {
-  let i = 0
-  const result: Array<string> = []
-  while (i < validators.length && (validate = validators[i++]!)) {
-    result.push(validate(input))
-  }
-  return result
-}
-export const fn = createServerFn().validator(validate).handler(async () => 'ok')
-`,
-    ],
-    [
-      "a validator a callback in the guard's test calls",
-      `type Validator = (input: string) => string
-let validate: Validator = (input) => input
-export function installPreview(
-  register: (key: string, render: Validator) => boolean,
-  trim: boolean,
-) {
-  if (register('preview', (input) => validate(input))) {
-    if (trim) {
-      validate = (input) => input.trim()
-    }
-  }
-}
-export const fn = createServerFn().validator(validate).handler(async () => 'ok')
-`,
-    ],
-    [
-      'a validator a `for` test calls, its update picking the next, the result returned',
-      `type Validator = (input: string) => string
-let validate: Validator = (input) => input.trim()
-export function preview(input: string, fallbacks: Array<Validator>) {
-  let normalized: string
-  for (
-    let i = 0;
-    (normalized = validate(input)) === '' && i < fallbacks.length;
-    validate = fallbacks[i++]!
-  ) {}
-  return normalized
-}
-export const fn = createServerFn().validator(validate).handler(async () => 'ok')
-`,
-    ],
-    [
-      'a validator a later case compares',
-      `type Validator = (input: string) => string
-let validate: Validator = (input) => input.trim()
-export function select(action: Validator | 'reset', next: Validator) {
-  switch (action) {
-    case 'reset':
-      validate = next
-      return false
-    case validate:
-      return true
-    default:
-      return false
-  }
-}
-export const fn = createServerFn().validator(validate).handler(async () => 'ok')
-`,
-    ],
-    [
-      'a validator a switch on it compares with another value',
-      `type Validator = (input: string) => string
-let validate: Validator = (input) => input.trim()
-export function swap(other: Validator, next: Validator) {
-  switch (validate) {
-    case other:
-      validate = next
-  }
-}
-export const fn = createServerFn().validator(validate).handler(async () => 'ok')
-`,
-    ],
-    [
-      'a validator compared with a parameter named undefined',
-      `type Validator = (input: string) => string
-let validate: Validator = (input) => input.trim()
-export function configure(undefined: Validator, next: Validator) {
-  if (validate === undefined) {
-    validate = next
-  }
-}
-export const fn = createServerFn().validator(validate).handler(async () => 'ok')
-`,
-    ],
-    [
-      'a binding a default export assigns and a function reads',
-      `let h = () => db.y()
-export const read = () => h()
-export const so = createServerOnlyFn(h)
-export default (h = () => db.x())
-`,
-    ],
-    [
-      'a validator a function updates and reads',
-      `let schema = (data: unknown) => String(data)
-export function preview(mode: string, input: unknown) {
-  if (mode === 'strict') schema = (data: unknown) => String(data).trim()
-  return schema(input)
-}
-export const fn = createServerFn().validator(schema).handler(async () => 'ok')
-`,
-    ],
-    [
-      "a component's formatter it updates and renders",
-      `export function Page({ strict }: { strict: boolean }) {
-  let format = (v: string) => v
-  if (strict) format = (v: string) => v.trim()
-  const read = createServerOnlyFn(format)
-  void read
-  return <p>{format('page')}</p>
-}
-`,
-    ],
-    [
-      'an exported `let`',
-      `export let h = async () => db.y()
-h = async () => db.x()
-export const fn = createServerFn().handler(h)
-`,
-    ],
-    [
-      'a binding exported by name',
-      `let impl = () => db.y()
-impl = () => db.x()
-export const fn = createServerOnlyFn(impl)
-export { impl }
-`,
-    ],
-  ])('%s compiles', async (_, body) => {
-    const startCase = await (
-      await host()
-    ).case({ ...dbFile, 'module.tsx': head + body })
-    await expectCompiles(startCase, ['client', 'ssr'])
   })
 
   test('a `let` nothing assigns again compiles and stays off the client', async () => {
@@ -753,6 +619,40 @@ export const Route = createFileRoute('/reassigned-get')({
 })
 `,
     at: 'GET: get',
+  },
+  // (no guard or client read withdraws the refusal: cases 4, 8 and 2 of the
+  // comparison with main)
+  'src/routes/reassigned-headers-boolean-guard.tsx': {
+    source: `${routeHead}let pickHeaders: any
+if (!Boolean(pickHeaders)) pickHeaders = () => ({ 'x-db': db.x() })
+export const Route = createFileRoute('/reassigned-headers-boolean-guard')({
+  headers: pickHeaders,
+  component: () => <p>page</p>,
+})
+`,
+    at: 'headers: pickHeaders',
+  },
+  'src/routes/reassigned-get-client-read.tsx': {
+    source: `${routeHead}async function a() { return new Response('a') }
+async function b() { return new Response(db.x()) }
+let post = a
+if ((globalThis as any).flip) post = b
+export const Route = createFileRoute('/reassigned-get-client-read')({
+  server: { handlers: { POST: post } },
+  component: () => <p>{post.name}</p>,
+})
+`,
+    at: 'POST: post',
+  },
+  'src/routes/reassigned-ssr-instanceof-guard.tsx': {
+    source: `${routeHead}let decide: any
+if (!(decide instanceof Function)) decide = () => (db.x(), true)
+export const Route = createFileRoute('/reassigned-ssr-instanceof-guard')({
+  ssr: decide,
+  component: () => <p>page</p>,
+})
+`,
+    at: 'ssr: decide',
   },
   'src/routes/reassigned-headers.tsx': {
     source: `${routeHead}let pickHeaders = () => ({ 'x-db': db.y() })
@@ -972,14 +872,6 @@ export const Route = createFileRoute('/written-by-handler')({
   component: () => <p>page</p>,
 })
 `,
-      'src/routes/ssr-flag.tsx': `import { createFileRoute } from '@tanstack/react-router'
-let ssr = true
-if (import.meta.env.DEV) ssr = false
-export const Route = createFileRoute('/ssr-flag')({
-  ssr,
-  component: () => <p>page</p>,
-})
-`,
       'src/routes/const-create-handlers.tsx': `${routeHead}const get = import.meta.env.DEV
   ? async () => new Response(db.x())
   : async () => new Response(db.y())
@@ -997,7 +889,6 @@ export const Route = createFileRoute('/const-create-handlers')({
   // only server code assigns it, or it holds no server code
   test.each([
     'src/routes/written-by-handler.tsx',
-    'src/routes/ssr-flag.tsx',
     'src/routes/const-create-handlers.tsx',
   ])('%s compiles in every environment', async (file) => {
     const { host: dev } = await host()
@@ -1052,12 +943,6 @@ let apply = noop
       `const a = async () => db.x()
 const b = async () => db.y()
 let apply = import.meta.env.DEV ? a : b
-`,
-    ],
-    [
-      'a function assigned again',
-      `let apply = async () => db.y()
-apply = async () => db.x()
 `,
     ],
   ])(

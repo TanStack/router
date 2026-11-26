@@ -519,8 +519,9 @@ with when each node runs (`now`, `maybe` in an instance field, `later` in a func
 `contextOwner` climbs to the construct providing a use. Planners keep their policy and messages. Under Solid
 (`ModuleAnalysis`'s `jsx`, one per session), a `ref={x}` read is marked as possibly assigning `x`
 (`ClassifiedRef.assigns`), which the mutation model (through a liveness filter) and placement's write table count.
-Server code passed by name (a Start position, a route's server option) whose binding the client would keep assigned
-only for that code is one rule, `reassignedServerCode` (`mutation.ts`), on the source alone. The server-only text is
+Server code passed by name (a Start position, a route's server option) whose binding the module assigns outside the
+server-only text is refused: one rule, `reassignedServerCode` (`mutation.ts`), on the source alone, with no read,
+guard or export analysis. The server-only text is
 one view of the module, `PlanContext.serverText`: every planner's `serverText` (its recognition alone, the same in every
 environment), computed on first use. Each planner passes its own arguments and words the refusal.
 

@@ -711,16 +711,13 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   one warning at its definition (not in an installed package's module, G5). Neither looks across modules. Server code passed by name (a server fn's handler or
   validator, a middleware's `.server()` or validator, an isomorphic fn's `.server()`, a `createServerOnlyFn` argument,
   a name a route's `server` or `headers` option gives, also inside its object literals, spreads, arrays and a
-  `handlers` function's `createHandlers(…)` object, and an `ssr` name a function is assigned to) whose binding the
-  module assigns elsewhere (`let h = a; h = b; createServerFn().handler(h)`) fails the build at that argument in
+  `handlers` function's `createHandlers(…)` object, and an `ssr` name) whose binding the module assigns outside
+  server code (`let h = a; h = b; createServerFn().handler(h)`, `if (!h) h = …`) fails the build at that argument in
   every compile, since the client can keep the assignments with what they read (R154); a server fn's handler only
   where the compile keeps the site and accepts its creation. Server code is what any planner recognises as such (one
-  view of the module). Not refused: a binding only server code assigns, and one the client keeps anyway (exported, or
-  read outside server code, its own declarator and each assignment's smallest clause, its statement or the loop head
-  or condition holding it; a read in the test of an `if`, loop or `switch` around that clause up to its function is
-  part of the assignment only as a presence or type check of the binding: `h`, `!h`, `h == null`, `typeof h` compared
-  to a string or as a `switch` discriminant; a bare `switch (h)` discriminant and every `case` test are ordinary
-  reads). Unrecognised shapes must not leak
+  view of the module). Not refused: a binding only server code assigns. No export, read or guard of the binding
+  changes this (user decision, 2026-11-26): the fix is a `const`. A name reached through a wrapper or an alias
+  (`.handler(() => h())`, `.handler(wrap(h))`) is no name at the position. Unrecognised shapes must not leak
   silently (J4.12): for a builder method called through a computed
   member (`createServerFn()['handler'](…)`, `createMiddleware()['server'](…)`) or a server-only fn whose result is
   member-called (`createServerOnlyFn(…).bind(null)`), the client holds no server code, or the build fails with an

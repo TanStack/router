@@ -30,7 +30,6 @@ import type {
   YukuNode as Node,
   PlanContext,
   Planner,
-  SymbolId,
 } from '@tanstack/router-utils/compiler'
 
 /** What one planning round of the router planner decided, read by its split and HMR parts. */
@@ -141,14 +140,14 @@ function serverOptionsOf(
 
 /**
  * Refuses each name a route's server option passes server code by, when the
- * module assigns it elsewhere and the client, which erases the option, would
- * keep the assignments with what they read (`reassignedServerCode`). The
- * names: the value, and in it each property value and spread of an object
- * literal (`server: { handlers: { GET: get, ...more } }`), each element of an
- * array (`middleware: [auth]`), and the object a `handlers` function gives
- * `createHandlers` (`handlers: ({ createHandlers }) => createHandlers({ GET:
- * get })`). An `ssr` name only where a function is assigned to it: a flag
- * holds no server code. Judged on the source, so in every environment alike.
+ * module assigns it outside server-only text: the client, which erases the
+ * option, keeps the assignments with what they read (`reassignedServerCode`).
+ * The names: the value, and in it each property value and spread of an
+ * object literal (`server: { handlers: { GET: get, ...more } }`), each
+ * element of an array (`middleware: [auth]`), and the object a `handlers`
+ * function gives `createHandlers` (`handlers: ({ createHandlers }) =>
+ * createHandlers({ GET: get })`); `ssr`'s as well. Judged on the source, so
+ * in every environment alike.
  */
 function reportReassignedServerOptions(
   ctx: PlanContext<typeof ROUTER_PLANNER>,
@@ -157,14 +156,13 @@ function reportReassignedServerOptions(
   const code = ctx.analysis.source.code
   /**
    * Each name, with the keys down to it as written (a spread's or an
-   * element's: its container's, and `keyed` false), whether it is `ssr`'s,
-   * and whether it is in a `createHandlers(…)` object.
+   * element's: its container's, and `keyed` false), and whether it is in a
+   * `createHandlers(…)` object.
    */
   interface Named {
     node: Node
     path: Array<string>
     keyed: boolean
-    ssr: boolean
     factory: boolean
   }
   const named: Array<Named> = []
@@ -203,17 +201,12 @@ function reportReassignedServerOptions(
       }
     }
   }
-  for (const { keyText, key, value } of serverOptionsOf(ctx, route)) {
-    visit(
-      value,
-      { path: [keyText], keyed: true, ssr: key === 'ssr', factory: false },
-      false,
-    )
+  for (const { keyText, value } of serverOptionsOf(ctx, route)) {
+    visit(value, { path: [keyText], keyed: true, factory: false }, false)
   }
-  for (const { node, path, keyed, ssr, factory } of named) {
+  for (const { node, path, keyed, factory } of named) {
     const sym = reassignedServerCode(ctx, node)
-    // (a flag is no server code)
-    if (sym === null || (ssr && !assignsFunction(ctx, sym))) {
+    if (sym === null) {
       continue
     }
     const binding = ctx.symbols.name(sym)
@@ -273,32 +266,4 @@ function createHandlersArgument(node: Node): Node | null {
   return name === 'createHandlers' && first && first.type !== 'SpreadElement'
     ? first
     : null
-}
-
-/** Whether a function is ever assigned to `sym`: its declaration's value, or a write's. */
-function assignsFunction(ctx: PlanContext, sym: SymbolId): boolean {
-  const file = ctx.analysis.file
-  const values: Array<Node | null | undefined> = []
-  for (const name of ctx.symbols.binding(sym)?.declarations ?? []) {
-    const p = file.parentOf(name)
-    if (p?.type === 'FunctionDeclaration') {
-      return true
-    }
-    if (p?.type === 'VariableDeclarator') {
-      values.push(p.init)
-    }
-  }
-  for (const w of ctx.t1.mutation.writesOf(sym)) {
-    const id = ctx.t1.nodeAt(w.range.start)
-    const p = id && file.parentOf(id)
-    if (p?.type === 'AssignmentExpression') {
-      values.push(p.right)
-    }
-  }
-  return values.some((v) => {
-    const f = v && unwrapExpression(v)
-    return (
-      f?.type === 'ArrowFunctionExpression' || f?.type === 'FunctionExpression'
-    )
-  })
 }

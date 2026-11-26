@@ -210,6 +210,13 @@ function info not found` when one of them calls it, and the build says nothing, 
 
 ## Accepted limits
 
+- **A `let` of a Vue `<script setup>` block passed as server code is refused in development even when nothing
+  assigns it** (`let impl = () => …; createServerOnlyFn(impl)`): Vue's development output, and a build with Vue's
+  devtools, hands every `let` of the block to the template through a getter and a setter, and the setter is a write
+  outside server code, so the reassigned-name rule refuses it (user decision, 2026-11-26: no read analysis); a
+  production build, whose template is inlined, accepts it. Source: the reassigned-names change. No test. Workaround:
+  a `const` (`const impl = () => …`).
+
 - **Vite: the client-build record follows the client output on disk, with these limits** (settlement design rev 4
   §2, step 7; the server embeds the record: its document's client files and the functions it answers). Each keeps SSR
   from naming a file the build removed:
@@ -618,24 +625,14 @@ declaration table of 11-23). Rows: `start-plugin-core/tests/start-compiler-remov
   `.server` file or a `server-only` marker: import protection reports that one), and in the production bundle too
   when the statement or the import has an effect at load. Server code passed by name whose binding the module
   assigns (`.handler(h)`, `createServerOnlyFn(h)`, `.server(h)`, `.validator(h)`, a route's `server.handlers.GET: h`,
-  `createHandlers({ GET: h })`, `...h`, `middleware: [h]`, `headers: h`, `ssr: h` holding a function, with `h = …`) is
-  refused (`start-server-code-reassigned`, `route-server-code-reassigned`). Still built, with the assignments kept:
-  a binding only a handler reads that a top-level statement initialises conditionally
-  (`let conn; if (url) { conn = connect() }`); server code reached through another name
-  (`.handler(withLogging(h))`, `.handler(impls.h)`); a binding the module exports or any other code reads (the client
-  keeps it anyway, as on `main`), which turns the refusal off also where that read serves only server code or
-  nothing: a guard in a statement of its own before the write (`if (h) return; h = …`,
-  `const missing = !h; if (missing) { h = … }`), a guard that uses the binding rather than checking its presence or
-  type (`if (h?.stale) { h = … }`: a member read; the handler-only rule refused it), a presence check written as
-  `switch` cases (`switch (h) { case null: h = … }`, `switch (true) { case !h: h = … }`: a case test and a bare
-  discriminant are ordinary reads; the handler-only rule refused `switch (h) { case undefined: … }`), the previous value kept in an alias
-  (`const original = h; h = (c) => original(c)`, the realistic one),
-  `typeof h` in a statement, a helper only a handler calls (`const helper = () => h()`), a function nothing calls
-  (the first, handler-only rule of 2026-11-24 refused the last four); a reassigned `let` of a Vue `<script setup>` block
-  in development and in builds with Vue's devtools (Vue hands every binding of the block to the template through a
-  getter, which reads it; a production build, whose template is inlined, refuses it unless the template uses it); an
-  `ssr` name whose values are no function literals (`ssr = decide()`: not known to be server code); route server
-  options the router cannot read (a spread at the top level, a computed key: `options-unread`), and a `handlers`
+  `createHandlers({ GET: h })`, `...h`, `middleware: [h]`, `headers: h`, `ssr: h`, with `h = …` outside server code)
+  is refused (`start-server-code-reassigned`, `route-server-code-reassigned`), whatever else reads it (user decision,
+  2026-11-26: no exception for an exported or client-read binding, no guard analysis; the fix is a `const`). Still
+  built, with the assignments kept: a binding only a handler reads that a top-level statement initialises
+  conditionally (`let conn; if (url) { conn = connect() }`); server code reached through another name
+  (`.handler(withLogging(h))`, `.handler(() => h())`, `.handler(impls.h)`, a `handlers` function of more than one
+  statement: a follow-up, its own rule and decision; `main` leaks these too); route server options the router cannot
+  read (a spread at the top level, a computed key: `options-unread`), and a `handlers`
   function whose result is not one `createHandlers(…)` call. `main` keeps the same statements. Known limit (user,
   2026-11-24): too narrow a case for machinery; a warning would flag correct `if (import.meta.env.SSR)` setup.
   Workaround (documented in the execution-model guide): the setup in its own module only server code imports, or
