@@ -1976,6 +1976,21 @@ export const run = () => <b />
 `,
       expected: { value: 'b' },
     },
+    {
+      // (case 2 of the comparison with main: a module with a `React` of its
+      // own, in any scope, keeps what types name, as main does; a classic
+      // JSX runtime the bundler may be set to calls it)
+      name: 'a function-local React only a type names stays',
+      code: `${SO}import { record } from './record'
+export const f = createServerOnlyFn(() => 1)
+export function run() {
+  const React = record('react')
+  const probe = (unused?: typeof React) => 1
+  return [probe(), <b />].length
+}
+`,
+      expected: { value: 2, calls: ['react'] },
+    },
     // (Fable's re-check of 52b0c43a0e: a `declare` stays as written, and
     // an import its text names is the host's unless removed text leads to
     // it, as on a0f6fcc39f and main)

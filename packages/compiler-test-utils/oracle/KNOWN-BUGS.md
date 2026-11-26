@@ -199,6 +199,19 @@ function info not found` when one of them calls it, and the build says nothing, 
 
 ## Accepted limits
 
+- **A module with decorators, or with a `React` of its own, keeps what types name, as `main` does** (the type rule's
+  user decision, 2026-11-26: "we will never cover the entire syntax"): decorator metadata and a classic JSX runtime the
+  bundler is set to read names at run time that only types mention, and no rule here models their emitters, so the
+  rule's pass does not run there (`Tier1.typesNameValues` is false). A value only types name stays in those modules,
+  with its initialiser; what only server code reads still leaves. Rows: `start-build-decorator-metadata.test.ts`,
+  `start-compiler-removal-types.test.ts` "a function-local React only a type names stays". Workaround: none needed
+  (as `main`); move such a value to a module without decorators to have it removed.
+- **A classic JSX factory other than `React` set by config, with no pragma, leaves when only types name it** (Rsbuild
+  `tools.swc.jsc.transform.react: { runtime: 'classic', pragma: 'h' }`, a tsconfig `jsxFactory`; `const h = …` with
+  `typeof h` in code that stays): only a pragma's factory and a `React` of the module's own are known; the client
+  then reads an undeclared `h`. Worse than the branch before the type rule (it kept `h`). Source: Gemini's review of
+  the narrowed rule. No test. Workaround: name it with a pragma (`/** @jsx h */`).
+
 - **Code nested past the parser's depth limit is refused** (Yuku 0.29.0; user, 2026-11-25: no action, no normal code
   reaches it). About 250 levels of most shapes (parentheses, `?:` and else-if chains, nested JSX, assignment and
   curried-arrow chains), 127 nested callbacks or `jsx("div", {children:` calls, 84 levels of nested data

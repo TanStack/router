@@ -219,7 +219,9 @@ export interface Tier1 {
   /**
    * Whether a type position names a value of the module (`typeof x`, a class
    * as a type), not an import's: only then can a type the module erases free
-   * a value (`removal/closure.ts`, "a type never keeps a value").
+   * a value (`removal/closure.ts`, "a type never keeps a value"). False in a
+   * module with decorators or a `React` of its own: types keep what they
+   * name there, as on main.
    */
   typesNameValues: boolean
   names: ReadonlySet<string>
@@ -775,20 +777,14 @@ export class ModuleAnalysis {
       this.importIndexOfStatement(s),
     )
 
-    // the type names decorator metadata reads, by offset, and the classes
-    // that emit it (see `metadataNames`)
+    // the type names decorator metadata reads, by offset (see
+    // `metadataNames`), and whether the module has decorators
     const metadataReads = new Map<number, Scope>()
-    let metadataClasses: Array<{ node: Node; outer: Scope }> | null = null
+    let decorated = false
     for (const scope of file.scopes) {
-      if (
-        scope.kind === 'class' &&
-        scope.parent !== null &&
-        metadataNames(scope.node, scope.parent, metadataReads)
-      ) {
-        ;(metadataClasses ??= []).push({
-          node: scope.node,
-          outer: scope.parent,
-        })
+      if (scope.kind === 'class' && scope.parent !== null) {
+        decorated =
+          metadataNames(scope.node, scope.parent, metadataReads) || decorated
       }
     }
 
@@ -797,11 +793,21 @@ export class ModuleAnalysis {
     /** Solid `ref={x}` reads of reassignable bindings (`refAssigns`). */
     const refTargets: Array<{ ref: ClassifiedRef; binding: Binding }> = []
     const names = new Set<string>(symbols.names())
+    // a type keeps what it names, as on main, in a module with decorators
+    // (what their metadata reads is the emitter's) or a `React` of its own
+    // (a classic JSX runtime the bundler may be set to calls it): the rule's
+    // gate stays closed there
+    const typesKeep =
+      decorated ||
+      (names.has('React') &&
+        file.bindings.some(
+          (b) => b.name === 'React' && !b.has(BindingFlags.Import),
+        ))
     let typesNameValues = false
     for (const ref of file.references) {
       let b: Binding | null
       if (ref.inTypePosition) {
-        if (!typesNameValues) {
+        if (!typesNameValues && !typesKeep) {
           const named = ref.binding
           typesNameValues =
             named !== null &&
@@ -856,23 +862,6 @@ export class ModuleAnalysis {
       }
     }
     refAssigns(file, refTargets)
-    // a class that emits metadata reads, where it is defined, the module's
-    // own binding of any global the metadata can name (`string`: `String`)
-    for (const { node, outer } of metadataClasses ?? []) {
-      for (const name of METADATA_GLOBALS) {
-        const b = valueBinding(outer, name)
-        if (b === null) {
-          names.add(name)
-        } else if (symbols.kind(symbols.ofBinding(b)) !== 'ambient') {
-          refs.push({
-            sym: symbols.ofBinding(b),
-            range: { start: node.start, end: node.end },
-            kind: 'value',
-            ctx: 'plain',
-          })
-        }
-      }
-    }
 
     // a `var` declared again: what that declaration gives it is a write, like
     // an assignment, except what its declaring unit starts it with (a nested
@@ -1144,35 +1133,18 @@ interface MetadataParam {
 }
 
 /**
- * The globals decorator metadata can name (TypeScript's `serializeTypeNode`,
- * SWC's and Oxc's legacy metadata): what a keyword, a literal, an array, a
- * function type, a union or an async method serializes to.
- */
-const METADATA_GLOBALS = [
-  'Object',
-  'Function',
-  'Array',
-  'Boolean',
-  'String',
-  'Number',
-  'BigInt',
-  'Symbol',
-  'Promise',
-]
-
-/**
  * The type names TypeScript's decorator metadata (`emitDecoratorMetadata`)
  * turns into runtime reads where the class is defined
  * (`__metadata("design:type", Model)`), by offset of the name, with the scope
  * the read resolves in: the type of a decorated property or accessor, the
  * parameter and return types of a method with a decorator on it or on a
  * parameter, the constructor's parameter types of a class with a decorator
- * on it or on a constructor parameter. A type reference serializes to its
- * name (`Model`, `(Model)`, `ns.Model` reads `ns`; `Array<Model>` reads
- * `Array`). True: the class emits metadata, which may also read any of
- * `METADATA_GLOBALS` (the caller's). Whether the project emits metadata is
- * not asked: where it does not, the downstream TypeScript transform erases
- * what the name kept.
+ * on it or on a constructor parameter. Only a type reference serializes to
+ * its name (`Model`, `(Model)`, `ns.Model` reads `ns`; `Array<Model>` reads
+ * `Array`); a union, an intersection or `typeof` is `Object`. True: the
+ * class has a decorator (on it, a member or a parameter). Whether the
+ * project emits metadata is not asked: where it does not, the downstream
+ * TypeScript transform erases what the name kept.
  */
 function metadataNames(
   node: Node,
@@ -1272,8 +1244,6 @@ function jsxFactories(
     fragment: root(fragment ?? 'React'),
   }
 }
-
-const REACT_FACTORIES = { element: 'React', fragment: 'React' }
 
 /** Whether `node` is the value of a JSX `ref` attribute (`ref={x}`, through parentheses and casts). */
 function isRefAttributeValue(file: SourceFile, node: Node): boolean {

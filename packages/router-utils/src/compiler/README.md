@@ -234,11 +234,9 @@ reads the tree (`Removal` in `removal/index.ts`):
   renders is a unit's `stripped` (type-only export syntax, `isTypeOnlyExport`; an inline `type` import specifier, which
   follows its statement's value specifiers). A read the core
   synthesises from a name (a Solid `use:` directive) binds only to a declaration with a runtime value. A type name
-  decorator metadata serializes is a read by value where the class is defined (`metadataNames`), and a class that
-  emits metadata reads there the module's own binding of every global metadata can name (`METADATA_GLOBALS`: `String`
-  for `string`, `Function` for a method, `Object` for a union; TypeScript's serializer's set). JSX reads the factories
-  a classic pragma of the header names (`@jsx h`, `@jsxFrag Frag`, React's for `@jsxRuntime classic`:
-  `jsxFactories`), and a `React` of the module's own (a classic runtime the bundler is set to), by value where it is.
+  decorator metadata serializes is a read by value where the class is defined (`metadataNames`). JSX reads the
+  factories a classic pragma of the header names (`@jsx h`, `@jsxFrag Frag`, React's for `@jsxRuntime classic`:
+  `jsxFactories`), by value where it is.
 - **types**: a type never keeps a value. Every type position in code that stays (`Reference.inTypePosition`, the
   parser's) is erased text where it stands, and what it names was used by the source (an annotation, a cast, a type
   argument, an overload signature, an abstract or `declare` member, in running code or not), except an import,
@@ -249,10 +247,11 @@ reads the tree (`Removal` in `removal/index.ts`):
   (`Unit.stripped`) and exported erased declarations (`export interface X`, `export { X }`, `export default X`, an
   exported namespace's types; `Declarations.exportedErased`) are removed text in every module (main's
   `stripTypeExports`), imports included. The pass runs where a type position names a value of the module
-  (`Tier1.typesNameValues`): elsewhere it reaches nothing. Its seeds are not erasure's `NAMED`: a route module keeps a
+  (`Tier1.typesNameValues`): elsewhere it reaches nothing. It does not run in a module with decorators (what their
+  metadata reads is the emitter's, which no rule here models) or with a `React` of its own (a classic JSX runtime the
+  bundler may be set to calls it): types keep what they name there, as on main. Its seeds are not erasure's `NAMED`: a route module keeps a
   class, enum or namespace only types name (R163). A value only types name leaves with its initialiser, in every environment (user decision,
-  2026-11-25); a decorated member's annotation that decorator metadata serializes is a read by value
-  (`metadataNames`), so it stays. Along `ERASED` text a type declaration is a name: what an alias, an interface, a
+  2026-11-25). Along `ERASED` text a type declaration is a name: what an alias, an interface, a
   namespace of types or a `declare` of a value names was used. A reference names the declarations of its space only (D1): `x: Shape` the
   alias, `typeof Shape` and reads the value; `N.T` of a namespace of types the member `T`, never a value declared
   beside `N`; `import A = N.M` names what the whole path selects, and an alias named only for a type leaves unread.

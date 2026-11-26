@@ -1,13 +1,15 @@
 /**
- * A type never keeps a value (user decision, 2026-11-25), but decorator
- * metadata (`emitDecoratorMetadata`: DI containers, ORMs, validation DTOs)
- * reads the type of a decorated member by value when the class is defined:
- * a class only that annotation names stays, and the client records it
- * instead of throwing a ReferenceError; so does a constructor of the module
- * that a keyword type serializes to (`string`: the module's `String`), which
- * the client records instead of the built-in. A decorator itself is no
- * read: a class only types name is removed with it. Vite's Oxc reads the
- * setting from the tsconfig; Rsbuild's SWC from its decorator options.
+ * Decorator metadata (`emitDecoratorMetadata`: DI containers, ORMs,
+ * validation DTOs) reads the type of a decorated member by value when the
+ * class is defined: a class only that annotation names stays, and the client
+ * records it instead of throwing a ReferenceError. What else the emitter's
+ * metadata reads (`String` for `string`, a class in a union on SWC) no rule
+ * models: in a module with decorators types keep what they name, as on main
+ * (a type never keeps a value elsewhere; user decision, 2026-11-26), while
+ * what only server code reads still leaves. Vite's Oxc reads the setting from
+ * the tsconfig; Rsbuild's SWC from its decorator options. Sources: the
+ * reviews of the type rule (Astra, Fable, Gemini) and its comparison with
+ * main (`type-only-main-cases`).
  */
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../build-harness'
@@ -27,14 +29,20 @@ const tsconfig = JSON.stringify({
   },
 })
 
-const head = `import { createServerFn } from '@tanstack/react-start'
+const head = `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 ;(Reflect as any).metadata = (key: string, value: any) => (target: any) => {
-  if (key === 'design:type') target.constructor.recorded = value.name
+  if (key === 'design:type') target.constructor.recorded = value?.name
 }
 const seen = (..._args: Array<unknown>): any => {}
 `
 const tail = `export const fn = createServerFn().handler(async () => 1)
 export const recorded = () => (Entity as any).recorded
+`
+
+// (an effect at its top level: the bundler keeps the module where an import
+// of it stays)
+const server = `;(globalThis as any).setupRan = 'MARK_SETUP_SERVER'
+export const setup = () => 1
 `
 
 const rows: Array<{
@@ -54,8 +62,9 @@ export class Entity {
     recorded: 'Model',
   },
   {
-    // (Astra 2: \`string\` serializes to the \`String\` where the class is)
-    name: 'a constructor of the module a keyword type serializes to stays',
+    // (Astra's review of 5d77f89358: `string` serializes to the `String`
+    // where the class is)
+    name: 'a constructor of the module only a type names stays in a module with decorators',
     body: `const String = class Actual {}
 export class Entity {
   @seen name!: string
@@ -64,35 +73,31 @@ export const check = (x?: typeof String) => 1
 `,
     recorded: 'Actual',
   },
-  // (Astra's and Gemini's re-checks of 52b0c43a0e: what a method, a union,
-  // an intersection or a negative bigint serializes to is the module's own
-  // constructor of that name; any of them a class with metadata may read)
-  ...(
-    [
-      ['a decorated method', 'Function', '@seen run() {}'],
-      ['a union of string literals', 'String', `@seen kind!: 'a' | 'b'`],
-      ['an intersection of strings', 'String', '@seen kind!: string & string'],
-      // (Rsbuild only: Oxc's legacy metadata panics on a negative bigint
-      // type, `oxc_transformer` 0.156 `decorator/legacy/metadata.rs:612`)
-      ['a negative bigint literal', 'BigInt', '@seen big!: -1n', 'rsbuild'],
-    ] as const
-  ).map(([what, ctor, member, only]) => ({
-    name: `the module's ${ctor} that ${what} serializes to stays`,
-    body: `const ${ctor} = class Actual {}
+  {
+    // (case 1b of the comparison with main: server code is the one reader)
+    name: 'a constructor of the module only server code reads leaves, as on main',
+    body: `const String = class Actual {}
+export const serverOnly = createServerOnlyFn(() => String)
 export class Entity {
-  ${member}
+  @seen name!: string
 }
-export const check = (x?: typeof ${ctor}) => 1
 `,
-    recorded: 'Actual',
+    recorded: 'String',
+  },
+  // (case 4: SWC drops `never` and records the class; Oxc records `Object`)
+  ...startBundlers.map((only) => ({
+    name: 'a class a decorated member names in a union with never stays',
+    body: `class Two {}
+export class Entity {
+  @seen t!: Two | never
+}
+`,
+    recorded: only === 'rsbuild' ? 'Two' : 'Object',
     only,
   })),
   {
-    // a class only types name is removed with its decorators and static
-    // blocks (the user's decision on self-registering classes, 2026-11-25:
-    // accepted as built; Fable's review of 5d77f89358): the source records
-    // `x-el`, the client nothing
-    name: 'a decorated class only types name is removed with its decorator',
+    // (Fable's review of 5d77f89358: a self-registering class)
+    name: 'a decorated class only types name stays, with its registration',
     body: `const registry: Array<string> = []
 const register = (name: string) => (_target: unknown) => {
   registry.push(name)
@@ -106,36 +111,68 @@ export class Entity {
 }
 export const check = (el?: MyEl) => 1
 `,
-    recorded: 'none',
+    recorded: 'x-el',
   },
 ]
+
+const options = (bundler: (typeof startBundlers)[number]) => ({
+  bundler,
+  entry: 'src/entry.ts',
+  // (unminified: the class keeps its name)
+  minify: false,
+  ...(bundler === 'rsbuild' && {
+    rsbuildConfig: {
+      source: { decorators: { version: 'legacy' as const } },
+      tools: {
+        swc: { jsc: { transform: { decoratorMetadata: true } } },
+      },
+    },
+  }),
+})
 
 describe.each(startBundlers)('%s build', (bundler) => {
   test.each(rows.filter((row) => (row.only ?? bundler) === bundler))(
     '$name',
     async ({ body, recorded }) => {
       const build = await buildStart({
-        bundler,
+        ...options(bundler),
         files: {
           'src/module.ts': head + body + tail,
           'src/entry.ts': `export { recorded } from './module'\n`,
           'tsconfig.json': tsconfig,
         },
-        entry: 'src/entry.ts',
-        // (unminified: the class keeps its name)
-        minify: false,
-        ...(bundler === 'rsbuild' && {
-          rsbuildConfig: {
-            source: { decorators: { version: 'legacy' } },
-            tools: {
-              swc: { jsc: { transform: { decoratorMetadata: true } } },
-            },
-          },
-        }),
       })
       expect((await build.client.run('return entry.recorded()')).result).toBe(
         recorded,
       )
+    },
+    timeout,
+  )
+
+  // (case 1 of the comparison with main, Astra's round 3: a shadowing
+  // binding only server code reads leaves with its call)
+  test(
+    "a metadata global's name of the module only server code reads leaves with its call",
+    async () => {
+      const build = await buildStart({
+        ...options(bundler),
+        files: {
+          'src/dep.server.ts': server,
+          'src/module.ts': `${head}import { setup } from './dep.server'
+const Number = setup()
+export const getIt = createServerOnlyFn(() => Number)
+export class Entity {
+  @seen name!: string
+}
+${tail}`,
+          'src/entry.ts': `export { recorded } from './module'\n`,
+          'tsconfig.json': tsconfig,
+        },
+      })
+      expect({
+        recorded: (await build.client.run('return entry.recorded()')).result,
+        setup: build.client.where('MARK_SETUP_SERVER'),
+      }).toEqual({ recorded: 'String', setup: 'nowhere' })
     },
     timeout,
   )
