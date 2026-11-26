@@ -535,8 +535,8 @@ export function Page() {
 })
 
 describe('the split chunk', () => {
-  // The server renders the children as JSX text. Multi-line text is pinned
-  // in hydrate-ids-and-captures.test.ts.
+  // Both envs render the children as JSX text (text only is not split).
+  // Multi-line text is pinned in hydrate-ids-and-captures.test.ts.
   // Source: #8504 hydrate-split-modules.test.ts (exact equality, numeric
   // entities)
   test.each([
@@ -558,10 +558,42 @@ describe('the split chunk', () => {
         `${head}export function Page() {
   return <Hydrate when={load()}>${text}</Hydrate>
 }`,
+        { split: false },
       )
       expect(client.html).toContain(rendered)
     },
   )
+
+  // Text only has nothing to hydrate: no chunk, whatever the spelling
+  // (decision 12, D-26).
+  test.each([
+    {
+      name: 'a text child',
+      boundary: '<Hydrate when={load()}>plain</Hydrate>',
+    },
+    {
+      name: 'a string child',
+      boundary: "<Hydrate when={load()}>{'plain'}</Hydrate>",
+    },
+    {
+      name: 'a template child',
+      boundary: '<Hydrate when={load()}>{`plain`}</Hydrate>',
+    },
+    {
+      name: 'a string children prop',
+      boundary: '<Hydrate when={load()} children="plain" />',
+    },
+    {
+      name: 'a string expression children prop',
+      boundary: "<Hydrate when={load()} children={'plain'} />",
+    },
+  ])('client: $name is not split', async ({ boundary }) => {
+    const code = `${head}export function Page() {
+  return <main>${boundary}</main>
+}`
+    const startCase = await (await hosts()).start.case({ 'module.tsx': code })
+    expect(await startCase.served()).not.toContain('tss-hydrate')
+  })
 
   // A wrapper component forwarding its children through a boundary keeps
   // them after hydration.

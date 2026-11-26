@@ -48,17 +48,31 @@ inside the marker and mounts the live Solid subtree in its place.
 [//]: # 'EarlyHydration'
 [//]: # 'SplitLimits'
 
-These patterns cannot be split:
+These patterns cannot be split, and fail the build:
 
-| Pattern                                                                                                                                    | Why it is rejected                                                                          | What to do instead                                                                                                  |
-| ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Function-as-children                                                                                                                       | The compiler cannot move a render function and preserve the expected call pattern.          | Use `split={false}` or move the rendered UI into a child component.                                                 |
-| Assigning a local of the component inside the boundary (`count++`)                                                                         | The extracted children receive the local's value, not the variable.                         | Move the variable and the code that assigns it into a component inside the boundary, or use `split={false}`.        |
-| A nested boundary assigning, through `ref`, a local declared outside both boundaries                                                       | The inner boundary's chunk would assign its own copy.                                       | Use `split={false}` on one of them.                                                                                 |
-| Children, or a component only they render, assigning a module variable other code uses, `ref={el}` included (unless `el` holds a callback) | The chunk would assign its own copy of the variable, while the module reads the original.   | Use `split={false}`, or move the variable to a module of its own, with a function that assigns it, and import them. |
-| `await` or `yield` directly inside the boundary                                                                                            | The extracted children render in a synchronous component.                                   | Compute the value before the boundary, or use `split={false}`.                                                      |
-| `this` or `new.target` captures                                                                                                            | Extracted function components cannot safely preserve class instance or constructor context. | Wrap the UI in a function component or use `split={false}`.                                                         |
-| The enclosing function's `arguments`                                                                                                       | The extracted children render in another component, with arguments of their own.            | Read it into a local before the boundary (`const args = arguments`), or use `split={false}`.                        |
-| `super` captures                                                                                                                           | Extracted function components cannot preserve superclass access.                            | Wrap the UI in a function component or use `split={false}`.                                                         |
+| Pattern                                         | Why it is rejected                                                                          | What to do instead                                                                           |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Function-as-children                            | The compiler cannot move a render function and preserve the expected call pattern.          | Use `split={false}` or move the rendered UI into a child component.                          |
+| `await` or `yield` directly inside the boundary | The extracted children render in a synchronous component.                                   | Compute the value before the boundary, or use `split={false}`.                               |
+| `this` or `new.target` captures                 | Extracted function components cannot safely preserve class instance or constructor context. | Wrap the UI in a function component or use `split={false}`.                                  |
+| The enclosing function's `arguments`            | The extracted children render in another component, with arguments of their own.            | Read it into a local before the boundary (`const args = arguments`), or use `split={false}`. |
+| `super` captures                                | Extracted function components cannot preserve superclass access.                            | Wrap the UI in a function component or use `split={false}`.                                  |
+
+These children are not split: they render in place, as with `split={false}`,
+and the build warns once, naming why (write `split={false}` to keep them in
+place without the warning):
+
+- children assigning a local of the component (`count++`): split children
+  would receive its value, not the variable;
+- children reading a local declared after the boundary;
+- a nested boundary assigning, through `ref`, a local declared outside both
+  boundaries (the outer boundary stays in place);
+- children, or a component only they render, assigning a module variable
+  other code uses, `ref={el}` included (unless `el` holds a callback): the
+  chunk would assign its own copy (to split them, move the variable to a
+  module of its own, with a function that assigns it).
+
+Text alone (`<Hydrate>plain text</Hydrate>`) has nothing to hydrate and is
+never split.
 
 [//]: # 'SplitLimits'

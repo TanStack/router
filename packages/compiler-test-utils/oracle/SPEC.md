@@ -830,7 +830,7 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   boundary (the route, a component rendering itself), a name a top-level statement declares (and a declaration such a
   statement reads, as split chunks do), the route binding, what another module of the file holds. Code that left the
   module (the children, what only they use) assigning such an import, or its copy of a binding the module or another
-  chunk of the file also holds, is rejected (J5.5); the copy's limits are KNOWN-BUGS'.
+  chunk of the file also holds, stays in place (J5.5); the copy's limits are KNOWN-BUGS'.
 - **J5.3 Server output.** Children still render to HTML (G1); the server renders a boundary marker; `fallback` is
   removed when statically visible (a direct prop, an inline object spread, a single-use `const` spread) and may stay
   otherwise.
@@ -841,19 +841,22 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   runtime combines an optional compiler prefix with the framework's own id: a compiler id on every non-extracted
   boundary is not required when the framework identity already agrees. Boundaries rendered at the same time never
   share an identity; boundaries in mutually exclusive branches at the same position may.
-- **J5.5 Loud rejections when extraction is attempted.** For a boundary being extracted, function-as-children, hook
-  calls that may run while the extracted JSX renders (React, its `use` included; Solid children may call them, R101)
-  and what the children would take from the enclosing code without a name (`this`, `super`, `new.target`,
-  `arguments`, `await`, `yield`, a private name of a class around them, as the language scopes them) give a compile
-  error naming the fix (`split={false}`, a local before the boundary, or a child component); so does, on React, a read of a reassigned
-  `let` inside a function of the children, directly or through a nested boundary (R123, R161 D2; the fix is `useRef`),
-  unless every write of it is complete when the boundary is created (decision 3a: an ordinary statement of the code
-  declaring it, in its blocks, `if`, `switch` or `try`, before the boundary, which is in that code too and in no loop
-  the variable outlives; a write in a function or a class is never complete), and children assigning a module binding the
-  chunk imports, or its copy of one the module also keeps (J5.2; the fix is `split={false}`). Dynamic `split` counts as split. A boundary with literal `split={false}` is
-  neither extracted nor rejected, and its runtime behaviour is the framework's (C8). These rejections are the
-  specified outcome, not a limitation to remove (G5's "our limitation is a bug" does not apply). Each compilation
-  that attempts the extraction rejects (the client compilation included).
+- **J5.5 Loud rejections when extraction is attempted; children kept in place.** For a boundary being extracted,
+  function-as-children, hook calls that may run while the extracted JSX renders (React, its `use` included; Solid
+  children may call them, R101) and what the children would take from the enclosing code without a name (`this`,
+  `super`, `new.target`, `arguments`, `await`, `yield`, a private name of a class around them, as the language scopes
+  them) give a compile error naming the fix (`split={false}`, a local before the boundary, or a child component), in
+  every compilation that attempts the extraction (client and server alike). Children the split would hand a copy of
+  a binding instead of the binding are not extracted (decision 12): children assigning a captured local; on React, a
+  function of the children reading a local the component reassigns, directly or through a nested boundary (R123,
+  R161 D2); a capture declared after the boundary (a function declaration excepted); on Solid, a `ref` in a nested
+  boundary naming a local declared outside both; children, or code only they use, assigning a module binding the
+  chunk imports, or its copy of one the module also keeps (J5.2). Such a boundary renders in place as with
+  `split={false}` and keeps its compiler id in every environment (J5.4); the client compilation reports one warning
+  naming why (`split={false}` silences it). Text-only children (text, a string or a template without expressions, as
+  children or as a `children` prop) are never extracted. Dynamic `split` counts as split. A boundary with literal
+  `split={false}` is neither extracted nor rejected, and its runtime behaviour is the framework's (C8). These
+  rejections are the specified outcome, not a limitation to remove (G5's "our limitation is a bug" does not apply).
 - **J5.6 Only what is needed, when it is needed.** Child chunks are not modulepreloaded with the route; without
   `prefetch` (and apart from React's documented early hydration), a child chunk loads when the boundary is about to
   render or hydrate; `prefetch` may load it earlier. The documented initial-hydration versus later-mount behaviour,

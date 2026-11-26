@@ -20,8 +20,9 @@ import {
   callFromClient,
   callOnServer,
   compileError,
+  moduleFile,
 } from './regression-helpers'
-import type { StartHost } from './start-host'
+import type { StartCase, StartHost } from './start-host'
 
 /**
  * Asserts that `error` is a compile error about the user's module `source`
@@ -58,6 +59,29 @@ export function expectCompileError(
     ...(error instanceof CompileFailure && { file: error.file }),
     ...(position && { position }),
   })
+}
+
+/**
+ * The client keeps the `<Hydrate>` children of the case's module `source`
+ * in place (SPEC J5.5, decision 12): it serves the module with one warning,
+ * at the line and column of `at` (the first occurrence of that text), and
+ * imports the chunks of `chunks` boundaries (default none: a nested one may
+ * still split).
+ */
+export async function expectNotSplit(
+  startCase: StartCase,
+  source: string,
+  at: string,
+  chunks = 0,
+) {
+  const mark = startCase.diagnostics().length
+  const served = await startCase.served(moduleFile, 'client')
+  expectDiagnostic(startCase.diagnostics().slice(mark), {
+    severity: 'warning',
+    position: diagnosticPosition(source, at),
+    times: 1,
+  })
+  expect(new Set(served.match(/\?tss-hydrate=[^"'&]+/g)).size).toBe(chunks)
 }
 
 /** Server-only module the server fns of the misplacement tests read. */

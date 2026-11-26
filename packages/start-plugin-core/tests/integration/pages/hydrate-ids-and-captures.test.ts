@@ -289,8 +289,7 @@ export const cleanup = ['__spreadWhen']`,
 
   // On main, the client renders other text than the server (a hydration
   // mismatch).
-  // Plain text has nothing to hydrate: splitting it or leaving it in place are
-  // both accepted, so the chunks are not asserted. (`idleHead`:
+  // Plain text has nothing to hydrate: it is not split (decision 12). (`idleHead`:
   // `boundaryRendering` finds the boundary by the hydration id it renders; a
   // `load()` boundary renders none.)
   // Source: #8504 hydrate-split-modules.test.ts (exact JSX-text equality, red
@@ -698,12 +697,12 @@ describe('source maps of the split code', () => {
   // On main, the split code of such a boundary maps to nothing (SPEC G6):
   // devtools show it as generated code, not as the user's file, and its
   // component's frames in stacks resolve nowhere.
-  test('client: the split text of a text-only boundary maps to its line and column', async () => {
+  test('client: the split text of a boundary maps to its line and column', async () => {
     await expectSplitTextMapped(
       `${head}export function Page() {
   return (
     <main>
-      <Hydrate when={load()}>MARK_SPLIT_TEXT</Hydrate>
+      <Hydrate when={load()}><p>MARK_SPLIT_TEXT</p></Hydrate>
     </main>
   )
 }`,

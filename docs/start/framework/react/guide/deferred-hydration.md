@@ -722,19 +722,35 @@ such as `split={shouldSplit}` cannot be used to opt out at compile time.
 
 [//]: # 'SplitLimits'
 
-These patterns cannot be split:
+These patterns cannot be split, and fail the build:
 
-| Pattern                                                                                                                                                                                                                                                  | Why it is rejected                                                                                                           | What to do instead                                                                                                                                      |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Function-as-children                                                                                                                                                                                                                                     | The compiler cannot move a render function and preserve the expected call pattern.                                           | Use `split={false}` or move the rendered UI into a child component.                                                                                     |
-| Hook calls directly inside extracted JSX, React's `use` included                                                                                                                                                                                         | Moving that JSX would move where the hook executes.                                                                          | Move the hook call into a component inside the boundary, then render that component.                                                                    |
-| A function inside the boundary reading a `let` the component reassigns, unless every assignment is an ordinary statement of the component before the boundary (also in `if`/`else`, `switch` or `try` blocks) and the boundary is in no loop or callback | The extracted children receive the variable's value when the boundary renders: the function would not see later assignments. | Keep the value in a ref holding its initial value (`const timer = useRef<number>(undefined)`, read and assign `timer.current`), or use `split={false}`. |
-| Assigning a local of the component inside the boundary (`count++`)                                                                                                                                                                                       | The extracted children receive the local's value, not the variable.                                                          | Move the variable and the code that assigns it into a component inside the boundary, or use `split={false}`.                                            |
-| Children, or a component only they render, assigning a module variable other code uses                                                                                                                                                                   | The chunk would assign its own copy of the variable, while the module reads the original.                                    | Use `split={false}`, or move the variable to a module of its own, with a function that assigns it, and import them.                                     |
-| `await` or `yield` directly inside the boundary                                                                                                                                                                                                          | The extracted children render in a synchronous component.                                                                    | Compute the value before the boundary, or use `split={false}`.                                                                                          |
-| `this` or `new.target` captures                                                                                                                                                                                                                          | Extracted function components cannot safely preserve class instance or constructor context.                                  | Wrap the UI in a function component or use `split={false}`.                                                                                             |
-| The enclosing function's `arguments`                                                                                                                                                                                                                     | The extracted children render in another component, with arguments of their own.                                             | Read it into a local before the boundary (`const args = arguments`), or use `split={false}`.                                                            |
-| `super` captures                                                                                                                                                                                                                                         | Extracted function components cannot preserve superclass access.                                                             | Wrap the UI in a function component or use `split={false}`.                                                                                             |
+| Pattern                                                          | Why it is rejected                                                                          | What to do instead                                                                           |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Function-as-children                                             | The compiler cannot move a render function and preserve the expected call pattern.          | Use `split={false}` or move the rendered UI into a child component.                          |
+| Hook calls directly inside extracted JSX, React's `use` included | Moving that JSX would move where the hook executes.                                         | Move the hook call into a component inside the boundary, then render that component.         |
+| `await` or `yield` directly inside the boundary                  | The extracted children render in a synchronous component.                                   | Compute the value before the boundary, or use `split={false}`.                               |
+| `this` or `new.target` captures                                  | Extracted function components cannot safely preserve class instance or constructor context. | Wrap the UI in a function component or use `split={false}`.                                  |
+| The enclosing function's `arguments`                             | The extracted children render in another component, with arguments of their own.            | Read it into a local before the boundary (`const args = arguments`), or use `split={false}`. |
+| `super` captures                                                 | Extracted function components cannot preserve superclass access.                            | Wrap the UI in a function component or use `split={false}`.                                  |
+
+These children are not split: they render in place, as with `split={false}`,
+and the build warns once, naming why (write `split={false}` to keep them in
+place without the warning):
+
+- children assigning a local of the component (`count++`): split children
+  would receive its value, not the variable;
+- a function inside the boundary reading a `let` the component reassigns:
+  split children would receive its value when the boundary renders, so the
+  function would not see later assignments (to split them, keep the value in
+  a ref, `const timer = useRef<number>(undefined)`, and read and assign
+  `timer.current`);
+- children reading a local declared after the boundary;
+- children, or a component only they render, assigning a module variable
+  other code uses: the chunk would assign its own copy (to split them, move
+  the variable to a module of its own, with a function that assigns it).
+
+Text alone (`<Hydrate>plain text</Hydrate>`) has nothing to hydrate and is
+never split.
 
 This fails because `useThing()` would be moved into the generated component:
 

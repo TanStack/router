@@ -14,8 +14,11 @@
  * prefix for every boundary.
  *
  * - Every env inserts ` h="<id>"` into the opening tag of each boundary the
- *   client extracts (anything but a literal `split={false}` with children to
- *   extract), so the server's and the client's hydration ids match.
+ *   client may extract (anything but a literal `split={false}` with children
+ *   that are not text only), so the server's and the client's hydration ids
+ *   match; the client keeps it on a boundary whose children it keeps in
+ *   place (decision 12: a capture the split children would not see as the
+ *   component does, with one warning, `notSplit`).
  * - Server envs strip a statically visible `fallback` (an erased region:
  *   the core removes what only the fallback read).
  * - The client env claims the children for a fixed-home generated unit, the
@@ -452,21 +455,28 @@ function childrenShape(element: JSXElement): ChildrenShape | null {
       if (e.type === 'JSXEmptyExpression') {
         return null
       }
-      const inner = unwrapExpression(e)
-      if (
-        (inner.type === 'Literal' && typeof inner.value === 'string') ||
-        (inner.type === 'TemplateLiteral' && inner.expressions.length === 0)
-      ) {
+      if (isText(e)) {
         return null
       }
       return {
         range: { start: e.start, end: e.end },
         wrap: false,
         nodes: [e],
-        functionChild: isFunction(inner),
+        functionChild: isFunction(unwrapExpression(e)),
       }
     }
     return null
+  }
+  if (
+    meaningful.every(
+      (c) =>
+        c.type === 'JSXText' ||
+        (c.type === 'JSXExpressionContainer' &&
+          c.expression.type !== 'JSXEmptyExpression' &&
+          isText(c.expression)),
+    )
+  ) {
+    return null // text only, in any spelling: nothing to hydrate
   }
   const functionChild = meaningful.some(
     (c) =>
@@ -504,6 +514,15 @@ function childrenShape(element: JSXElement): ChildrenShape | null {
     nodes: element.children.filter((c) => c.start >= start && c.end <= end),
     functionChild,
   }
+}
+
+/** A string, or a template literal without expressions. */
+function isText(node: Node): boolean {
+  const e = unwrapExpression(node)
+  return (
+    (e.type === 'Literal' && typeof e.value === 'string') ||
+    (e.type === 'TemplateLiteral' && e.expressions.length === 0)
+  )
 }
 
 function isFunction(node: Node): boolean {
@@ -560,13 +579,24 @@ function plan(ctx: PlanContext<typeof HYDRATE_PLANNER>): void {
   }
   const extracted: Array<Extracted> = []
   const planned = new Map<Boundary, { sym: SymbolId; chunk: string }>()
+  // boundaries whose children stay in place: part of the enclosing ones'
+  const inline = new Set<Boundary>()
   for (const b of [...boundaries].reverse()) {
     const n = names.get(b)
     const result =
       n && live(b)
-        ? extract(ctx, b, n, nestedRegions(boundaries, b), extracted, shared)
+        ? extract(
+            ctx,
+            b,
+            n,
+            nestedRegions(boundaries, b, inline),
+            extracted,
+            shared,
+          )
         : null
-    if (result) {
+    if (result === 'inline') {
+      inline.add(b)
+    } else if (result) {
       planned.set(b, result)
     }
   }
@@ -589,16 +619,23 @@ function plan(ctx: PlanContext<typeof HYDRATE_PLANNER>): void {
 /**
  * The children regions of the boundaries nested in `b` that the client
  * extracts: they render as placeholders in `b`'s chunk and are validated on
- * their own.
+ * their own (not those it keeps in place, `inline`: their children are
+ * `b`'s).
  */
 function nestedRegions(
   boundaries: ReadonlyArray<Boundary>,
   b: Boundary,
+  inline: ReadonlySet<Boundary> = new Set(),
 ): Array<Range> {
   const region = b.children!.range
   return boundaries
     .filter(
-      (o) => o !== b && o.split && o.children && within(o.element, region),
+      (o) =>
+        o !== b &&
+        o.split &&
+        o.children &&
+        !inline.has(o) &&
+        within(o.element, region),
     )
     .map((o) => o.children!.range)
 }
@@ -945,135 +982,6 @@ function declaredWithin(ctx: PlanContext, s: SymbolId, region: Range): boolean {
   return scope !== null && within(scope, region)
 }
 
-/** The statements an ordinary write of decision 3a may sit in, up to the code declaring the variable. */
-const WRITE_CONTAINERS = new Set([
-  'BlockStatement',
-  'IfStatement',
-  'SwitchStatement',
-  'SwitchCase',
-  'TryStatement',
-  'CatchClause',
-])
-
-/**
- * Whether every write of `sym` the output keeps (`live`) is complete when
- * the boundary `b` is created, so the value its placeholder passes is the
- * one any later read sees (decision 3a): each write is an ordinary
- * statement (`x = …`, `x++`; a `var`'s initialised declarator too) of the
- * code declaring `sym`, also in its blocks, `if`, `switch` and `try`, and
- * ends before the boundary starts; the boundary is in that code too, in no
- * loop the variable outlives and in no `case` selector (evaluated before an
- * earlier `default` branch). A write in a function or a class may run later
- * (an async function after it returned, a generator when resumed, an
- * instance field when constructed), called in place or not: not complete.
- */
-function writesComplete(
-  ctx: PlanContext,
-  b: Boundary,
-  sym: SymbolId,
-  live: (ref: ClassifiedRef) => boolean,
-): boolean {
-  const { t1 } = ctx
-  const writes = t1.mutation.writesOf(sym, live)
-  const scope = ctx.symbols.scopeRange(sym)
-  if (writes.length === 0) {
-    return true
-  }
-  if (scope === null) {
-    return false
-  }
-  /** The nodes from `node` up to the code declaring `sym`, which `ok` accepts each of (with the child it came from), or false. */
-  const climb = (
-    node: Node,
-    ok: (n: Node, child: Node) => boolean,
-  ): boolean => {
-    for (let child = node, n = t1.parentOf(node); n !== null; ) {
-      if (n.start === scope.start && n.end === scope.end) {
-        return true
-      }
-      if (!ok(n, child)) {
-        return false
-      }
-      child = n
-      n = t1.parentOf(n)
-    }
-    return false
-  }
-  const opensCode = (n: Node) =>
-    n.type === 'FunctionExpression' ||
-    n.type === 'FunctionDeclaration' ||
-    n.type === 'ArrowFunctionExpression' ||
-    n.type === 'ClassBody' ||
-    n.type === 'StaticBlock'
-  const isLoop = (n: Node) =>
-    n.type === 'ForStatement' ||
-    n.type === 'ForInStatement' ||
-    n.type === 'ForOfStatement' ||
-    n.type === 'WhileStatement' ||
-    n.type === 'DoWhileStatement'
-  const inOrder = (statement: Node) =>
-    statement.end <= b.element.start &&
-    climb(statement, (n) => WRITE_CONTAINERS.has(n.type))
-  if (
-    !climb(
-      b.element,
-      (n, child) =>
-        !opensCode(n) &&
-        !isLoop(n) &&
-        !(n.type === 'SwitchCase' && n.test === child),
-    )
-  ) {
-    return false
-  }
-  // a `var`'s declarators that give it a value (the model counts only a
-  // module's): each an ordinary declaration statement before the boundary
-  const binding = ctx.analysis.file.referenceOf(
-    t1.nodeAt(writes[0]!.range.start)!,
-  )?.binding
-  if (!binding) {
-    return false
-  }
-  for (const id of binding.declarations) {
-    let declarator: Node | null = t1.parentOf(id)
-    while (
-      declarator !== null &&
-      declarator.type !== 'VariableDeclarator' &&
-      !opensCode(declarator) &&
-      !/(?:Statement|Declaration|Clause)$/.test(declarator.type)
-    ) {
-      declarator = t1.parentOf(declarator)
-    }
-    const declaration =
-      declarator?.type === 'VariableDeclarator' ? t1.parentOf(declarator) : null
-    if (
-      declarator?.type === 'VariableDeclarator' &&
-      declaration?.type === 'VariableDeclaration' &&
-      declaration.kind === 'var' &&
-      !(
-        declarator.init === null &&
-        climb(declaration, (n) => WRITE_CONTAINERS.has(n.type))
-      ) &&
-      !inOrder(declaration)
-    ) {
-      return false
-    }
-  }
-  return writes.every((w) => {
-    // the write's statement, through expressions only
-    let statement = t1.nodeAt(w.range.start)
-    while (statement !== null && statement.type !== 'ExpressionStatement') {
-      if (
-        opensCode(statement) ||
-        /(?:Statement|Declaration)$/.test(statement.type)
-      ) {
-        return false
-      }
-      statement = t1.parentOf(statement)
-    }
-    return statement !== null && inOrder(statement)
-  })
-}
-
 /** The hook a callee names (`useX`, `NS.useX`, `(useX)`), or null. */
 function hookName(callee: Node): string | null {
   const c = unwrapExpression(callee)
@@ -1092,35 +1000,31 @@ function hookName(callee: Node): string | null {
 }
 
 /**
- * The refusal of children whose chunk would assign a module-level binding
- * (the core's `shared-writer` fallback): the binding, and what assigns it,
- * the children or the declaration of the code only they use.
+ * A boundary whose children the client keeps in place (decision 12): one
+ * warning naming `why`, at `range`; it renders as with `split={false}`, and
+ * keeps its id (both envs prefix it alike).
  */
-function moduleWriteMessage(
+function notSplit(
   ctx: PlanContext,
-  region: Range,
-  write: { sym: SymbolId; at: number; imported: boolean },
-): string {
-  const fix = (name: string) =>
-    `Use split={false}, or move ${name} to a module of its own, with a function that assigns it, and import them.`
-  const { t1 } = ctx
-  const name = `\`${t1.symbols.name(write.sym)}\``
-  const at = { start: write.at, end: write.at }
-  let who = 'they assign'
-  if (!within(at, region)) {
-    const unit = t1.unitAt(at)
-    const declares = unit === null ? [] : t1.units[unit]!.declares
-    who =
-      declares.length === 1
-        ? `\`${t1.symbols.name(declares[0]!)}\`, which ${write.imported ? 'they use' : 'only they use'}, assigns`
-        : `code ${write.imported ? 'they use' : 'only they use'} assigns`
-  }
-  return write.imported
-    ? `Hydrate cannot code-split these children: ${who} ${name}, a module-level binding the split code would import, and a module cannot assign a binding it imports. ${fix(name)}`
-    : `Hydrate cannot code-split these children: ${who} ${name}, a module-level binding the rest of the module also uses. The split code would assign its own copy of ${name}, not the one the module reads. ${fix(name)}`
+  b: Boundary,
+  why: string,
+  range: Range = { start: b.element.start, end: b.opening.end },
+): 'inline' {
+  ctx.diagnostic({
+    severity: 'warning',
+    message: `Hydrate does not code-split these children, they render in place: ${why}. Write split={false} to keep them in place without this warning.`,
+    range,
+    by: HYDRATE_PLANNER,
+    code: 'hydrate-not-split',
+  })
+  return 'inline'
 }
 
-/** Plans the client extraction of one live boundary; returns its lazy const. */
+/**
+ * Plans the client extraction of one live boundary; returns its lazy const,
+ * `inline` when its children stay in place (`notSplit`), null when it is
+ * refused.
+ */
 function extract(
   ctx: PlanContext,
   b: Boundary,
@@ -1128,7 +1032,7 @@ function extract(
   nested: ReadonlyArray<Range>,
   extracted: Array<Extracted>,
   shared: SharedNames,
-): { sym: SymbolId; chunk: string } | null {
+): { sym: SymbolId; chunk: string } | 'inline' | null {
   const { t1, symbols } = ctx
   const shape = b.children!
   const region = shape.range
@@ -1144,13 +1048,12 @@ function extract(
   }
   const fallback = ctx.fallbackAt(region, 'hydrate-children')
   if (fallback) {
-    boundaryError(
+    // (the core's `shared-writer` fallback: the chunk would assign a module binding)
+    return notSplit(
       ctx,
       b,
-      'hydrate-module-write',
-      moduleWriteMessage(ctx, region, fallback.write),
+      `they, or code only they use, assign \`${symbols.name(fallback.write.sym)}\`, a module-level binding, and the split code would assign an import or its own copy, not the binding the module reads`,
     )
-    return null
   }
 
   // ---- captures: own reads declared outside, then nested placeholders' reads
@@ -1174,30 +1077,30 @@ function extract(
   const found: Array<{ sym: SymbolId; pos: number; at: Range }> = []
   // React passes a capture's value when the placeholder renders (Solid
   // reads a reassigned binding through a getter): a function of the
-  // children that reads it later, itself or through a nested boundary's
-  // placeholder it renders, would read that snapshot: when `evaluated`,
-  // where the children read `sym`, is in one, and a write of `sym` may run
-  // after the boundary is created (`writesComplete`).
+  // children reading a binding the component assigns, itself or through a
+  // nested boundary's placeholder it renders, would read that snapshot
   const readsSnapshot = (sym: SymbolId, evaluated: Range): boolean =>
     !solid &&
     symbols.isReassignable(sym) &&
     scan.callables.some((f) => within(evaluated, f)) &&
-    !writesComplete(ctx, b, sym, (r) => liveEnv.live(r))
-  /** Reports a snapshot read of `sym` (`readsSnapshot`) at `read`. */
-  const refuseSnapshot = (sym: SymbolId, read: Range): null => {
-    const name = symbols.name(sym)
-    boundaryError(
-      ctx,
-      b,
-      'hydrate-capture-reassigned',
-      `Hydrate cannot code-split JSX whose function reads \`${name}\`, a variable the enclosing component reassigns: the split children receive its value when the boundary renders, so the function would not see later assignments. Keep the value in a ref (\`const ${name} = useRef(<its initial value>)\`, read and assign \`${name}.current\`), or use split={false}.`,
-      read,
+    t1.mutation.isReassigned(sym, (r) => liveEnv.live(r))
+  const snapshotWhy = (sym: SymbolId) =>
+    `a function in them reads \`${symbols.name(sym)}\`, which the enclosing component reassigns, and split children receive its value when the boundary renders`
+  // a capture declared after the boundary (not a function declaration): the
+  // placeholder would read it before its declaration runs
+  const declaredAfter = (ref: ClassifiedRef): boolean => {
+    if (symbols.initialisation(ref.sym) === 'start') {
+      return false
+    }
+    const node = t1.nodeAt(ref.range.start)
+    const binding = node ? ctx.analysis.file.referenceOf(node)?.binding : null
+    return (
+      !!binding && binding.declarations.every((d) => d.start > b.element.start)
     )
-    return null
   }
-  // the first snapshot read: reported after the walk, so a write of the
-  // children (the cause of the snapshot) is reported first
-  let snapshot: { sym: SymbolId; at: Range } | undefined
+  // the first reason after the walk: a write of the children (the cause of
+  // a snapshot) is reported first
+  let why: { text: string; at: Range } | undefined
   for (const ref of t1.capturesOf(region)) {
     if (
       skip.some((r) => within(ref.range, r)) ||
@@ -1212,22 +1115,25 @@ function extract(
     // (one only the server keeps, e.g. in an isomorphic fn's server
     // implementation, stays in the server's render of the original JSX)
     if (ref.kind === 'write') {
-      boundaryError(
+      return notSplit(
         ctx,
         b,
-        'hydrate-capture-write',
-        `Hydrate cannot code-split JSX that assigns \`${symbols.name(ref.sym)}\`, a local of the enclosing component: the split children receive its value, not the variable. Move the variable and the code that assigns it into a component rendered inside the boundary, or use split={false}.`,
+        `they assign \`${symbols.name(ref.sym)}\`, a local of the enclosing component, and split children receive its value, not the variable`,
         ref.range,
       )
-      return null
     }
-    if (!snapshot && readsSnapshot(ref.sym, ref.range)) {
-      snapshot = { sym: ref.sym, at: ref.range }
+    if (!why && readsSnapshot(ref.sym, ref.range)) {
+      why = { text: snapshotWhy(ref.sym), at: ref.range }
+    } else if (!why && declaredAfter(ref)) {
+      why = {
+        text: `they read \`${symbols.name(ref.sym)}\`, declared after the boundary, and split children would receive it before its declaration runs`,
+        at: ref.range,
+      }
     }
     found.push({ sym: ref.sym, pos: ref.range.start, at: ref.range })
   }
-  if (snapshot) {
-    return refuseSnapshot(snapshot.sym, snapshot.at)
+  if (why) {
+    return notSplit(ctx, b, why.text, why.at)
   }
   for (const e of direct) {
     for (const sym of e.placeholderSyms) {
@@ -1235,17 +1141,15 @@ function extract(
         continue
       }
       if (e.setterSyms.has(sym)) {
-        boundaryError(
+        return notSplit(
           ctx,
           b,
-          'hydrate-nested-ref',
-          `Hydrate cannot code-split JSX whose nested boundary assigns \`${symbols.name(sym)}\` through \`ref\`, a local declared outside both boundaries. Use split={false} on one of them.`,
+          `a nested boundary assigns \`${symbols.name(sym)}\` through \`ref\`, a local declared outside both`,
         )
-        return null
       }
       const at = e.readAt.get(sym) ?? e.b.element
       if (readsSnapshot(sym, e.b.element)) {
-        return refuseSnapshot(sym, at)
+        return notSplit(ctx, b, snapshotWhy(sym), at)
       }
       found.push({ sym, pos: e.b.element.start, at })
     }

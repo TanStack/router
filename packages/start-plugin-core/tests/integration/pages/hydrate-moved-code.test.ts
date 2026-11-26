@@ -7,13 +7,17 @@
  * that owns what it uses (a function's own `this`, a class's own private
  * name, an async arrow's own `await`) splits and renders like the source.
  * A hook call is refused where it may run while the children render. On
- * React, a reassigned local a function of the children reads builds when
- * its writes are complete before the boundary (decision 3a), and is
- * refused otherwise. Through the public Start plugin on a dev server (`render.ts`); errors by
- * severity and position.
+ * React, children with a function reading a local the component
+ * reassigns, or writing a captured local, stay in place with one warning
+ * (decision 12). Through the public Start plugin on a dev server
+ * (`render.ts`); errors and warnings by severity and position.
  */
 import { describe, expect, test } from 'vitest'
-import { compileError, expectCompileError } from '../../regression-helpers'
+import {
+  compileError,
+  expectCompileError,
+  expectNotSplit,
+} from '../../regression-helpers'
 import {
   expectRendersLikeSource,
   useHydrateHost,
@@ -257,57 +261,6 @@ export const Page = () => el`,
       { framework: 'solid' },
     )
   })
-
-  // React passes a capture's value when the placeholder renders: a read of
-  // a reassigned local where it may run at another time is refused at the
-  // read (an instance field's initialiser is such code; a function called
-  // in place too, whatever proves the write complete). Client only: the
-  // server renders the children in place
-  test.each([
-    {
-      name: 'an instance field of a class the children pass',
-      code: `${head}function Widget(props: { C: new () => { v: number } }) {
-  return <p>{new props.C().v}</p>
-}
-export function Page() {
-  let count = 0
-  const el = <Hydrate when={load()}><Widget C={class { v = count }} /></Hydrate>
-  count = 1
-  return el
-}`,
-      at: 'count }',
-    },
-    {
-      name: 'a function called in place, after a captured function assigning it',
-      code: fnPage(
-        '<p>{(bump(), (() => x)())}</p>',
-        '  let x = 0\n  const bump = () => ++x\n',
-      ),
-      at: 'x)())',
-    },
-    {
-      name: 'a generator called in place, the local assigned after the boundary',
-      code: `${head}export function Page() {
-  let x = 0
-  const el = <Hydrate when={load()}><p>{[...(function* () { yield x })()].join()}</p></Hydrate>
-  x = 1
-  return el
-}`,
-      at: 'x })()',
-    },
-    {
-      name: 'an async function called in place, after its `await`, the local assigned after the boundary',
-      code: `${head}export function Page() {
-  let x = 0
-  const el = <Hydrate when={load()}><p>{String((async () => { await 0; return x })())}</p></Hydrate>
-  x = 1
-  return el
-}`,
-      at: 'x })())',
-    },
-  ])('a reassigned local read in $name: at the read', async ({ code, at }) => {
-    await expectRejected(code, at, { environments: ['client'] })
-  })
 })
 
 describe('what the children own splits and renders like the source', () => {
@@ -412,266 +365,87 @@ describe('what the children own splits and renders like the source', () => {
   })
 })
 
-// React passes a reassigned local by value when the placeholder renders: a
-// function of the children reading it sees that value. Exact when every
-// write is complete when the boundary is created (decision 3a): an
-// ordinary statement of the code declaring the local, in its blocks, `if`,
-// `switch` or `try`, before the boundary, which is in that code too and in
-// no loop the local outlives. Any other write may run after the snapshot.
-describe('React: a reassigned local read in a function of the children', () => {
+// React passes a capture's value when the placeholder renders: a function
+// of the children reading a local the component reassigns would read that
+// snapshot, a write in the children would assign a copy, and a read of a
+// local declared after the boundary would run before it is. The client
+// keeps such children in place, with one warning (decision 12), and they
+// render like the source.
+describe('React: children the split would give a copy of a local', () => {
   const read = {
     setup: `globalThis.read = []\nexport const cleanup = ['read']`,
     script: `root.querySelector('button').click()\nreturn globalThis.read`,
   }
   test.each([
     {
-      name: 'assigned in an if block before the boundary',
+      name: 'a function reading a let assigned before the boundary',
       code: `${head}export function Page({ user }: { user?: { name: string } }) {
   let label = 'Guest'
   if (user) {
     label = user.name
   }
-  return <Hydrate when={load()}><ul>{['a'].map((k) => <li key={k}>{label}</li>)}</ul><button onClick={() => { (globalThis as any).read.push(label) }}>hi</button></Hydrate>
+  return <Hydrate when={load()}><button onClick={() => { (globalThis as any).read.push(label) }}>hi</button></Hydrate>
 }`,
+      at: 'label) }}',
       props: { user: { name: 'Ann' } },
-      rendered: '<li>Ann</li>',
       result: ['Ann'],
     },
     {
-      name: 'assigned in both branches of an if before the boundary',
-      code: `${head}export function Page({ picked }: { picked?: string }) {
-  let selected: string | undefined
-  if (picked) {
-    selected = picked
-  } else {
-    selected = 'other'
-  }
-  return <Hydrate when={load()}><ul>{['a', 'other'].map((d) => <li key={d}>{String(d === selected)}</li>)}</ul><button onClick={() => { (globalThis as any).read.push(selected) }}>hi</button></Hydrate>
+      name: 'a function reading a let assigned after the boundary',
+      code: `${head}export function Page() {
+  let x = 0
+  const el = <Hydrate when={load()}><button onClick={() => { (globalThis as any).read.push(x) }}>b</button></Hydrate>
+  x = 1
+  return el
 }`,
+      at: 'x) }}',
       props: {},
-      rendered: '<ul><li>false</li><li>true</li></ul>',
-      result: ['other'],
-    },
-    {
-      name: 'assigned before the boundary, read in a function called in place',
-      code: fnPage(
-        '<p>{(() => x)()}</p><button onClick={() => { (globalThis as any).read.push(x) }}>hi</button>',
-        '  let x = 0\n  x = 1\n',
-      ),
-      props: {},
-      rendered: '<p>1</p>',
       result: [1],
     },
     {
-      name: 'a var initialised and assigned in an if block before the boundary',
-      code: `${head}export function Page({ user }: { user?: { name: string } }) {
-  var label = 'Guest'
-  if (user) {
-    label = user.name
-  }
-  return <Hydrate when={load()}><button onClick={() => { (globalThis as any).read.push(label) }}>hi</button></Hydrate>
-}`,
-      props: { user: { name: 'Ann' } },
-      rendered: '<button>hi</button>',
-      result: ['Ann'],
-    },
-    {
-      name: 'assigned in a switch that finishes before the boundary',
-      code: `${head}export function Page({ kind }: { kind?: string }) {
-  let label = 'none'
-  switch (kind) {
-    case 'a':
-      label = 'A'
-      break
-    default:
-      label = 'other'
-  }
-  return <Hydrate when={load()}><button onClick={() => { (globalThis as any).read.push(label) }}>hi</button></Hydrate>
-}`,
-      props: { kind: 'a' },
-      rendered: '<button>hi</button>',
-      result: ['A'],
-    },
-  ])(
-    'builds and reads its value: $name',
-    async ({ code, props, rendered, result }) => {
-      const { client } = await expectRendersLikeSource(await hosts(), code, {
-        props,
-        ...read,
-      })
-      expect(client.html).toContain(rendered)
-      expect(client.result).toEqual(result)
-    },
-  )
-
-  const page = (body: string) => `${head}export function Page() {
-  let x = 0
-${body}
-}`
-  const button = '<button onClick={() => String(x)}>b</button>'
-  test.each([
-    {
-      name: 'a write after the boundary',
-      code: page(`  const el = <Hydrate when={load()}>${button}</Hydrate>
-  x = 1
-  return el`),
-    },
-    {
-      name: 'a write in a handler declared before the boundary',
-      code: page(`  const set = () => {
-    x = 1
-  }
-  return <Hydrate when={load()}><i onClick={set} />${button}</Hydrate>`),
-    },
-    {
-      name: 'a write in an async function called before the boundary, after its await',
-      code: page(`  void (async () => {
-    await 0
-    x = 1
-  })()
-  return <Hydrate when={load()}>${button}</Hydrate>`),
-    },
-    {
-      name: 'a write in a generator resumed before the boundary',
-      code: page(`  const it = (function* () {
-    x = 1
-  })()
-  it.next()
-  return <Hydrate when={load()}>${button}</Hydrate>`),
-    },
-    {
-      name: 'a write in an instance field of a class constructed after the boundary',
-      code: page(`  class S {
-    value = ++x
-  }
-  const el = <Hydrate when={load()}>${button}</Hydrate>
-  new S()
-  return el`),
-    },
-    {
-      name: 'a write whose statement holds the boundary',
+      // the placeholder would read `save` before its declaration runs
+      // (`main` throws there)
+      name: 'a function reading a const declared after the boundary',
       code: `${head}export function Page() {
-  let x: unknown = 0
-  x = <Hydrate when={load()}>${button}</Hydrate>
-  return x as any
+  const view = <Hydrate when={load()}><button onClick={() => save()}>b</button></Hydrate>
+  const save = () => {
+    ;(globalThis as any).read.push('saved')
+  }
+  return view
 }`,
+      at: 'save()}',
+      props: {},
+      result: ['saved'],
     },
     {
-      name: 'a write in a loop holding the boundary',
-      code: page(`  const out: Array<unknown> = []
-  for (const k of ['a']) {
-    x = 1
-    out.push(<Hydrate key={k} when={load()}>${button}</Hydrate>)
-  }
-  return <>{out}</>`),
-    },
-    {
-      // (the write passes the write rule: what holds the refusal is the
-      // loop the variable outlives; Fable review of the implementation, L2)
-      name: 'a write before a loop holding the boundary',
-      code: page(`  x = 1
-  const out: Array<unknown> = []
-  for (const k of ['a']) {
-    out.push(<Hydrate key={k} when={load()}>${button}</Hydrate>)
-  }
-  return <>{out}</>`),
-    },
-    {
-      // (the declarator gives the hoisted `var` its value after the
-      // boundary: Astra review of the implementation, 1)
-      name: "a var's initialiser after the boundary, with an assignment before it",
-      code: `${head}export function Page() {
-  var x
-  x = 1
-  const el = <Hydrate when={load()}>${button}</Hydrate>
-  var x = 2
-  return el
-}`,
-    },
-    {
-      // (a `case` selector runs before an earlier `default` branch:
-      // Astra review of the implementation, 2)
-      name: 'the boundary in a case selector, a default branch before it writing',
-      code: page(`  let el: unknown
-  switch (0) {
-    default:
-      x = 1
-      break
-    case (el = <Hydrate when={load()}>${button}</Hydrate>, 1):
-      break
-  }
-  return el as any`),
-    },
-    {
-      name: 'the boundary in a map callback',
-      code: page(`  x = 1
-  return <>{['a'].map((k) => <Hydrate key={k} when={load()}>${button}</Hydrate>)}</>`),
-    },
-    {
-      name: 'the boundary in a function declared after the write and called before it',
-      code: page(`  const el = make()
-  x = 1
-  function make() {
-    return <Hydrate when={load()}>${button}</Hydrate>
-  }
-  return el`),
-    },
-    {
-      name: 'a nested boundary in a map callback, the write after the outer boundary',
-      code: page(`  const el = <Hydrate when={load()}><section>{[0].map((k) => <Hydrate key={k} when={load()}>${button}</Hydrate>)}</section></Hydrate>
-  x = 1
-  return el`),
-    },
-  ])('$name: at the read', async ({ code }) => {
-    await expectRejected(code, 'x)}>b', { environments: ['client'] })
-  })
-
-  test('a for (let i…) variable, written by the loop: at the read', async () => {
-    await expectRejected(
-      `${head}export function Page() {
-  const out: Array<unknown> = []
-  for (let i = 0; i < 1; i++) {
-    out.push(<Hydrate key={i} when={load()}><button onClick={() => String(i)}>b</button></Hydrate>)
-  }
-  return <>{out}</>
-}`,
-      'i)}>b',
-      { environments: ['client'] },
-    )
-  })
-
-  // a write in the children assigns the chunk's copy: refused at the write
-  // (a render counter in a map callback, also on Solid; a ref callback
-  // assigning a local code outside reads)
-  test.each([
-    {
-      name: 'a render counter in a map callback',
-      framework: 'react',
+      name: 'a write in the children (a render counter in a map callback)',
       code: `${head}export function Page() {
   let n = 0
-  return <Hydrate when={load()}><ul>{['a'].map((k) => { n++; return <li key={k}>{n}</li> })}</ul></Hydrate>
+  return <Hydrate when={load()}><ul>{['a', 'b'].map((k) => { n++; return <li key={k}>{n}</li> })}</ul><button onClick={() => { (globalThis as any).read.push(n) }}>b</button></Hydrate>
 }`,
       at: 'n++',
+      props: {},
+      result: [2],
     },
-    {
-      name: 'a render counter in a map callback (Solid)',
-      framework: 'solid',
-      code: `${solidHead}export function Page() {
+  ])('$name: in place, warned at $at', async ({ code, at, props, result }) => {
+    const startCase = await (await hosts()).start.case({ 'module.tsx': code })
+    await expectNotSplit(startCase, code, at)
+    const { client } = await expectRendersLikeSource(await hosts(), code, {
+      props,
+      split: false,
+      ...read,
+    })
+    expect(client.result).toEqual(result)
+  })
+
+  test('Solid: a write in the children (a render counter in a map callback): in place, warned at the write', async () => {
+    const code = `${solidHead}export function Page() {
   let n = 0
   return <Hydrate when={load()}><ul>{['a'].map(() => { n++; return <li>{n}</li> })}</ul></Hydrate>
-}`,
-      at: 'n++',
-    },
-    {
-      name: 'a ref callback assigning a local code outside reads',
-      framework: 'react',
-      code: `${head}export function Page() {
-  let el: unknown
-  return <><Hydrate when={load()}><b ref={(e) => { el = e }} /></Hydrate><i onClick={() => String(el)} /></>
-}`,
-      at: 'el = e',
-    },
-  ] as const)('$name: at the write', async ({ framework, code, at }) => {
-    await expectRejected(code, at, { framework, environments: ['client'] })
+}`
+    const startCase = await (
+      await solidHost()
+    ).start.case({ 'module.tsx': code })
+    await expectNotSplit(startCase, code, 'n++')
   })
 })

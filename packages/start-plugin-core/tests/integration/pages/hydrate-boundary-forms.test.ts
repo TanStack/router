@@ -2,9 +2,9 @@
  * The forms a `<Hydrate>` boundary is written in, and what each environment
  * makes of it: the server strips the client-only `fallback` however it is
  * passed, `split={false}` keeps the children in place, children that cannot
- * be split are rejected clearly, nested boundaries hydrate with the ids the
- * server renders, and only the `Hydrate` of a `@tanstack/*-start` package is
- * a boundary.
+ * be split are rejected clearly or kept in place with a warning, nested
+ * boundaries hydrate with the ids the server renders, and only the
+ * `Hydrate` of a `@tanstack/*-start` package is a boundary.
  *
  * Through the public Start plugin on a dev server (`render.ts`): the server
  * render (React's server renderer in the SSR environment) is compared with
@@ -19,7 +19,11 @@ import {
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
-import { compileError, expectCompileError } from '../../regression-helpers'
+import {
+  compileError,
+  expectCompileError,
+  expectNotSplit,
+} from '../../regression-helpers'
 import {
   editableFiles,
   expectClientRendersLikeServer,
@@ -698,12 +702,13 @@ export function Page() {
 
   // Children writing state the split code would hold a copy of (a local
   // of the component, in a handler or in the client implementation of an
-  // isomorphic fn, rejected at the write; a `var` a top-level statement
-  // declares, which the chunk imports), and a Solid `ref` of a `let` outside
-  // two nested boundaries: the client rejects them (`at`, default the
-  // boundary). (A write in the server implementation only is no write of
-  // the client's children: those split, hydrate-pages-react.ts and
-  // hydrate-pages-solid.ts.)
+  // isomorphic fn, warned at the write; a `var` a top-level statement
+  // declares, which the chunk imports; a Solid `ref` naming a module `let`
+  // the module reads), and a Solid `ref` of a `let` outside two nested
+  // boundaries: the client keeps them in place, with one warning (`at`,
+  // default the boundary; decision 12). (A write in the server
+  // implementation only is no write of the client's children: those split,
+  // hydrate-pages-react.ts and hydrate-pages-solid.ts.)
   const solidHead = `import { Hydrate } from '@tanstack/solid-start'
 import { load } from '@tanstack/solid-start/hydration'
 `
@@ -751,37 +756,78 @@ export function Page() {
 export const Page = () => <Hydrate><button onClick={() => { flag = 1 }}>{String(flag)}</button></Hydrate>`,
     },
     {
-      name: 'reading new.target of the component',
-      framework: 'react',
-      code: `${head}export function Page() {
-  return <Hydrate when={load()}><p>{String(new.target)}</p></Hydrate>
-}`,
-      at: 'new.target)',
-    },
-    {
       name: 'with a ref of a let declared outside two nested boundaries (Solid)',
       framework: 'solid',
+      // (the nested boundary splits: its ref becomes a setter)
+      chunks: 1,
       code: `${solidHead}export function Page() {
   let input
   return <Hydrate when={load()}><section><Hydrate when={load()}><input ref={input} /></Hydrate></section></Hydrate>
 }`,
     },
-  ] as const)('client: children $name are rejected', async (row) => {
-    const { framework, code } = row
-    const start =
-      framework === 'solid' ? (await solidHost()).start : (await hosts()).start
-    const startCase = await start.case({ 'module.tsx': code })
+    // Solid's `ref={box}` assigns `box`: the chunk would assign its own
+    // copy of a module `let` the module reads (on `main`, the module reads
+    // `undefined`)
+    {
+      name: 'with a Solid ref naming a module let in a helper only the children render',
+      framework: 'solid',
+      code: `${solidHead}let box: HTMLElement | undefined
+function Helper() {
+  return <div ref={box} />
+}
+export function Page() {
+  return <><Hydrate when={load()}><Helper /></Hydrate><button onClick={() => console.log(box)} /></>
+}`,
+    },
+    // a callback `let` the client's own code reassigns may hold an element
+    // ref target by then: the ref may assign it
+    {
+      name: 'with a Solid ref naming a module let holding a callback the module reassigns',
+      framework: 'solid',
+      code: `${solidHead}export let paint = (el: HTMLElement) => {
+  el.dataset.painted = 'let'
+}
+export function clear() {
+  paint = undefined as any
+}
+export function Page() {
+  return <><Hydrate when={load()}><b ref={paint}>a</b></Hydrate><button onClick={() => console.log(paint)} /></>
+}`,
+    },
+  ] as const)(
+    'client: children $name stay in place with one warning',
+    async (row) => {
+      const { framework, code } = row
+      const start =
+        framework === 'solid'
+          ? (await solidHost()).start
+          : (await hosts()).start
+      const startCase = await start.case({ 'module.tsx': code })
+      await expectNotSplit(
+        startCase,
+        code,
+        (row as { at?: string }).at ?? '<Hydrate',
+        (row as { chunks?: number }).chunks,
+      )
+    },
+  )
+
+  test('client: children reading new.target of the component are rejected', async () => {
+    const code = `${head}export function Page() {
+  return <Hydrate when={load()}><p>{String(new.target)}</p></Hydrate>
+}`
+    const startCase = await (await hosts()).start.case({ 'module.tsx': code })
     expectCompileError(await compileError(startCase, 'client'), {
       source: code,
-      at: 'at' in row ? row.at : '<Hydrate',
+      at: 'new.target)',
       column: true,
     })
   })
 
   // Solid's `ref={field}` assigns `field` (when it holds no callback): the
   // chunk would assign its own copy of a module `let` the module reads (R161
-  // D1), so the children are refused like an explicit `field = el` (H4), or
-  // the module reads the element. On `main`, the module's own code reads
+  // D1), so the children stay in place like for an explicit `field = el`,
+  // or the module reads the element. On `main`, the module's own code reads
   // `undefined`. Source: Astra review of #8817, hydrate B4.
   test('client: a Solid ref in the children naming a module let binds the let the module reads', async () => {
     const code = `${solidHead}import { createSignal, onMount } from 'solid-js'
@@ -810,48 +856,6 @@ export function Page() {
     const mounted = await solid.mount(code)
     expect(mounted.errors).toEqual([])
     expect(mounted.html).toContain('<output>typed</output>')
-  })
-
-  // The same ref in a helper only the children render: refused at the
-  // boundary (on `main`, the module reads `undefined`).
-  test('client: a Solid ref naming a module let in a helper only the children render is rejected', async () => {
-    const code = `${solidHead}let box: HTMLElement | undefined
-function Helper() {
-  return <div ref={box} />
-}
-export function Page() {
-  return <><Hydrate when={load()}><Helper /></Hydrate><button onClick={() => console.log(box)} /></>
-}`
-    const startCase = await (
-      await solidHost()
-    ).start.case({ 'module.tsx': code })
-    expectCompileError(await compileError(startCase, 'client'), {
-      source: code,
-      at: '<Hydrate',
-      column: true,
-    })
-  })
-
-  // A callback `let` the client's own code reassigns may hold an element
-  // ref target by then: the ref may assign it, refused like `field = el`.
-  test('client: a Solid ref naming a module let holding a callback the module reassigns is rejected', async () => {
-    const code = `${solidHead}export let paint = (el: HTMLElement) => {
-  el.dataset.painted = 'let'
-}
-export function clear() {
-  paint = undefined as any
-}
-export function Page() {
-  return <><Hydrate when={load()}><b ref={paint}>a</b></Hydrate><button onClick={() => console.log(paint)} /></>
-}`
-    const startCase = await (
-      await solidHost()
-    ).start.case({ 'module.tsx': code })
-    expectCompileError(await compileError(startCase, 'client'), {
-      source: code,
-      at: '<Hydrate',
-      column: true,
-    })
   })
 
   // What a Solid ref may still name in split children: a module `let`
@@ -949,20 +953,22 @@ export function Page() {
 
   // A render callback in the children reading a `let` the component
   // reassigns: the split children receive its value when the boundary
-  // renders, so the callback would read that snapshot (R161 D2). Through a
-  // nested boundary the callback renders that boundary's placeholder, which
-  // passes the snapshot on: the same refusal, at the same read.
+  // renders, so the callback would read that snapshot (R161 D2): the client
+  // keeps them in place (decision 12). Through a nested boundary the
+  // callback renders that boundary's placeholder, which would pass the
+  // snapshot on: the same warning, at the same read.
   // Source: Astra review of #8817, hydrate B5 (`main` renders the snapshot
   // in both forms).
   test.each([
-    { form: 'directly', read: '<b>{label}</b>' },
+    { form: 'directly', read: '<b>{label}</b>', chunks: 0 },
     {
       form: 'through a nested boundary',
       read: '<Hydrate when={load()}><b>{label}</b></Hydrate>',
+      chunks: 1,
     },
   ])(
-    'client: a render callback reading a let the component reassigns, $form, is rejected at the read',
-    async ({ read }) => {
+    'client: a render callback reading a let the component reassigns, $form, stays in place with one warning at the read',
+    async ({ read, chunks }) => {
       const code = `${head}import { useEffect, type ReactNode } from 'react'
 function Reveal(props: { children: () => ReactNode }) {
   return <section>{props.children()}</section>
@@ -975,11 +981,8 @@ export function Page() {
   return <Hydrate when={load()}><Reveal>{() => ${read}}</Reveal></Hydrate>
 }`
       const startCase = await (await hosts()).start.case({ 'module.tsx': code })
-      expectCompileError(await compileError(startCase, 'client'), {
-        source: code,
-        at: 'label}</b>',
-        column: true,
-      })
+      // (a nested boundary splits: it reads `label` in its render)
+      await expectNotSplit(startCase, code, 'label}</b>', chunks)
     },
   )
 })

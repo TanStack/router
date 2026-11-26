@@ -640,13 +640,13 @@ export { PostBadge as badge } from './routes/badge'
       timeout,
     )
 
-    // What the refusal of a function reading a let the component reassigns
-    // suggests (below): the value in a ref holding its initial value. The
+    // What a function reading a let the component reassigns can use to be
+    // split (below, kept in place): the value in a ref holding its initial value. The
     // split handler reads the effect's later assignment, and the page
     // type-checks with the app's React types (React 19's `useRef` takes its
     // initial value). Source: Astra review of #8817, round 3, hydrate B5.
     test(
-      'the ref the refusal of a reassigned let suggests builds, hydrates and type-checks',
+      'a ref in place of a reassigned let builds, hydrates and type-checks',
       async () => {
         const build = await sharedApp()
         expectNoDiagnostic(problems(build.diagnostics), {
@@ -728,50 +728,6 @@ export { PostBadge as badge } from './routes/badge'
     test.each([
       { name: 'a function child', children: '{() => <p>child</p>}' },
       { name: 'a hook call', children: '<p>{useThing()}</p>' },
-      // The split children receive the variable's value when the boundary
-      // renders: a function in them would read that snapshot, not the
-      // variable the component reassigns later (R123).
-      {
-        name: 'a function reading a let the component reassigns',
-        setup: `let timer: number | undefined
-  useEffect(() => {
-    timer = window.setInterval(() => {}, 1000)
-  }, [])
-  `,
-        children: `<button
-        onClick={() => clearInterval(timer)}
-      >stop</button>`,
-        at: 'clearInterval(timer)',
-      },
-      // The chunk would assign its own copy of a module `let` the module
-      // reads, or a binding it imports (a `var` a statement declares).
-      // The two texts say which (diagnostics spike, 2026-11-24, A7).
-      {
-        name: 'a module let the children assign',
-        module: `let last = ''
-export const readLast = () => last
-`,
-        children: `<button onClick={() => { last = 'x' }}>b</button>`,
-        says: 'its own copy of `last`',
-      },
-      {
-        name: 'a module let their component assigns',
-        module: `let last = ''
-export const readLast = () => last
-function Btn() {
-  return <button onClick={() => { last = 'x' }}>b</button>
-}
-`,
-        children: '<Btn />',
-        says: 'its own copy of `last`',
-      },
-      {
-        name: 'a var a top-level statement declares, which the children assign',
-        module: `if (typeof window !== 'undefined') { var flag: unknown = globalThis.length }
-`,
-        children: `<button onClick={() => { flag = 1 }}>{String(flag)}</button>`,
-        says: 'a module cannot assign a binding it imports',
-      },
       // A private name of the class the boundary is in: the chunk is
       // outside it (on main, the build fails to parse the chunk; Rsbuild
       // here built a chunk the browser refuses). Source: Astra review of
@@ -801,8 +757,6 @@ export function Page() {
       module?: string
       /** The whole page, instead of `Page` rendering `children`. */
       page?: string
-      /** What the error says (the cause, where two texts share a code). */
-      says?: string
     }>)(
       'client: $name in a boundary fails the build, naming the file and line',
       async ({
@@ -840,17 +794,96 @@ ${module}export function Page() {
           (error: unknown) => error,
         )
         expect(failure, 'the build fails').toBeInstanceOf(StartBuildError)
-        const error = expectDiagnostic(
-          problems((failure as StartBuildError).diagnostics),
-          {
-            severity: 'error',
-            file: 'src/pages/unsafe.tsx',
-            position: { line: diagnosticPosition(page, at).line },
+        expectDiagnostic(problems((failure as StartBuildError).diagnostics), {
+          severity: 'error',
+          file: 'src/pages/unsafe.tsx',
+          position: { line: diagnosticPosition(page, at).line },
+        })
+      },
+      timeout,
+    )
+
+    // Children the split would give a copy of what they read or assign
+    // build with a warning naming the user's file and line (one, on any
+    // channel), and stay in place (SPEC J5.5, decision 12). (`at`: the
+    // warning's line, default the boundary's)
+    test.each([
+      // The split children receive the variable's value when the boundary
+      // renders: a function in them would read that snapshot, not the
+      // variable the component reassigns later (R123).
+      {
+        name: 'a function reading a let the component reassigns',
+        setup: `let timer: number | undefined
+  useEffect(() => {
+    timer = window.setInterval(() => {}, 1000)
+  }, [])
+  `,
+        children: `<button
+        onClick={() => clearInterval(timer)}
+      >stop</button>`,
+        at: 'clearInterval(timer)',
+      },
+      // The chunk would assign its own copy of a module `let` the module
+      // reads, or a binding it imports (a `var` a statement declares).
+      {
+        name: 'a module let the children assign',
+        module: `let last = ''
+export const readLast = () => last
+`,
+        children: `<button onClick={() => { last = 'x' }}>b</button>`,
+      },
+      {
+        name: 'a module let their component assigns',
+        module: `let last = ''
+export const readLast = () => last
+function Btn() {
+  return <button onClick={() => { last = 'x' }}>b</button>
+}
+`,
+        children: '<Btn />',
+      },
+      {
+        name: 'a var a top-level statement declares, which the children assign',
+        module: `if (typeof window !== 'undefined') { var flag: unknown = globalThis.length }
+`,
+        children: `<button onClick={() => { flag = 1 }}>{String(flag)}</button>`,
+      },
+    ] as Array<{
+      name: string
+      children: string
+      setup?: string
+      at?: string
+      module?: string
+    }>)(
+      'client: $name in a boundary builds with one warning, in place',
+      async ({ children, setup = '', at = '<Hydrate', module = '' }) => {
+        const page = `import { useEffect } from 'react'
+import { Hydrate } from '@tanstack/react-start'
+import { idle } from '@tanstack/react-start/hydration'
+${module}export function Page() {
+  ${setup}return (
+    <main>
+      <Hydrate when={idle()}>${children}<i>MARK_IN_PLACE</i></Hydrate>
+    </main>
+  )
+}
+`
+        const build = await buildStart({
+          bundler,
+          entry,
+          files: {
+            ...pageEntries,
+            'src/pages/kept.tsx': page,
+            'src/pages.ts': `export { Page as kept } from './pages/kept'\n`,
           },
-        )
-        if (row.says !== undefined) {
-          expect(error.text).toContain(row.says)
-        }
+        })
+        expectDiagnostic(problems(build.diagnostics), {
+          severity: 'warning',
+          file: 'src/pages/kept.tsx',
+          root: build.root,
+          position: { line: diagnosticPosition(page, at).line },
+        })
+        expect(build.client.where('MARK_IN_PLACE')).toBe('eager')
       },
       timeout,
     )

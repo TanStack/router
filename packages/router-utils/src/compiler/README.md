@@ -200,7 +200,7 @@ set(cfg)`): it runs at load, as in the source; a declaration that is exactly a f
   or its copy of a binding another derived output holds without the assigning code (two split chunks copying a `let`
   one of them assigns; for a `<Hydrate>` chunk also the env module's), does not take the root bringing that code
   (`Placement.fallbacks`, `shared-writer`), and its planner keeps the root in place (the router planner's
-  `assignsWhatItImports`, start-env's handler, Hydrate's `hydrate-module-write`). An output holding the assigning code
+  `assignsWhatItImports`, start-env's handler, Hydrate keeps the children in place). An output holding the assigning code
   too (a helper both call) writes its own copy. A split chunk's copy of what the env module keeps is `main`'s copy
   (it imports what `main` shares), so the env module's copy alone does not make a split chunk fall back.
 

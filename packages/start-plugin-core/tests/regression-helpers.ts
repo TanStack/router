@@ -38,6 +38,7 @@ export type {
 export {
   expectCompileError,
   expectNoClientHandler,
+  expectNotSplit,
   serverOnlyModule,
   throwsError,
 } from './diagnostics'

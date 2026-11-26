@@ -528,8 +528,8 @@ static made = … }` off the client also when the kept loader, the split compone
 - **A render-time read after the children call a captured function that assigns the variable reads the value from
   before the call** (hotspot 5, §4; as `main`): `{(bump(), x)}` with `const bump = () => ++x` renders the value the
   placeholder passed, not the one `bump()` gave; refusing it needs to know what a captured function writes when
-  called. The variable read in a function (`{(bump(), (() => x)())}`) is refused. Rare: the variable must be read
-  directly as well as through the function. No test (the outcome is the limit).
+  called. The variable read in a function (`{(bump(), (() => x)())}`) keeps the children in place (decision 12). Rare:
+  the variable must be read directly as well as through the function. No test (the outcome is the limit).
 
 - **A Solid directive reassigned after the chunk read it keeps the first function** (hotspot 5, §4, Gemini P29; as
   `main`): a directive local reaches the chunk by value (`const tip = props.tip`), so a call telling the two functions
@@ -548,16 +548,15 @@ static made = … }` off the client also when the kept loader, the split compone
 - **A component-local `var` declared again with a value after the boundary is no write** (hotspot 5, Fable impl
   review O1; as `main`): `var x = 0; const el = <Hydrate>…{() => x}…</Hydrate>; var x = 1` builds and the function
   reads `0`, since a function's re-declared `var` is not in the mutation model (a module's is). With an assignment of
-  `x` as well, decision 3a accounts for every initialised declarator and refuses a late one. Contrived. No test (the
-  outcome is the limit).
+  `x` as well, the children stay in place (decision 12). Contrived. No test (the outcome is the limit).
 
-- **React captures refused that `main` compiles** (hotspot 5 decision 3b deferred): a render counter written in a
-  `.map()` callback of the children (`pageNumber++`, read only there; two wrapped real components) is refused as a
-  write of the children (a method named `map` does not establish when its callback runs; never on Solid, where a
-  capture is `props.x`), and a reassigned capture read in a function of the children when the boundary is in a loop
-  the variable outlives, in a callback, or in a function called before a later write. Loud, with a fix in the
-  message (a `useRef`, or `split={false}`). A boundary merely placed in a callback compiles.
-  `start-plugin-core/tests/integration/pages/hydrate-moved-code.test.ts`: "$name: at the read", "$name: at the write".
+- **React children `main` splits stay in place** (decision 12, 11-25: "not a real case"): children writing a
+  captured local (a render counter in a `.map()` callback, `pageNumber++`, read only there), a function of the
+  children reading a local the component reassigns (wherever the writes are, a write before the boundary included),
+  and a read of a local declared after the boundary are not split, with one warning naming why (`split={false}`
+  silences it). `main` splits them: its chunk counts on its own copy, its function reads the value of the render,
+  its placeholder throws before the declaration. No proof of when writes run.
+  `start-plugin-core/tests/integration/pages/hydrate-moved-code.test.ts`: "$name: in place, warned at $at".
 
 - **A hoisted server fn reads a module binding before an earlier operand of its statement writes it** (R181 (3),
   Astra start review 4; accepted: `main` refuses the position, "createServerFn must be assigned to a variable!"):
@@ -788,8 +787,8 @@ setTheme(t) { theme = t }`, `export function getTheme()`), children calling the 
   boundary assign stays live"). A binding leading back to the boundary (a recursive component), the route binding and
   a name a top-level statement declares are imported, not copied (H2). Code that left the module (the children, a
   component only they render) and would assign the chunk's copy of a binding the module also keeps (an exported `let`
-  a component outside the boundary assigns, a `let` the loader reads) is refused with `hydrate-module-write` (H4)
-  instead of being copied; code the module holds too (item 9) is copied. No test holds the ten: they are the limit
+  a component outside the boundary assigns, a `let` the loader reads) keeps the children in place, with one warning
+  (decision 12), instead of being copied; code the module holds too (item 9) is copied. No test holds the ten: they are the limit
   itself.
 
 - **A `<Hydrate>` chunk copies a destructuring declarator whole** (`const { a, b } = make()` with children reading
@@ -839,8 +838,8 @@ properties of undefined (reading 'id')`, page 500 (build and dev). `main` resolv
   chunks follow, `main`'s router splitter deletes such a declarator; `main`'s Hydrate transform copies it;
   review-phase2-final 3.2, 4.2). `const cfg = { n: detect() }; if (typeof window !== 'undefined') { var extra = cfg.n }`
   with children reading `cfg`: the module exports `cfg` and the chunk imports it (+21 B eager on the probe;
-  `detect()` runs once, `main` runs it again in its copy). With `let cfg` assigned in the children, the boundary is
-  refused (`hydrate-module-write`), where `main`'s chunk assigns its copy; the PR's base refuses it too. Rare (a
+  `detect()` runs once, `main` runs it again in its copy). With `let cfg` assigned in the children, the children stay
+  in place with a warning (decision 12), where `main`'s chunk assigns its copy. Rare (a
   top-level statement declaring a `var` and reading module state the children use). No test.
 - **Vite: a second `buildApp()` in one process prerenders with the first build's server** (re-check 6 finding 2, the
   Vite half; seen on 0a261a0259 with `/var/tmp/rsc-p1-r10/vite-prerender/app/run.mjs`, `main` not run). A program that
@@ -1846,8 +1845,8 @@ Paths under `start-plugin-core/tests/` unless noted.
   binding holds a callback nothing assigns (Solid calls it); placement's write table and the mutation model count
   the mark where the output keeps the ref. SPEC J5.5, J5.8, J2.4.
   `start-plugin-core/tests/integration/pages/hydrate-boundary-forms.test.ts`: "client: a Solid ref in the children
-  naming a module let binds the let the module reads", "client: a Solid ref naming a module let in a helper only the
-  children render is rejected", "Solid: split children with $name build and bind it";
+  naming a module let binds the let the module reads", "client: children with a Solid ref naming a module let in a helper
+  only the children render stay in place with one warning", "Solid: split children with $name build and bind it";
   `start-plugin-core/tests/integration/hydrate-pages-solid.ts`: "a split handler reads an element a later ref outside
   the boundary binds"; `router-plugin/tests/code-splitter-main-shapes.test.ts`: "keeps beforeLoad reading the element
   the component's ref binds".
@@ -1912,8 +1911,9 @@ Paths under `start-plugin-core/tests/` unless noted.
   "client: split children may use the own `this` of $name".
 - **`await` in children moves into a synchronous chunk component.** SPEC J5.5, G1. `pages/hydrate-ids-and-captures.test.ts`:
   "client: await in split children is rejected at the boundary or renders".
-- **A text-only boundary's chunk has an empty source map.** SPEC G6. `pages/hydrate-ids-and-captures.test.ts`: "client: the
-  split text of a text-only boundary maps to its line and column".
+- **A text-only boundary's chunk has an empty source map.** SPEC G6. Text only is no longer split (decision 12); split
+  text maps: `pages/hydrate-ids-and-captures.test.ts`: "client: the split text of a boundary maps to its line and
+  column".
 
 ### J6 Import protection
 
