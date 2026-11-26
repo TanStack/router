@@ -421,6 +421,76 @@ export const read = (): T | number => slow
     timeout,
   )
 
+  // The same answer, the other order: the older compile answers (overtaken)
+  // and its request waits after Start's transform, before the bundler
+  // resolves the edge its code names; the newer text commits meanwhile.
+  // Then the edge is requested: the older caller still fails.
+  // Source: Astra's re-check of settlement step 3 (23e9107e4d).
+  test(
+    "an overtaken answer's import decided at the request, requested after a newer commit: its caller fails",
+    async () => {
+      const older = holdPoint()
+      const newer = holdPoint()
+      const analysis = holdPoint()
+      const isForm = (id: string | undefined) =>
+        id !== undefined && id.split('?')[0]!.endsWith('/src/form.ts')
+      const server = await startDevServer({
+        plugins: [
+          holdResolution(older, './slow', 'ssr'),
+          holdResolution(newer, './slow2', 'ssr'),
+          {
+            // (after Start's transform: the bundler's import analysis of
+            // the module's code waits here)
+            name: 'test:hold-after-transform',
+            enforce: 'post',
+            async transform(_code, id) {
+              if (this.environment.name === 'ssr' && isForm(id)) {
+                await analysis.wait()
+              }
+              return null
+            },
+          },
+        ],
+        start: { importProtection: { behavior: 'error' } },
+        files: {
+          'tsconfig.json': JSON.stringify({
+            compilerOptions: { verbatimModuleSyntax: true },
+          }),
+          'src/one.client.ts': `export type T = string\nexport const one = () => 'MARK_ONE'\n`,
+          'src/slow.ts': `export const slow = 1\n`,
+          'src/slow2.ts': `export const slow2 = 2\n`,
+          'src/form.ts': plainForm,
+        },
+      })
+      await server.transform('/src/form.ts', 'ssr')
+      await server.edit({
+        'src/form.ts': `import { type T } from './one.client'
+import { slow } from './slow'
+export const read = (): T | number => slow
+`,
+      })
+      const olderReached = older.arm()
+      const olderAnswer = server.transform('/src/form.ts', 'ssr')
+      await olderReached
+      await server.edit({
+        'src/form.ts': `import { slow2 } from './slow2'\nexport const read = () => slow2\n`,
+      })
+      const newerReached = newer.arm()
+      const newerAnswer = server.transform('/src/form.ts', 'ssr')
+      await newerReached
+      // the older answer is overtaken; its code waits before import analysis
+      const analysisReached = analysis.arm()
+      older.release()
+      await analysisReached
+      // the newer text commits (no import of `one.client.ts`)
+      newer.release()
+      expect(await newerAnswer).toContain('slow2')
+      analysis.release()
+      await expect(olderAnswer).rejects.toThrow()
+    },
+    timeout,
+  )
+
   // `allowImport` allows `form.ts`'s import of the client-only
   // `one.client.ts` and nothing else (not the file as its own importer);
   // it answers while the file is saved again without the import. The SSR
