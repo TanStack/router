@@ -305,6 +305,15 @@ export const mw = createMiddleware({ type: 'function' }).validator(schema)
   },
 ]
 
+/** The 1-based `line:column` of the write starting a line of `source` with `write`, as the error names it. */
+function writeAt(source: string, write: string) {
+  const { line, column } = diagnosticPosition(
+    source,
+    source.indexOf(`\n${write}`) + 1,
+  )
+  return `${line}:${column}`
+}
+
 /** The text of the error an environment's failure reports at the line of `at`. */
 function errorAt(
   failure: CompileFailure | undefined,
@@ -391,6 +400,7 @@ describe('Vite: every compile refuses server code passed by a name the module as
       at: '.handler(',
       source: head + writes[0]![1],
       name: 'h',
+      write: 'h = ',
       inPlace: '.handler(async () => …)',
       value: 'async () => …',
     },
@@ -398,6 +408,7 @@ describe('Vite: every compile refuses server code passed by a name the module as
       at: 'createServerOnlyFn(impl)',
       source: head + positions[0]!.refused,
       name: 'impl',
+      write: 'impl = ',
       inPlace: 'createServerOnlyFn(() => …)',
       value: '() => …',
     },
@@ -405,17 +416,20 @@ describe('Vite: every compile refuses server code passed by a name the module as
       at: '.validator(schema)',
       source: head + positions[3]!.refused,
       name: 'schema',
+      write: 'schema = ',
       inPlace: '.validator((data) => …)',
       value: '(data) => …',
     },
   ])(
-    'the error at $inPlace names the binding, the API and the rewrites that work',
-    async ({ at, source, name, inPlace, value }) => {
+    'the error at $inPlace names the binding, its write, the API and the rewrites that work',
+    async ({ at, source, name, write, inPlace, value }) => {
       const startCase = await (
         await host()
       ).case({ ...dbFile, 'module.tsx': source })
       const text = errorAt(await compileError(startCase), source, at)
-      expect(text).toContain(`\`${name}\` is assigned elsewhere in this module`)
+      expect(text).toContain(
+        `\`${name}\` is assigned elsewhere in this module (at ${writeAt(source, write)})`,
+      )
       expect(text).toContain(`\`${inPlace}\``)
       expect(text).toContain(`\`const ${name} = wrap(${value})\``)
       expect(text).toContain(`\`const ${name} = condition ? a : b\``)
@@ -800,6 +814,10 @@ describe("Vite: a route's server options by a name the module assigns", () => {
     expect(text).toContain('`handler: …`')
     expect(text).toContain(
       'keeping the `createHandlers` callback and its middleware',
+    )
+    // (the write it names: the module's first outside server code)
+    expect(text).toContain(
+      `(at ${writeAt(refusedRoutes['src/routes/reassigned-create-handlers.tsx']!.source, 'get = ')})`,
     )
   })
 

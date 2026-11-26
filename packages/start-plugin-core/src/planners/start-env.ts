@@ -34,6 +34,7 @@ import {
   unwrapExpression,
   walk,
   walkMoved,
+  writePosition,
 } from '@tanstack/router-utils/compiler'
 import { relative } from 'pathe'
 import {
@@ -906,11 +907,14 @@ function planStartEnv(
   // handler and leave a handler to the hoist check where it refuses the
   // server fn's creation (a local, or no single creation: that error first)
   // or the env erases the site
-  const reassigned = new Map<Node, { sym: SymbolId; at: ServerCodeArg }>()
+  const reassigned = new Map<
+    Node,
+    { sym: SymbolId; write: Range; at: ServerCodeArg }
+  >()
   for (const at of serverCode) {
-    const sym = at.compiled ? reassignedServerCode(ctx, at.arg) : null
-    if (sym !== null) {
-      reassigned.set(at.arg, { sym, at })
+    const found = at.compiled ? reassignedServerCode(ctx, at.arg) : null
+    if (found !== null) {
+      reassigned.set(at.arg, { ...found, at })
     }
   }
 
@@ -1163,10 +1167,14 @@ function planStartEnv(
   }
 
   // ---- 2c. the refusals of 2a
-  for (const [arg, { sym, at }] of reassigned) {
+  for (const [arg, { sym, write, at }] of reassigned) {
     ctx.diagnostic({
       severity: 'error',
-      message: reassignedServerCodeMessage(ctx.symbols.name(sym), at),
+      message: reassignedServerCodeMessage(
+        ctx.symbols.name(sym),
+        writePosition(ctx, write),
+        at,
+      ),
       range: rangeOf(arg),
       by,
       code: 'start-server-code-reassigned',
@@ -1308,10 +1316,12 @@ const SERVER_CODE_VALUES: Readonly<Record<string, string>> = {
 /** The error for server code passed by a name the module assigns elsewhere, at `at` (its API as written in place). */
 function reassignedServerCodeMessage(
   binding: string,
+  /** Its first write outside server code, `line:column`. */
+  written: string,
   at: ServerCodeArg,
 ): string {
   const value = ownEntry(SERVER_CODE_VALUES, at.position) ?? '…'
-  return `\`${binding}\` is assigned elsewhere in this module, so the server code it holds can ship to the client: the client output can keep the assignments of \`${binding}\` and the code they reference. Pass it written in place (\`${at.api}(${value})\`), or define it once with a \`const\` (\`const ${binding} = wrap(${value})\`, \`const ${binding} = condition ? a : b\`).`
+  return `\`${binding}\` is assigned elsewhere in this module (at ${written}), so the server code it holds can ship to the client: the client output can keep the assignments of \`${binding}\` and the code they reference. Pass it written in place (\`${at.api}(${value})\`), or define it once with a \`const\` (\`const ${binding} = wrap(${value})\`, \`const ${binding} = condition ? a : b\`).`
 }
 
 /** The node on exactly `range`. */

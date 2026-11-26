@@ -11,6 +11,7 @@ import {
   reassignedServerCode,
   staticPropertyKey,
   unwrapExpression,
+  writePosition,
 } from '@tanstack/router-utils/compiler'
 import {
   recognizeRoute,
@@ -205,11 +206,12 @@ function reportReassignedServerOptions(
     visit(value, { path: [keyText], keyed: true, factory: false }, false)
   }
   for (const { node, path, keyed, factory } of named) {
-    const sym = reassignedServerCode(ctx, node)
-    if (sym === null) {
+    const reassigned = reassignedServerCode(ctx, node)
+    if (reassigned === null) {
       continue
     }
-    const binding = ctx.symbols.name(sym)
+    const binding = ctx.symbols.name(reassigned.sym)
+    const at = writePosition(ctx, reassigned.write)
     // (in a `createHandlers(…)` object: at the argument, the callback and
     // the middleware around it stay)
     const inPlace = factory
@@ -221,7 +223,7 @@ function reportReassignedServerOptions(
     // (an error: every environment reports it)
     reportRouterDiagnostic(ctx, {
       severity: 'error',
-      message: `[tanstack-router] \`${binding}\` is assigned elsewhere in ${ctx.displayPath}, so the server code it holds can ship to the client: the client output can keep the assignments of \`${binding}\` and the code they reference. ${inPlace}, or define it once with a \`const\` (\`const ${binding} = wrap(…)\`, \`const ${binding} = condition ? a : b\`).`,
+      message: `[tanstack-router] \`${binding}\` is assigned elsewhere in ${ctx.displayPath} (at ${at}), so the server code it holds can ship to the client: the client output can keep the assignments of \`${binding}\` and the code they reference. ${inPlace}, or define it once with a \`const\` (\`const ${binding} = wrap(…)\`, \`const ${binding} = condition ? a : b\`).`,
       range: { start: node.start, end: node.end },
       by: ROUTER_PLANNER,
       code: 'route-server-code-reassigned',

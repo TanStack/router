@@ -210,13 +210,23 @@ function info not found` when one of them calls it, and the build says nothing, 
 
 ## Accepted limits
 
-- **A `let` of a Vue `<script setup>` block passed as server code is refused in development even when nothing
-  assigns it** (`let impl = () => …; createServerOnlyFn(impl)`): Vue's development output, and a build with Vue's
-  devtools, hands every `let` of the block to the template through a getter and a setter, and the setter is a write
-  outside server code, so the reassigned-name rule refuses it (user decision, 2026-11-26: no read analysis); a
-  production build, whose template is inlined, accepts it. Source: the reassigned-names change. No test. Workaround:
-  a `const` (`const impl = () => …`).
-
+- **A `let` or `var` of a Vue component passed as server code is refused in development even when nothing assigns
+  it** (`let impl = () => …; createServerOnlyFn(impl)` in `<script setup>`, or a `let`/`var` of a normal `<script>`
+  paired with `<script setup>`): Vue's development output, and a build with Vue's devtools, hands every such binding to
+  the template through `__returned__`'s getter and setter, and the setter is a write outside server code, so the
+  reassigned-name rule refuses it (user decision, 2026-11-26: no read analysis); the error names that write, in Vue's
+  output. A production build, whose template is inlined, accepts it. Source: the reassigned-names change and its
+  reviews (Astra, Gemini). No test. Workaround: a `const` (`const impl = () => …`).
+- **Already compiled TypeScript passed as server code is refused** (a `namespace` or `enum` compiled earlier, in
+  `node_modules` or by the late pass over a `.vue` file: `var h; (function (h) { … })(h || (h = {}))`, then
+  `createServerOnlyFn(h)` or `.handler(h)`): the compiled form writes the name (`h = {}`) outside server code, so it is
+  refused, also where it is exported or the client reads it (user decision, 2026-11-26). Source: Gemini's review of the
+  reassigned-names change. No test. Workaround: pass a `const` (`const impl = h.run`, or the function itself).
+- **A second, initialised `var` declaration of a function-local name is not a write** (`function make() { var h = a;
+const read = createServerOnlyFn(h); var h = b }`): the rule sees a redeclared `var` with a value as a write only at
+  the module's top level, so the function-local rebinding is not refused, and the client keeps it with what it reads.
+  As on bded194ac9. Source: Astra's review of the reassigned-names change. No test. Workaround: one declaration, or a
+  `const`.
 - **Vite: the client-build record follows the client output on disk, with these limits** (settlement design rev 4
   §2, step 7; the server embeds the record: its document's client files and the functions it answers). Each keeps SSR
   from naming a file the build removed:

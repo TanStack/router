@@ -86,12 +86,13 @@ function counts(
  * compile (SPEC J4.5), and the fix is a `const`. A write wholly inside
  * server-only text leaves the client with it. A Solid `ref={h}` is no
  * explicit assignment. (A `const` alias or a closure calling `h` is no
- * name at the position: no rule follows the name further.)
+ * name at the position: no rule follows the name further.) With the
+ * binding: its first such write, which the refusal names.
  */
 export function reassignedServerCode(
   ctx: PlanContext,
   arg: Node,
-): SymbolId | null {
+): { sym: SymbolId; write: Range } | null {
   const { t1 } = ctx
   const named = unwrapExpression(arg)
   if (named.type !== 'Identifier') {
@@ -108,9 +109,16 @@ export function reassignedServerCode(
     return null
   }
   const serverText = ctx.serverText()
-  return t1.mutation.writesOf(sym).some((w) => !within(w.range, serverText))
-    ? sym
-    : null
+  const write = t1.mutation
+    .writesOf(sym)
+    .find((w) => !within(w.range, serverText))
+  return write === undefined ? null : { sym, write: write.range }
+}
+
+/** The 1-based `line:column` of an offset of the module, as a refusal names a write there. */
+export function writePosition(ctx: PlanContext, at: Range): string {
+  const { line, column } = ctx.analysis.source.locate(at.start)
+  return `${line + 1}:${column + 1}`
 }
 
 function within(range: Range, texts: ReadonlyArray<Range>): boolean {
