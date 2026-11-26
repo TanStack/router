@@ -1194,10 +1194,8 @@ export class StartRsbuildCompilerSession {
     const id = canonicalResource(ctx.resource)
     const identity = identify(id)
     if (options.pass === 'asset') {
-      if (identity.lang !== null && moduleTypeOf(ctx._module?.type) === 'js') {
-        // the file's code (`x.ts?inline`): compiled by the loader. A script
-        // Rspack types as an asset (`new URL('./x.ts', import.meta.url)`,
-        // which Start's loader rules skip) is judged here
+      if (identity.lang !== null) {
+        // the file's code (`x.ts?inline`): compiled by the loader
         return { code: '', map: null }
       }
       // never compiled, and an import the compiler does not read may have
@@ -1257,10 +1255,9 @@ export class StartRsbuildCompilerSession {
         // export; a type that is no script, `json`, is Rspack's to parse.
         // Asked only of a module of the late pass or one whose request has
         // a query of the app's (`?raw`, not a derived output's): each read
-        // crosses into Rspack. `new URL()`'s asset of a script never meets
-        // this loader (its rules skip `dependency: 'url'`); a script an app
-        // rule types as an asset by its path alone is compiled, as before
-        // the type was read: KNOWN-BUGS)
+        // crosses into Rspack. A script that is an asset with no query,
+        // `new URL('./x.js', import.meta.url)` or a by-path `asset/source`
+        // rule, is compiled, as before the type was read: KNOWN-BUGS)
         ...((late ||
           (identity.derived === null && ctx.resource.includes('?'))) && {
           typeOf: () => moduleTypeOf(ctx._module?.type),

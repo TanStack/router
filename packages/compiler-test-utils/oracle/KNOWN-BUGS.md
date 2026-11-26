@@ -239,13 +239,13 @@ function info not found` when one of them calls it, and the build says nothing, 
   tells the compiler the module's type only, and an `asset/*` type is not compiled (R1-20,
   `build-asset-source-route.test.ts`); a JS-typed module looks like any other import of the route. Use `asset/source`
   (webpack 5's replacement for `raw-loader`). No test (the outcome is the limit).
-- **A script an Rspack rule types as an asset by its path alone is compiled** (settlement step 4 re-check, Astra and
-  Fable). Rsbuild: `{ test: /role\.ts$/, type: 'asset/source' }` (no query): Start's loader reads Rspack's module type
-  only for a late-pass module or a request with the app's own query (`?raw`; each read crosses into Rspack), so the
-  file's text is Start's output when it names a Start API, as before step 4. `new URL('./x.ts', import.meta.url)` is
-  not affected: Start's loader rules skip `dependency: 'url'`, so the asset keeps the file's text
-  (`start-build-late-pass.test.ts` "rsbuild build, a script new URL() makes an asset"). Type such a file by a query
-  (`resourceQuery`) instead. No test (the outcome is the limit).
+- **A script that becomes an asset with no query is compiled when its text names a Start API** (settlement step 4
+  re-checks, Astra and Fable; the same as before step 4). Rsbuild: `new URL('./x.js', import.meta.url)` through
+  Rspack's default `dependency: 'url'` rule, or an app rule that types a script `asset/source` by its path: the emitted
+  asset is Start's output, not the file's text. Start's loader reads Rspack's module type only for a late-pass module
+  or a request with the app's own query (each read crosses into Rspack). Import protection still judges such a
+  script (`importProtection/asset-query-scope.test.ts` "a denied script, new URL"). Add a query (`?url`, `?raw`), which
+  keeps the text. No test (the outcome is the limit).
 - **A JSX pragma comment on a directive's own line is read by SWC in a derived module, not in the route file**
   (emit review re-check, Fable S1). `'use client'; /** @jsxImportSource x */` (or the comment inside the directive's
   statement): SWC (Rsbuild) ignores a pragma that does not start its line, so the route file compiles with the default

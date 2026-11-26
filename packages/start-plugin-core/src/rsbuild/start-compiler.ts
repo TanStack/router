@@ -172,16 +172,9 @@ export function registerStartCompiler(
       utils.environment.config.source.transformImport,
     )
     const rules = (config.module.rules ??= [])
-    // (a module `new URL('./x.ts', import.meta.url)` creates is an asset,
-    // whatever its file: Rspack's own `dependency: 'url'` rule types it
-    // `asset/resource`, and its text is what the app gets. Start's loader
-    // rules leave it to the asset pass; the rules apply in child compilers
-    // too, which take the compiler's)
-    const notUrl = { not: 'url' }
     const loaderRules: Array<Rspack.RuleSetRule> = [
       {
         test: JS_FILE_RE,
-        dependency: notUrl,
         enforce: 'pre',
         use: [
           { loader: loaderPath, options: { environment: environment.name } },
@@ -194,12 +187,7 @@ export function registerStartCompiler(
       options: { environment: environment.name, pass: 'late' },
     }
     loaderRules.push(
-      {
-        test: LATE_PASS_RE,
-        dependency: notUrl,
-        enforce: 'post',
-        use: [lateUse],
-      },
+      { test: LATE_PASS_RE, enforce: 'post', use: [lateUse] },
       // Vue SFC script blocks under vue-loader's inline match resource
       vueScriptBlockRule(lateUse),
     )
@@ -247,9 +235,10 @@ export function registerStartCompiler(
       ]
       rules.push(
         { resourceQuery: ASSET_QUERY_RE, resource, enforce: 'pre', use },
-        // `new URL('./x.txt', import.meta.url)`, of a script too
+        // `new URL('./x.txt', import.meta.url)`
         {
           dependency: 'url',
+          exclude: JS_FILE_RE,
           resource,
           enforce: 'pre',
           use,
