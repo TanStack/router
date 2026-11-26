@@ -67,6 +67,22 @@ interface TypeRef {
 
 const byOffset = (x: TypeRef, y: TypeRef) => x.at - y.at
 
+/** Above every offset (`TypeRefs`' keys of a range). */
+const SPAN = 0x4000000
+
+/**
+ * The local scopes once each, by start (an outer one first), with each
+ * one's nearest scope around it (-1: the module's). Scopes nest, so the
+ * scopes around a text are the last one starting at or before it and the
+ * scopes around that one.
+ */
+interface ScopeTree {
+  start: Int32Array
+  end: Int32Array
+  parent: Int32Array
+  count: number
+}
+
 /**
  * The references erased with the types (`typeof x`, `useState<X>()`), by
  * position. Module-level bindings are indexed once; a local binding is
@@ -78,8 +94,8 @@ class TypeRefs {
   /** Per local scope, by its range: the type-position references of its bindings. */
   private readonly byScope = new Map<number, Array<TypeRef>>()
   private locals: Map<number, Array<SymbolId>> | null = null
-  /** The local scopes once each, by start (an outer one first), and each one's nearest scope around it (-1: the module's). */
-  private tree: { scopes: Array<Range>; parent: Int32Array } | null = null
+  /** The local scopes once each, built the first time a text inside one is read. */
+  private tree: ScopeTree | null = null
 
   constructor(
     private readonly file: SourceFile,
@@ -141,8 +157,8 @@ class TypeRefs {
   }
 
   /** The type-position references of the bindings a local scope declares. */
-  private scopeRefs(scope: Range): Array<TypeRef> {
-    const key = scope.start * 0x4000000 + scope.end
+  private scopeRefs(start: number, end: number): Array<TypeRef> {
+    const key = start * SPAN + end
     let list = this.byScope.get(key)
     if (list === undefined) {
       list = []
@@ -165,7 +181,7 @@ class TypeRefs {
         if (r === null) {
           continue
         }
-        const k = r.start * 0x4000000 + r.end
+        const k = r.start * SPAN + r.end
         let list = this.locals.get(k)
         if (!list) {
           this.locals.set(k, (list = []))
@@ -214,52 +230,62 @@ class TypeRefs {
     // it leave with it): the last scope starting at or before the text, and
     // the scopes around that one (scopes nest: every scope around the text
     // is one of them)
-    const { scopes, parent } = this.scopeTree()
+    const { start, end, parent, count } = this.scopeTree()
     let lo = 0
-    let hi = scopes.length
+    let hi = count
     while (lo < hi) {
       const mid = (lo + hi) >> 1
-      if (scopes[mid]!.start <= range.start) {
+      if (start[mid]! <= range.start) {
         lo = mid + 1
       } else {
         hi = mid
       }
     }
     for (let i = lo - 1; i >= 0; i = parent[i]!) {
-      const scope = scopes[i]!
       // (a scope on exactly the text's range is the text's own: inside it)
       if (
-        scope.end >= range.end &&
-        (scope.start !== range.start || scope.end !== range.end)
+        end[i]! >= range.end &&
+        (start[i] !== range.start || end[i] !== range.end)
       ) {
-        this.scan(this.scopeRefs(scope), range, visit)
+        this.scan(this.scopeRefs(start[i]!, end[i]!), range, visit)
       }
     }
   }
 
-  private scopeTree(): { scopes: Array<Range>; parent: Int32Array } {
+  private scopeTree(): ScopeTree {
     if (this.tree === null) {
-      // (a scope listed twice is read once)
-      const byKey = new Map<number, Range>()
-      for (const scope of this.symbols.localScopes) {
-        byKey.set(scope.start * 0x4000000 + scope.end, scope)
+      // one number per scope, by start and an outer one first (the end
+      // reversed; offsets stay below 2^26), sorted as numbers
+      const local = this.symbols.localScopes
+      const keys = new Float64Array(local.length)
+      for (let i = 0; i < local.length; i++) {
+        keys[i] = local[i]!.start * SPAN + (SPAN - 1 - local[i]!.end)
       }
-      const scopes = [...byKey.values()].sort(
-        (a, b) => a.start - b.start || b.end - a.end,
-      )
-      const parent = new Int32Array(scopes.length)
-      const open: Array<number> = []
-      scopes.forEach((scope, i) => {
-        while (
-          open.length > 0 &&
-          scopes[open[open.length - 1]!]!.end < scope.end
-        ) {
-          open.pop()
+      keys.sort()
+      const start = new Int32Array(keys.length)
+      const end = new Int32Array(keys.length)
+      const parent = new Int32Array(keys.length)
+      let n = 0
+      let top = -1
+      for (let i = 0; i < keys.length; i++) {
+        const key = keys[i]!
+        // (a scope listed twice is read once)
+        if (i > 0 && key === keys[i - 1]) {
+          continue
         }
-        parent[i] = open.length > 0 ? open[open.length - 1]! : -1
-        open.push(i)
-      })
-      this.tree = { scopes, parent }
+        const s = Math.floor(key / SPAN)
+        const e = SPAN - 1 - (key - s * SPAN)
+        // (the open scopes are a chain: the nearest one ending at or after
+        // this one's end holds it)
+        while (top >= 0 && end[top]! < e) {
+          top = parent[top]!
+        }
+        start[n] = s
+        end[n] = e
+        parent[n] = top
+        top = n++
+      }
+      this.tree = { start, end, parent, count: n }
     }
     return this.tree
   }
@@ -340,16 +366,24 @@ export function closure(a: ClosureInput): Provenance {
       type: USED | ERASED,
       relay: true,
     })
+  // (an exported erased declaration is a type unit of the module's own, not
+  // an import's, or a namespace's member)
+  let ownTypes = symbols.namespaceBlocks
   for (const u of units) {
-    if (u.kind === 'type' && u.stripped) {
-      erased(u.range)
+    if (u.kind === 'type' && u.importIndex === null) {
+      ownTypes = true
+      if (u.stripped) {
+        erased(u.range)
+      }
     }
   }
   const table = new Declarations(file)
-  for (const b of table.exportedErased(symbols.namespaceBlocks)) {
-    for (const d of table.of(b)) {
-      if (d.kind === 'erased') {
-        erased(d.node)
+  if (ownTypes) {
+    for (const b of table.exportedErased(symbols.namespaceBlocks)) {
+      for (const d of table.of(b)) {
+        if (d.kind === 'erased') {
+          erased(d.node)
+        }
       }
     }
   }
