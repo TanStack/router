@@ -491,6 +491,106 @@ export const read = (): T | number => slow
     timeout,
   )
 
+  // Two older texts of `form.ts` with that import, both overtaken by a third
+  // without it: each older caller fails when it requests the edge, before
+  // the newest text commits or after.
+  // Source: Fable's and Astra's quick looks at settlement step 3
+  // (b27e93a38f: the first request consumed the edge's entry for both).
+  test.each(['before', 'after'] as const)(
+    'two overtaken answers naming one edge decided at the request: both callers fail, requested %s the newer commit',
+    async (when) => {
+      const first = holdPoint()
+      const second = holdPoint()
+      const newest = holdPoint()
+      const firstAnalysis = holdPoint()
+      const secondAnalysis = holdPoint()
+      const isForm = (id: string | undefined) =>
+        id !== undefined && id.split('?')[0]!.endsWith('/src/form.ts')
+      const analyses = [firstAnalysis, secondAnalysis]
+      let transformed = 0
+      const server = await startDevServer({
+        plugins: [
+          holdResolution(first, './slow', 'ssr'),
+          holdResolution(second, './slow', 'ssr'),
+          holdResolution(newest, './slow2', 'ssr'),
+          {
+            // (after Start's transform, before the bundler's import
+            // analysis of the module's code)
+            name: 'test:hold-after-transform',
+            enforce: 'post',
+            async transform(_code, id) {
+              if (this.environment.name === 'ssr' && isForm(id)) {
+                await analyses[transformed++]?.wait()
+              }
+              return null
+            },
+          },
+        ],
+        start: { importProtection: { behavior: 'error' } },
+        files: {
+          'tsconfig.json': JSON.stringify({
+            compilerOptions: { verbatimModuleSyntax: true },
+          }),
+          'src/one.client.ts': `export type T = string\nexport const one = () => 'MARK_ONE'\n`,
+          'src/slow.ts': `export const slow = 1\n`,
+          'src/slow2.ts': `export const slow2 = 2\n`,
+          'src/form.ts': plainForm,
+        },
+      })
+      await server.transform('/src/form.ts', 'ssr')
+      // (no transform of `form.ts` before the held ones counts)
+      transformed = 0
+      /** Saves an older text and requests it; its compile is held at `gate`. */
+      const older = async (gate: ReturnType<typeof holdPoint>, n: number) => {
+        await server.edit({
+          'src/form.ts': `import { type T } from './one.client'
+import { slow } from './slow'
+export const read = (): T | number => slow + ${n}
+`,
+        })
+        const reached = gate.arm()
+        const answer = server.transform('/src/form.ts', 'ssr').then(
+          () => 'served',
+          () => 'failed',
+        )
+        await reached
+        return { answer }
+      }
+      const one = await older(first, 1)
+      const two = await older(second, 2)
+      await server.edit({
+        'src/form.ts': `import { slow2 } from './slow2'\nexport const read = () => slow2\n`,
+      })
+      const newestReached = newest.arm()
+      const newestAnswer = server.transform('/src/form.ts', 'ssr')
+      // both older answers are overtaken once the newest text is requested
+      await newestReached
+      if (when === 'before') {
+        // their requests run on: the edge is requested before the commit
+        first.release()
+        second.release()
+        expect([await one.answer, await two.answer]).toEqual([
+          'failed',
+          'failed',
+        ])
+        newest.release()
+        expect(await newestAnswer).toContain('slow2')
+        return
+      }
+      // their requests wait before import analysis while the newest commits
+      const analysed = [firstAnalysis.arm(), secondAnalysis.arm()]
+      first.release()
+      second.release()
+      await Promise.all(analysed)
+      newest.release()
+      expect(await newestAnswer).toContain('slow2')
+      firstAnalysis.release()
+      secondAnalysis.release()
+      expect([await one.answer, await two.answer]).toEqual(['failed', 'failed'])
+    },
+    timeout,
+  )
+
   // `allowImport` allows `form.ts`'s import of the client-only
   // `one.client.ts` and nothing else (not the file as its own importer);
   // it answers while the file is saved again without the import. The SSR

@@ -841,11 +841,12 @@ interface RegisteredModule {
    * bundler's request (`EdgeViolation.pending`), every answer's, by
    * `${importerId}\0${edgeKey}`. A request of the edge by an answer no
    * commit recorded (overtaken) fails its caller with the error, reported
-   * nowhere else (`confirm`). An entry lives until its edge is requested
-   * (consumed), its importer's file is removed (`forget`), or a watch build
-   * no longer holds the importer (`hold`): another answer's commit or
-   * retirement never releases it (that answer's caller may not have
-   * requested the edge yet).
+   * nowhere else (`confirm`). An entry is per edge, not per answer: every
+   * overtaken caller that names the edge fails, whenever it requests it.
+   * It lives until its importer's file is removed (`forget`) or a watch
+   * build no longer holds the importer (`hold`); no request and no other
+   * answer's commit or retirement releases it. Its memory is bounded by
+   * those two (dev: an entry per deferred edge of a file still there).
    */
   deferred?: Map<string, EdgeViolation>
 }
@@ -2180,8 +2181,6 @@ class ImportProtectionEnv {
         overtaken.push(v)
       }
     }
-    // (consumed by this request: the caller that named the edge gets it)
-    this.consumeDeferred(ref.key, m)
     if (
       pending.length === 0 &&
       overtaken.length === 0 &&
@@ -2376,24 +2375,6 @@ class ImportProtectionEnv {
       }
     }
     this.releaseDeferred(path, () => true)
-  }
-
-  /** Consumes a requested edge's deferred violations (`RegisteredModule.deferred`), and drops the edge from the files' index. */
-  private consumeDeferred(key: string, m: RegisteredModule): void {
-    if (!m.deferred || m.deferred.size === 0) {
-      return
-    }
-    const files = new Set<string>()
-    for (const v of m.deferred.values()) {
-      files.add(traceFile(v.importerId))
-    }
-    m.deferred.clear()
-    for (const file of files) {
-      const keys = this.deferredByFile.get(file)
-      if (keys?.delete(key) && keys.size === 0) {
-        this.deferredByFile.delete(file)
-      }
-    }
   }
 
   /** Releases the deferred violations of importers of `file` that `gone` says are gone (`RegisteredModule.deferred`). */
