@@ -84,14 +84,6 @@ interface ManifestResolverOptions {
   /** The provider module id of an entry (the original module or its derived provider id). */
   providerModuleId: (entry: ServerFnEntry) => string
   /**
-   * The manifest lists only the functions a client compile stubbed (the
-   * client built before the provider: the SSR provider): those a split
-   * route chunk's server copy calls by id (`createSsrRpc`), from server
-   * code. The RSC provider builds before the client (plugin-rsc's
-   * `buildApp`), so its manifest lists every server fn of its environment.
-   */
-  clientReferencedOnly: boolean
-  /**
    * Development: every function is listed; a client-origin call of a
    * function no client module the dev server has compiled so far references
    * is answered, with one warning per function naming it and saying a
@@ -115,24 +107,81 @@ interface ManifestResolverOptions {
 }
 
 /**
- * The production manifest: `id → { functionName, importer, exportName }` of
- * the functions server code may call by id, gated to the HTTP-callable ones. `functionName` is what earlier Start versions
- * printed there (tooling reads it from the server bundle); the lookup reads
- * the provider module's export, `exportName`, which is unique per file.
+ * What a resolver's manifest lists, and how it gates, for each kind of
+ * build (J4.2, R182): the one rule of every host.
+ * - `client-gated`: a production build whose SSR environment is the
+ *   provider (it builds after the client): the functions a client compile
+ *   stubbed (server code calls them by id too: a split route chunk's
+ *   `createSsrRpc`), client-origin calls gated to `callable`.
+ * - `provider-first`: a separate provider (Vite RSC) building before the
+ *   client: every function (server-origin calls need them all); the
+ *   caller environment gates (`callerGateModule`).
+ * - `provider-gated`: a separate provider whose resolver is built again
+ *   once the client built (Rsbuild RSC): the functions a server compile
+ *   declares and those the client's emitted code calls (`callable`, null
+ *   before the client's first build), gated to them. A function only a
+ *   client compile stubbed, whose stub the bundler dropped, is not listed:
+ *   its provider and what the provider imports are not built.
+ * - `dev`: development's manifest (Rsbuild): every function, imported
+ *   statically (`staticImports`, RSC), or warning once for a client call of
+ *   one no client module references (`warnUnreferenced`).
  */
-export function productionResolverModule(opts: {
-  entries: ReadonlyArray<ServerFnEntry>
-  providerModuleId: (entry: ServerFnEntry) => string
-  clientReferencedOnly: boolean
-  clientOriginGate: string | undefined
-}): string {
-  return manifestResolverModule({ ...opts, memoizeModules: true })
+export type ResolverShape =
+  | { kind: 'client-gated'; callable: ReadonlySet<string> }
+  | { kind: 'provider-first' }
+  | { kind: 'provider-gated'; callable: ReadonlySet<string> | null }
+  | { kind: 'dev'; staticImports: boolean; warnUnreferenced: boolean }
+
+/**
+ * The manifest resolver module of `entries` for a build of `shape`: `id →
+ * { functionName, importer, exportName }` of the functions server code may
+ * call by id. `functionName` is what earlier Start versions printed there
+ * (tooling reads it from the server bundle); the lookup reads the provider
+ * module's export, `exportName`, which is unique per file.
+ */
+export function resolverManifest(
+  entries: ReadonlyArray<ServerFnEntry>,
+  shape: ResolverShape,
+  providerModuleId: (entry: ServerFnEntry) => string,
+): string {
+  const gate = (callable: ReadonlySet<string> | null) =>
+    JSON.stringify([...(callable ?? [])].sort())
+  switch (shape.kind) {
+    case 'client-gated':
+      return manifestResolverModule({
+        entries: entries.filter((e) => e.clientReferenced),
+        providerModuleId,
+        memoizeModules: true,
+        clientOriginGate: gate(shape.callable),
+      })
+    case 'provider-first':
+      return manifestResolverModule({
+        entries,
+        providerModuleId,
+        memoizeModules: true,
+      })
+    case 'provider-gated':
+      return manifestResolverModule({
+        entries: entries.filter(
+          (e) => e.serverDeclared || shape.callable?.has(e.id),
+        ),
+        providerModuleId,
+        memoizeModules: true,
+        clientOriginGate: gate(shape.callable),
+      })
+    case 'dev':
+      return manifestResolverModule({
+        entries,
+        providerModuleId,
+        warnUnreferenced: shape.warnUnreferenced,
+        staticImports: shape.staticImports,
+      })
+  }
 }
 
-/** A manifest resolver module of the registry's entries (both modes on Rsbuild). */
-export function manifestResolverModule(opts: ManifestResolverOptions): string {
+/** A manifest resolver module of `entries` (`resolverManifest`). */
+function manifestResolverModule(opts: ManifestResolverOptions): string {
   const entries = [...opts.entries]
-    .filter((e) => !opts.clientReferencedOnly || e.clientReferenced)
     // stable output for content-addressed caches
     .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
   const staticImports: Array<string> = []

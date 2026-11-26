@@ -209,7 +209,7 @@ export async function buildStartViteEnvironments(opts: {
     // server embeds the client's build (its files, the functions it
     // references), so the server builds once the client's first build
     // ended. The client's later builds, and a first one that failed, reach
-    // the server by cause (`ViteCompilerState.publishClientBuild`)
+    // the server by cause (`ViteCompilerState.setClientBuild`)
     const output = await opts.builder.build(client)
     if ('on' in output) {
       opts.followWatcher(client, output)

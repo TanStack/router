@@ -7,10 +7,10 @@
  * and the next builds publish the new pair (`./start-build-settlement-app`).
  *
  * Settlement design, step 0 (design-settlement.md rev 4, §2 "Vite
- * client-build record", §6). Failures of the output phase: another
- * plugin's `generateBundle` failing (a pin: step 7, the record withdrawn at
- * `renderStart`, turns it green) and its `writeBundle` failing (green on
- * head; step 7 keeps it green).
+ * client-build record", §6; step 7). Failures of the output phase: another
+ * plugin's `generateBundle` failing (the record withdrawn at `renderStart`)
+ * and its `writeBundle` failing (the record committed at `writeBundle`,
+ * before that plugin's handler).
  */
 import { describe, expect, test } from 'vitest'
 import {
@@ -28,7 +28,7 @@ describe('vite build --watch: a client rebuild that fails', () => {
   // renders the page naming no client file (none is on disk), and is rebuilt
   // once the client builds again.
   // Source: Fable's settlement design rev 4 (`hook/probe4.mjs`).
-  test.fails(
+  test(
     "another plugin's generateBundle fails: the document names no client file",
     async () => {
       const { during, after, build } = await failedRebuild(

@@ -109,6 +109,13 @@ export function watchedBuilds() {
     serverBuilds: 0,
     /** Client builds that failed: in the build phase (`buildEnd` with an error), or in the hook `fail` names. */
     clientFailures: 0,
+    /**
+     * Client builds that started rendering, and those written: a build
+     * rendered and not written failed in its output phase (Start's own
+     * `generateBundle`: a denied import under `behavior: 'error'`).
+     */
+    clientRenders: 0,
+    clientWrites: 0,
     fail: null as null | 'generateBundle' | 'writeBundle',
   }
   const active = () => {
@@ -128,7 +135,12 @@ export function watchedBuilds() {
         state.clientFailures++
       }
     },
-    renderStart: active,
+    renderStart() {
+      active()
+      if (this.environment.name === 'client') {
+        state.clientRenders++
+      }
+    },
     generateBundle() {
       active()
       if (
@@ -142,6 +154,7 @@ export function watchedBuilds() {
     writeBundle(options, bundle) {
       active()
       if (this.environment.name === 'client') {
+        state.clientWrites++
         state.clientDir = options.dir!
         if (state.fail === 'writeBundle') {
           state.clientFailures++
@@ -204,7 +217,10 @@ process.stdout.write(JSON.stringify(result))`,
   ): Promise<{ served: Served; serverBuilds: number }> => {
     const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
     const start = Date.now()
-    while (state.clientFailures <= failures) {
+    while (
+      state.clientFailures <= failures &&
+      state.clientRenders === state.clientWrites
+    ) {
       if (Date.now() > start + 30_000) {
         throw new Error('test: the client build did not fail')
       }
@@ -237,6 +253,14 @@ const quietMs = 2_000
 export async function failedRebuild(
   edit: Record<string, string>,
   fail: null | 'generateBundle' | 'writeBundle',
+  options: {
+    /** Start's options over the app's (`start`). */
+    start?: Record<string, unknown>
+    /** The Vite config beside the watched-builds plugin. */
+    viteConfig?: Record<string, unknown>
+    /** More edits of the fix (`null` deletes a file the failing save added). */
+    fix?: Record<string, string | null>
+  } = {},
 ) {
   const builds = watchedBuilds()
   let first!: Served
@@ -269,6 +293,7 @@ export async function failedRebuild(
       edits: {
         'src/client-entry.ts': app['src/client-entry.ts'],
         'src/client-only.ts': clientOnly('MARK_FIXED'),
+        ...options.fix,
       },
       when: async () => {
         during = await builds.servedAfterFailure(failures, serverBuilds)
@@ -281,8 +306,8 @@ export async function failedRebuild(
     bundler: 'vite',
     files: app,
     entry,
-    start,
-    viteConfig: { plugins: [builds.plugin] },
+    start: { ...start, ...options.start },
+    viteConfig: { ...options.viteConfig, plugins: [builds.plugin] },
     watchEdits: steps,
   })
   const after = await builds.served()

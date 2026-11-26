@@ -36,8 +36,8 @@ import {
 } from '@tanstack/router-utils/compiler'
 import { StartCompilerSession } from '../compiler/session'
 import { isVueSfc } from '../compiler/vue'
-import { providedEntries, providerModuleId } from '../server-fns/registry'
-import { manifestResolverModule } from '../server-fns/resolver'
+import { providerModuleId } from '../server-fns/registry'
+import { resolverManifest } from '../server-fns/resolver'
 import { rspackEdgeModuleIds } from '../import-protection/edge-modules'
 import {
   RSBUILD_ENVIRONMENT_NAMES,
@@ -1471,33 +1471,26 @@ export class StartRsbuildCompilerSession {
    * (the client compilation's replay rewrites the resolver, so the flags
    * follow the client graph). The RSC provider lists every entry in
    * development, and in a build the functions server code declares or the
-   * client's emitted code calls (`providedEntries`), gated likewise: the
+   * client's emitted code calls (`resolverManifest`'s `provider-gated`), gated likewise: the
    * server compilation's last settlement run builds it again from what the
    * finished client build calls (`clientOutputMissing` before it).
    */
   resolverModule(): string {
     const { opts } = this.start
-    const entries = this.start.registry.entries()
     const callable = this.start.clientPublication()?.callable ?? null
-    return manifestResolverModule({
-      entries:
-        opts.mode === 'build' && opts.rsc !== undefined
-          ? providedEntries(entries, callable)
-          : entries,
+    return resolverManifest(
+      this.start.registry.entries(),
+      opts.mode === 'dev'
+        ? {
+            kind: 'dev',
+            staticImports: opts.rsc !== undefined,
+            warnUnreferenced: opts.rsc === undefined,
+          }
+        : opts.rsc !== undefined
+          ? { kind: 'provider-gated', callable }
+          : { kind: 'client-gated', callable: callable ?? new Set() },
       providerModuleId,
-      clientReferencedOnly: opts.mode === 'build' && opts.rsc === undefined,
-      warnUnreferenced: opts.mode === 'dev' && opts.rsc === undefined,
-      staticImports: opts.rsc !== undefined && opts.mode === 'dev',
-      memoizeModules: opts.mode === 'build',
-      // the functions the client's emitted code calls (J4.2, R182); an RSC
-      // build's first resolver precedes the client build (the RSC
-      // coordinator interleaves the compilations): the server compilation's
-      // last settlement run builds it again from the client's publication
-      clientOriginGate:
-        opts.mode === 'build'
-          ? JSON.stringify([...(callable ?? [])].sort())
-          : undefined,
-    })
+    )
   }
 }
 

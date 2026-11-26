@@ -60,6 +60,7 @@ import { scriptTransform } from './script-transform'
 import {
   devLookupPlugin,
   forwardPlugin,
+  providerListPlugin,
   resolverPlugin,
 } from './server-fn-plugins'
 import type { InvalidateChange } from '@tanstack/router-utils/compiler'
@@ -81,6 +82,7 @@ export function startCompilerPlugin(state: ViteCompilerState): PluginOption {
     devLookupPlugin(state),
     forwardPlugin(state),
     resolverPlugin(state),
+    providerListPlugin(state),
   ]
 }
 

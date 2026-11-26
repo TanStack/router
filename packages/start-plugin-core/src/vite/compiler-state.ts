@@ -43,15 +43,16 @@ import {
 import { Locator } from '../import-protection/locate'
 import { resolveImportProtectionConfig } from '../import-protection/config'
 import { escapeRegExp, resolveViteId } from '../utils'
+import { providerModuleId } from '../server-fns/registry'
 import { invalidateRegistry, reloadMismatched } from './invalidation'
 import { createVirtualWaits } from './virtual-waits'
 import type {
-  ClientPublication,
   StartCompilerEnvironment,
   StartDiagnosticSink,
   StartPackageReach,
 } from '../compiler/session'
 import type { GenerateFunctionId } from '../server-fns/ids'
+import type { ServerFnEntry } from '../server-fns/registry'
 import type {
   CompileStartFrameworkOptions,
   GetConfigFn,
@@ -310,16 +311,15 @@ export function watchesSentinel(
   return { build: { watch: { include: [SENTINEL_RE] } } }
 }
 
-/** The publication of a client build that is no production build. */
-const NOTHING_CALLABLE: ClientPublication = Object.freeze({
-  callable: new Set<string>(),
-})
-
-/** What the server embeds of a client build, as a digest (the manifest's maps by their entries). */
+/**
+ * What the server embeds of a client build, as a digest: the manifest's maps
+ * by their entries, the referenced functions' descriptors (by id, every
+ * field the resolver prints) and the callable ids.
+ */
 function clientBuildDigest(
   manifest: ClientManifest,
-  functionIds: ReadonlyArray<string>,
-  callableIds: ReadonlyArray<string>,
+  referenced: ReadonlyMap<string, ServerFnEntry>,
+  callable: ReadonlySet<string>,
 ): string {
   const { clientBuild, cssCodeSplitDisabledFileName } = manifest
   return createHash('sha1')
@@ -329,8 +329,13 @@ function clientBuildDigest(
         [...clientBuild.chunksByFileName],
         [...(clientBuild.cssContentByFileName ?? [])],
         cssCodeSplitDisabledFileName ?? null,
-        functionIds,
-        [...callableIds].sort(),
+        [...referenced.values()].map((e) => [
+          e.id,
+          e.functionName,
+          e.exportName,
+          providerModuleId(e),
+        ]),
+        [...callable].sort(),
       ]),
     )
     .digest('base64url')
@@ -344,29 +349,44 @@ export interface ClientManifest {
 }
 
 /**
- * A client build of a build run, as the server environment embeds it: the
- * start manifest (the client's files) and the server functions the client
- * references (J4.2).
+ * The client output of a build run that is on disk (or, in memory, the
+ * last one generated), as the server environment embeds it: the start
+ * manifest (the client's files) and the server functions the client
+ * references (J4.2). Immutable: a build sets another one, or none.
  */
 export interface ClientBuildRecord {
   /** A digest of what the server embeds of the build. */
   digest: string
   manifest: ClientManifest
-  /** The server fns the client's compiles stubbed (the resolver's manifest: server code calls them by id too). */
-  functionIds: ReadonlySet<string>
+  /**
+   * The server fns the client's compiles stubbed, by id, as that build
+   * left them (the resolver's manifest: server code calls them by id too).
+   */
+  referenced: ReadonlyMap<string, ServerFnEntry>
   /** What the client's emitted code calls: the HTTP-callable ones (R182). */
-  publication: ClientPublication
+  callable: ReadonlySet<string>
+}
+
+/** What a client build's output is to its record: the start manifest, and the code of its emitted chunks. */
+export interface ClientOutput {
+  manifest: ClientManifest
+  codes: ReadonlyArray<string>
 }
 
 /** The client build as the server's modules embed it (`ViteCompilerState.embedClientBuild`). */
 export interface ClientBuilds {
-  /** The client's build of the environment's run ended with its bundle (the start manifest's capture). */
-  publishClientBuild: (
+  /**
+   * The one setter of the record (`Session.clientBuild`): none when a
+   * written build starts rendering (`renderStart`: Vite empties the output
+   * directory then), the written output at `writeBundle`, an in-memory
+   * build's at `generateBundle`. Production builds only.
+   */
+  setClientBuild: (
     environment: Environment,
-    manifest: ClientManifest,
-    /** The code of the client's emitted chunks (`ClientBuildRecord.publication`). */
-    codes: ReadonlyArray<string>,
+    output: ClientOutput | null,
   ) => void
+  /** Whether the run is an RSC build (plugin-rsc's scans are in-memory builds whose output is no client build). */
+  readonly rsc: boolean
   /** A module of a server environment's build embeds the run's client build (null: none built in this run). */
   embedClientBuild: (ctx: EmbeddingContext) => Promise<ClientBuildRecord | null>
 }
@@ -403,18 +423,21 @@ export interface Session {
   /** A build's waits of compiles of virtual modules on virtual texts (`virtual-waits.ts`). */
   readonly virtualWaits: ReturnType<typeof createVirtualWaits>
   /**
-   * The client environment's last build in this run that ended with its
-   * bundle (null: none yet): what the server's resolver and start manifest
-   * embed.
+   * The client output of this run on disk (`ClientBuilds.setClientBuild`;
+   * null: none): what the server's resolver and start manifest embed.
    */
   clientBuild: ClientBuildRecord | null
   /**
    * A build with a separate provider (RSC): the ids its resolver listed, as
-   * the provider's last written build produced it (null: none yet). The
-   * caller environment, built after the client, fails the build for a
-   * function the client calls that is not among them (`callableNotProvided`).
+   * the provider's output on disk holds them (null: none: withdrawn when its
+   * written build starts rendering, committed at its `writeBundle` from
+   * `providerListing`). The caller environment, built after the client,
+   * fails the build for a function the client calls that is not among them
+   * (`callableNotProvided`).
    */
   providerListed: ReadonlySet<string> | null
+  /** The ids the provider's resolver module of its build running now lists (`providerListed` at its write). */
+  providerListing: ReadonlySet<string> | null
   /**
    * `build --watch`: the digests of the client builds each server
    * environment's current build embedded (emptied when its build starts).
@@ -643,6 +666,7 @@ export class ViteCompilerState implements ClientBuilds {
       virtualWaits: createVirtualWaits(),
       clientBuild: null,
       providerListed: null,
+      providerListing: null,
       embedded: new Map(),
       sentinel: undefined,
       watching: new Set(),
@@ -733,38 +757,38 @@ export class ViteCompilerState implements ClientBuilds {
     return host
   }
 
+  /** Whether the run is an RSC build (`ClientBuilds.rsc`). */
+  get rsc(): boolean {
+    return this.opts.rsc !== undefined
+  }
+
   /**
-   * The client's build of the environment's run ended with its bundle (the
-   * start manifest's capture, `generateBundle`): the record the server
-   * embeds, with the server functions the build references (its compiles
-   * are done) and those its emitted `codes` still call. `build --watch`: a server build that embedded another client
-   * build is built again by its own watcher, whichever of the two watchers
-   * runs first (the sentinel it watches is written).
+   * The one setter of the run's client-build record (`ClientBuilds`): the
+   * record of `output`, with the server functions the build references (its
+   * compiles are done) and those its emitted code calls, or none. Then
+   * `build --watch`: a server build that embedded another client build is
+   * built again by its own watcher, whichever of the two watchers runs
+   * first (the sentinel it watches is written).
    */
-  publishClientBuild(
-    environment: Environment,
-    manifest: ClientManifest,
-    codes: ReadonlyArray<string>,
-  ): void {
+  setClientBuild(environment: Environment, output: ClientOutput | null): void {
     const s = this.sessionOf(environment)
-    const functionIds = s.start.registry
-      .entries()
-      .filter((e) => e.clientReferenced)
-      .map((e) => e.id)
-      .sort()
-    // (a production build's: a bundled dev client builds too)
-    const publication =
-      environment.mode === 'build'
-        ? s.start.publishClientOutput(codes)
-        : NOTHING_CALLABLE
-    const digest = clientBuildDigest(manifest, functionIds, [
-      ...publication.callable,
-    ])
-    s.clientBuild = {
-      digest,
-      manifest,
-      functionIds: new Set(functionIds),
-      publication,
+    if (output) {
+      const referenced = new Map<string, ServerFnEntry>()
+      for (const e of s.start.registry
+        .entries()
+        .filter((entry) => entry.clientReferenced)
+        .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))) {
+        referenced.set(e.id, e)
+      }
+      const callable = s.start.clientCallable(output.codes)
+      s.clientBuild = {
+        digest: clientBuildDigest(output.manifest, referenced, callable),
+        manifest: output.manifest,
+        referenced,
+        callable,
+      }
+    } else {
+      s.clientBuild = null
     }
     this.followClientBuild(s, environment)
   }

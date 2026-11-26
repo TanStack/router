@@ -180,21 +180,6 @@ export class ServerFnRegistry {
   }
 }
 
-/**
- * The functions the resolver of a production build lists when its provider
- * builds before the client is final (Rsbuild RSC, J4.2): those a server
- * compile declares (server code calls them by id) and those the client's
- * emitted code calls (`callable`, null before the client's first build). A
- * function only a client compile stubbed, whose stub the bundler dropped,
- * is not listed: its provider and what the provider imports are not built.
- */
-export function providedEntries(
-  entries: ReadonlyArray<ServerFnEntry>,
-  callable: ReadonlySet<string> | null,
-): Array<ServerFnEntry> {
-  return entries.filter((e) => e.serverDeclared || callable?.has(e.id))
-}
-
 /** The module an entry's `createServerRpc` wrapper is exported from. */
 export function providerModuleId(entry: ServerFnEntry): string {
   return entry.provider === 'file'

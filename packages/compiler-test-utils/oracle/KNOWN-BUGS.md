@@ -188,14 +188,6 @@ function info not found` when one of them calls it, and the build says nothing, 
   unmoved: an open answer of the first plan stays current and the file is not stale, where with the cache on the
   hit's refusal evicts it (a resolution moved by a tsconfig edit between the two requests). A measurement knob: the
   cache-equivalence runs compare outputs, not `current()` of overlapping requests. No row.
-- **Vite watch build: a client rebuild whose output fails keeps the previous client build** (settlement design rev 4,
-  step 7): another plugin's `generateBundle` failing leaves the client's output directory empty (Vite emptied it before
-  rendering), and the server's document still names the previous client files. A hand-ordered server build after a
-  failed client rebuild (S4-02) answers "Server function info not found" for the call of the client build on disk.
-  `start-plugin-core/tests/integration/start-build-settlement-output.test.ts`: "another plugin's generateBundle
-  fails: the document names no client file"; `start-build-settlement-ids.test.ts`: "S4-02: the server answers the
-  call of the last written client build". Fix: the client-build record follows the output on disk (withdrawn at
-  `renderStart`, committed at `writeBundle`), the resolver reads its descriptors (step 7).
 - **Vite watch build: a custom server fn id whose definition moves to another module is not found** (whole-PR review
   S1-22, decision D-22 pending): the id allocator never releases an id in a watch build, so the moved definition gets
   another id (`greet_fixed_1`) and a call of the custom id answers "Server function info not found" until a restart.

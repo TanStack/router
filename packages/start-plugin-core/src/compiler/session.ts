@@ -379,7 +379,7 @@ export class StartCompilerSession {
   /** The custom-id allocator (with a custom `generateFunctionId`). */
   readonly allocator: FunctionIdAllocator | null
   readonly warnings = new WarningLedger()
-  /** The last production client build's publication (`publishClientOutput`); null before the run's first. */
+  /** Rsbuild: the last production client build's publication (`publishClientOutput`); null before the run's first. */
   private published: ClientPublication | null = null
   /**
    * The modules with a committed record: by file, each module as
@@ -1341,13 +1341,13 @@ export class StartCompilerSession {
   }
 
   /**
-   * A production client build emitted `codes` (its JS assets or chunks,
-   * minified, with final ids): what it calls, held as the run's
+   * Rsbuild: a production client build emitted `codes` (its JS assets or
+   * chunks, minified, with final ids): what it calls, held as the run's
    * publication until the next client build (a run has a session of its
-   * own).
+   * own). Vite's client-build record holds its own (`clientCallable`).
    */
   publishClientOutput(codes: ReadonlyArray<string>): ClientPublication {
-    this.published = Object.freeze({ callable: this.clientCallableIds(codes) })
+    this.published = Object.freeze({ callable: this.clientCallable(codes) })
     return this.published
   }
 
@@ -1367,7 +1367,7 @@ export class StartCompilerSession {
    * its gate token (`gateToken`; a custom id is any text, e.g. a label of
    * the app). By the id the registry holds (a custom id's placeholder).
    */
-  private clientCallableIds(codes: ReadonlyArray<string>): Set<string> {
+  clientCallable(codes: ReadonlyArray<string>): Set<string> {
     const gated = this.allocator !== null
     const fns: Array<{ id: string; spelling: string; name: string }> = []
     for (const e of this.registry.entries()) {

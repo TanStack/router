@@ -16,14 +16,14 @@ import {
   callerGateModule,
   devLookupModule,
   devResolverModule,
-  productionResolverModule,
+  resolverManifest,
   unknownServerFnMessage,
   unreferencedWarning,
 } from '../server-fns/resolver'
 import { createVirtualModule } from './createVirtualModule'
 import type { PackageClasses } from '../compiler/package-class'
 import type { Plugin, ResolvedConfig } from 'vite'
-import type { ViteCompilerState } from './compiler-state'
+import type { ClientBuildRecord, ViteCompilerState } from './compiler-state'
 import type { ServerFnEntry } from '../server-fns/registry'
 
 /** A caller environment's forward to the provider's resolver (behind the production gate, J4.2). */
@@ -182,15 +182,15 @@ export function forwardPlugin(state: ViteCompilerState): Plugin {
  * function is not known here, so the causes are given as possible ones.
  */
 function callableNotProvided(
-  entries: ReadonlyArray<ServerFnEntry>,
-  callable: ReadonlyArray<string>,
+  clientBuild: ClientBuildRecord | null,
   listed: ReadonlySet<string> | null,
 ): Array<ServerFnEntry> {
-  if (!listed) {
+  if (!clientBuild || !listed) {
     return []
   }
-  const called = new Set(callable)
-  return entries.filter((e) => called.has(e.id) && !listed.has(e.id))
+  return [...clientBuild.referenced.values()].filter(
+    (e) => clientBuild.callable.has(e.id) && !listed.has(e.id),
+  )
 }
 
 /**
@@ -234,6 +234,52 @@ function callableNotProvidedError(
   return lines.join('\n')
 }
 
+/**
+ * Whether an environment's build writes its output (`build --watch` writes
+ * whatever `build.write` says): a production build's.
+ */
+export function writtenBuild(
+  environment: { mode: string; config: { build: { write?: boolean } } },
+  watchMode: boolean,
+): boolean {
+  return (
+    environment.mode === 'build' &&
+    (watchMode || environment.config.build.write !== false)
+  )
+}
+
+/**
+ * A separate provider's list (RSC, `Session.providerListed`) follows its
+ * output on disk, as the client-build record does: none when a written
+ * build starts rendering (Vite empties the output directory then), what
+ * its resolver listed once the build is written.
+ */
+export function providerListPlugin(state: ViteCompilerState): Plugin {
+  return {
+    name: 'tanstack-start:server-fn-provider-list',
+    enforce: 'pre',
+    applyToEnvironment: (e) =>
+      !state.ssrIsProvider && e.name === state.opts.providerEnvName,
+    renderStart: {
+      order: 'pre',
+      handler() {
+        if (writtenBuild(this.environment, this.meta.watchMode)) {
+          state.sessionOf(this.environment).providerListed = null
+        }
+      },
+    },
+    writeBundle: {
+      order: 'pre',
+      handler() {
+        if (this.environment.mode === 'build') {
+          const s = state.sessionOf(this.environment)
+          s.providerListed = s.providerListing
+        }
+      },
+    },
+  }
+}
+
 /** Each resolver environment's `getServerFnById` module (`VIRTUAL_MODULES.serverFnResolver`). */
 export function resolverPlugin(state: ViteCompilerState): Plugin {
   return createVirtualModule({
@@ -264,12 +310,7 @@ export function resolverPlugin(state: ViteCompilerState): Plugin {
           `[tanstack-start] The server environment is built before the client environment. The server answers the server functions the client build calls, so the client must build first, in the same process: run \`vite build\`, or build \`builder.environments.client\` before \`builder.environments.ssr\`.`,
         )
       }
-      const referenced = (entries: Array<ServerFnEntry>) =>
-        entries.map((e) => ({
-          ...e,
-          clientReferenced: clientBuild?.functionIds.has(e.id) ?? false,
-        }))
-      const callableIds = [...(clientBuild?.publication.callable ?? [])].sort()
+      const callableIds = [...(clientBuild?.callable ?? [])].sort()
       if (this.environment.name !== state.opts.providerEnvName) {
         const mod = state.envOf(this.environment.name)?.getServerFnById
         if (mod) {
@@ -278,11 +319,7 @@ export function resolverPlugin(state: ViteCompilerState): Plugin {
             // the client, so its manifest lists every function; this
             // environment builds last (plugin-rsc: rsc, client, ssr) and
             // gates client-origin calls on the functions the client calls
-            const missing = callableNotProvided(
-              s.start.registry.entries(),
-              callableIds,
-              s.providerListed,
-            )
+            const missing = callableNotProvided(clientBuild, s.providerListed)
             if (missing.length > 0) {
               this.error(callableNotProvidedError(missing, s.start.classes))
             }
@@ -297,24 +334,34 @@ export function resolverPlugin(state: ViteCompilerState): Plugin {
       if (this.environment.mode !== 'build') {
         return devResolverModule()
       }
-      const entries = referenced(s.start.registry.entries())
-      if (
-        !state.ssrIsProvider &&
-        // (not a scan: plugin-rsc analyses the environments first)
-        this.environment.config.build.write !== false
-      ) {
-        s.providerListed = new Set(entries.map((e) => e.id))
+      if (!state.ssrIsProvider) {
+        // the RSC provider builds before the client: every function
+        const entries = s.start.registry.entries()
+        if (this.environment.config.build.write !== false) {
+          // (not a scan: plugin-rsc analyses the environments first) what
+          // this build's resolver lists, the provider list once it is
+          // written (`providerListed`)
+          s.providerListing = new Set(entries.map((e) => e.id))
+        }
+        return resolverManifest(
+          entries,
+          { kind: 'provider-first' },
+          providerModuleId,
+        )
       }
-      return productionResolverModule({
-        entries,
-        providerModuleId,
-        clientReferencedOnly: state.ssrIsProvider,
-        // the HTTP-callable functions (R182); the RSC provider builds
-        // before the client, and its caller environment gates instead
-        clientOriginGate: state.ssrIsProvider
-          ? JSON.stringify(callableIds)
-          : undefined,
+      // the SSR provider builds after the client: the functions the client
+      // build on disk references, each the server environment's own
+      // declaration where it has one (its build provides it), else as that
+      // client build left it
+      const entries = [...(clientBuild?.referenced.values() ?? [])].map((e) => {
+        const own = s.start.registry.get(e.id)
+        return own?.serverDeclared ? { ...own, clientReferenced: true } : e
       })
+      return resolverManifest(
+        entries,
+        { kind: 'client-gated', callable: clientBuild?.callable ?? new Set() },
+        providerModuleId,
+      )
     },
   })
 }

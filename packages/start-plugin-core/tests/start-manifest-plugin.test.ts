@@ -3,7 +3,11 @@ import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { DEV_CLIENT_ENTRY, START_ENVIRONMENT_NAMES } from '../src/constants'
 import { startManifestPlugin } from '../src/vite/start-manifest-plugin/plugin'
-import type { ClientBuilds, ClientManifest } from '../src/vite/compiler-state'
+import type {
+  ClientBuilds,
+  ClientManifest,
+  ClientOutput,
+} from '../src/vite/compiler-state'
 
 vi.mock('@tanstack/start-server-core/virtual-modules', () => ({
   VIRTUAL_MODULES: {
@@ -15,12 +19,17 @@ vi.mock('@tanstack/start-server-core/virtual-modules', () => ({
 function clientBuilds() {
   let manifest: ClientManifest | null = null
   return {
-    publishClientBuild: (_environment: unknown, published: ClientManifest) => {
-      manifest = published
+    setClientBuild: (_environment: unknown, output: ClientOutput | null) => {
+      manifest = output?.manifest ?? null
     },
     embedClientBuild: () =>
       Promise.resolve(
-        manifest && { digest: '', manifest, functionIds: new Set<string>() },
+        manifest && {
+          digest: '',
+          manifest,
+          referenced: new Map(),
+          callable: new Set<string>(),
+        },
       ),
   } as unknown as ClientBuilds
 }
@@ -41,11 +50,12 @@ describe('startManifestPlugin', () => {
         clientBuilds: clientBuilds(),
       }) as Array<any>
       const capture = plugins.find(
-        (item) =>
-          item.name === 'tanstack-start:start-manifest-capture-client-build',
+        (item) => item.name === 'tanstack-start:start-manifest-client-build',
       )!
-      capture.generateBundle.call(
-        { environment: { name: START_ENVIRONMENT_NAMES.client } },
+      capture.writeBundle.handler.call(
+        {
+          environment: { name: START_ENVIRONMENT_NAMES.client, mode: 'build' },
+        },
         {},
         {
           'entry.js': {
@@ -128,8 +138,7 @@ function loadDevManifest(opts: { bundledDev: boolean; basePath?: string }) {
     clientBuilds: clientBuilds(),
   }) as Array<any>
   const capture = plugins.find(
-    (item) =>
-      item.name === 'tanstack-start:start-manifest-capture-client-build',
+    (item) => item.name === 'tanstack-start:start-manifest-dev-client',
   )!
   capture.configureServer({
     config: { base: basePath },

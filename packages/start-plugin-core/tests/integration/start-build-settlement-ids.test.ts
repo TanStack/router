@@ -4,9 +4,9 @@
  * `vite build --watch` rebuild (a pin of whole-PR review S1-22: the id
  * allocator keeps the old definition's id, so the moved one gets another;
  * decision D-22 pending), and S4-02's hand-ordered builds (a client rebuild
- * fails before the server builds; a pin: step 7, the resolver reads the
- * client-build record's descriptors, turns it green). Settlement design,
- * step 0 (design-settlement.md rev 4, §6).
+ * fails before the server builds: the resolver reads the client-build
+ * record's descriptors, step 7). Settlement design, step 0
+ * (design-settlement.md rev 4, §6).
  */
 import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -77,7 +77,7 @@ describe('hand-ordered builds: a client rebuild fails before the server builds',
   // before `builder.environments.ssr`"). The previous client build is the
   // one on disk: the server answers its call.
   // Source: whole-PR review S4-02 (V-41, Astra's `probe.mjs registry`).
-  test.fails(
+  test(
     'S4-02: the server answers the call of the last written client build',
     async () => {
       const build = await buildStart({
