@@ -51,7 +51,7 @@ import {
 import { normalizePath } from '../utils'
 import { IMPORT_EDGES_PLANNER } from '../import-protection/violations'
 import { namesStartSpecifier, startRecognizer } from './recognizer'
-import { opaquePackageModule, startCompileScope } from './scope'
+import { startCompileScope } from './scope'
 import {
   PackageClasses,
   isStartPackage,
@@ -166,7 +166,7 @@ export interface StartCompilerSessionOptions {
   loadVirtual: (id: string, env: string) => Promise<string | null>
   /**
    * Vite: modules the summaries never read, whatever their text
-   * (pre-bundled dependencies), besides Start's rule (`opaquePackageModule`).
+   * (pre-bundled dependencies).
    */
   opaque?: (path: string) => boolean
   /** The caches' label (`TSR_COMPILER_STATS`). */
@@ -423,9 +423,6 @@ export class StartCompilerSession {
       this.ip,
       (path) => opts.routes.lookup(path) !== null,
     )
-    const packageModule = opaquePackageModule(this.ip, (path) =>
-      this.classes.startPackage(path),
-    )
     this.rawFacts = new RawFactsCache({
       readFile: opts.readFile,
       modifiedAt: fileModifiedAt,
@@ -434,8 +431,9 @@ export class StartCompilerSession {
       jsx: opts.framework,
       // every analysis of the session agrees on the marker specifiers
       markerSpecifiers: this.ip?.markerSpecifiers,
-      opaque: (path, text, parse) =>
-        (opts.opaque?.(path) ?? false) || packageModule(path, text, parse),
+      // every other module an import resolution reaches gets a summary,
+      // whatever its package or text (main reads them on demand)
+      opaque: opts.opaque,
     })
     // a removed file's server functions and import protection's records go
     // where the core applies the removal (a removal of a file that reads
@@ -1264,8 +1262,10 @@ export class StartCompilerSession {
    * The warning of a package module whose compile recognised a Start use
    * (`usesStartInPackage`), in a package Start does not read as one, once
    * per package instance and run (the warning ledger), or null: (i) its
-   * manifest does not declare Start (`declaresStart`): a Start value it
-   * forwards under another name is not followed; (ii) a host that bundles
+   * manifest does not declare Start (`declaresStart`): Vite pre-bundles it
+   * in development, where a Start value it forwards under another name is
+   * not followed, and it is not read like the app's (the late pass, a
+   * namespace's escape); (ii) a host that bundles
    * only the packages it found (`reach`, Vite) did not find it: the app
    * does not list it, or reaches it through an installed package that does
    * not declare Start, which the server keeps external. Nothing for Start's
@@ -1443,7 +1443,7 @@ function undeclaredPackageMessage(
   file: string,
 ): string {
   const start = `@tanstack/${opts.framework}-start`
-  return `[tanstack-start] ${displayPath(file, opts.root)} uses TanStack Start, but its package (${displayPath(root, opts.root)}/package.json) does not declare it. Start reads the modules of a package that lists ${start} in peerDependencies (or dependencies) on demand; it does not read this one's, so a Start value one of its modules hands to another under a new name is not followed, and the server code of the app's functions built on it can ship to the client. Ask the package to declare ${start} as a peer dependency.`
+  return `[tanstack-start] ${displayPath(file, opts.root)} uses TanStack Start, but its package (${displayPath(root, opts.root)}/package.json) does not declare it. Start bundles and reads a package that lists ${start} in peerDependencies (or dependencies) like the app's; it reads this one's modules only in part (Vite's dependency optimizer pre-bundles it in development), so a Start value one of its modules hands to another under a new name may not be followed, and the server code of the app's functions built on it can ship to the client. Ask the package to declare ${start} as a peer dependency.`
 }
 
 function unreachedPackageMessage(

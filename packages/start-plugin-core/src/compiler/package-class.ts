@@ -10,12 +10,12 @@
  *   declares Start (`declaresStart`);
  * - `package`: any other module under `node_modules`.
  *
- * The class decides one thing: whether a module is read on demand (a Start
- * value's summary, a namespace's escape, a `Hydrate` re-export, a server
- * function's reach, the late pass). An ordinary package's module is read only when its text names
- * what the planners recognise or re-exports another module. Import
- * protection's verdicts never read it: a marker is honoured in every module
- * the compiler is handed.
+ * The class decides one thing: whether a module is read on demand (a
+ * namespace's escape, a `Hydrate` re-export, a server function's reach, the
+ * late pass). Summaries do not depend on it: every module an import
+ * resolution reaches has one, whatever its package. Import protection's
+ * verdicts never read it: a marker is honoured in every module the compiler
+ * is handed.
  *
  * Paths are the bundler's (a real path, or the linked one under
  * `preserveSymlinks`); a manifest is read once per session, so a manifest

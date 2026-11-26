@@ -154,7 +154,7 @@ srcDirectory, … })`. Which clauses a switch turns on or off: J2.21, J3.7, J6.3
 | Unknown `%%tag%%` in a custom scaffolding template                                                                                                                    | becomes an empty string; no test                                                                                                        |
 | Big-endian or `--jitless` hosts for a native parser                                                                                                                   | not a compiler requirement                                                                                                              |
 | `.inputValidator()` on server functions and middleware (release-candidate name, removed in 1.169)                                                                     | type-invalid input (§8); no requirement, no test (OQ15)                                                                                 |
-| A dependency that contains Start API calls but does not declare Start (J4.16) and is not included                                                                     | compiled where its text names a Start API, not read on demand; warned once per package (J4.16)                                          |
+| A dependency that contains Start API calls but does not declare Start (J4.16) and is not included                                                                     | compiled where its text names a Start API, its modules summarised on demand; warned once per package (J4.16)                            |
 | A Start factory imported from an implementation module of a Start package (a deep path its `exports` do not expose)                                                   | not reachable; no requirement                                                                                                           |
 | A CommonJS dependency using sloppy-mode forms that break the app without Start too (a legacy octal escape, a `with` statement)                                        | no requirement                                                                                                                          |
 | A route made by an app's own helper (`createAppRoute = createFileRoute` in another module), a `Route` re-exported into a route file, `Route.update({ server })`       | out of scope (R130, R92): not split, `server` not removed, no diagnostic; no test                                                       |
@@ -835,12 +835,12 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   under a new name is followed). Vite discovery reaches such a package from the app's manifest through workspace
   packages, packages that declare Start and installed optional dependencies, by the dependency name the importer wrote
   (npm aliases kept); one behind an ordinary installed parent stays behind it, and its compile warns. A dependency that
-  uses Start without declaring it is compiled where its text names a Start API, not read on demand, and its compile
-  warns once per package instance; its re-exports are followed (`export … from`, `export *`, and an export list
-  naming a value import, `import { t as base } from './chunk.js'; export { base }`, the entry esbuild, tsup, Rolldown
-  and tsdown print for a shared chunk; read from the parsed module, so comments in the lists change nothing and
-  type-only imports and exports do not count), a name it gives a Start value otherwise (`export const authed = base`,
-  `export default base`) is not.
+  uses Start without declaring it is compiled where its text names a Start API, and its compile warns once per
+  package instance. Every dependency module an import resolution reaches has a summary, whatever its package or text
+  (main's on-demand reading): a Start value is followed through any module of such a package too (`export … from`,
+  `export *`, `import { t as base } from './chunk.js'; export { base }`, `export const authed = base`, a builder
+  made in another module and called there, `base?.handler(fn)`), except through a module the host pre-bundles (Vite's
+  dev optimizer).
   A route file the generator registered from a package is compiled like the app's.
   Discovery uses the app's configured
   root, never an unrelated process cwd (`vite build <app>` from a monorepo root works). A CommonJS dependency the

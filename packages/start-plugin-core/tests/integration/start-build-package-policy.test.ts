@@ -6,10 +6,10 @@
  *   a Start value comes from) is read on demand: a builder one of its
  *   modules hands to another under a new name, with no builder call there,
  *   is followed, and the app's handler built on it leaves the client;
- * - a package that does not declare Start is not read: the same handler
- *   ships (as before the policy), and the build warns once that the package
- *   must declare Start; a package naming Start in `peerDependenciesMeta`
- *   only gets no warning;
+ * - a package that does not declare Start: every module of it an import
+ *   resolution reaches has a summary too (pile-of-cases item 2a), and the
+ *   build warns once that the package must declare Start; a package naming
+ *   Start in `peerDependenciesMeta` only gets no warning;
  * - a route file the router generator registered from a package is
  *   compiled like the app's: split, its server handlers off the client.
  */
@@ -108,10 +108,9 @@ describe.each(startBundlers)('%s build', (bundler: StartBundler) => {
     timeout,
   )
 
-  // A package that does not declare Start is not read on demand: the
-  // forwarded builder is not followed (decision 11), and the compile of a
-  // module of it that uses Start warns that it must declare Start: once for
-  // the package, whichever of its two modules using Start compiles first.
+  // The compile of a module of a package that does not declare Start and
+  // uses Start warns that it must declare Start: once for the package,
+  // whichever of its two modules using Start compiles first.
   // Source: node_modules policy, decisions 6 (A, case i) and 11 (A).
   test(
     'a package that does not declare Start: one warning, naming one of its modules',
@@ -344,6 +343,44 @@ export const guard = (options) => createMiddleware({ type: 'function' }).server(
     timeout,
   )
 
+  // A package's module that calls `.handler()` on a builder another of its
+  // modules makes, through a barrel that renames the factory: no Start name
+  // in the builder's module. Every dependency module an import resolution
+  // reaches has a summary, whatever its text (main reads them on demand),
+  // so the handler is compiled off the client in a package that does not
+  // declare Start too. Main leaked the optional call, the PR both.
+  // Source: pile-of-cases item 2a (2026-11-26), compile-scope study.
+  test.each([
+    ['base.handler(fn)', 'base.handler'],
+    ['base?.handler(fn)', 'base?.handler'],
+  ])(
+    'a package that does not declare Start, %s with base made in another module: the handler leaves the client',
+    async (_shape, call) => {
+      const lib = installPackage('npm', {
+        name: 'dep-x',
+        declaration: 'none',
+        files: {
+          'barrel.js': `export { createServerFn as make } from '@tanstack/react-start'\n`,
+          'base.js': `import { make } from './barrel.js'\nexport const base = make({ method: 'POST' })\n`,
+          'fn.js': `import { base } from './base.js'\nexport const fn = ${call}(async () => 'MARK_HANDLER_BODY')\n`,
+          'index.js': `export { fn } from './fn.js'\n`,
+        },
+      })
+      const build = await buildStart({
+        bundler,
+        files: {
+          ...lib.files,
+          'src/entry.ts': `export { fn } from 'dep-x'\n`,
+          'src/ssr-entry.ts': `export { fn } from 'dep-x'\n${callByIdExports}`,
+        },
+        packageJson: appManifest([lib]),
+        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+      })
+      expect(build.client.where('MARK_HANDLER_BODY')).toBe('nowhere')
+    },
+    timeout,
+  )
+
   // A Start package's module is read like the app's: its namespace handed
   // to code the compiler cannot follow carries its builder there, which is
   // refused as for an app module (an ordinary package's is not read).
@@ -401,37 +438,6 @@ describe('rsbuild build on the persistent cache, a package that does not declare
       expect(warns(first)).toBe(true)
       const second = await first.rebuild({})
       expect(warns(second)).toBe(true)
-    },
-    timeout,
-  )
-})
-
-// Rsbuild's persistent cache keeps a plan made under one manifest: a
-// manifest-only edit that makes the package declare Start (or stop) gives
-// the output of a fresh build, in both directions.
-// Source: node_modules policy, section 5.3 (the class is an input of the
-// importer's plan, revalidated by its target facts).
-describe('rsbuild build on the persistent cache', () => {
-  test.each<[StartDeclaration, StartDeclaration, string]>([
-    ['none', 'peer', 'nowhere'],
-    ['peer', 'none', 'eager'],
-  ])(
-    'a manifest edit from %s to %s: the rebuild is the fresh build',
-    async (from, to, handler) => {
-      const { lib, options } = app('npm', from)
-      const first = await buildStart({
-        bundler: 'rsbuild',
-        ...options,
-        rsbuildConfig: { performance: { buildCache: true } },
-      })
-      const edited = installPackage('npm', forwardingLib(to)).files[
-        `${lib.directory}/package.json`
-      ]!
-      const second = await first.rebuild({
-        [`${lib.directory}/package.json`]: edited,
-      })
-      const where = second.client.where('MARK_HANDLER_BODY')
-      expect(where === 'nowhere' ? 'nowhere' : 'eager').toBe(handler)
     },
     timeout,
   )

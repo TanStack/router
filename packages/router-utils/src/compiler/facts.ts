@@ -88,18 +88,12 @@ interface RawFactsOptions {
   /** The JSX dialect every analysis of the session reads (`ModuleAnalysis`'s `jsx`). */
   jsx?: JsxDialect
   /**
-   * Whether a module is opaque to the summaries, by its path and text (an
-   * ordinary package: its exports carry no value a planner recognises), and
-   * how its summary would parse it (`summaryParse`; null: not at all). An
-   * opaque module gets no summary: it is null (`unknown` to a resolver), its
-   * marker is read from the text, and its target facts are parsed only when
-   * asked (`getTarget`). The predicate may parse the text itself.
+   * Whether a module is opaque to the summaries, by its path (a host's
+   * pre-bundled dependency). An opaque module gets no summary: it is null
+   * (`unknown` to a resolver), its marker is read from the text, and its
+   * target facts are parsed only when asked (`getTarget`).
    */
-  opaque?: (
-    path: string,
-    text: string,
-    parse: ParseModuleOptions | null,
-  ) => boolean
+  opaque?: (path: string) => boolean
   /**
    * A file's modification time in milliseconds (null: unknown; a whole
    * number of seconds counts as unknown). Without it, every file event that
@@ -161,7 +155,7 @@ const MISSING_TARGET: Omit<TargetFacts, 'digest'> = {
   useClient: false,
 }
 
-/** (computed once: an opaque module's read is on every package module's path) */
+/** (computed once: an opaque module's read is on every pre-bundled module's path) */
 const OPAQUE_DIGEST = digestOf(OPAQUE_TARGET)
 const MISSING_DIGEST = digestOf(MISSING_TARGET)
 
@@ -888,11 +882,7 @@ export class RawFactsCache {
     }
     const id = identify(canonicalId)
     const parse = summaryParse(canonicalId)
-    if (
-      !full &&
-      this.opts.opaque?.(id.path, text, parse) &&
-      !this.mayHaveMarker(text)
-    ) {
+    if (!full && this.opts.opaque?.(id.path) && !this.mayHaveMarker(text)) {
       return {
         summary: null,
         targetFacts: { ...OPAQUE_TARGET, digest: OPAQUE_DIGEST },
