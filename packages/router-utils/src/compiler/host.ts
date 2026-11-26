@@ -8,10 +8,12 @@ import { OWNED_QUERY_KEYS, identify, pathOfId, planKeyString } from './identity'
 import {
   EXTERNAL_DEPENDENCY,
   EXTERNAL_RESOLUTION,
+  NEVER_CHECKED,
   PlanCache,
   UNRESOLVED_DEPENDENCY,
   fingerprintCurrent,
   fingerprintPath,
+  stable,
 } from './cache'
 import { isVirtualId } from './facts'
 import type {
@@ -572,7 +574,6 @@ async function applyChange(
     for (const cache of caches.plans.values()) {
       for (const key of cache.keysAt(path)) {
         cache.delete(key)
-        cache.bump(key)
       }
     }
   }
@@ -686,7 +687,6 @@ async function applyChange(
           continue
         }
         cache.delete(entry.key)
-        cache.bump(entry.key)
         caches.stale.add(cache.env, identify(entry.key.canonicalId).path)
       }
     }
@@ -897,13 +897,16 @@ export async function restorePlans(
   await Promise.all(
     [...plans].map(async (plan) => {
       const env = plan.key.env
-      const src = fingerprintSourceFor(caches, hostOf(plan.key), env)
-      const current = await Promise.all(
-        plan.dependencies.map((fp) => fingerprintCurrent(fp, src)),
+      // installed in the accepting turn (`PlanCache.restore`: a key with a
+      // published plan or a request in progress keeps its own)
+      const checked = await stable(
+        plan.dependencies,
+        fingerprintSourceFor(caches, hostOf(plan.key), env),
+        caches,
+        NEVER_CHECKED,
+        () => planCacheFor(caches, env).restore(plan),
       )
-      if (current.every((ok) => ok)) {
-        planCacheFor(caches, env).restore(plan)
-      } else {
+      if (checked.kind !== 'accepted') {
         stale.push(plan.key)
       }
     }),
@@ -928,7 +931,6 @@ export function expireVirtual(caches: CompilerCaches, env: string): void {
   for (const path of paths) {
     for (const entry of cache.dependents.get(path)) {
       cache.delete(entry.key)
-      cache.bump(entry.key)
     }
   }
 }

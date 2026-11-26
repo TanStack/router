@@ -19,7 +19,7 @@ import {
   DependencyLedger,
   EXTERNAL_RESOLUTION,
   StaleSets,
-  fingerprintsCurrent,
+  stable,
 } from './cache'
 import { emitRecipe, substituteSpecifier } from './emit'
 import { dedupeEdges, sourceEdges, wholeModule } from './edges'
@@ -318,40 +318,35 @@ async function answer(
   for (;;) {
     const hit = cache.lookup(key, rev)
     if (hit) {
-      const src = fingerprintSourceFor(caches, host, env.name)
-      // what was validated at the current versions stands (not asked again)
-      const fileSetVersion = caches.fileSetVersion
-      const factsVersion = caches.rawFacts.version
-      const valid = await fingerprintsCurrent(hit.plan.dependencies, src, {
-        resolutions: hit.resolvedAt === fileSetVersion,
-        facts: hit.factsAt === factsVersion,
-      })
-      if (cache.lookup(key, rev) === hit) {
-        if (valid) {
-          hit.resolvedAt = fileSetVersion
-          hit.factsAt = factsVersion
+      // what was checked at the current versions stands (not asked again)
+      const checked = await stable(
+        hit.plan.dependencies,
+        fingerprintSourceFor(caches, host, env.name),
+        caches,
+        hit,
+        (at) => {
+          hit.resolvedAt = at.resolvedAt
+          hit.factsAt = at.factsAt
           cache.counters.planHits++
           return {
             out: noted(emitFrom(hit, requested, input, caches)),
             generation: cache.generation(key),
           }
-        }
+        },
+        () => cache.lookup(key, rev) === hit,
+      )
+      if (checked.kind === 'accepted') {
+        return checked.value
+      }
+      if (checked.kind === 'moved') {
         cache.delete(key)
-        cache.bump(key)
         // this request compiles the file again; its other outputs, which
         // the bundler holds from the plan, follow
         caches.stale.add(env.name, identity.path)
         if (caches.invalidations.size === 0) {
           // `invalidate()` checks every fact again, and leaves resolutions
           // and route-registry digests to the next request
-          const factsHeld = await fingerprintsCurrent(
-            hit.plan.dependencies.filter(
-              (fp) => fp.kind !== 'resolution' && fp.kind !== 'route-registry',
-            ),
-            src,
-            { resolutions: true, facts: false },
-          )
-          cache.counters[factsHeld ? 'lazyHits' : 'staleHits']++
+          cache.counters[checked.fact ? 'staleHits' : 'lazyHits']++
         }
       }
       // evicted, or evicted and published again, meanwhile: look again
@@ -471,13 +466,11 @@ async function settle(
       rev,
     )
     if (result.kind !== 'plan') {
-      if (cache.latestRevision(key) === rev) {
-        // the file's text has no plan: the plan of its old text goes with
-        // its rows (a later event of what that text read reports nothing)
-        const old = cache.get(key)
-        if (old && old.revision !== rev) {
-          cache.delete(key)
-        }
+      if (cache.latestRevision(key) === rev && cache.holdsOther(key, rev)) {
+        // the file's text has no plan: the plan of its old text, or a
+        // restored one, goes with its rows (a later event of what it read
+        // reports nothing)
+        cache.delete(key)
       }
       return { settled: result, generation: cache.generation(key) }
     }
@@ -492,32 +485,27 @@ async function settle(
       compiledAt,
     }
     entry.plan.dependencies = ledger.published()
-    const src = fingerprintSourceFor(caches, host, key.env)
     // the snapshot: whether every fact the attempt recorded is still
-    // current. Standing answers (no file event applied, no raw fact went
-    // stale since the attempt started) are not asked again; once a file
-    // event ran since, the resolutions are asked again (no event restarts
-    // the attempt for a failed one), until a check overlaps no event
-    let snapshotOk: boolean
-    for (let standingAt = fileSetVersion; ; ) {
-      const checkedAt = caches.fileSetVersion
-      snapshotOk = await fingerprintsCurrent(entry.plan.dependencies, src, {
-        resolutions: checkedAt === standingAt,
-        facts: caches.rawFacts.version === factsVersion,
-      })
-      if (!snapshotOk || caches.fileSetVersion === checkedAt) {
-        break
-      }
-      standingAt = checkedAt
-    }
-    if (snapshotOk && cache.generation(key) === generation) {
-      if (cache.set(entry)) {
-        ledger.publish()
-      }
-      return { settled: { kind: 'plan', entry }, generation: entry.generation }
-    }
-    if (cache.latestRevision(key) !== rev) {
-      // superseded (a newer save, the file removed): this text is stale; never publish, but answer its requests
+    // current (`stable`), and the key's generation unmoved since the
+    // attempt began, in the turn that publishes
+    const checked = await stable(
+      entry.plan.dependencies,
+      fingerprintSourceFor(caches, host, key.env),
+      caches,
+      entry,
+      (at) => {
+        entry.resolvedAt = at.resolvedAt
+        entry.factsAt = at.factsAt
+        if (cache.set(entry)) {
+          ledger.publish()
+        }
+      },
+      () => cache.generation(key) === generation,
+    )
+    if (checked.kind === 'accepted' || cache.latestRevision(key) !== rev) {
+      // accepted (published unless a newer text arrived meanwhile), or
+      // superseded (a newer save, the file removed: never published, but
+      // its requests are answered)
       return { settled: { kind: 'plan', entry }, generation: entry.generation }
     }
     overtaken = entry

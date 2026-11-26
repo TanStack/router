@@ -328,8 +328,8 @@ an output would make it lead (`Renderer.keepPragmasLate`, J2.16).
 | D     | emission of the requested output, on demand                                                                                                                                                                                                                                                                 |
 
 Tier 1 (units, symbols, classified references) is built only when a planner needs it. Phase C restarts the compile
-(up to 3 attempts) when a dependency changed underneath it; a compile overtaken by a newer revision of its own file, or
-by its file's event, is returned but not published. A request settles on the module untouched or compiled (a derived id
+(up to 3 attempts) when a dependency changed underneath it or an eviction or its file's event of another text moved
+its key's generation; a compile overtaken by a newer revision of its own file is returned but not published. A request settles on the module untouched or compiled (a derived id
 of an untouched module is the empty module) and its host acts on it while the request is open (`settleModule(input,
 host, caches, use)`; `compileModule` is its output): `current()` says no newer answer of the key exists (the key's
 latest text is the request's, and its generation is the one the answer was taken at: a request of another text, a
@@ -364,22 +364,22 @@ text compiles waits for it and emits its own output from the result.
   - **Every file event moves the file set** (`fileSetVersion`), a repeat included: any may hide a creation (chokidar
     folds a removal and a re-creation within its window into one change; Rspack lists a file back in its batch as
     modified). So the resolution memo is dropped, a plan's resolutions are asked again at its next request, and a
-    compile's snapshot asks its resolutions again once an event ran since its attempt began (until a check overlaps
-    none). The event also asks the failed resolutions of every published plan, and the resolutions the file may take
+    snapshot check asks its resolutions again once an event ran since they were checked (`stable`, below). The event also asks the failed resolutions of every published plan, and the resolutions the file may take
     (a file of the same name with another extension, or of a directory a resolution went into, looked up in the
     dependents index by directory and name, not scanned).
   - **Dependents.** A change marks the file's raw facts stale (its next build takes the text the event read) and
     re-validates dependents' fingerprints with each environment's own resolver (a resolver that throws makes the plan
     stale, and its next compile reports the error). A plan answers for its file's text: the file's change evicts its
-    plans of another text in every environment and makes the event's text the key's latest, so a compile of a former
-    text still running answers its requests without publishing (`PlanCache.supersede`). An own-file event whose text
+    plans of another text in every environment (`PlanCache.supersede`). The event never sets the key's latest text
+    from the file's raw text (an upstream plugin may hand the compiler another text: a banner); an event of another
+    text than the latest request's moves the key's generation, so a compile running attempts again. An own-file event whose text
     cannot be compared with the plans' (the file removed, or a file the compiler does not read: a module another plugin
     compiles from it, compiled in place, such as `.mdx` or a Vue SFC's blocks, whose every event reads the same)
     supersedes the key outright: its plans go, and no compile running publishes until a request notes its text. A plan
     of the text the event read stays, with its rows (a touch, a request of the new text ahead of its event); an evicted one's file enters the
     stale set, for a bundler that skipped building it (webpack's content-hash snapshot of a file written unchanged
     after a loader before the compiler rewrote it; the takers let the event's own file go). A compile of a key's
-    latest text without a plan (untouched, empty, not parsed) evicts the plan of an older one. A removal evicts the file's plans and stales every plan that read the
+    latest text without a plan (untouched, empty, not parsed) evicts the plan of an older one, or a restored one. A removal evicts the file's plans and stales every plan that read the
     file, unasked, on every host alike: its modules are built again at once, against what its imports find now
     (another file: `./b` found `b.ts` and finds `b/index.ts`; an external; or nothing, a failed resolution that every
     later file event asks again, so the file's return or a fallback created later builds them again). Vite dev keeps
@@ -420,13 +420,23 @@ text compiles waits for it and emits its own output from the result.
     published plan keeps one `exports` record per module it looked names up in: the names and their keys, or none
     when the module exports none of them (a barrel's star targets are visited for every name, so one record per name
     grew with names × targets), and the module's `export *` list when a lookup walked it.
-- Raw facts validated at the current `RawFactsCache.version` are not asked again on a hit or at publication
-  (`CacheEntry.factsAt`): the version moves on every `markStale`, `forget`, `retain` drop, `expireVirtual` and
-  `releaseVirtual`, which is how anything that changes a raw-facts answer reaches the cache (a host that saw a file
-  missing marks it stale when it may have appeared).
+- **One snapshot check** (`stable(snapshot)`, for an attempt before publication, a plan hit and `restorePlans`): a
+  snapshot is the dependencies read plus the `fileSetVersion` and `RawFactsCache.version` they were checked at
+  (`CacheEntry.resolvedAt`, `factsAt`). The asynchronous part asks what may have moved: resolutions once the file set
+  moved, raw facts once their version did. Acceptance is synchronous, in the caller's turn: both versions unmoved since
+  the check began, the route-registry digests read again (a watch build's registry publication calls no
+  `invalidate`), and the entry judged still the one (a hit: still the key's plan; an attempt: the key's generation
+  unmoved). A version that moved during the check makes it check again. A failed hit is counted from that one check.
+  The raw-facts version moves on every `markStale`, `forget`, `retain` drop, `expireVirtual` and `releaseVirtual`,
+  which is how anything that changes a raw-facts answer reaches the cache (a host that saw a file missing marks it
+  stale when it may have appeared).
+- **Every eviction moves the key's generation** (`PlanCache.delete`: a failed hit, an invalidation, a registry change,
+  an own-file event of another text): an attempt begun before it does not publish, and an answer taken before it is
+  not current.
 - `restorePlans(caches, plans, hosts)`: a host with a persistent bundler cache persists each output's plan key and
   dependencies (`CompileOutput.persisted`) with its module; a later process checks them for the modules the cache
-  restores without compiling: a current plan joins its environment's plans as a _restored_ plan (never a hit; its
+  restores without compiling: a current plan (`stable`, installed in its accepting turn unless the key has a plan or a
+  request of its own) joins its environment's plans as a _restored_ plan (never a hit; its
   dependencies are in the dependents index, so `invalidate()` reports it like any plan; a compile replaces it), a stale
   one is returned for the host to build again.
 - `releaseEnvironment(caches, env)` is the end of an environment's lifetime: a production build releases an

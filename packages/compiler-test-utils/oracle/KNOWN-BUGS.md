@@ -159,16 +159,10 @@ function info not found` when one of them calls it, and the build says nothing, 
   takes the allowed import away; `form.ts`'s next good save brings it back. SPEC J6.6. No row (the client row,
   `start-dev-settlement-failed.test.ts`, covers the commit; the SSR outcome follows from what the server reports).
   Fix: a module the compiler cannot parse keeps its record in every environment.
-- **A check that waits while an event lands accepts what it read before** (settlement design, step 0; whole-PR review
-  C6-01, C6-03): a plan hit or a restored plan whose resolution the resolver read before a tsconfig change and
-  answered after it is accepted (the hit emits the old target's output; the restore reports nothing stale); a
-  route-registry digest that changed during a hit's check is not read again; the event of a file's own save, read
-  without the banner an upstream plugin prepends, discards the only compile of the transformed text (nothing published,
-  nothing stale). Core rows (no public input holds these reads): `router-utils/tests/freshness.test.ts`, "a check that
-  waits while an event lands". Fix: one `stable(snapshot)` accepted in the caller's turn, and an event moves the key's
-  generation instead of naming its text (step 6a). Also a cost: a comment-only save of a dependency while a compile
-  checks its snapshot restarts the compile (the `asked` rows), though no fact it read moved: "a comment-only edit: the
-  compile is not attempted again" in the same file. Fix: the snapshot alone decides (step 6b).
+- **A comment-only save of a dependency while a compile checks its snapshot restarts the compile** (settlement
+  design, step 0; a cost): the `asked` rows restart it though no fact it read moved. Core row (no public input holds
+  these reads): `router-utils/tests/freshness.test.ts`, "a comment-only edit: the compile is not attempted again".
+  Fix: the snapshot alone decides (step 6b deletes the `asked` rows).
 - **Vite watch build: a client rebuild whose output fails keeps the previous client build** (settlement design rev 4,
   step 7): another plugin's `generateBundle` failing leaves the client's output directory empty (Vite emptied it before
   rendering), and the server's document still names the previous client files. A hand-ordered server build after a

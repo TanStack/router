@@ -163,38 +163,128 @@ export async function fingerprintCurrent(
 }
 
 /**
- * The answers a validation takes as current: resolutions at an unchanged
- * `fileSetVersion` (no file event applied since), raw facts at an
- * unchanged `RawFactsCache.version`.
+ * The versions a snapshot's standing answers were checked at: its
+ * resolutions at a `fileSetVersion` (no file event applied since), its raw
+ * facts at a `RawFactsCache.version` (no raw fact went stale since).
  */
-export interface StandingAnswers {
-  resolutions: boolean
-  facts: boolean
+export interface StandingAt {
+  resolvedAt: number
+  factsAt: number
+}
+
+/** A snapshot checked by nothing yet (a restored plan): every answer is asked. */
+export const NEVER_CHECKED: StandingAt = Object.freeze({
+  resolvedAt: -1,
+  factsAt: -1,
+})
+
+/** What `stable` reads the versions from (`CompilerCaches`). */
+interface Versions {
+  readonly fileSetVersion: number
+  readonly rawFacts: { readonly version: number }
 }
 
 /**
- * Whether every fingerprint is still current; the standing answers are not
- * asked again. A route-registry digest is always asked (a synchronous
- * read): a registry publication reaches `invalidate` only on a dev server
- * (a watch build sees it here).
+ * What a snapshot check settled on: accepted (the value `accept` gave in
+ * the accepting turn), a fingerprint no longer current (`fact`: a raw fact,
+ * not only a resolution or a route-registry digest, which a request asks
+ * again by design), or the entry judged no longer the one (`still`).
  */
-export async function fingerprintsCurrent(
+export type Stability<T> =
+  | { kind: 'accepted'; value: T }
+  | { kind: 'moved'; fact: boolean }
+  | { kind: 'gone' }
+
+/**
+ * `stable(snapshot)`, the one check of a plan's dependencies `fps`, read
+ * at `at`, for an attempt before publication, a plan hit and a restored
+ * plan. The asynchronous part asks what may have moved since `at`
+ * (resolutions once the file set moved, raw facts once their version
+ * did). Acceptance is synchronous, in the caller's turn (`accept`): both
+ * versions unmoved since the check began, the route-registry digests read
+ * again (a registry publication reaches `invalidate` only on a dev server:
+ * a watch build sees it here), and `still()`. A version that moved during
+ * the check makes it check again what that version answers.
+ */
+export async function stable<T>(
   fps: ReadonlyArray<DependencyFingerprint>,
   src: FingerprintSource,
-  standing: StandingAnswers,
-): Promise<boolean> {
-  // every fingerprint at once: the checks are independent reads
-  const checks: Array<Promise<boolean>> = []
+  versions: Versions,
+  at: StandingAt,
+  accept: (at: StandingAt) => T,
+  still: () => boolean = () => true,
+): Promise<Stability<T>> {
+  for (let standing = at; ; ) {
+    const begun: StandingAt = {
+      resolvedAt: versions.fileSetVersion,
+      factsAt: versions.rawFacts.version,
+    }
+    const failed = await failedKind(
+      fps,
+      src,
+      standing.resolvedAt !== begun.resolvedAt,
+      standing.factsAt !== begun.factsAt,
+    )
+    if (!still()) {
+      return GONE
+    }
+    if (failed !== null) {
+      return { kind: 'moved', fact: failed === 'fact' }
+    }
+    if (
+      versions.fileSetVersion === begun.resolvedAt &&
+      versions.rawFacts.version === begun.factsAt
+    ) {
+      for (const fp of fps) {
+        if (
+          fp.kind === 'route-registry' &&
+          src.routeRegistryDigest(fp.path) !== fp.digest
+        ) {
+          return { kind: 'moved', fact: false }
+        }
+      }
+      return { kind: 'accepted', value: accept(begun) }
+    }
+    standing = begun
+  }
+}
+
+const GONE: Stability<never> = { kind: 'gone' }
+
+/**
+ * Asks the fingerprints of the asked kinds (every one at once: the checks
+ * are independent reads); null when all are current, else the kind of what
+ * failed (`fact` wins over `resolution`).
+ */
+async function failedKind(
+  fps: ReadonlyArray<DependencyFingerprint>,
+  src: FingerprintSource,
+  resolutions: boolean,
+  facts: boolean,
+): Promise<'fact' | 'resolution' | null> {
+  if (!resolutions && !facts) {
+    return null
+  }
+  const checks: Array<Promise<'fact' | 'resolution' | null>> = []
   for (const fp of fps) {
-    const skip =
-      fp.kind === 'resolution'
-        ? standing.resolutions
-        : fp.kind !== 'route-registry' && standing.facts
-    if (!skip) {
-      checks.push(fingerprintCurrent(fp, src))
+    if (fp.kind === 'route-registry') {
+      continue
+    }
+    const resolution = fp.kind === 'resolution'
+    if (resolution ? resolutions : facts) {
+      checks.push(
+        fingerprintCurrent(fp, src).then((ok) =>
+          ok ? null : resolution ? 'resolution' : 'fact',
+        ),
+      )
     }
   }
-  return (await Promise.all(checks)).every((ok) => ok)
+  const answers = await Promise.all(checks)
+  return answers.includes('fact')
+    ? 'fact'
+    : answers.includes('resolution')
+      ? 'resolution'
+      : null
 }
 
 interface DependentEntry {
@@ -804,9 +894,12 @@ export class PlanCache {
    * The key's file changed; `revision`: its text as the event read it, or
    * `undefined` when the event has no text to compare (the file is gone,
    * or the compiler does not read it). A plan of another text is of a
-   * former one: evicted. A compile of another text no longer publishes
-   * (its requests are still answered); without a text, none does until a
-   * request notes its own (`begin`). True when a plan was evicted.
+   * former one: evicted. An event of another text than the latest
+   * request's moves the generation (an attempt in flight compiles again),
+   * but never sets the latest text: the file's raw text is not what the
+   * bundler hands the compiler (a plugin before it may add a banner), and
+   * the next request notes its own (`begin`). Without a text, no compile
+   * publishes until then. True when a plan was evicted.
    */
   supersede(key: PlanKey, revision: string | undefined): boolean {
     const r = this.records.get(planKeyString(key))
@@ -815,15 +908,16 @@ export class PlanCache {
     }
     if (revision === undefined) {
       r.latest = undefined
-      r.generation++
       return this.delete(key)
     }
-    if (r.latest !== revision) {
-      r.latest = revision
-      r.generation++
+    if (r.entry?.revision !== revision) {
+      return this.delete(key)
     }
     // (the bundler compiled this text before its event arrived: kept)
-    return r.entry?.revision === revision ? false : this.delete(key)
+    if (r.latest !== revision) {
+      r.generation++
+    }
+    return false
   }
 
   /** A request of `key` ended (its compile published or not); the last one takes the key's asks along. */
@@ -895,7 +989,11 @@ export class PlanCache {
     return true
   }
 
-  /** Evicts a key's published or restored plan; true when it had one. */
+  /**
+   * Evicts a key's published or restored plan; true when it had one. Every
+   * eviction moves the key's generation: an attempt begun before it, and an
+   * answer taken before it, are of what was evicted.
+   */
   delete(key: PlanKey): boolean {
     const ks = planKeyString(key)
     const r = this.records.get(ks)
@@ -906,8 +1004,23 @@ export class PlanCache {
     r.entry = null
     r.restored = null
     this.dependents.drop(key, 'published')
-    this.retire(ks, r)
+    if (!this.retire(ks, r)) {
+      r.generation++
+    }
     return had
+  }
+
+  /**
+   * Whether the key holds a plan that is not of text `revision`: a
+   * published plan of another text, or a restored one (known by its
+   * dependencies only).
+   */
+  holdsOther(key: PlanKey, revision: string): boolean {
+    const r = this.records.get(planKeyString(key))
+    if (!r) {
+      return false
+    }
+    return r.entry ? r.entry.revision !== revision : r.restored !== null
   }
 
   /**
