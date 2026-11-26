@@ -877,8 +877,9 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
 - **J6.1 Rules.** Deny by resolved-file pattern (client default `**/*.server.*`, server default `**/*.client.*`), by
   raw specifier (client default `@tanstack/{react,solid,vue}-start/server`; server default none), and by marker
   (`@tanstack/<fw>-start/server-only` / `client-only` side-effect import in the target file; both in one file is an
-  error). A dynamic `import()`/`require()` of a marker marks nothing: it is a violating edge of its own module
-  wherever that module's output keeps it (a server fn handler's is not on the client). `@tanstack/{react,solid,vue}-start/server` is itself a server-only-marked module. `excludeFiles` (default
+  error). A marker is a static import (`import '@tanstack/react-start/server-only'`); a dynamic `import()` or
+  `require()` of a marker is an ordinary import and is not checked (a client entry's own marker import is judged at
+  its import whatever its form). `@tanstack/{react,solid,vue}-start/server` is itself a server-only-marked module. `excludeFiles` (default
   `**/node_modules/**`) skips the file rule of a resolved target, never its marker. Option semantics follow the docs
   table (`client.specifiers` adds; `files`, `excludeFiles`, `server.specifiers` replace). Importers checked: those
   under `srcDirectory` (or `include`) minus `exclude`/`ignoreImporters`. A marker denies its file to every importer
