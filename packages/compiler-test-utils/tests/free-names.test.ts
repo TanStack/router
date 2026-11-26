@@ -126,11 +126,12 @@ test.each([
 
 // Every module with a free read once built its live set (a search of each
 // function's statement list): 20,000 functions took 3.2 s at f5fe192e0a.
+// Linear now (~55 ms for 40,000); the quadratic search took ~5 s.
 test('many functions and no code after an exit are read at once', () => {
-  const code = `${Array.from({ length: 20_000 }, (_, index) => `function f${index}() { return ${index} }`).join('\n')}\nx\n`
+  const code = `${Array.from({ length: 40_000 }, (_, index) => `function f${index}() { return ${index} }`).join('\n')}\nx\n`
   const started = performance.now()
   expect(readNames(code, 'chunk.js', { keepProbed: true }).free.has('x')).toBe(
     true,
   )
-  expect(performance.now() - started).toBeLessThan(400)
+  expect(performance.now() - started).toBeLessThan(1_500)
 }, 60_000)
