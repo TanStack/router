@@ -312,13 +312,17 @@ export function watchesSentinel(
 }
 
 /**
- * Whether an environment's build writes its output: a production build that
- * writes (`build.write`), or a watch build that does (`build --watch`
- * writes whatever `build.write` says, unless `build.watch.skipWrite`). A
- * build that writes nothing sets its client-build record at
- * `generateBundle` (`ClientBuilds.setClientBuild`).
+ * What an environment's production build does to its output directory, which
+ * its record follows: `written` (a build that writes: `build.write`, or a
+ * watch build unless `build.watch.skipWrite`, whatever `build.write` says),
+ * `emptied` (a watch build with `skipWrite` and `build.write` on: Vite
+ * empties the directory at `renderStart` and writes nothing) or `unchanged`
+ * (`build.write: false` without watch, or with `skipWrite`; a dev server).
+ * None from `renderStart` unless `unchanged`, the written output at
+ * `writeBundle`, an `unchanged` build's output at `generateBundle`
+ * (`ClientBuilds.setClientBuild`).
  */
-export function writtenBuild(
+export function outputOnDisk(
   environment: {
     mode: string
     config: {
@@ -329,12 +333,15 @@ export function writtenBuild(
     }
   },
   watchMode: boolean,
-): boolean {
+): 'written' | 'emptied' | 'unchanged' {
   if (environment.mode !== 'build') {
-    return false
+    return 'unchanged'
   }
   const { build } = environment.config
-  return watchMode ? build.watch?.skipWrite !== true : build.write !== false
+  if (watchMode ? build.watch?.skipWrite !== true : build.write !== false) {
+    return 'written'
+  }
+  return build.write === false ? 'unchanged' : 'emptied'
 }
 
 /**
@@ -403,10 +410,10 @@ export interface ClientOutput {
 export interface ClientBuilds {
   /**
    * The one setter of the record (`Session.clientBuild`): none when a
-   * written build (`writtenBuild`) starts rendering (`renderStart`: Vite
-   * empties the output directory then), the written output at
-   * `writeBundle`, the output of a build that writes nothing at
-   * `generateBundle`. Production builds only.
+   * build that writes or empties its output directory (`outputOnDisk`)
+   * starts rendering (`renderStart`: Vite empties the directory then), the
+   * written output at `writeBundle`, the output of a build that leaves the
+   * directory unchanged at `generateBundle`. Production builds only.
    */
   setClientBuild: (
     environment: Environment,

@@ -221,9 +221,12 @@ function info not found` when one of them calls it, and the build says nothing, 
   3. Several client outputs: the record is the last one written; a later output's failure leaves none although an
      earlier one is on disk.
   4. `build.emptyOutDir: false`: the previous files survive a failed build, and the record is withdrawn all the same.
-  5. A build that writes nothing (`write: false` without watch, `watch.skipWrite`): nothing on disk changes, and the
-     record is set at the last `generateBundle` handler: a later `enforce: 'post'`, `order: 'post'` handler that
-     throws or renames a file still advances it.
+  5. A build that leaves the output directory unchanged (`build.write: false`, without watch or with
+     `watch.skipWrite`; Vite empties the directory only with `build.write` on): the record is the generated output,
+     for a consumer of the build in memory (its files are not on disk), set at the last `generateBundle` handler: a
+     later `enforce: 'post'`, `order: 'post'` handler that throws or renames a file still advances it.
+     (`watch.skipWrite` with `build.write` on empties the directory and writes nothing: no client build, the document
+     names no client file.)
   6. Files removed by anything but the build.
 
   Rows: `start-build-settlement*.test.ts`, `tests/vite-client-build-record.test.ts`. Two costs, measured: a client-only

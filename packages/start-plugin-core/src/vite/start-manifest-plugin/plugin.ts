@@ -7,7 +7,7 @@ import {
   serializeStartManifest,
 } from '../../start-manifest-plugin/manifestBuilder'
 import { createVirtualModule } from '../createVirtualModule'
-import { writtenBuild } from '../compiler-state'
+import { outputOnDisk } from '../compiler-state'
 import {
   clientEntryOf,
   normalizeViteClientBuild,
@@ -67,14 +67,16 @@ export function startManifestPlugin(opts: {
       },
     },
     {
-      // The client-build record follows the client output on disk: none
-      // once a written build (`writtenBuild`) starts rendering (first of the
-      // `renderStart` handlers: Vite empties the output directory in that
-      // phase), the written output at `writeBundle` (first of its handlers:
-      // the files are on disk; the bundle is the written one, after every
-      // plugin's `generateBundle`), and the output of a build that writes
-      // nothing (`write: false` without watch, `watch.skipWrite`: nothing
-      // on disk changes) at its `generateBundle`, last of the handlers.
+      // The client-build record follows the client output on disk
+      // (`outputOnDisk`): none once a build that writes or empties the
+      // directory starts rendering (first of the `renderStart` handlers:
+      // Vite empties the output directory in that phase; a watch build with
+      // `skipWrite` writes nothing after, so its record stays none), the
+      // written output at `writeBundle` (first of its handlers: the files
+      // are on disk; the bundle is the written one, after every plugin's
+      // `generateBundle`), and the output of a build that leaves the
+      // directory unchanged (`write: false` without watch, or with
+      // `skipWrite`) at its `generateBundle`, last of the handlers.
       name: 'tanstack-start:start-manifest-client-build',
       applyToEnvironment(environment) {
         return environment.name === START_ENVIRONMENT_NAMES.client
@@ -83,7 +85,9 @@ export function startManifestPlugin(opts: {
       renderStart: {
         order: 'pre',
         handler() {
-          if (writtenBuild(this.environment, this.meta.watchMode)) {
+          if (
+            outputOnDisk(this.environment, this.meta.watchMode) !== 'unchanged'
+          ) {
             opts.clientBuilds.setClientBuild(this.environment, null)
           }
         },
@@ -95,19 +99,22 @@ export function startManifestPlugin(opts: {
           if (this.environment.mode !== 'build') {
             return
           }
-          if (writtenBuild(this.environment, this.meta.watchMode)) {
+          const disk = outputOnDisk(this.environment, this.meta.watchMode)
+          if (disk === 'written') {
             // (a bundle Start cannot describe fails the build before
             // anything is written)
             clientEntryOf(bundle)
-            return
+          } else if (disk === 'unchanged') {
+            opts.clientBuilds.setClientBuild(this.environment, outputOf(bundle))
           }
-          opts.clientBuilds.setClientBuild(this.environment, outputOf(bundle))
         },
       },
       writeBundle: {
         order: 'pre',
         handler(_options, bundle) {
-          if (writtenBuild(this.environment, this.meta.watchMode)) {
+          if (
+            outputOnDisk(this.environment, this.meta.watchMode) === 'written'
+          ) {
             opts.clientBuilds.setClientBuild(this.environment, outputOf(bundle))
           }
         },

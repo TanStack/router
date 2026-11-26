@@ -82,6 +82,50 @@ export const label = secret
     },
     timeout,
   )
+
+  // `build.watch.skipWrite` with `build.write` on: Vite empties the client's
+  // output directory when the build starts rendering and writes nothing,
+  // so there is no client build on disk and the document names no client
+  // file (the record is withdrawn, nothing commits it).
+  // Source: Astra's re-check of settlement step 7 (`skip-write-seeded.mjs`;
+  // c511439389 and d8afe14c23 named the missing entry).
+  test(
+    'watch.skipWrite: the client writes nothing, the document names no client file',
+    async () => {
+      const builds = watchedBuilds()
+      let served!: Awaited<ReturnType<typeof builds.served>>
+      await buildStart({
+        bundler: 'vite',
+        files: app,
+        entry,
+        start,
+        viteConfig: {
+          plugins: [builds.plugin],
+          environments: {
+            client: { build: { watch: { skipWrite: true } } },
+          },
+        },
+        watchEdits: [
+          {
+            edits: { 'src/client-only.ts': clientOnly('MARK_EDIT') },
+            when: async () => {
+              served = await builds.served()
+            },
+          },
+        ],
+        // (the harness reads a client output, and none is written)
+      }).catch(() => undefined)
+      const { status, rendered, named } = served
+      expect({ status, rendered, named }).toEqual({
+        status: 200,
+        rendered: true,
+        named: {},
+      })
+      expect(builds.state.clientRenders).toBeGreaterThan(0)
+      expect(builds.state.clientWrites).toBe(0)
+    },
+    timeout,
+  )
 })
 
 describe('vite build: the client-build record is of the written bundle', () => {

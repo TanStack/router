@@ -1,8 +1,9 @@
 /**
  * When the Vite host sets its client-build record (settlement design rev 4
- * step 7, the decided trigger): none when a written build starts rendering,
- * the written output at `writeBundle`, the output of a build that writes
- * nothing (`write: false` without watch, `watch.skipWrite`) at
+ * step 7, the decided trigger): none when a build that writes or empties
+ * its output directory starts rendering, the written output at
+ * `writeBundle`, the output of a build that leaves the directory unchanged
+ * (`write: false` without watch, or with `watch.skipWrite`) at
  * `generateBundle`, never a dev server's; and a separate provider's list
  * (RSC), which follows the provider's output the same way, from the
  * resolver module's `meta`. The watch rows (`build.write: false` with watch
@@ -106,10 +107,18 @@ describe('the Vite client-build record', () => {
     expect(calls).toEqual(['none', 'output'])
   })
 
-  // Source: Gemini's review of settlement step 7 (`probe-review.mjs`, probe 2).
-  test('watch.skipWrite writes nothing: the output at generateBundle, nothing withdrawn', () => {
+  // `skipWrite` with `build.write` on: Vite empties the directory at
+  // `renderStart` and nothing is written, so no client build is on disk.
+  // Source: Astra's re-check of settlement step 7 (`skip-write-seeded.mjs`).
+  test('watch.skipWrite with build.write on empties the directory: withdrawn, none committed', () => {
     const { calls, plugin } = recordOf()
     build(plugin, context('build', true, { skipWrite: true }), false)
+    expect(calls).toEqual(['none'])
+  })
+
+  test('watch.skipWrite with build.write: false leaves the directory unchanged: the output at generateBundle', () => {
+    const { calls, plugin } = recordOf()
+    build(plugin, context('build', false, { skipWrite: true }), false)
     expect(calls).toEqual(['output'])
   })
 

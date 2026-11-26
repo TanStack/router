@@ -21,7 +21,7 @@ import {
   unreferencedWarning,
 } from '../server-fns/resolver'
 import { createVirtualModule, resolvedVirtualId } from './createVirtualModule'
-import { writtenBuild } from './compiler-state'
+import { outputOnDisk } from './compiler-state'
 import type { PackageClasses } from '../compiler/package-class'
 import type { Environment, Plugin, ResolvedConfig } from 'vite'
 import type { ClientBuildRecord, ViteCompilerState } from './compiler-state'
@@ -240,11 +240,12 @@ const PROVIDER_LIST_META = 'tanstack-start:provider-list'
 
 /**
  * A separate provider's list (RSC, `Session.providerListed`) follows its
- * output on disk, as the client-build record does: none when a written
- * build starts rendering (Vite empties the output directory then), the ids
- * the resolver module of the bundle lists (its `meta`, set by its `load`)
- * once the build is written, or generated when it writes nothing. A bundle
- * without the resolver module lists none.
+ * output on disk, as the client-build record does (`outputOnDisk`): none
+ * when a build that writes or empties the directory starts rendering (Vite
+ * empties it then), the ids the resolver module of the bundle lists (its
+ * `meta`, set by its `load`) once the build is written, or generated when it
+ * leaves the directory unchanged. A bundle without the resolver module lists
+ * none.
  */
 export function providerListPlugin(state: ViteCompilerState): Plugin {
   const resolverId = resolvedVirtualId(VIRTUAL_MODULES.serverFnResolver)
@@ -265,7 +266,9 @@ export function providerListPlugin(state: ViteCompilerState): Plugin {
     renderStart: {
       order: 'pre',
       handler() {
-        if (writtenBuild(this.environment, this.meta.watchMode)) {
+        if (
+          outputOnDisk(this.environment, this.meta.watchMode) !== 'unchanged'
+        ) {
           state.sessionOf(this.environment).providerListed = null
         }
       },
@@ -275,7 +278,7 @@ export function providerListPlugin(state: ViteCompilerState): Plugin {
       handler() {
         if (
           this.environment.mode === 'build' &&
-          !writtenBuild(this.environment, this.meta.watchMode)
+          outputOnDisk(this.environment, this.meta.watchMode) === 'unchanged'
         ) {
           commit(this)
         }
@@ -284,7 +287,7 @@ export function providerListPlugin(state: ViteCompilerState): Plugin {
     writeBundle: {
       order: 'pre',
       handler() {
-        if (writtenBuild(this.environment, this.meta.watchMode)) {
+        if (outputOnDisk(this.environment, this.meta.watchMode) === 'written') {
           commit(this)
         }
       },
