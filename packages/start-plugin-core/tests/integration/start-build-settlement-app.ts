@@ -196,12 +196,18 @@ process.stdout.write(JSON.stringify(result))`,
       html: string
       call: string
     }
+    // every client URL the document names: a script's `src`, a link's
+    // `href` (stylesheets, preloads) and an inline script's `import()`, with
+    // or without an extension (a dev entry's `/@id/…` has none)
     const named: Record<string, string | null> = {}
-    for (const [, file] of html.matchAll(
-      /["']\/([^"'\s]+?\.(?:js|css))["']/g,
+    for (const [, , file] of html.matchAll(
+      /(?:<script\b[^>]*\bsrc=|<link\b[^>]*\bhref=|\bimport\(\s*)(["'])\/([^"'\s]+)\1/g,
     )) {
       const onDisk = path.join(state.clientDir, file!)
-      named[file!] = existsSync(onDisk) ? readFileSync(onDisk, 'utf8') : null
+      named[file!] =
+        existsSync(onDisk) && !file!.startsWith('@')
+          ? readFileSync(onDisk, 'utf8')
+          : null
     }
     return { status, rendered: html.includes(PAGE_TEXT), named, call }
   }

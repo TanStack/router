@@ -20,9 +20,10 @@ import {
   unknownServerFnMessage,
   unreferencedWarning,
 } from '../server-fns/resolver'
-import { createVirtualModule } from './createVirtualModule'
+import { createVirtualModule, resolvedVirtualId } from './createVirtualModule'
+import { writtenBuild } from './compiler-state'
 import type { PackageClasses } from '../compiler/package-class'
-import type { Plugin, ResolvedConfig } from 'vite'
+import type { Environment, Plugin, ResolvedConfig } from 'vite'
 import type { ClientBuildRecord, ViteCompilerState } from './compiler-state'
 import type { ServerFnEntry } from '../server-fns/registry'
 
@@ -234,27 +235,28 @@ function callableNotProvidedError(
   return lines.join('\n')
 }
 
-/**
- * Whether an environment's build writes its output (`build --watch` writes
- * whatever `build.write` says): a production build's.
- */
-export function writtenBuild(
-  environment: { mode: string; config: { build: { write?: boolean } } },
-  watchMode: boolean,
-): boolean {
-  return (
-    environment.mode === 'build' &&
-    (watchMode || environment.config.build.write !== false)
-  )
-}
+/** The `meta` key of what a separate provider's resolver module lists (`providerListPlugin`). */
+const PROVIDER_LIST_META = 'tanstack-start:provider-list'
 
 /**
  * A separate provider's list (RSC, `Session.providerListed`) follows its
  * output on disk, as the client-build record does: none when a written
- * build starts rendering (Vite empties the output directory then), what
- * its resolver listed once the build is written.
+ * build starts rendering (Vite empties the output directory then), the ids
+ * the resolver module of the bundle lists (its `meta`, set by its `load`)
+ * once the build is written, or generated when it writes nothing. A bundle
+ * without the resolver module lists none.
  */
 export function providerListPlugin(state: ViteCompilerState): Plugin {
+  const resolverId = resolvedVirtualId(VIRTUAL_MODULES.serverFnResolver)
+  const commit = (ctx: {
+    environment: Environment
+    getModuleInfo: (id: string) => { meta: Record<string, unknown> } | null
+  }) => {
+    const listed = ctx.getModuleInfo(resolverId)?.meta[PROVIDER_LIST_META]
+    state.sessionOf(ctx.environment).providerListed = Array.isArray(listed)
+      ? new Set<string>(listed)
+      : null
+  }
   return {
     name: 'tanstack-start:server-fn-provider-list',
     enforce: 'pre',
@@ -268,12 +270,22 @@ export function providerListPlugin(state: ViteCompilerState): Plugin {
         }
       },
     },
+    generateBundle: {
+      order: 'post',
+      handler() {
+        if (
+          this.environment.mode === 'build' &&
+          !writtenBuild(this.environment, this.meta.watchMode)
+        ) {
+          commit(this)
+        }
+      },
+    },
     writeBundle: {
       order: 'pre',
       handler() {
-        if (this.environment.mode === 'build') {
-          const s = state.sessionOf(this.environment)
-          s.providerListed = s.providerListing
+        if (writtenBuild(this.environment, this.meta.watchMode)) {
+          commit(this)
         }
       },
     },
@@ -335,19 +347,14 @@ export function resolverPlugin(state: ViteCompilerState): Plugin {
         return devResolverModule()
       }
       if (!state.ssrIsProvider) {
-        // the RSC provider builds before the client: every function
+        // the RSC provider builds before the client: every function; what
+        // the module lists, the provider list once the build that bundles
+        // it is written (`providerListPlugin`)
         const entries = s.start.registry.entries()
-        if (this.environment.config.build.write !== false) {
-          // (not a scan: plugin-rsc analyses the environments first) what
-          // this build's resolver lists, the provider list once it is
-          // written (`providerListed`)
-          s.providerListing = new Set(entries.map((e) => e.id))
+        return {
+          code: resolverManifest(entries, { kind: 'provider-first' }),
+          meta: { [PROVIDER_LIST_META]: entries.map((e) => e.id) },
         }
-        return resolverManifest(
-          entries,
-          { kind: 'provider-first' },
-          providerModuleId,
-        )
       }
       // the SSR provider builds after the client: the functions the client
       // build on disk references, each the server environment's own
@@ -357,11 +364,10 @@ export function resolverPlugin(state: ViteCompilerState): Plugin {
         const own = s.start.registry.get(e.id)
         return own?.serverDeclared ? { ...own, clientReferenced: true } : e
       })
-      return resolverManifest(
-        entries,
-        { kind: 'client-gated', callable: clientBuild?.callable ?? new Set() },
-        providerModuleId,
-      )
+      return resolverManifest(entries, {
+        kind: 'client-gated',
+        callable: clientBuild?.callable ?? new Set(),
+      })
     },
   })
 }

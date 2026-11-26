@@ -9,6 +9,7 @@
  * (`manifestResolverModule`): its bundles hold every provider module.
  */
 import { manifestLiteral } from './format'
+import { providerModuleId } from './registry'
 import type { ServerFnEntry } from './registry'
 
 export const SERVER_FN_LOOKUP_VIRTUAL_ID =
@@ -123,14 +124,14 @@ interface ManifestResolverOptions {
  *   client compile stubbed, whose stub the bundler dropped, is not listed:
  *   its provider and what the provider imports are not built.
  * - `dev`: development's manifest (Rsbuild): every function, imported
- *   statically (`staticImports`, RSC), or warning once for a client call of
- *   one no client module references (`warnUnreferenced`).
+ *   statically with a separate provider (RSC), else warning once for a
+ *   client call of one no client module references.
  */
 export type ResolverShape =
   | { kind: 'client-gated'; callable: ReadonlySet<string> }
   | { kind: 'provider-first' }
   | { kind: 'provider-gated'; callable: ReadonlySet<string> | null }
-  | { kind: 'dev'; staticImports: boolean; warnUnreferenced: boolean }
+  | { kind: 'dev'; separateProvider: boolean }
 
 /**
  * The manifest resolver module of `entries` for a build of `shape`: `id →
@@ -142,7 +143,6 @@ export type ResolverShape =
 export function resolverManifest(
   entries: ReadonlyArray<ServerFnEntry>,
   shape: ResolverShape,
-  providerModuleId: (entry: ServerFnEntry) => string,
 ): string {
   const gate = (callable: ReadonlySet<string> | null) =>
     JSON.stringify([...(callable ?? [])].sort())
@@ -173,8 +173,8 @@ export function resolverManifest(
       return manifestResolverModule({
         entries,
         providerModuleId,
-        warnUnreferenced: shape.warnUnreferenced,
-        staticImports: shape.staticImports,
+        warnUnreferenced: !shape.separateProvider,
+        staticImports: shape.separateProvider,
       })
   }
 }

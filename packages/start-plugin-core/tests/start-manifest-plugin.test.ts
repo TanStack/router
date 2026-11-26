@@ -54,7 +54,12 @@ describe('startManifestPlugin', () => {
       )!
       capture.writeBundle.handler.call(
         {
-          environment: { name: START_ENVIRONMENT_NAMES.client, mode: 'build' },
+          environment: {
+            name: START_ENVIRONMENT_NAMES.client,
+            mode: 'build',
+            config: { build: {} },
+          },
+          meta: { watchMode: false },
         },
         {},
         {

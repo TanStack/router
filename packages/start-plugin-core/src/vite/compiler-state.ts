@@ -312,6 +312,32 @@ export function watchesSentinel(
 }
 
 /**
+ * Whether an environment's build writes its output: a production build that
+ * writes (`build.write`), or a watch build that does (`build --watch`
+ * writes whatever `build.write` says, unless `build.watch.skipWrite`). A
+ * build that writes nothing sets its client-build record at
+ * `generateBundle` (`ClientBuilds.setClientBuild`).
+ */
+export function writtenBuild(
+  environment: {
+    mode: string
+    config: {
+      build: {
+        write?: boolean
+        watch?: { skipWrite?: boolean } | null
+      }
+    }
+  },
+  watchMode: boolean,
+): boolean {
+  if (environment.mode !== 'build') {
+    return false
+  }
+  const { build } = environment.config
+  return watchMode ? build.watch?.skipWrite !== true : build.write !== false
+}
+
+/**
  * What the server embeds of a client build, as a digest: the manifest's maps
  * by their entries, the referenced functions' descriptors (by id, every
  * field the resolver prints) and the callable ids.
@@ -377,16 +403,15 @@ export interface ClientOutput {
 export interface ClientBuilds {
   /**
    * The one setter of the record (`Session.clientBuild`): none when a
-   * written build starts rendering (`renderStart`: Vite empties the output
-   * directory then), the written output at `writeBundle`, an in-memory
-   * build's at `generateBundle`. Production builds only.
+   * written build (`writtenBuild`) starts rendering (`renderStart`: Vite
+   * empties the output directory then), the written output at
+   * `writeBundle`, the output of a build that writes nothing at
+   * `generateBundle`. Production builds only.
    */
   setClientBuild: (
     environment: Environment,
     output: ClientOutput | null,
   ) => void
-  /** Whether the run is an RSC build (plugin-rsc's scans are in-memory builds whose output is no client build). */
-  readonly rsc: boolean
   /** A module of a server environment's build embeds the run's client build (null: none built in this run). */
   embedClientBuild: (ctx: EmbeddingContext) => Promise<ClientBuildRecord | null>
 }
@@ -430,14 +455,13 @@ export interface Session {
   /**
    * A build with a separate provider (RSC): the ids its resolver listed, as
    * the provider's output on disk holds them (null: none: withdrawn when its
-   * written build starts rendering, committed at its `writeBundle` from
-   * `providerListing`). The caller environment, built after the client,
+   * written build starts rendering, committed at its `writeBundle` from the
+   * resolver module's `meta`, `providerListOf`). The caller environment,
+   * built after the client,
    * fails the build for a function the client calls that is not among them
    * (`callableNotProvided`).
    */
   providerListed: ReadonlySet<string> | null
-  /** The ids the provider's resolver module of its build running now lists (`providerListed` at its write). */
-  providerListing: ReadonlySet<string> | null
   /**
    * `build --watch`: the digests of the client builds each server
    * environment's current build embedded (emptied when its build starts).
@@ -458,9 +482,12 @@ export interface Session {
    * `build --watch`: the client's build running now (its watcher's
    * `BUNDLE_START` to its `BUNDLE_END` or `ERROR`, when Start's `buildApp`
    * follows the watcher), which a server module waits for before it embeds
-   * the client build: an edit both environments bundle then builds the
-   * server once. An optimisation only: the sentinel rebuilds a server that
-   * embedded another client build.
+   * the client build. The record is withdrawn when the client renders and
+   * committed at its `writeBundle`, before its `BUNDLE_END`: a server build
+   * the withdrawal's sentinel started embeds the committed record, so a save
+   * builds the server once. Without it (a program driving the watchers
+   * itself) the server builds at the withdrawal and again at the commit,
+   * ending on the right document (KNOWN-BUGS).
    */
   clientBuilding: { ended: Promise<void>; end: () => void } | null
   /**
@@ -666,7 +693,6 @@ export class ViteCompilerState implements ClientBuilds {
       virtualWaits: createVirtualWaits(),
       clientBuild: null,
       providerListed: null,
-      providerListing: null,
       embedded: new Map(),
       sentinel: undefined,
       watching: new Set(),
@@ -755,11 +781,6 @@ export class ViteCompilerState implements ClientBuilds {
       }
     }
     return host
-  }
-
-  /** Whether the run is an RSC build (`ClientBuilds.rsc`). */
-  get rsc(): boolean {
-    return this.opts.rsc !== undefined
   }
 
   /**

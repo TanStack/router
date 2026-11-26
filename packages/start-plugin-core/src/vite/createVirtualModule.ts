@@ -1,10 +1,24 @@
 import { createIdFilter, resolveViteId } from '../utils'
 import type { Plugin } from 'vite'
 
+type VirtualModuleLoadResult =
+  | string
+  | { code: string; meta?: Record<string, unknown> }
+  | null
+  | undefined
+
 type VirtualModuleLoadHandler = (
   this: any,
   id: string,
-) => string | null | undefined | Promise<string | null | undefined>
+) => VirtualModuleLoadResult | Promise<VirtualModuleLoadResult>
+
+/** The id a virtual module (`createVirtualModule`) resolves to. */
+export function resolvedVirtualId(moduleId: string): string {
+  // Encode '#' as '%23' in the resolved ID to avoid browser treating it as URL fragment.
+  // The browser requests /@id/__x00__%23tanstack-start-plugin-adapters instead of
+  // /@id/__x00__#tanstack-start-plugin-adapters (which would truncate at #).
+  return resolveViteId(moduleId.replaceAll('#', '%23'))
+}
 
 export function createVirtualModule(opts: {
   name: string
@@ -15,10 +29,7 @@ export function createVirtualModule(opts: {
   enforce?: Plugin['enforce']
   sharedDuringBuild?: boolean
 }): Plugin {
-  // Encode '#' as '%23' in the resolved ID to avoid browser treating it as URL fragment.
-  // The browser requests /@id/__x00__%23tanstack-start-plugin-adapters instead of
-  // /@id/__x00__#tanstack-start-plugin-adapters (which would truncate at #).
-  const resolvedId = resolveViteId(opts.moduleId.replaceAll('#', '%23'))
+  const resolvedId = resolvedVirtualId(opts.moduleId)
 
   return {
     name: opts.name,

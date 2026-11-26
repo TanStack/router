@@ -7,8 +7,11 @@ import {
   serializeStartManifest,
 } from '../../start-manifest-plugin/manifestBuilder'
 import { createVirtualModule } from '../createVirtualModule'
-import { writtenBuild } from '../server-fn-plugins'
-import { normalizeViteClientBuild } from './normalized-client-build'
+import { writtenBuild } from '../compiler-state'
+import {
+  clientEntryOf,
+  normalizeViteClientBuild,
+} from './normalized-client-build'
 import type {
   ClientBuilds,
   ClientManifest,
@@ -65,13 +68,13 @@ export function startManifestPlugin(opts: {
     },
     {
       // The client-build record follows the client output on disk: none
-      // once a written build starts rendering (first of the `renderStart`
-      // handlers: Vite empties the output directory in that phase), the
-      // written output at `writeBundle` (first of its handlers: the files
-      // are on disk; the bundle is the written one, after every plugin's
-      // `generateBundle`), and an in-memory build's (`write: false`, no
-      // watch: nothing is written, nothing can be missing) at its
-      // `generateBundle`, but a plugin-rsc scan's (no client build).
+      // once a written build (`writtenBuild`) starts rendering (first of the
+      // `renderStart` handlers: Vite empties the output directory in that
+      // phase), the written output at `writeBundle` (first of its handlers:
+      // the files are on disk; the bundle is the written one, after every
+      // plugin's `generateBundle`), and the output of a build that writes
+      // nothing (`write: false` without watch, `watch.skipWrite`: nothing
+      // on disk changes) at its `generateBundle`, last of the handlers.
       name: 'tanstack-start:start-manifest-client-build',
       applyToEnvironment(environment) {
         return environment.name === START_ENVIRONMENT_NAMES.client
@@ -88,21 +91,23 @@ export function startManifestPlugin(opts: {
       generateBundle: {
         // (last: the bundle as every plugin left it)
         order: 'post',
-        handler(_options, bundle, isWrite) {
-          if (
-            this.environment.mode === 'build' &&
-            !isWrite &&
-            this.environment.config.build.write === false &&
-            !opts.clientBuilds.rsc
-          ) {
-            opts.clientBuilds.setClientBuild(this.environment, outputOf(bundle))
+        handler(_options, bundle) {
+          if (this.environment.mode !== 'build') {
+            return
           }
+          if (writtenBuild(this.environment, this.meta.watchMode)) {
+            // (a bundle Start cannot describe fails the build before
+            // anything is written)
+            clientEntryOf(bundle)
+            return
+          }
+          opts.clientBuilds.setClientBuild(this.environment, outputOf(bundle))
         },
       },
       writeBundle: {
         order: 'pre',
         handler(_options, bundle) {
-          if (this.environment.mode === 'build') {
+          if (writtenBuild(this.environment, this.meta.watchMode)) {
             opts.clientBuilds.setClientBuild(this.environment, outputOf(bundle))
           }
         },
@@ -144,11 +149,13 @@ export function startManifestPlugin(opts: {
   ) {
     const { resolvedStartConfig, startConfig } = opts.getConfig()
     const routeTreeRoutes = globalThis.TSS_ROUTES_MANIFEST
-    // TODO this needs further discussion with vite-rsc, this is a temporary workaround
-    // If the client bundle isn't available yet (e.g., during RSC scan builds),
-    // return a dummy manifest. The real manifest will be generated in the actual build.
+    // no client build on disk (none yet in the run, or the last one failed
+    // in its output phase; a plugin-rsc scan, whose output is not used):
+    // the document names no client file
     if (!manifest) {
-      return getEmptyStartManifestModule(clientEntry)
+      return `export const tsrStartManifest = () => (${serializeStartManifest({
+        routes: { [rootRouteId]: {} },
+      })})`
     }
     const { clientBuild, cssCodeSplitDisabledFileName } = manifest
     const startManifest = buildStartManifest({

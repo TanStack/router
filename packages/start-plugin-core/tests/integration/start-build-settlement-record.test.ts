@@ -7,6 +7,8 @@
  * watch (it writes). The in-memory build without watch (the record at
  * `generateBundle`): `tests/start-manifest-plugin.test.ts`.
  */
+import { existsSync, readdirSync } from 'node:fs'
+import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { buildStart } from '../build-harness'
 import {
@@ -149,6 +151,66 @@ ${app['src/client-entry.ts']}`,
       ).toBe(true)
       expect(css.filter((file) => served.named[file] === null)).toEqual([])
       expect(scripts(served).missing).toEqual([])
+    },
+    timeout,
+  )
+
+  // A client with a second entry is no client build Start can describe:
+  // the build fails before anything is written, as on c511439389 (its
+  // capture threw at `generateBundle`), so no chunk on disk carries an id
+  // of a server fn the rejected build bundled.
+  // Source: Astra's review of settlement step 7 (`multi-candidate.log`).
+  test(
+    'a client with two entries: the build fails and writes no JavaScript',
+    async () => {
+      let clientDir = ''
+      const outDir: Plugin = {
+        name: 'test:client-out-dir',
+        applyToEnvironment: (environment) => environment.name === 'client',
+        buildStart() {
+          clientDir = path.resolve(
+            this.environment.config.root,
+            this.environment.config.build.outDir,
+          )
+        },
+      }
+      const failed = await buildStart({
+        bundler: 'vite',
+        files: {
+          ...app,
+          'src/second.ts': `import { createServerFn } from '@tanstack/react-start'
+export const second = createServerFn().handler(async () => 'MARK_SECOND')
+console.log(second)
+`,
+        },
+        entry,
+        start,
+        viteConfig: {
+          plugins: [outDir],
+          environments: {
+            client: {
+              build: {
+                rolldownOptions: {
+                  input: {
+                    index: 'src/client-entry.ts',
+                    second: 'src/second.ts',
+                  },
+                },
+              },
+            },
+          },
+        },
+      }).then(
+        () => null,
+        (error: unknown) => error,
+      )
+      expect(String(failed)).toContain('multiple entries detected')
+      const js = existsSync(clientDir)
+        ? readdirSync(clientDir, { recursive: true }).filter((file) =>
+            String(file).endsWith('.js'),
+          )
+        : []
+      expect(js).toEqual([])
     },
     timeout,
   )

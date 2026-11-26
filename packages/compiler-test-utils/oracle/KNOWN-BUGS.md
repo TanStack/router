@@ -210,6 +210,30 @@ function info not found` when one of them calls it, and the build says nothing, 
 
 ## Accepted limits
 
+- **Vite: the client-build record follows the client output on disk, with these limits** (settlement design rev 4
+  §2, step 7; the server embeds the record: its document's client files and the functions it answers). Each keeps SSR
+  from naming a file the build removed:
+  1. A build that reports an error can advance the record and the server: another plugin's `writeBundle` or
+     `closeBundle` failing after Start's `writeBundle` (the output is the one on disk).
+  2. After a failure in the output phase before the write (`renderChunk`, `generateBundle`) there is no client build
+     until the next one succeeds: the document names no client file (Vite emptied the directory). Keeping the
+     previous files would make Start the owner of output cleanup (`emptyOutDir` off, its own pruning): not taken.
+  3. Several client outputs: the record is the last one written; a later output's failure leaves none although an
+     earlier one is on disk.
+  4. `build.emptyOutDir: false`: the previous files survive a failed build, and the record is withdrawn all the same.
+  5. A build that writes nothing (`write: false` without watch, `watch.skipWrite`): nothing on disk changes, and the
+     record is set at the last `generateBundle` handler: a later `enforce: 'post'`, `order: 'post'` handler that
+     throws or renames a file still advances it.
+  6. Files removed by anything but the build.
+
+  Rows: `start-build-settlement*.test.ts`, `tests/vite-client-build-record.test.ts`. Two costs, measured: a client-only
+  save whose output does not change builds the server once (the record is withdrawn and committed again; before step 7,
+  none), and a program that drives the watchers itself (not Start's `buildApp`) builds the server twice per save,
+  ending on the right document. A server-fn file deleted together with a client failure in the build phase fails the
+  server's rebuild (`Could not load …?tss-serverfn-handler`, the resolver still lists the deleted function the
+  record holds) while the previous pair stays served and its call answered (before step 7, a second error at the
+  call). No row for the costs and the deleted file (the outcome is the limit).
+
 - **A module with decorators, or with a `React` of its own, keeps what types name, as `main` does** (the type rule's
   user decision, 2026-11-26: "we will never cover the entire syntax"): decorator metadata and a classic JSX runtime the
   bundler is set to read names at run time that only types mention, and no rule here models their emitters, so the

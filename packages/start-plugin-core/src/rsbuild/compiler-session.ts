@@ -36,7 +36,6 @@ import {
 } from '@tanstack/router-utils/compiler'
 import { StartCompilerSession } from '../compiler/session'
 import { isVueSfc } from '../compiler/vue'
-import { providerModuleId } from '../server-fns/registry'
 import { resolverManifest } from '../server-fns/resolver'
 import { rspackEdgeModuleIds } from '../import-protection/edge-modules'
 import {
@@ -1481,15 +1480,10 @@ export class StartRsbuildCompilerSession {
     return resolverManifest(
       this.start.registry.entries(),
       opts.mode === 'dev'
-        ? {
-            kind: 'dev',
-            staticImports: opts.rsc !== undefined,
-            warnUnreferenced: opts.rsc === undefined,
-          }
+        ? { kind: 'dev', separateProvider: opts.rsc !== undefined }
         : opts.rsc !== undefined
           ? { kind: 'provider-gated', callable }
           : { kind: 'client-gated', callable: callable ?? new Set() },
-      providerModuleId,
     )
   }
 }
