@@ -219,10 +219,9 @@ export type Stability<T> =
  * the same turn: `refuse` when a fingerprint is not current, `accept` when
  * both versions are unmoved since the round began and the route-registry
  * digests read again are current (a registry publication reaches
- * `invalidate` only on a dev server: a watch build sees it here). A plan
- * hit takes one round: a hit whose check overlapped an event compiles.
+ * `invalidate` only on a dev server: a watch build sees it here).
  */
-export async function checkSnapshot<T>(
+async function checkSnapshot<T>(
   fps: ReadonlyArray<DependencyFingerprint>,
   src: FingerprintSource,
   versions: Versions,
@@ -259,9 +258,11 @@ export async function checkSnapshot<T>(
 
 /**
  * `stable(snapshot)`, the one check of a plan's dependencies `fps`, read
- * at `at`, for an attempt before publication and a restored plan: rounds
- * of `checkSnapshot` until one is not unsettled (each asks again what the
- * version that moved answers).
+ * at `at`, for an attempt before publication, a plan hit and a restored
+ * plan: rounds of `checkSnapshot` until one is not unsettled (each asks
+ * again what the version that moved answers). A hit's plan is left only
+ * through its refusal (an eviction) or its replacement by a request of
+ * another text, never by a compile of its own text over it.
  */
 export async function stable<T>(
   fps: ReadonlyArray<DependencyFingerprint>,
@@ -936,8 +937,9 @@ export class PlanCache {
     if (!r) {
       return false
     }
+    // (a published and a restored plan are never both held)
     const kept =
-      revision !== undefined && r.restored === null
+      revision !== undefined
         ? r.entry?.revision === revision
         : r.entry === null && r.restored === null
     if (revision !== undefined && r.latest === revision) {

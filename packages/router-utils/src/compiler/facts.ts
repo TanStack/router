@@ -594,7 +594,9 @@ export class RawFactsCache {
     }
     if (entry.reading === reading) {
       entry.reading = null
-      if (text !== null && !this.noTargets) {
+      if ((text !== null || isVirtualId(canonicalId)) && !this.noTargets) {
+        // (a virtual module's miss is kept as its text would be: no file
+        // event names it, only its host's update or `expireVirtual`)
         entry.markerless = true
       } else if (!entry.facts && this.entries.get(key) === entry) {
         // a missing file is not kept (`forget`)

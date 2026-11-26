@@ -163,6 +163,23 @@ function info not found` when one of them calls it, and the build says nothing, 
   design, step 0; a cost): the `asked` rows restart it though no fact it read moved. Core row (no public input holds
   these reads): `router-utils/tests/freshness.test.ts`, "a comment-only edit: the compile is not attempted again".
   Fix: the snapshot alone decides (step 6b deletes the `asked` rows).
+- **A restore checked while a request of its key runs and ends installs its plan afterwards** (settlement step 6a
+  review, Astra; on `a37f4609fd` too). `restorePlans` checks a persisted plan, and installs it when its check accepts,
+  unless the key then has a plan or a request. A request that settled and ended during the check (an untouched
+  compile of the module, or its file's removal) leaves no record, so the restore installs the dependencies that
+  request retired: a later change of one of them stales the untouched or removed module. Core API only: the hosts
+  restore in a compiler's first `finishMake`, before its modules are requested. No row.
+- **Two persisted snapshots of one key: the last restored wins** (settlement step 6a review, Astra and Fable; on
+  `a37f4609fd` too). `PlanCache.restore` replaces a restored plan with the next one of its key, so the first
+  snapshot's dependencies leave the index: a change of one of them stales nothing. router-plugin's webpack host groups
+  the plans it restores by serialized snapshot, so two module instances of one key with different reads reach the
+  core together (Start's Rsbuild host picks one per key). No row.
+- **`TSR_COMPILER_NO_CACHE=plans`: a second compile of the same text replaces the plan without evicting it**
+  (settlement step 6a review, Gemini; checked after the re-check fixes). With plan reuse off a request compiles
+  instead of checking a hit, and its publication replaces the published plan of its own text with the generation
+  unmoved: an open answer of the first plan stays current and the file is not stale, where with the cache on the
+  hit's refusal evicts it (a resolution moved by a tsconfig edit between the two requests). A measurement knob: the
+  cache-equivalence runs compare outputs, not `current()` of overlapping requests. No row.
 - **Vite watch build: a client rebuild whose output fails keeps the previous client build** (settlement design rev 4,
   step 7): another plugin's `generateBundle` failing leaves the client's output directory empty (Vite emptied it before
   rendering), and the server's document still names the previous client files. A hand-ordered server build after a

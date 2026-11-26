@@ -19,7 +19,6 @@ import {
   DependencyLedger,
   EXTERNAL_RESOLUTION,
   StaleSets,
-  checkSnapshot,
   stable,
 } from './cache'
 import { emitRecipe, substituteSpecifier } from './emit'
@@ -319,10 +318,8 @@ async function answer(
   for (;;) {
     const hit = cache.lookup(key, rev)
     if (hit) {
-      // what was checked at the current versions stands (not asked again);
-      // one round: a hit whose check overlapped an event compiles, and its
-      // attempt's acceptance is the check
-      const checked = await checkSnapshot(
+      // what was checked at the current versions stands (not asked again)
+      const checked = await stable(
         hit.plan.dependencies,
         fingerprintSourceFor(caches, host, env.name),
         caches,
@@ -354,10 +351,8 @@ async function answer(
       if (checked.kind === 'accepted') {
         return checked.value
       }
-      if (checked.kind !== 'unsettled') {
-        // evicted, or evicted and published again, meanwhile: look again
-        continue
-      }
+      // refused, or evicted (and published again) meanwhile: look again
+      continue
     }
     const flight = cache.flight(key)
     if (flight && flight.revision === rev) {

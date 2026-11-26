@@ -422,16 +422,16 @@ text compiles waits for it and emits its own output from the result.
     published plan keeps one `exports` record per module it looked names up in: the names and their keys, or none
     when the module exports none of them (a barrel's star targets are visited for every name, so one record per name
     grew with names × targets), and the module's `export *` list when a lookup walked it.
-- **One snapshot check** (`stable(snapshot)`, for an attempt before publication and `restorePlans`; one round of it,
-  `checkSnapshot`, for a plan hit): a snapshot is the dependencies read plus the `fileSetVersion` and
+- **One snapshot check** (`stable(snapshot)`, for an attempt before publication, a plan hit and `restorePlans`): a
+  snapshot is the dependencies read plus the `fileSetVersion` and
   `RawFactsCache.version` they were checked at (`CacheEntry.resolvedAt`, `factsAt`). The asynchronous part asks what
   may have moved: resolutions once the file set moved, raw facts once their version did. The caller acts in the turn
   the verdict is reached: it refuses (a fingerprint not current: a failed hit evicts and is counted there) or accepts
   (both versions unmoved since the round began, the route-registry digests read again: a watch build's registry
   publication calls no `invalidate`), and only while the entry judged is still the one (a hit: still the key's plan;
-  an attempt: the key's generation unmoved). A version that moved during a round makes an attempt's or a restore's
-  check ask again what it answers; a hit whose round overlapped an event is no hit, and compiles (its attempt's check is
-  the one check: an event storm costs a compile, not a loop of hit checks). An attempt reads one answer of each fact,
+  an attempt: the key's generation unmoved). A version that moved during a round makes the check ask again what it
+  answers (it ends once a round overlaps no event: a hit during an event storm waits for the storm). A hit's plan is
+  left only through its refusal, an eviction, never replaced by a compile of its own text. An attempt reads one answer of each fact,
   however many reads ask it (`runAttempt`): what the ledger records is what the plan was made of. The raw-facts
   version moves on every `markStale`, `forget`, `retain` drop, `expireVirtual` and `releaseVirtual`, which is how
   anything that changes a raw-facts answer reaches the cache (a host that saw a file missing marks it stale when it

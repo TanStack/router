@@ -1158,3 +1158,291 @@ describe('a virtual module that read as missing and then loads', () => {
     expect(out!.facts.planners).toEqual(cold!.facts.planners)
   })
 })
+
+// Step 6a re-check (Fable p5, Gemini R1a/R1c, Astra's tsconfig probe): a
+// plan hit whose resolution moves during its check (a tsconfig change
+// lands while the resolver answers). The check asks again and refuses: the
+// plan is evicted (the file is stale, an open answer of it is not
+// current), never replaced by a compile of its own text.
+describe('a plan hit whose resolution moves during its check', () => {
+  const PAGE = '/app/page.ts'
+  function setup() {
+    const target = { id: '/app/a.ts' }
+    const host = new MemoryHost({
+      files: {
+        [PAGE]: "import { make } from './w'\nexport const use = make\n",
+        '/app/a.ts': SERVER_ONLY,
+        '/app/b.ts': 'export const make = 1\n',
+        '/app/tsconfig.json': '{}\n',
+      },
+      recognizer: RECOGNIZER,
+      resolve: (specifier) => (specifier === './w' ? target.id : null),
+    })
+    const inner = host.resolve.bind(host)
+    let armed: { reached: () => void; release: Promise<void> } | null = null
+    host.resolve = async (specifier, importer) => {
+      const answer = await inner(specifier, importer)
+      if (armed && specifier === './w') {
+        const held = armed
+        armed = null
+        held.reached()
+        await held.release
+      }
+      return answer
+    }
+    const arm = () => {
+      const release = gate()
+      const reached = new Promise<void>((r) => {
+        armed = { reached: r, release: release.opened }
+      })
+      return { reached, release: release.open }
+    }
+    const retarget = async () => {
+      target.id = '/app/b.ts'
+      host.write('/app/tsconfig.json', '{ "x": 1 }\n')
+      await invalidate(
+        host.caches,
+        { path: '/app/tsconfig.json', kind: 'change' },
+        host,
+      )
+    }
+    // an event, so that the next hit asks its resolutions again
+    const moveFileSet = async () => {
+      host.write('/app/c.ts', 'export const c = 1\n')
+      await invalidate(host.caches, { path: '/app/c.ts', kind: 'add' }, host)
+    }
+    return { host, arm, retarget, moveFileSet }
+  }
+  const cold = async () => {
+    const { host, retarget } = setup()
+    await retarget()
+    return factsOf(await host.compile(PAGE, planners()))
+  }
+  const factsOf = (out: CompileOutput | null) => out?.facts.planners
+
+  it("an open answer of the plan is not current, and the file's other outputs are built again", async () => {
+    const { host, arm, retarget, moveFileSet } = setup()
+    await host.compile(PAGE, planners())
+    host.caches.stale.take(CLIENT.name)
+    const hold = gate()
+    let after: boolean | undefined
+    const open = host.settle(PAGE, planners(), async (s) => {
+      await hold.opened
+      after = s.current()
+    })
+    await new Promise((r) => setTimeout(r, 5))
+    await moveFileSet()
+    const { reached, release } = arm()
+    const hit = host.compile(PAGE, planners())
+    await reached
+    await retarget()
+    release()
+    expect(factsOf(await hit)).toEqual(await cold())
+    hold.open()
+    await open
+    expect(after).toBe(false)
+    expect(host.caches.stale.take(CLIENT.name)).toEqual([PAGE])
+  })
+
+  it('a request of the same text arriving during its compile joins it: one attempt', async () => {
+    const { host, arm, retarget, moveFileSet } = setup()
+    const reader = heldReaderOf('./w')
+    await host.compile(PAGE, [reader.planner()])
+    await moveFileSet()
+    const { reached, release } = arm()
+    const second = host.compile(PAGE, [reader.planner()])
+    await reached
+    await retarget()
+    const held = reader.hold()
+    const before = reader.attempts()
+    release()
+    await held.reached
+    const third = host.compile(PAGE, [reader.planner()])
+    await new Promise((r) => setTimeout(r, 10))
+    held.proceed()
+    const [a, b] = await Promise.all([second, third])
+    expect(reader.attempts() - before).toBe(1)
+    expect(factsOf(a)).toEqual(factsOf(b))
+  })
+})
+
+/** `heldReader` of another specifier. */
+function heldReaderOf(specifier: string) {
+  let attempts = 0
+  let armed: { reached: () => void; proceed: Promise<void> } | null = null
+  const planner = (): Planner => ({
+    name: 'toy',
+    tier: 1,
+    gate: () => true,
+    async prefetch(_t0, ctx) {
+      attempts++
+      const target = await ctx.resolve(specifier)
+      const found = await ctx.resolver.resolve(target!, 'make')
+      if (armed) {
+        const held = armed
+        armed = null
+        held.reached()
+        await held.proceed
+      }
+      ctx.set(found.k === 'found' ? found.value : found.k)
+    },
+    plan(ctx) {
+      ctx.setFacts('toy', ctx.prefetched.get('toy') ?? null)
+    },
+  })
+  const hold = () => {
+    const proceed = gate()
+    const reached = new Promise<void>((r) => {
+      armed = { reached: r, proceed: proceed.opened }
+    })
+    return { reached, proceed: proceed.open }
+  }
+  return { planner, hold, attempts: () => attempts }
+}
+
+// Step 6a re-check (Gemini R2a/R2b, Astra's `marker.mjs`): a virtual module
+// read only for its marker, missing, then loading with a marker import.
+// Its miss is kept as its text would be, so its expiry (a watch rebuild)
+// and its change event (a dev host's update) reach the importer.
+describe("a virtual module's marker read as missing, and the module loading", () => {
+  const MARKER = 'my-server-only'
+  const files = {
+    '/app/page.ts': "import 'virtual:generated'\nexport const x = 1\n",
+  }
+  const markerSpecifiers = { [MARKER]: 'server-only' } as const
+  const LOADED = `import '${MARKER}'\nexport const x = 1\n`
+  /** A policy reading the virtual module's marker (as an import edge does); `held`: waits once after the read. */
+  const markerReader = (held?: () => Promise<void>): Planner => ({
+    name: 'marker',
+    tier: 0,
+    gate: () => true,
+    plan() {},
+    async policy(_plan, _output, _edges, ctx) {
+      const marker = await ctx.targetMarker('virtual:generated')
+      await held?.()
+      if (marker) {
+        ctx.diagnostic({
+          severity: 'warning',
+          by: 'marker',
+          code: 'guard',
+          message: marker,
+        })
+      }
+    },
+  })
+  const messages = (out: CompileOutput | null) =>
+    out!.diagnostics.map((d) => d.message)
+  const cold = (virtual: Record<string, string>) =>
+    new MemoryHost({ files, recognizer: RECOGNIZER, virtual, markerSpecifiers })
+      .compile('/app/page.ts', [markerReader()])
+      .then(messages)
+
+  it('a watch rebuild (`expireVirtual`) compiles the importer against the loaded module', async () => {
+    const virtual: Record<string, string> = {}
+    const host = new MemoryHost({
+      files,
+      recognizer: RECOGNIZER,
+      virtual,
+      markerSpecifiers,
+    })
+    expect(
+      messages(await host.compile('/app/page.ts', [markerReader()])),
+    ).toEqual([])
+    virtual['virtual:generated'] = LOADED
+    expireVirtual(host.caches, CLIENT.name)
+    expect(
+      messages(await host.compile('/app/page.ts', [markerReader()])),
+    ).toEqual(await cold(virtual))
+  })
+
+  it("its change event during the importer's compile reaches the importer", async () => {
+    const virtual: Record<string, string> = {}
+    const host = new MemoryHost({
+      files,
+      recognizer: RECOGNIZER,
+      virtual,
+      markerSpecifiers,
+    })
+    const reached = gate()
+    const proceed = gate()
+    let once = true
+    const compiling = host.compile('/app/page.ts', [
+      markerReader(async () => {
+        if (once) {
+          once = false
+          reached.open()
+          await proceed.opened
+        }
+      }),
+    ])
+    await reached.opened
+    virtual['virtual:generated'] = LOADED
+    await invalidate(
+      host.caches,
+      { path: 'virtual:generated', kind: 'change' },
+      host,
+    )
+    proceed.open()
+    expect(messages(await compiling)).toEqual(await cold(virtual))
+    expect(
+      messages(await host.compile('/app/page.ts', [markerReader()])),
+    ).toEqual(await cold(virtual))
+  })
+})
+
+// Step 6a re-check (Fable, p3 (c)): the file removed and created again with
+// the same bytes while its compile is in flight. The removal clears the
+// latest text (`PlanCache.removed`): the answer is not current and nothing
+// is published until the bundler's request of the recreated file.
+describe('a file removed and created again with the same bytes during its compile', () => {
+  it('the answer is not current; the rebuild of the file is', async () => {
+    const PAGE = '/app/page.ts'
+    const TEXT = "import { make } from './b'\nexport const x = make\n"
+    const host = new MemoryHost({
+      files: { [PAGE]: TEXT, '/app/b.ts': 'export const make = 1\n' },
+      recognizer: RECOGNIZER,
+    })
+    const reader = heldReader()
+    const { reached, proceed } = reader.hold()
+    let current: boolean | undefined
+    const compiling = host.settle(PAGE, [reader.planner()], (s) => {
+      current = s.current()
+    })
+    await reached
+    delete host.files[PAGE]
+    await invalidate(host.caches, { path: PAGE, kind: 'unlink' }, host)
+    host.write(PAGE, TEXT)
+    await invalidate(host.caches, { path: PAGE, kind: 'add' }, host)
+    proceed()
+    await compiling
+    expect(current).toBe(false)
+    expect(host.caches.stale.take(CLIENT.name)).toEqual([PAGE])
+    let rebuilt: boolean | undefined
+    await host.settle(PAGE, [reader.planner()], (s) => {
+      rebuilt = s.current()
+    })
+    expect(rebuilt).toBe(true)
+  })
+})
+
+// One answer per fact is one per importer and specifier: a barrel's `./x`
+// is not its importer's `./x`.
+// Source: the mutation run of the step 6a re-check fixes (Fable's M26).
+describe('one specifier from two importers in one attempt', () => {
+  it('each importer gets its own resolution', async () => {
+    const files = {
+      '/app/page.ts':
+        "import { make } from './x'\nimport { make as m } from './lib'\nexport const use = [make, m]\n",
+      '/app/x.ts': 'export const make = 1\n',
+      '/app/lib/index.ts': "export * from './x'\n",
+      '/app/lib/x.ts': SERVER_ONLY,
+    }
+    const out = await new MemoryHost({ files, recognizer: RECOGNIZER }).compile(
+      '/app/page.ts',
+      [toySummaryPlanner()],
+    )
+    const facts = out!.facts.planners['toy-summary'] as Record<string, unknown>
+    expect(facts['./lib']).toEqual({ t: 'envOnlyResult', kind: 'server' })
+    expect(facts['./x']).not.toEqual(facts['./lib'])
+  })
+})
