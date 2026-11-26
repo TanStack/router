@@ -392,7 +392,14 @@ export class Declarations {
     const add = (b: Binding) => {
       if (!seen.has(b.id)) {
         seen.add(b.id)
-        if (this.of(b).some((d) => d.kind === 'erased')) {
+        // (only these have an erased declaration: a `declare`, a type, a
+        // namespace, a type-only import; the parser's flags say so without
+        // the rows)
+        if (
+          (b.has(BindingFlags.Ambient | SEVERAL | BindingFlags.Import) ||
+            this.declares().has(b.id)) &&
+          this.of(b).some((d) => d.kind === 'erased')
+        ) {
           out.push(b)
         }
       }
