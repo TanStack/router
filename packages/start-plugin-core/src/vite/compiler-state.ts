@@ -623,9 +623,11 @@ export class ViteCompilerState implements ClientBuilds {
         isEntry: (p) => this.entriesOf(s).has(normalizePath(p)),
         routes: new RouteRegistryView(this.opts.routerPluginContext),
         readFile: (file) => fs.readFile(file, 'utf8').catch(() => null),
+        // (a load that throws is no evidence of a missing module: the raw
+        // facts read it again at the next ask)
         loadVirtual: async (id, env) => {
           const load = virtualLoaders.get(env)
-          return load ? load(id).catch(() => null) : null
+          return load ? load(id) : null
         },
         // pre-bundled dependencies, in the app's `cacheDir` (a Start library
         // declaring the framework as a peer is never pre-bundled): what the

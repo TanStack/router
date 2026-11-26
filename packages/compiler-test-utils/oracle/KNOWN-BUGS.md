@@ -174,6 +174,12 @@ function info not found` when one of them calls it, and the build says nothing, 
   snapshot's dependencies leave the index: a change of one of them stales nothing. router-plugin's webpack host groups
   the plans it restores by serialized snapshot, so two module instances of one key with different reads reach the
   core together (Start's Rsbuild host picks one per key). No row.
+- **A text requested again while its first compile still runs (A, B, A) is compiled twice at one generation**
+  (settlement step 6a re-check, Gemini; on `a37f4609fd` too). The first compile of A is overtaken by B's request and
+  attempts again; A's second request finds no compile of A in flight (B's replaced it) and starts its own. Both
+  publish at the generation of A's second request, the later over the earlier: when a file created meanwhile moves a
+  resolution no event re-checks (an alias target elsewhere), both answers are current with different facts and the
+  file is not stale. Core API only; a host requests one text twice in a row only on a quick save and revert. No row.
 - **`TSR_COMPILER_NO_CACHE=plans`: a second compile of the same text replaces the plan without evicting it**
   (settlement step 6a review, Gemini; checked after the re-check fixes). With plan reuse off a request compiles
   instead of checking a hit, and its publication replaces the published plan of its own text with the generation

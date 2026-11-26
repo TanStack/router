@@ -78,7 +78,9 @@ interface RawFactsOptions {
    * A virtual id's text, loaded by the environment that asks for its facts:
    * it resolved the id, while another environment's bundler may not own it
    * (asking one that runs concurrently, e.g. in `vite build --watch`, fails
-   * that build).
+   * that build). `null`: the host has no such module (a miss, kept as a
+   * text would be). A load that throws is no evidence: read as missing for
+   * that read, kept nowhere, read again at the next ask.
    */
   loadVirtual: (id: string, env: string) => Promise<string | null>
   recognizer?: RecognizerTable
@@ -105,6 +107,14 @@ interface RawFactsOptions {
    */
   modifiedAt?: (path: string) => Promise<number | null>
 }
+
+/**
+ * A module's text as a read found it: null when the module is missing (a
+ * file that does not exist, a virtual module its host has no text for),
+ * `undefined` when its host's `loadVirtual` threw: no evidence of either,
+ * read as missing for that read and never kept.
+ */
+type Text = string | null | undefined
 
 /** Whether a module is virtual: its raw text is the host's `loadVirtual`, not a file's. */
 export const isVirtualId = (canonicalId: string): boolean =>
@@ -179,7 +189,7 @@ interface FactsEntry {
    * file event read (`readChange`). `get` and `marker` share it, and the
    * answer built from it takes it.
    */
-  reading: Promise<string | null> | null
+  reading: Promise<Text> | null
 }
 
 /** A file event's read of a file (`readChange`): its text and the text's `revision` (null: the file is gone). */
@@ -487,7 +497,7 @@ export class RawFactsCache {
       const prior = entry.facts
       const reading = this.textOf(entry, canonicalId, env)
       const text = await this.readSaved(canonicalId, env, prior, reading)
-      const built = this.build(canonicalId, text)
+      const built = this.build(canonicalId, text ?? null)
       // A file that stops parsing (saved mid-edit) keeps the last facts it
       // parsed to: its importers' decisions stand until it parses again (a
       // changed digest would evict their plans and hot-update modules that
@@ -495,7 +505,7 @@ export class RawFactsCache {
       // never parsed is unknown. One that still reads empty after
       // `readSaved`'s retries is empty.
       const facts =
-        text !== null &&
+        text != null &&
         !built.opaque &&
         prior?.summary &&
         built.summary === null
@@ -510,13 +520,14 @@ export class RawFactsCache {
           entry.reading = null
         }
         if (
-          text === null &&
-          !isVirtualId(canonicalId) &&
+          (text === undefined ||
+            (text === null && !isVirtualId(canonicalId))) &&
           this.entries.get(key) === entry
         ) {
           // a missing file's facts are not kept (`forget`): its creation
           // has an event. A virtual module's miss is kept: no file event
-          // names it, only its host's update or `expireVirtual` does
+          // names it, only its host's update or `expireVirtual` does. A
+          // load that threw is no evidence: read again at the next ask
           this.deleteEntry(key)
         }
       }
@@ -542,7 +553,7 @@ export class RawFactsCache {
     entry: FactsEntry,
     canonicalId: string,
     env: string,
-  ): Promise<string | null> {
+  ): Promise<Text> {
     return (entry.reading ??= this.read(canonicalId, env))
   }
 
@@ -584,7 +595,7 @@ export class RawFactsCache {
     // importers' markers at once, maybe while an in-place save has the
     // file empty)
     if (
-      text !== null &&
+      text != null &&
       (this.mayHaveMarker(text) ||
         (text === '' &&
           entry.facts !== null &&
@@ -594,9 +605,14 @@ export class RawFactsCache {
     }
     if (entry.reading === reading) {
       entry.reading = null
-      if ((text !== null || isVirtualId(canonicalId)) && !this.noTargets) {
+      if (
+        text !== undefined &&
+        (text !== null || isVirtualId(canonicalId)) &&
+        !this.noTargets
+      ) {
         // (a virtual module's miss is kept as its text would be: no file
-        // event names it, only its host's update or `expireVirtual`)
+        // event names it, only its host's update or `expireVirtual`; a
+        // load that threw is no evidence, and is not kept)
         entry.markerless = true
       } else if (!entry.facts && this.entries.get(key) === entry) {
         // a missing file is not kept (`forget`)
@@ -626,8 +642,8 @@ export class RawFactsCache {
       // last parsed to, as with the knob off
       const kept = await this.get(canonicalId, env)
       const text = await this.read(canonicalId, env)
-      const built = this.build(canonicalId, text, true)
-      return text !== null &&
+      const built = this.build(canonicalId, text ?? null, true)
+      return text != null &&
         !built.opaque &&
         built.summary === null &&
         kept.summary
@@ -646,7 +662,7 @@ export class RawFactsCache {
     const e = this.entries.get(key)
     const text = await this.read(canonicalId, env)
     const full: RawFacts = {
-      ...this.build(canonicalId, text, true),
+      ...this.build(canonicalId, text ?? null, true),
       summary: null,
     }
     if (e && this.entries.get(key) === e && e.facts === facts) {
@@ -728,11 +744,19 @@ export class RawFactsCache {
     }
   }
 
-  /** The module's text; '' for a file that is no JavaScript (an asset, `?url`): never read, `build` describes it unanalysed. */
-  private async read(canonicalId: string, env: string): Promise<string | null> {
+  /**
+   * The module's text; '' for a file that is no JavaScript (an asset,
+   * `?url`): never read, `build` describes it unanalysed. A virtual
+   * module's load that threw is `undefined`: no evidence (`Text`).
+   */
+  private async read(canonicalId: string, env: string): Promise<Text> {
     if (isVirtualId(canonicalId)) {
       this.counters.factsReads++
-      return this.opts.loadVirtual(canonicalId, env)
+      try {
+        return await this.opts.loadVirtual(canonicalId, env)
+      } catch {
+        return undefined
+      }
     }
     const id = identify(canonicalId)
     if (id.lang === null) {
@@ -783,8 +807,8 @@ export class RawFactsCache {
     canonicalId: string,
     env: string,
     prior: RawFacts | null,
-    first: Promise<string | null>,
-  ): Promise<string | null> {
+    first: Promise<Text>,
+  ): Promise<Text> {
     let text = await first
     if (
       text !== '' ||

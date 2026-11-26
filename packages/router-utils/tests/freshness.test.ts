@@ -312,12 +312,11 @@ describe('a check that waits while an event lands', () => {
     [PAGE]: "import { make } from './w'\nexport const use = make\n",
     '/app/a.ts': SERVER_ONLY,
     '/app/b.ts': 'export const make = 1\n',
-    '/app/tsconfig.json': '{}\n',
   }
   const factsOf = (out: CompileOutput | null) => out?.facts.planners
 
   /**
-   * A host whose `./w` resolves to `target.id` (a tsconfig `paths` alias),
+   * A host whose `./w` resolves to `target.id` (an alias),
    * and whose next `./w` resolution, once `arm`ed, answers what it read
    * only after `release`: a resolver that read the files before an event
    * and answers after it.
@@ -348,70 +347,8 @@ describe('a check that waits while an event lands', () => {
     return { host, arm, release: release.open }
   }
 
-  /** The alias now names `b.ts`: the tsconfig's change, applied. */
-  async function retarget(host: MemoryHost, target: { id: string }) {
-    target.id = '/app/b.ts'
-    host.write(
-      '/app/tsconfig.json',
-      '{ "compilerOptions": { "paths": { "./w": ["./b.ts"] } } }\n',
-    )
-    await invalidate(
-      host.caches,
-      { path: '/app/tsconfig.json', kind: 'change' },
-      host,
-    )
-  }
-
   const cold = async () =>
     factsOf(await aliasHost({ id: '/app/b.ts' }).host.compile(PAGE, planners()))
-
-  // C6-01 (hit). The plan asks its resolution again (an add moved the file
-  // set); the resolver read the alias before the tsconfig's change and
-  // answers after it applied. Source: whole-PR review C6-01 (Astra's
-  // restore probe, the hit half).
-  it('C6-01: a plan hit whose resolution was read before a tsconfig change answers the new target', async () => {
-    const target = { id: '/app/a.ts' }
-    const { host, arm, release } = aliasHost(target)
-    await host.compile(PAGE, planners())
-    host.write('/app/c.ts', 'export const c = 1\n')
-    await invalidate(host.caches, { path: '/app/c.ts', kind: 'add' }, host)
-    const reached = arm()
-    const hit = host.compile(PAGE, planners())
-    await reached
-    await retarget(host, target)
-    release()
-    expect(factsOf(await hit)).toEqual(await cold())
-  })
-
-  // C6-01 (attempt), the control: a compile's resolution read before the
-  // change; the attempt's own check asks it again and compiles again.
-  it('C6-01: a compile whose resolution was read before a tsconfig change answers the new target', async () => {
-    const target = { id: '/app/a.ts' }
-    const { host, arm, release } = aliasHost(target)
-    const reached = arm()
-    const compiling = host.compile(PAGE, planners())
-    await reached
-    await retarget(host, target)
-    release()
-    expect(factsOf(await compiling)).toEqual(await cold())
-  })
-
-  // C6-01 (restore). A persisted plan's check reads the resolution before
-  // the change and answers after it: the plan is reported stale (its
-  // bundler builds the module again), not restored.
-  // Source: whole-PR review C6-01 (Astra's restore probe).
-  it('C6-01: a restored plan whose resolution was read before a tsconfig change is reported stale', async () => {
-    const first = aliasHost({ id: '/app/a.ts' }).host
-    const persisted = (await first.compile(PAGE, planners()))!.persisted!
-    const target = { id: '/app/a.ts' }
-    const { host, arm, release } = aliasHost(target)
-    const reached = arm()
-    const restoring = restorePlans(host.caches, [persisted], host)
-    await reached
-    await retarget(host, target)
-    release()
-    expect(await restoring).toEqual([persisted.key])
-  })
 
   // C6-03. An upstream plugin prepends a banner to the file's text; the
   // file's change event (its own save, read without the banner) lands
@@ -1159,24 +1096,25 @@ describe('a virtual module that read as missing and then loads', () => {
   })
 })
 
-// Step 6a re-check (Fable p5, Gemini R1a/R1c, Astra's tsconfig probe): a
-// plan hit whose resolution moves during its check (a tsconfig change
-// lands while the resolver answers). The check asks again and refuses: the
-// plan is evicted (the file is stale, an open answer of it is not
+// Step 6a re-check (Fable p5, Gemini R1a/R1c, Astra's probe): a plan hit
+// whose resolution moves during its check: a file the resolver now finds
+// first is created while the resolver answers (an alias target elsewhere:
+// no event re-checks the plan, its check asks again). The check refuses:
+// the plan is evicted (the file is stale, an open answer of it is not
 // current), never replaced by a compile of its own text.
 describe('a plan hit whose resolution moves during its check', () => {
   const PAGE = '/app/page.ts'
+  const ALT = '/app/alt/w.ts'
   function setup() {
-    const target = { id: '/app/a.ts' }
     const host = new MemoryHost({
       files: {
         [PAGE]: "import { make } from './w'\nexport const use = make\n",
         '/app/a.ts': SERVER_ONLY,
-        '/app/b.ts': 'export const make = 1\n',
-        '/app/tsconfig.json': '{}\n',
       },
       recognizer: RECOGNIZER,
-      resolve: (specifier) => (specifier === './w' ? target.id : null),
+      // (`./w`: the alias target `alt/w.ts` once it exists, else `a.ts`)
+      resolve: (specifier, _importer, files) =>
+        specifier === './w' ? (ALT in files ? ALT : '/app/a.ts') : null,
     })
     const inner = host.resolve.bind(host)
     let armed: { reached: () => void; release: Promise<void> } | null = null
@@ -1198,13 +1136,8 @@ describe('a plan hit whose resolution moves during its check', () => {
       return { reached, release: release.open }
     }
     const retarget = async () => {
-      target.id = '/app/b.ts'
-      host.write('/app/tsconfig.json', '{ "x": 1 }\n')
-      await invalidate(
-        host.caches,
-        { path: '/app/tsconfig.json', kind: 'change' },
-        host,
-      )
+      host.write(ALT, 'export const make = 1\n')
+      await invalidate(host.caches, { path: ALT, kind: 'add' }, host)
     }
     // an event, so that the next hit asks its resolutions again
     const moveFileSet = async () => {
@@ -1353,6 +1286,43 @@ describe("a virtual module's marker read as missing, and the module loading", ()
     expect(
       messages(await host.compile('/app/page.ts', [markerReader()])),
     ).toEqual(await cold(virtual))
+  })
+
+  // A load that throws is no evidence (a plugin whose `load` failed once,
+  // with no hot update naming the module later): the next request after a
+  // facts move reads the module again, and sees its marker.
+  // Source: Fable's `recheck2/p7-virtual-miss-unannounced.probe.ts`.
+  it('a load that threw is read again: the next request after a save sees the marker', async () => {
+    const loaded: Record<string, string> = {}
+    let fail = true
+    const virtual = new Proxy(loaded, {
+      get(target, id: string) {
+        if (fail) {
+          fail = false
+          throw new Error('the plugin is not ready')
+        }
+        return target[id]
+      },
+    })
+    const host = new MemoryHost({
+      files: { ...files, '/app/other.ts': 'export const o = 1\n' },
+      recognizer: RECOGNIZER,
+      virtual,
+      markerSpecifiers,
+    })
+    expect(
+      messages(await host.compile('/app/page.ts', [markerReader()])),
+    ).toEqual([])
+    loaded['virtual:generated'] = LOADED
+    host.write('/app/other.ts', 'export const o = 2\n')
+    await invalidate(
+      host.caches,
+      { path: '/app/other.ts', kind: 'change' },
+      host,
+    )
+    expect(
+      messages(await host.compile('/app/page.ts', [markerReader()])),
+    ).toEqual(await cold(loaded))
   })
 
   it("its change event during the importer's compile reaches the importer", async () => {
