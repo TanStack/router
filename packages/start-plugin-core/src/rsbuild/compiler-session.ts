@@ -1252,8 +1252,14 @@ export class StartRsbuildCompilerSession {
         lines: 'lf',
         ...((late || isVueSfc(identity.path)) && { originalMap: readInputMap }),
         // (Rspack's type of the module: `asset/source`, its text is its
-        // export; a type that is no script, `json`, is Rspack's to parse)
-        typeOf: () => moduleTypeOf(ctx._module?.type),
+        // export; a type that is no script, `json`, is Rspack's to parse.
+        // Asked only of a module of the late pass or one whose request has
+        // a query of the app's (`?raw`, not a derived output's): each read
+        // crosses into Rspack, and a script's own module is a script)
+        ...((late ||
+          (identity.derived === null && ctx.resource.includes('?'))) && {
+          typeOf: () => moduleTypeOf(ctx._module?.type),
+        }),
       },
       () => this.hostFor(env),
       { sink: this.sinkOf(ctx, env, key, identity) },
