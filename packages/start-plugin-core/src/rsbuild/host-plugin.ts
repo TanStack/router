@@ -40,6 +40,7 @@ import {
   resourcePath,
 } from './compiler-session'
 import { LOADER_REGISTRY } from './loader-registry'
+import { lateFileTypeCheck } from './late-pass'
 import {
   FOUND_WARNINGS_PART,
   IMPORT_PROTECTION_PART,
@@ -246,6 +247,23 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
   return {
     apply(compiler) {
       const { Compilation, WebpackError } = rspack
+      /** The late pass's file-type check of this compiler's compilations, and of each child compiler's. */
+      const lateCheck = lateFileTypeCheck(session.start.opts.root)
+      const childLateChecks = new WeakMap<
+        object,
+        ReturnType<typeof lateFileTypeCheck>
+      >()
+      /** A failed check's error, at its module (Rsbuild prints the module's file). */
+      const lateFileTypeError = (failure: {
+        message: string
+        module: unknown
+      }): Error => {
+        const error = new WebpackError(failure.message) as Error & {
+          module?: unknown
+        }
+        error.module = failure.module
+        return error
+      }
       /** A failed `watchRun` of ours, reported by the compilation it started. */
       const failedBeforeCompilation: Array<Error> = []
       /**
@@ -821,6 +839,17 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
               }
             }
             reportWarnings(compilation, modules as Iterable<ModuleLike>, true)
+            // (a child's compilation reports to the compilation of this compiler)
+            let check = childLateChecks.get(compilation.compiler)
+            if (!check) {
+              check = lateFileTypeCheck(session.start.opts.root)
+              childLateChecks.set(compilation.compiler, check)
+            }
+            for (const failure of check(compilation, modules)) {
+              ;(currentCompilation ?? compilation).errors.push(
+                lateFileTypeError(failure),
+              )
+            }
           })
         }
       })
@@ -993,6 +1022,13 @@ export function createStartHostPlugin(opts: StartHostPluginOptions): {
             reportUnprinted(compilation),
           )
         }
+        // a module of a file type the late pass does not read that Rspack
+        // parses as JavaScript and that uses Start (`late-pass.ts`)
+        compilation.hooks.finishModules.tap(PLUGIN_NAME, (modules) => {
+          for (const failure of lateCheck(compilation, modules)) {
+            compilation.errors.push(lateFileTypeError(failure))
+          }
+        })
         // the compiler's and the packages' warnings of the modules the
         // compilation holds, compiled now, kept or restored alike
         compilation.hooks.finishModules.tap(PLUGIN_NAME, (modules) =>

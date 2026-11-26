@@ -615,3 +615,75 @@ export { default as help } from './help.mdx'
     timeout,
   )
 })
+
+// A file type the late pass does not read (it reads the JavaScript of
+// `.vue`, `.svelte`, `.md`, `.mdx`, `.astro` and `.marko` files), which an
+// app's rule makes JavaScript (`javascript/auto`): its server fn's handler
+// would reach the client, so the build fails at the module. CSS (css-loader's
+// JavaScript) and an SVG (an asset) use no Start: no error.
+// Source: pile-of-cases audit 2b (Fable C1: the handler shipped in the
+// eager client bundle, no diagnostic); decision: fail closed (option B).
+describe('rsbuild build, a module of a file type the late pass does not read', () => {
+  test(
+    'fails the build naming the file when it uses Start',
+    async () => {
+      const error = await buildStart({
+        bundler: 'rsbuild',
+        files: {
+          'src/page.foo': `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => 'MARK_FOO_HANDLER')
+`,
+          'src/entry.ts': `// @ts-expect-error (a module of an app rule)
+export { fn } from './page.foo'
+`,
+        },
+        entry: 'src/entry.ts',
+        rsbuildConfig: {
+          tools: {
+            rspack: {
+              module: { rules: [{ test: /\.foo$/, type: 'javascript/auto' }] },
+            },
+          },
+        },
+      }).then(
+        () => expect.fail('the build succeeded'),
+        (e: unknown) => e,
+      )
+      if (!(error instanceof StartBuildError)) {
+        throw error
+      }
+      expectDiagnostic(error.diagnostics, {
+        severity: 'error',
+        file: 'src/page.foo',
+        root: error.root,
+      })
+    },
+    timeout,
+  )
+
+  test(
+    'builds a CSS module and an SVG',
+    async () => {
+      const build = await buildStart({
+        bundler: 'rsbuild',
+        files: {
+          'src/a.module.css': `.a { color: red; }\n`,
+          'src/icon.svg': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><path d="M0 0h1v1z"/></svg>\n`,
+          'src/entry.ts': `// @ts-expect-error (a CSS module)
+import styles from './a.module.css'
+// @ts-expect-error (an asset)
+import icon from './icon.svg'
+export const parts = [typeof styles.a, typeof icon]
+`,
+        },
+        entry: 'src/entry.ts',
+      })
+      expectNoDiagnostic(build.diagnostics, { severity: 'error' })
+      expect((await build.client.run('return entry.parts')).result).toEqual([
+        'string',
+        'string',
+      ])
+    },
+    timeout,
+  )
+})

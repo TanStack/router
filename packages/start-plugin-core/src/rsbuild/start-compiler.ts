@@ -20,6 +20,7 @@ import { StartRsbuildCompilerSession } from './compiler-session'
 import { createStartHostPlugin } from './host-plugin'
 import { createRsbuildRouteGenerator } from './router-generator'
 import { vueScriptBlockRule } from './vue'
+import { COMPILER_LOADER_PATH, LATE_PASS_RE } from './late-pass'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { RouteSetEvidence } from './router-generator'
 import type { TransformImportRule } from './compiler-session'
@@ -31,7 +32,6 @@ import type { GetConfigFn } from '../types'
 import type { RsbuildConfig, RsbuildPluginAPI, Rspack } from '@rsbuild/core'
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url))
-const loaderPath = path.resolve(currentDir, 'compiler-loader.js')
 
 /** An import-protection edge module's virtual file (`rspackEdgeModuleIds`). */
 const EDGE_MODULE_FILE_RE =
@@ -47,8 +47,6 @@ if (import.meta.webpackHot) {
 
 /** JS/TS module paths (the query is not part of a rule's `test`). */
 const JS_FILE_RE = /\.[cm]?[jt]sx?$/
-/** Module types whose JavaScript output other loaders produce (the late pass). */
-const LATE_PASS_RE = /\.(?:vue|svelte|mdx?|astro|marko)$/i
 
 interface RegisterStartCompilerOptions {
   getConfig: GetConfigFn
@@ -177,13 +175,16 @@ export function registerStartCompiler(
         test: JS_FILE_RE,
         enforce: 'pre',
         use: [
-          { loader: loaderPath, options: { environment: environment.name } },
+          {
+            loader: COMPILER_LOADER_PATH,
+            options: { environment: environment.name },
+          },
         ],
       },
     ]
     // the late pass (import protection and start-env)
     const lateUse = {
-      loader: loaderPath,
+      loader: COMPILER_LOADER_PATH,
       options: { environment: environment.name, pass: 'late' },
     }
     loaderRules.push(
@@ -209,7 +210,7 @@ export function registerStartCompiler(
             dev || s.start.ip.config.allowImport
               ? [
                   {
-                    loader: loaderPath,
+                    loader: COMPILER_LOADER_PATH,
                     options: { environment: environment.name, pass: 'edge' },
                   },
                 ]

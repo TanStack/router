@@ -282,6 +282,15 @@ const read = createServerOnlyFn(h); var h = b }`): the rule sees a redeclared `v
   3 and 4). 0.28.1 and `main` (Babel) parsed deeper. No file of the corpus (216,934) or of the workspace's installed
   packages (64,642) reaches it. Rows: `start-build-unparsed-module.test.ts`, "code nested more than 256 levels deep";
   `start-build-late-pass.test.ts`, "%s build, an MDX module the compiler cannot parse".
+- **Rsbuild: the late pass reads a fixed list of file types; a module of another type that uses Start fails the
+  build** (audit 2b; the user chose fail-closed over reading Rspack's module type, which cost +4 % on an asset-heavy
+  build and doubled a dev CSS edit). The late pass compiles the JavaScript other loaders make of `.vue`, `.svelte`,
+  `.md`, `.mdx`, `.astro` and `.marko` files (`rsbuild/late-pass.ts`). A module of any other file type that Rspack
+  parses as JavaScript (an app rule typing `.foo` as `javascript/auto`) is not compiled; if its text names a Start
+  package as a module specifier, the compilation fails naming the file (each compilation checks the modules it built,
+  the first one all of them). One that uses Start without naming a Start package (it finishes a builder another
+  module exports) is not caught and ships its handler to the client. Vite reads the module type and compiles both.
+  Row: `start-build-late-pass.test.ts`, "rsbuild build, a module of a file type the late pass does not read".
 - **Ambient text nothing names keeps what only it names** (`declare function g(x: typeof sv): void`,
   `declare namespace N { const a: typeof sv }`, a class of `declare global`, an unexported namespace's type export,
   `declare module 'x' { … }`, and nothing names or exports them): a type never keeps a value, but a named erased
