@@ -947,6 +947,8 @@ class ImportProtectionEnv {
     { importerId: string; keys: Set<string> }
   >()
   private readonly importersByFile = new IdsByFile()
+  /** The edge keys holding a deferred violation (`RegisteredModule.deferred`), by its importer's file: what `forget` and `hold` release. */
+  private readonly deferredByFile = new Map<string, Set<string>>()
   /**
    * The served ledger (`Served`): an edge module by its key, a denied file
    * compiled under its own id by that id (`normalizePath`).
@@ -1289,6 +1291,13 @@ class ImportProtectionEnv {
           `${e.deferred.importerId}\u0000${e.deferred.edgeKey}`,
           e.deferred,
         )
+        const file = traceFile(e.deferred.importerId)
+        let keys = this.deferredByFile.get(file)
+        if (!keys) {
+          keys = new Set()
+          this.deferredByFile.set(file, keys)
+        }
+        keys.add(e.key)
       }
     }
   }
@@ -2039,11 +2048,11 @@ class ImportProtectionEnv {
         continue
       }
       keys.add(v.module.key)
-      this.defineModule(
-        v.module.key,
-        v.module.content,
-        !v.handoff,
-      ).violations.set(`${v.importerId}\u0000${v.edgeKey}`, v)
+      const m = this.defineModule(v.module.key, v.module.content, !v.handoff)
+      const k = `${v.importerId}\u0000${v.edgeKey}`
+      m.violations.set(k, v)
+      // (a commit records it: no longer an answer's alone)
+      m.deferred?.delete(k)
     }
     const previous = this.byImporter.get(importerId)?.keys
     if (!previous) {
@@ -2343,6 +2352,9 @@ class ImportProtectionEnv {
         this.forgetImporter(id)
       }
     }
+    for (const file of [...this.deferredByFile.keys()]) {
+      this.releaseDeferred(file, (importerId) => !holds(importerId))
+    }
   }
 
   /** Forgets a deleted file's importer records (edges, violations of its ids). `allowImport` is asked once per import for the session: its answers stay. */
@@ -2355,6 +2367,32 @@ class ImportProtectionEnv {
       if (traceFile(id) === path) {
         this.clientReferences.delete(id)
       }
+    }
+    this.releaseDeferred(path, () => true)
+  }
+
+  /** Releases the deferred violations of importers of `file` that `gone` says are gone (`RegisteredModule.deferred`). */
+  private releaseDeferred(
+    file: string,
+    gone: (importerId: string) => boolean,
+  ): void {
+    const keys = this.deferredByFile.get(file)
+    if (!keys) {
+      return
+    }
+    for (const key of keys) {
+      const deferred = this.modules.get(key)?.deferred
+      for (const [k, v] of deferred ?? []) {
+        if (traceFile(v.importerId) === file && gone(v.importerId)) {
+          deferred!.delete(k)
+        }
+      }
+      if (!deferred || deferred.size === 0) {
+        keys.delete(key)
+      }
+    }
+    if (keys.size === 0) {
+      this.deferredByFile.delete(file)
     }
   }
 

@@ -1,13 +1,9 @@
-import {
-  ASSET_QUERY_RE,
-  identify,
-  watchDependencies,
-} from '@tanstack/router-utils/compiler'
+import { ASSET_QUERY_RE } from '@tanstack/router-utils/compiler'
 import { TRANSFORM_ID_REGEX } from '../constants'
-import { inputMapOf } from './compiler-state'
-import type { InputSourceMap } from '@tanstack/router-utils/compiler'
+import { scriptTransform } from './script-transform'
 import type { Plugin } from 'vite'
 import type { ViteCompilerState } from './compiler-state'
+import type { TransformHandler } from './script-transform'
 
 /** Files that are no code: a pattern can reach them, and nothing compiles them. */
 export const ASSET_FILE_RE =
@@ -30,6 +26,17 @@ const LATE_PASS_EXCLUDE: Array<RegExp> = [
  * positions mapped through the combined source map.
  */
 export function latePassPlugin(state: ViteCompilerState): Plugin {
+  // (one handler per environment)
+  const handlers = new Map<string, TransformHandler | null>()
+  const handlerOf = (name: string) => {
+    let handler = handlers.get(name)
+    if (handler === undefined) {
+      const env = state.envOf(name)
+      handler = env ? scriptTransform(state, env, 'late') : null
+      handlers.set(name, handler)
+    }
+    return handler
+  }
   return {
     name: 'tanstack-start:compiler-late',
     enforce: 'post',
@@ -41,119 +48,10 @@ export function latePassPlugin(state: ViteCompilerState): Plugin {
         id: { exclude: LATE_PASS_EXCLUDE },
         code: { include: /\b(?:import|export)\b|\brequire\s*\(/ },
       },
-      async handler(code, id, options) {
-        const s = state.sessionOf(this.environment)
-        const env = state.envOf(this.environment.name)
-        if (!env || identify(id).lang !== null) {
-          return null
-        }
-        // (a dependency's generated JS: only a Start package's)
-        if (s.start.classes.classOf(id) === 'package') {
-          return null
-        }
-        let inputMap: InputSourceMap | null | undefined
-        const readInputMap = () =>
-          inputMap === undefined
-            ? (inputMap = inputMapOf(this, code, identify(id).path))
-            : inputMap
-        const out = await s.start.compile(
-          {
-            id,
-            code,
-            env,
-            inputMap: readInputMap,
-            wantMap: true,
-            late: true,
-            lang: lateLang(options?.moduleType),
-          },
-          state.hostFor(
-            s,
-            this.environment,
-            (source, imp, options) => this.resolve(source, imp, options),
-            id,
-          ),
-        )
-        if (
-          !out ||
-          (out.diagnostics.some((d) => d.by === 'parse') &&
-            !bundlerParses(this, code, options?.moduleType))
-        ) {
-          // not JavaScript the bundler takes as it is: another plugin's
-          // input (Markdown a later plugin compiles), nothing to judge
-          return null
-        }
-        // (a watch build rebuilds the module when a file its plan read
-        // changes: the module graph misses an import the compile erased)
-        watchDependencies(this, out, identify(id).path)
-        // (JavaScript the bundler parses and the compiler cannot fails the
-        // client build when it names a Start package:
-        // `StartCompilerSession.report`)
-        state.reportDiagnostics(
-          s,
-          this,
-          out,
-          identify(id).path,
-          code,
-          env.type,
-          readInputMap,
-        )
-        let outcome = s.start.afterCompile(env, id, out)
-        if (outcome instanceof Promise) {
-          outcome = await outcome
-        }
-        const { error, mock } = outcome
-        if (error) {
-          this.error(error)
-        }
-        const committed = state.afterCommit(s, env)
-        if (committed) {
-          await committed
-        }
-        if (mock) {
-          return { code: mock.code, map: null }
-        }
-        if (out.code === code) {
-          return null
-        }
-        return { code: out.code, map: out.map as never }
+      handler(code, id, options) {
+        const handler = handlerOf(this.environment.name)
+        return handler ? handler.call(this, code, id, options) : null
       },
     },
-  }
-}
-
-/**
- * The language the late pass reads a module's code as: the module type the
- * bundler parses it as (`ts` from a plugin compiling another language to
- * TypeScript), JSX for JavaScript or a module type that is no script (the
- * compile then fails to parse it, and `bundlerParses` decides).
- */
-function lateLang(moduleType: string | undefined) {
-  return moduleType === 'ts' || moduleType === 'tsx' ? moduleType : 'jsx'
-}
-
-/**
- * Whether the bundler's parser takes `code` as the module type it will parse
- * the module as (`moduleType`, which a plugin may set: `ts` for another
- * language compiled to TypeScript).
- */
-function bundlerParses(
-  ctx: {
-    parse: (
-      code: string,
-      options?: { lang?: 'js' | 'jsx' | 'ts' | 'tsx' },
-    ) => unknown
-  },
-  code: string,
-  moduleType: string | undefined,
-): boolean {
-  const lang = moduleType ?? 'js'
-  if (lang !== 'js' && lang !== 'jsx' && lang !== 'ts' && lang !== 'tsx') {
-    return false
-  }
-  try {
-    ctx.parse(code, { lang })
-    return true
-  } catch {
-    return false
   }
 }

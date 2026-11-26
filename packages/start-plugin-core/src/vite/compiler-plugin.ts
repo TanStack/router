@@ -33,7 +33,6 @@ import {
   resolveSameFileSpecifier,
   staleHotUpdate,
   takeStaleModules,
-  watchDependencies,
   watchLoadedFile,
   withOwnSourcesNamedByFile,
 } from '@tanstack/router-utils/compiler'
@@ -41,7 +40,6 @@ import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import { TRANSFORM_ID_REGEX } from '../constants'
 import { resolveRegistrySpecifier } from '../server-fns/resolver'
 import { resolveViteId } from '../utils'
-import { isVueSfc } from '../compiler/vue'
 import { NODE_MODULES_RE } from '../compiler/scope'
 import { resolveViteEdgeModuleId } from '../import-protection/edge-modules'
 import { viteDevNodeGraph } from '../import-protection/graph-trace'
@@ -50,11 +48,7 @@ import {
   rolldownMocksInChunks,
   rolldownNodeGraph,
 } from '../import-protection/chunk-lists'
-import {
-  inputMapOf,
-  optimizedDependency,
-  watchesSentinel,
-} from './compiler-state'
+import { optimizedDependency, watchesSentinel } from './compiler-state'
 import { compileHandlerReach } from './handler-reach'
 import {
   buildInvalidationHosts,
@@ -62,23 +56,15 @@ import {
   invalidateFor,
 } from './invalidation'
 import { ASSET_FILE_RE, latePassPlugin } from './late-pass-plugin'
+import { scriptTransform } from './script-transform'
 import {
   devLookupPlugin,
   forwardPlugin,
   resolverPlugin,
 } from './server-fn-plugins'
-import type {
-  InputSourceMap,
-  InvalidateChange,
-} from '@tanstack/router-utils/compiler'
+import type { InvalidateChange } from '@tanstack/router-utils/compiler'
 import type { DevEnvironment, Plugin, PluginOption } from 'vite'
 import type { ViteCompilerState, ViteStartEnvironment } from './compiler-state'
-
-/** A transform hook's handler (shared by the compiler's two transform hooks of an environment). */
-type TransformHandler = Extract<
-  NonNullable<Plugin['transform']>,
-  { handler: unknown }
->['handler']
 
 /** Specifiers of import protection's edge modules. */
 const IP_SPECIFIER_RE = /tanstack-start-ip:/
@@ -131,71 +117,7 @@ function envCompilerPlugins(
   env: ViteStartEnvironment,
 ): Array<Plugin> {
   const watches = env.name === state.watchingEnv
-  const compileTransform: TransformHandler = async function (code, id) {
-    const identity = identify(id)
-    if (identity.lang === null) {
-      return null
-    }
-    const s = state.sessionOf(this.environment)
-    const environment = this.environment
-    let inputMap: InputSourceMap | null | undefined
-    const readInputMap = () =>
-      inputMap === undefined
-        ? (inputMap = inputMapOf(this, code, identity.path))
-        : inputMap
-    // a Vue SFC's script block, Vue's output: positions in the SFC
-    const vue = isVueSfc(identity.path)
-    // (the host services and the sink only for a module the session takes:
-    // most of a dependency graph passes through)
-    let sink: ReturnType<typeof state.diagnosticSink> | undefined
-    const sinkOf = () =>
-      (sink ??= state.diagnosticSink(s, this, identity.path, code, vue))
-    const { outcome } = await s.start.transform(
-      {
-        id,
-        code,
-        env,
-        inputMap: readInputMap,
-        wantMap:
-          s.start.opts.mode === 'dev' ||
-          environment.config.build.sourcemap !== false,
-        ...(vue && { originalMap: readInputMap }),
-        reach: () => state.packageReach(environment, identity.path, code),
-      },
-      () =>
-        state.hostFor(
-          s,
-          environment,
-          (source, imp, options) => this.resolve(source, imp, options),
-          id,
-        ),
-      {
-        warn: (d, at, generated, module) =>
-          sinkOf().warn(d, at, generated, module),
-        committed: () => state.afterCommit(s, env),
-      },
-    )
-    if (outcome.kind === 'passthrough') {
-      return null
-    }
-    watchDependencies(this, outcome.output, normalizePath(identity.path))
-    if (outcome.kind === 'failed') {
-      if (outcome.error) {
-        this.error(outcome.error)
-      }
-      // (the first error fails the module: `ctx.error` throws)
-      const [first] = outcome.errors
-      sinkOf().error(first!.d, first!.at, first!.generated)
-      return null
-    }
-    if (outcome.kind === 'mock') {
-      return { code: outcome.code, map: null }
-    }
-    if (outcome.unchanged) {
-      return null
-    }
-    return { code: outcome.output.code, map: outcome.output.map as never }
-  }
+  const compileTransform = scriptTransform(state, env, 'main')
   const plugin: Plugin = {
     name: `tanstack-start:compiler:${env.name}`,
     enforce: 'pre',
@@ -388,21 +310,26 @@ function envCompilerPlugins(
           // never compiled (the transform filters exclude it), and an
           // import the compiler does not read may have brought it here:
           // a denied file's text is served as its mock
-          const out = await s.start.assetOutput(env, id)
-          if (!out) {
-            return null
+          const { outcome } = await s.start.transform(
+            { moduleType: 'asset', id, env },
+            () =>
+              state.hostFor(s, this.environment, (source, imp, options) =>
+                this.resolve(source, imp, options),
+              ),
+            {
+              warn: (d) => this.warn(d.message),
+              committed: () => state.afterCommit(s, env),
+            },
+          )
+          if (outcome.kind === 'failed' && outcome.error) {
+            this.error(outcome.error)
           }
-          const { error, mock } = await s.start.afterCompile(env, id, out)
-          if (error) {
-            this.error(error)
-          }
-          await state.afterCommit(s, env)
-          if (!mock) {
+          if (outcome.kind !== 'mock') {
             return null
           }
           watchLoadedFile(this, identify(id).path)
           // (Vite's JSON plugin parses what a `.json` loads as)
-          return { code: id.endsWith('.json') ? '{}' : mock.code }
+          return { code: id.endsWith('.json') ? '{}' : outcome.code }
         }
         return loadDerivedSource(this, id)
       },

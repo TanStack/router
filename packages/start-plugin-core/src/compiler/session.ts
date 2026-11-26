@@ -199,8 +199,18 @@ export interface StartCompileInput {
 
 const NO_OUTCOME: CompileOutcome = { error: null }
 
-/** One module handed to the session (`StartCompilerSession.transform`): a JS/TS module of the bundler's main transform. */
-export interface ModuleRequest {
+/** One module handed to the session (`StartCompilerSession.transform`): a script, or an asset (no bytes yet). */
+export type ModuleRequest = ScriptRequest | AssetRequest
+
+/**
+ * A script module: a JS/TS module of the bundler's main transform
+ * (`pass: 'main'`), or the JavaScript another plugin made of a module that
+ * is no JS/TS (`.vue`, `.mdx`: `pass: 'late'`), judged by `start-env` and
+ * import protection only.
+ */
+export interface ScriptRequest {
+  moduleType: 'js'
+  pass: 'main' | 'late'
   /** The bundler's id (path with query). */
   id: string
   code: string
@@ -213,6 +223,26 @@ export interface ModuleRequest {
   originalMap?: () => InputSourceMap | null
   /** A host that bundles only the Start packages it found (`report`'s `reach`), read for a compiled module only. */
   reach?: () => StartPackageReach | undefined
+  /** The late pass: the language the bundler parses the code as (default `jsx`). */
+  lang?: CompileInput['lang']
+  /**
+   * The late pass: whether the bundler parses the code as it is (asked when
+   * the compiler cannot): code neither parses is another plugin's input
+   * (Markdown a later plugin compiles), not the compiler's.
+   */
+  bundlerParses?: () => boolean
+}
+
+/**
+ * An asset id (`x.ts?raw`, `x.svg?url`, `?inline`, `?worker`, a file the
+ * bundler loads as no script): never compiled, judged by import protection
+ * alone (a denied file's text is served as its mock). It has no key in the
+ * core: no newer answer can overtake one.
+ */
+export interface AssetRequest {
+  moduleType: 'asset'
+  id: string
+  env: StartCompilerEnvironment
 }
 
 /** What the host serves for a module (`StartCompilerSession.transform`). */
@@ -221,8 +251,13 @@ export type ModuleOutcome =
   | { kind: 'passthrough' }
   /** The compile's output; `unchanged`: its code is the input's (the upstream map stands). */
   | { kind: 'served'; output: CompileOutput; unchanged: boolean }
-  /** The mock of a module that is its own violation, instead of the output. */
-  | { kind: 'mock'; output: CompileOutput; code: string; mockId: string }
+  /** The mock of a module that is its own violation, instead of the output (an asset's: no output). */
+  | {
+      kind: 'mock'
+      output: CompileOutput | null
+      code: string
+      mockId: string
+    }
   /**
    * The module fails, current or not: the compile's errors (the first is
    * the module's failure; a current answer commits nothing: the module's
@@ -231,7 +266,7 @@ export type ModuleOutcome =
    */
   | {
       kind: 'failed'
-      output: CompileOutput
+      output: CompileOutput | null
       errors: Array<ReportedDiagnostic>
       error: Error | null
     }
@@ -620,6 +655,9 @@ export class StartCompilerSession {
     host: () => HostServices,
     hooks: TransformHooks,
   ): Promise<{ outcome: ModuleOutcome; committed: boolean }> {
+    if (req.moduleType === 'asset') {
+      return this.transformAsset(req, hooks)
+    }
     const identity = identify(req.id)
     // (a module id's path as the core keys a file: the host's ids are
     // normalized already)
@@ -637,7 +675,8 @@ export class StartCompilerSession {
     ) {
       return { outcome: PASSTHROUGH, committed: false }
     }
-    return this.settleCore(req, host(), async ({ output, current }) => {
+    const input = { ...req, late: req.pass === 'late' }
+    return this.settleCore(input, host(), async ({ output, current }) => {
       let answer =
         admitted && output ? this.answer(req, identity, output) : PASSED
       if (answer instanceof Promise) {
@@ -676,12 +715,72 @@ export class StartCompilerSession {
     })
   }
 
-  /** `transform`'s answer on a compiled module: diagnosed, judged, its edge modules defined (a promise only when import protection asks something now). */
+  /**
+   * `transform` of an asset id: import protection's verdict on it
+   * (`ImportProtectionEnv.assetOutput`: a denied file's text is its mock),
+   * judged and committed at once (no key in the core: always current).
+   * Nothing writes the registry or the committed-id set.
+   */
+  private async transformAsset(
+    req: AssetRequest,
+    hooks: TransformHooks,
+  ): Promise<{ outcome: ModuleOutcome; committed: boolean }> {
+    const ipEnv = this.ip?.env(req.env.name)
+    if (!ipEnv) {
+      return { outcome: PASSTHROUGH, committed: false }
+    }
+    const out = await ipEnv.assetOutput(req.id, (path) =>
+      this.rawFacts.marker(path, req.env.name),
+    )
+    if (!out) {
+      ipEnv.retire(req.id)
+      return { outcome: PASSTHROUGH, committed: true }
+    }
+    let judgement = ipEnv.judge(req.id, out)
+    if (judgement instanceof Promise) {
+      judgement = await judgement
+    }
+    ipEnv.defineEdges(judgement.edgeModules)
+    ipEnv.commit(req.id, judgement.record)
+    if (judgement.reports.length > 0) {
+      await runReports(judgement.reports)
+    }
+    const committed = hooks.committed?.()
+    if (committed) {
+      await committed
+    }
+    const outcome: ModuleOutcome = judgement.error
+      ? { kind: 'failed', output: null, errors: [], error: judgement.error }
+      : judgement.mock
+        ? {
+            kind: 'mock',
+            output: null,
+            code: judgement.mock.code,
+            mockId: judgement.mock.id,
+          }
+        : PASSTHROUGH
+    return { outcome, committed: true }
+  }
+
+  /**
+   * `transform`'s answer on a compiled module: diagnosed, judged, its edge
+   * modules defined (a promise only when import protection asks something
+   * now). The late pass's code that neither the compiler nor the bundler
+   * parses is another plugin's input: passed through.
+   */
   private answer(
-    req: ModuleRequest,
+    req: ScriptRequest,
     identity: ReturnType<typeof identify>,
     output: CompileOutput,
   ): Answer | Promise<Answer> {
+    const late = req.pass === 'late'
+    if (
+      late &&
+      output.diagnostics.some((d) => d.by === 'parse') &&
+      !(req.bundlerParses?.() ?? true)
+    ) {
+      return PASSED
+    }
     const diagnosis = this.diagnose(
       output,
       identity.path,
@@ -689,6 +788,7 @@ export class StartCompilerSession {
       req.env.type,
       req.originalMap,
       req.reach?.(),
+      late ? (req.lang ?? 'jsx') : undefined,
     )
     if (diagnosis.errors.length > 0) {
       return {
@@ -753,7 +853,7 @@ export class StartCompilerSession {
    * does. (A compile error commits nothing: `transform`.)
    */
   private commit(
-    req: ModuleRequest,
+    req: ScriptRequest,
     identity: ReturnType<typeof identify>,
     file: string,
     key: string,
@@ -768,7 +868,7 @@ export class StartCompilerSession {
       this.registry.set(
         req.env,
         identity.canonicalId,
-        kept ? serverFnFactsOf(outcome.output) : null,
+        kept && outcome.output ? serverFnFactsOf(outcome.output) : null,
       )
     }
     const ipEnv = this.ip?.env(req.env.name)
@@ -910,6 +1010,8 @@ export class StartCompilerSession {
     envType: 'client' | 'server',
     inputMap?: () => InputSourceMap | null,
     reach?: StartPackageReach,
+    /** The language the code is in when the file's name says none (the late pass: `.mdx`, `.vue`). */
+    lang?: CompileInput['lang'],
   ): Diagnosis {
     const diagnosis: Diagnosis = {
       errors: [],
@@ -1015,7 +1117,7 @@ export class StartCompilerSession {
         }
         if (
           envType === 'client' &&
-          !(commonJsScript ??= leftToTheBundler(code, file))
+          !(commonJsScript ??= leftToTheBundler(code, file, lang))
         ) {
           return {
             severity: 'error',
@@ -1387,10 +1489,15 @@ function originalSink(
  * Whether a module the compiler cannot parse is none of its business: a file
  * that is no JS/TS (an asset, or the text of a `.md` the late pass sees
  * before a loader turns it into JS), or a CommonJS script (no ES module
- * syntax).
+ * syntax). `codeLang`: the language of code whose file's name says none
+ * (the late pass's JavaScript of a `.mdx`, which the bundler parses).
  */
-function leftToTheBundler(code: string, file: string): boolean {
-  const lang = langFromId(file)
+function leftToTheBundler(
+  code: string,
+  file: string,
+  codeLang?: CompileInput['lang'],
+): boolean {
+  const lang = langFromId(file) ?? codeLang ?? null
   return (
     lang === null ||
     parseModule(code, { lang, sourceType: 'commonjs', semantic: false }).ok

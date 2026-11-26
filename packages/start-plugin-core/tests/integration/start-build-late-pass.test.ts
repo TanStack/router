@@ -490,3 +490,44 @@ export const value = label
     timeout,
   )
 })
+
+// The JavaScript of an `.mdx` that finishes a builder another module exports
+// (so it names no Start package) and nests code past the parser's depth
+// limit: the bundler parses it, the compiler cannot, so its handler cannot
+// be removed from the client. The late pass fails the client build at it,
+// as the main pass fails a script's (it read the `.mdx` name as no
+// language, and left the module to the bundler with its handler).
+// Source: Astra's review of the parser's depth limit (KNOWN-BUGS accepted
+// limit); settlement step 3.
+describe('vite build, an MDX module the compiler cannot parse', () => {
+  test(
+    'fails the client build at the module',
+    async () => {
+      const error = await buildStart({
+        bundler: 'vite',
+        files: {
+          'src/b.ts': files['src/b.ts'],
+          'src/deep.mdx': `import { base } from './b'
+export const deep = ${'['.repeat(600)}1${']'.repeat(600)}
+export const finished = base.handler(async () => 'MARK_DEEP_HANDLER')
+`,
+          'src/entry.ts': `export { finished } from './deep.mdx'\n`,
+        },
+        entry: 'src/entry.ts',
+        viteConfig: mdxConfig.viteConfig,
+      }).then(
+        () => expect.fail('the build succeeded'),
+        (e: unknown) => e,
+      )
+      if (!(error instanceof StartBuildError)) {
+        throw error
+      }
+      expectDiagnostic(error.diagnostics, {
+        severity: 'error',
+        file: 'src/deep.mdx',
+        root: error.root,
+      })
+    },
+    timeout,
+  )
+})

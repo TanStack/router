@@ -198,9 +198,11 @@ function info not found` when one of them calls it, and the build says nothing, 
   curried-arrow chains), 127 nested callbacks or `jsx("div", {children:` calls, 84 levels of nested data
   (`{children: [{`). Past it the file does not parse: a Start module fails the client build with a positioned error,
   a route file fails route generation (a warm dev edit leaves it unsplit with a warning), and a module another plugin
-  hands to the late pass under a non-script name (`.mdx`) passes through without a diagnostic. 0.28.1 and `main`
-  (Babel) parsed deeper. No file of the corpus (216,934) or of the workspace's installed packages (64,642) reaches
-  it. Row: `start-build-unparsed-module.test.ts`, "code nested more than 256 levels deep".
+  hands to the late pass under a non-script name (`.mdx`) fails the client build on Vite (settlement step 3) and
+  passes through without a diagnostic on Rsbuild (until its loader moves, step 4). 0.28.1 and `main` (Babel) parsed
+  deeper. No file of the corpus (216,934) or of the workspace's installed packages (64,642) reaches it. Rows:
+  `start-build-unparsed-module.test.ts`, "code nested more than 256 levels deep"; `start-build-late-pass.test.ts`,
+  "vite build, an MDX module the compiler cannot parse".
 - **A compile whose every attempt was overtaken can commit after the rebuild of its text** (settlement design, step
   1, decided by a run: the same-text rule is not built). A dependency saved during each of three attempts leaves the
   compile's answer unpublished (the file is left for its bundler to build again); if its host still acts on it while

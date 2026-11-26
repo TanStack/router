@@ -60,7 +60,6 @@ import type {
 } from '../types'
 import type { RouterPluginContext } from '@tanstack/router-plugin/context'
 import type {
-  CompileOutput,
   Diagnostic,
   DiagnosticPosition,
   HostServices,
@@ -858,33 +857,6 @@ export class ViteCompilerState implements ClientBuilds {
   /** Whether `env` is a server-fn provider of its own (RSC), not the SSR environment. */
   isSeparateProvider(env: ViteStartEnvironment): boolean {
     return !this.ssrIsProvider && env.name === this.opts.providerEnvName
-  }
-
-  /**
-   * Reports a compile's diagnostics through a hook context (`ctx.error`
-   * throws): `diagnosticSink`'s sink, and the Start packages the host
-   * bundles (`packageReach`). `inputMap`: a compile of another plugin's
-   * output (its positions are the original file's,
-   * `StartCompilerSession.report`).
-   */
-  reportDiagnostics(
-    s: Session,
-    ctx: DiagnosticContext,
-    out: CompileOutput,
-    filePath: string,
-    code: string,
-    envType: 'client' | 'server',
-    inputMap?: () => InputSourceMap | null,
-  ): void {
-    s.start.report(
-      out,
-      filePath,
-      code,
-      envType,
-      this.diagnosticSink(s, ctx, filePath, code, inputMap !== undefined),
-      inputMap,
-      this.packageReach(ctx.environment, filePath, code),
-    )
   }
 
   /**
