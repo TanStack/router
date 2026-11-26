@@ -616,6 +616,29 @@ export { default as help } from './help.mdx'
   )
 })
 
+const fooPage = `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => 'MARK_FOO_HANDLER')
+`
+const fooRule = {
+  rsbuildConfig: {
+    tools: {
+      rspack: {
+        module: { rules: [{ test: /\.foo$/, type: 'javascript/auto' }] },
+      },
+    },
+  },
+}
+/** A loader exporting its file's text. */
+const textLoader = `module.exports = function (source) {
+  return 'export default ' + JSON.stringify(source)
+}
+`
+/** A loader replacing its file with a module that uses no Start. */
+const cleanLoader = `module.exports = function () {
+  return "export default 'MARK_CLEAN'"
+}
+`
+
 // A file type the late pass does not read (it reads the JavaScript of
 // `.vue`, `.svelte`, `.md`, `.mdx`, `.astro` and `.marko` files), which an
 // app's rule makes JavaScript (`javascript/auto`): its server fn's handler
@@ -683,6 +706,80 @@ export const parts = [typeof styles.a, typeof icon]
         'string',
         'string',
       ])
+    },
+    timeout,
+  )
+
+  // (a loader that exports a file's text: the text quoting a Start package
+  // is no import of it)
+  test(
+    'builds a module whose text quotes a Start package it does not import',
+    async () => {
+      const build = await buildStart({
+        bundler: 'rsbuild',
+        files: {
+          'src/sample.txt': `import { createServerFn } from '@tanstack/react-start'\n`,
+          'src/text-loader.cjs': textLoader,
+          'src/entry.ts': `// @ts-expect-error (a text module)
+export { default as sample } from './sample.txt'
+`,
+        },
+        entry: 'src/entry.ts',
+        rsbuildConfig: {
+          tools: {
+            rspack: {
+              module: {
+                rules: [
+                  {
+                    test: /\.txt$/,
+                    type: 'javascript/auto',
+                    use: [{ loader: './src/text-loader.cjs' }],
+                  },
+                ],
+              },
+            },
+          },
+        },
+      })
+      expectNoDiagnostic(build.diagnostics, { severity: 'error' })
+      expect((await build.client.run('return entry.sample')).result).toContain(
+        '@tanstack/react-start',
+      )
+    },
+    timeout,
+  )
+
+  // (two modules of one file: a loader's clean output does not withdraw the
+  // other module's failure, whose handler would reach the client; the dev
+  // rows: `rsbuild/dev-late-file-type.test.ts`)
+  test(
+    'fails the build when another module of the same file is clean',
+    async () => {
+      const error = await buildStart({
+        bundler: 'rsbuild',
+        files: {
+          'src/page.foo': fooPage,
+          'src/clean-loader.cjs': cleanLoader,
+          'src/entry.ts': `// @ts-expect-error (a module of an app rule)
+export { fn } from './page.foo'
+// @ts-expect-error (a loader's module)
+export { default as clean } from '!!./clean-loader.cjs!./page.foo'
+`,
+        },
+        entry: 'src/entry.ts',
+        ...fooRule,
+      }).then(
+        () => expect.fail('the build succeeded'),
+        (e: unknown) => e,
+      )
+      if (!(error instanceof StartBuildError)) {
+        throw error
+      }
+      expectDiagnostic(error.diagnostics, {
+        severity: 'error',
+        file: 'src/page.foo',
+        root: error.root,
+      })
     },
     timeout,
   )
