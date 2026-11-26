@@ -7,7 +7,7 @@
  * literal only):
  *
  * - dev: every violation gets its edge module, in both behaviours, and the
- *   host decides after the compile (`ImportProtectionEnv.afterCompile`:
+ *   host decides after the compile (`ImportProtectionEnv.judge`:
  *   `allowImport`, then the mock and its report, or for `error` the failure
  *   of the importer). An edge the bundler's TypeScript transform may erase
  *   (a static import of a `.ts`/`.tsx` module with no binding used as a

@@ -170,7 +170,7 @@ export interface ImportEdgesFacts {
   /**
    * The resolved edges the policy judged, by output id (each output's
    * importer id is its own): what a compile of the output gives the edge
-   * index (`ImportProtectionEnv.afterCompile`, its one writer), a cached
+   * index (`ImportProtectionEnv.commit`, its one writer), a cached
    * plan's compile as a fresh one's.
    */
   edges?: Record<string, Array<IndexedEdge>>

@@ -498,35 +498,86 @@ export const value = label
 // as the main pass fails a script's (it read the `.mdx` name as no
 // language, and left the module to the bundler with its handler).
 // Source: Astra's review of the parser's depth limit (KNOWN-BUGS accepted
-// limit); settlement step 3.
-describe('vite build, an MDX module the compiler cannot parse', () => {
-  test(
-    'fails the client build at the module',
-    async () => {
-      const error = await buildStart({
-        bundler: 'vite',
-        files: {
-          'src/b.ts': files['src/b.ts'],
-          'src/deep.mdx': `import { base } from './b'
+// limit); settlement steps 3 (Vite) and 4 (Rsbuild).
+describe.each(startBundlers)(
+  '%s build, an MDX module the compiler cannot parse',
+  (bundler) => {
+    test(
+      'fails the client build at the module',
+      async () => {
+        const error = await buildStart({
+          bundler,
+          files: {
+            'src/b.ts': files['src/b.ts'],
+            'src/deep.mdx': `import { base } from './b'
 export const deep = ${'['.repeat(600)}1${']'.repeat(600)}
 export const finished = base.handler(async () => 'MARK_DEEP_HANDLER')
 `,
-          'src/entry.ts': `export { finished } from './deep.mdx'\n`,
+            'src/entry.ts': `export { finished } from './deep.mdx'\n`,
+          },
+          entry: 'src/entry.ts',
+          ...mdxConfig,
+        }).then(
+          () => expect.fail('the build succeeded'),
+          (e: unknown) => e,
+        )
+        if (!(error instanceof StartBuildError)) {
+          throw error
+        }
+        expectDiagnostic(error.diagnostics, {
+          severity: 'error',
+          file: 'src/deep.mdx',
+          root: error.root,
+        })
+      },
+      timeout,
+    )
+  },
+)
+
+// An MDX module the app also imports as its text (`?raw` typed
+// `asset/source`, the MDX loader still compiling it to JavaScript): the
+// text is the loader's output, not Start's (whose client output removes the
+// handler), and the page's own import is compiled as before.
+// Source: whole-PR review S5-10; settlement step 4.
+describe('rsbuild build, an MDX module imported as its text', () => {
+  test(
+    'the text is not compiled; the module is',
+    async () => {
+      const build = await buildStart({
+        bundler: 'rsbuild',
+        files: {
+          'src/page.mdx': `import { createServerFn } from '@tanstack/react-start'
+export const fn = createServerFn().handler(async () => 'MARK_SOURCE_HANDLER')
+`,
+          'src/entry.ts': `export { fn } from './page.mdx'
+// @ts-expect-error (a text module)
+export { default as text } from './page.mdx?raw'
+`,
         },
         entry: 'src/entry.ts',
-        viteConfig: mdxConfig.viteConfig,
-      }).then(
-        () => expect.fail('the build succeeded'),
-        (e: unknown) => e,
-      )
-      if (!(error instanceof StartBuildError)) {
-        throw error
-      }
-      expectDiagnostic(error.diagnostics, {
-        severity: 'error',
-        file: 'src/deep.mdx',
-        root: error.root,
+        rsbuildConfig: {
+          tools: {
+            rspack: {
+              module: {
+                rules: [
+                  {
+                    test: /\.mdx$/,
+                    use: [{ loader: require.resolve('@mdx-js/loader') }],
+                  },
+                  { resourceQuery: /^\?raw$/, type: 'asset/source' },
+                ],
+              },
+            },
+          },
+        },
       })
+      const { result } = await build.client.run(
+        'return [String(entry.text), typeof entry.fn.url]',
+      )
+      const [text, url] = result as [string, string]
+      expect(text).toContain('MARK_SOURCE_HANDLER')
+      expect(url).toBe('string')
     },
     timeout,
   )

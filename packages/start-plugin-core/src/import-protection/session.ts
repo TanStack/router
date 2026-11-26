@@ -746,15 +746,7 @@ function unknownEdgeLoad(
  */
 interface Served {
   verdict: 'mock' | 'real'
-  self: EdgeViolation | null
-  /**
-   * An edge module's state read from a restored module's record (Rspack's
-   * persistent cache: another session's answer), until this session's
-   * `allowImport` answer replaces it (`mismatches`). Any other edge state was
-   * written from this session's answer on the module's one import
-   * (`dedupeKey`), asked once and remembered: it never differs.
-   */
-  restored?: true
+  self: EdgeViolation
   /**
    * A denied file's verdict as the settlement gives it from the
    * compilation's graph (`ImportProtection.ground`, `settle`: Rsbuild's
@@ -772,6 +764,24 @@ interface Served {
  * pattern import, an import another plugin added), or a denied
  * client-reference import (`handoff`: its violation).
  */
+/**
+ * An edge's state (`ImportProtectionEnv.edgeStates`, by its key): owned by
+ * the edge's definition, not by an importer (`defineEdges`, `decide`).
+ * `real`: `allowImport` allowed its import, the edge module re-exports the
+ * target.
+ */
+interface EdgeState {
+  verdict: 'mock' | 'real'
+  /**
+   * Read from a restored module's record (Rspack's persistent cache:
+   * another session's answer), until this session's `allowImport` answer
+   * replaces it (`restoredMismatches`). Any other state was written from
+   * this session's answer on the edge's one import (`dedupeKey`), asked once
+   * and remembered: it never differs.
+   */
+  restored?: true
+}
+
 interface CheckedEdge {
   /** The importer's file. */
   importer: string
@@ -855,16 +865,6 @@ interface RegisteredModule {
 export interface CompiledOutputLike {
   output: string
   facts: { planners: Record<string, unknown> }
-}
-
-/**
- * The outcome of a compile for its host: an error fails the module (dev
- * `behavior: 'error'`); `mock` is served instead of its output (its own
- * violation, `EdgeViolation.self`; `id`: the mock's id among our modules).
- */
-export interface CompileOutcome {
-  error: Error | null
-  mock?: { code: string; id: string }
 }
 
 /**
@@ -954,11 +954,13 @@ class ImportProtectionEnv {
   private readonly importersByFile = new IdsByFile()
   /** The edge keys holding a deferred violation (`RegisteredModule.deferred`), by its importer's file: what `forget` and `hold` release. */
   private readonly deferredByFile = new Map<string, Set<string>>()
-  /**
-   * The served ledger (`Served`): an edge module by its key, a denied file
-   * compiled under its own id by that id (`normalizePath`).
-   */
+  /** The served ledger (`Served`): a denied file compiled under its own id, by that id (`normalizePath`). */
   private readonly served = new Map<string, Served>()
+  /**
+   * The edges' states (`EdgeState`), by edge key: what their definitions
+   * hold (a restored edge's state may come before its definition).
+   */
+  private readonly edgeStates = new Map<string, EdgeState>()
   /** Dev: pending violations confirmed by the bundler's request (`${importerId}\0${edgeKey}`). */
   private readonly confirmed = new Set<string>()
   private runtimeEmitted = false
@@ -1061,7 +1063,7 @@ class ImportProtectionEnv {
    * An asset id (`isAssetId`: `x.ts?raw`, `x.svg?url`, `?inline`, `?worker`)
    * is the file's text and never compiled, so the planner cannot make it its
    * own violation: the same verdict, as the output of a compile, for the host
-   * to hand to `afterCompile`. Null when nothing can deny it here. On a
+   * to judge (`judge`, through `StartCompilerSession.transform`). Null when nothing can deny it here. On a
    * server only the static edge is judged: the text or URL of a client-only
    * file runs nothing of it there. The marker is read only for a file of a
    * language (`marker`); a conflict is reported in a compile, which never
@@ -1289,7 +1291,7 @@ class ImportProtectionEnv {
     for (const e of edgeModules) {
       const m = this.defineModule(e.key, e.content, e.emit)
       if (e.verdict) {
-        this.served.set(e.key, { verdict: e.verdict, self: null })
+        this.edgeStates.set(e.key, { verdict: e.verdict })
       }
       if (e.deferred) {
         ;(m.deferred ??= new Map()).set(
@@ -1353,34 +1355,6 @@ class ImportProtectionEnv {
     if (this.served.size > 0) {
       this.served.delete(normalizePath(importerId))
     }
-  }
-
-  /**
-   * After a compile of an id of this environment, for the hosts that do not
-   * settle through `transform` yet (Rsbuild's loader, Vite's late pass and
-   * asset load): `judge`, `defineEdges`, `commit`, then the reports, for
-   * every answer, overtaken or not (until those hosts move: settlement steps
-   * 3 and 4). The outcome's error fails the module; `mock` is served
-   * instead of its output.
-   */
-  afterCompile(
-    importerId: string,
-    out: CompiledOutputLike,
-  ): CompileOutcome | Promise<CompileOutcome> {
-    const finish = (j: Judgement): CompileOutcome | Promise<CompileOutcome> => {
-      this.defineEdges(j.edgeModules)
-      this.commit(importerId, j.record)
-      const outcome: CompileOutcome = {
-        error: j.error,
-        ...(j.mock && { mock: j.mock }),
-      }
-      if (j.reports.length === 0) {
-        return outcome
-      }
-      return runReports(j.reports).then(() => outcome)
-    }
-    const j = this.judge(importerId, out)
-    return j instanceof Promise ? j.then(finish) : finish(j)
   }
 
   /**
@@ -1454,10 +1428,7 @@ class ImportProtectionEnv {
     const allowed = await this.allows(v)
     // (no `allowImport`: no decision, the edge stays undecided)
     if (!v.self && this.ip.config.allowImport) {
-      this.served.set(v.module.key, {
-        verdict: allowed ? 'real' : 'mock',
-        self: null,
-      })
+      this.edgeStates.set(v.module.key, { verdict: allowed ? 'real' : 'mock' })
     }
     return allowed
   }
@@ -1663,7 +1634,7 @@ class ImportProtectionEnv {
 
   /** The importers (files) of an edge module or handoff `allowImport` allowed (by key), while their import is there. @internal */
   *allowedBy(key: string): Generator<string> {
-    if (this.served.get(key)?.verdict === 'real') {
+    if (this.edgeStates.get(key)?.verdict === 'real') {
       for (const v of this.modules.get(key)?.violations.values() ?? []) {
         yield v.importer
       }
@@ -1689,11 +1660,8 @@ class ImportProtectionEnv {
    * served real, with a violation of the importer registered).
    */
   *allowedImporters(resolved: string): Generator<GraphNode> {
-    for (const [key, entry] of this.served) {
-      const m =
-        entry.self === null && entry.verdict === 'real'
-          ? this.modules.get(key)
-          : undefined
+    for (const [key, entry] of this.edgeStates) {
+      const m = entry.verdict === 'real' ? this.modules.get(key) : undefined
       if (m?.content.resolved === resolved) {
         for (const v of m.violations.values()) {
           yield { env: this.name, id: v.importerId }
@@ -1704,11 +1672,8 @@ class ImportProtectionEnv {
 
   /** The modules the allowed imports still there bring (`allowedImporters`), for `ImportProtection.release`. */
   *allowedTargets(): Generator<string> {
-    for (const [key, entry] of this.served) {
-      const m =
-        entry.self === null && entry.verdict === 'real'
-          ? this.modules.get(key)
-          : undefined
+    for (const [key, entry] of this.edgeStates) {
+      const m = entry.verdict === 'real' ? this.modules.get(key) : undefined
       if (m?.content.resolved && m.violations.size > 0) {
         yield m.content.resolved
       }
@@ -1761,10 +1726,9 @@ class ImportProtectionEnv {
     ) {
       const ref = this.ip.ids.parse(importerId)
       if (ref?.kind === 'edge') {
-        if (record.served && !this.served.has(ref.key)) {
-          this.served.set(ref.key, {
+        if (record.served && !this.edgeStates.has(ref.key)) {
+          this.edgeStates.set(ref.key, {
             verdict: record.served,
-            self: null,
             restored: true,
           })
         }
@@ -1790,7 +1754,7 @@ class ImportProtectionEnv {
 
   /** Whether anything was served under the ledger (`mismatches` finds nothing otherwise; most sessions). */
   get serving(): boolean {
-    return this.served.size > 0
+    return this.served.size > 0 || this.edgeStates.size > 0
   }
 
   /**
@@ -1803,7 +1767,7 @@ class ImportProtectionEnv {
    */
   async restoredMismatches(): Promise<Array<string>> {
     const out: Array<string> = []
-    for (const [key, entry] of this.served) {
+    for (const [key, entry] of this.edgeStates) {
       const m = entry.restored ? this.modules.get(key) : undefined
       if (!m) {
         continue
@@ -1814,7 +1778,7 @@ class ImportProtectionEnv {
       )
       if (real !== (entry.verdict === 'real')) {
         // (the state its rebuild loads)
-        this.served.set(key, { verdict: real ? 'real' : 'mock', self: null })
+        this.edgeStates.set(key, { verdict: real ? 'real' : 'mock' })
         out.push(this.ip.ids.specifier({ env: this.name, kind: 'edge', key }))
       }
     }
@@ -1832,10 +1796,7 @@ class ImportProtectionEnv {
   async mismatches(): Promise<Array<string>> {
     const out = await this.restoredMismatches()
     for (const [id, entry] of this.served) {
-      if (
-        entry.self &&
-        (await this.allowsSelf(entry.self)) !== (entry.verdict === 'real')
-      ) {
+      if ((await this.allowsSelf(entry.self)) !== (entry.verdict === 'real')) {
         out.push(id)
       }
     }
@@ -1861,8 +1822,8 @@ class ImportProtectionEnv {
     const out: Array<{ id: string; verdict: { real: boolean; why: string } }> =
       []
     for (const [id, entry] of this.served) {
-      const node = entry.self && { env: this.name, id: entry.self.importerId }
-      const verdict = node && grounding.verdictOf(node)
+      const node = { env: this.name, id: entry.self.importerId }
+      const verdict = grounding.verdictOf(node)
       if (!verdict) {
         continue
       }
@@ -1880,16 +1841,14 @@ class ImportProtectionEnv {
     verdict: 'mock' | 'real'
   }> {
     for (const { self, verdict } of this.served.values()) {
-      if (self) {
-        yield { self, verdict }
-      }
+      yield { self, verdict }
     }
   }
 
   /** Whether the ledger serves any module as the mock of its own violation. @internal */
   servesAnyMock(): boolean {
-    for (const { self, verdict } of this.served.values()) {
-      if (self && verdict === 'mock') {
+    for (const { verdict } of this.served.values()) {
+      if (verdict === 'mock') {
         return true
       }
     }
@@ -1899,7 +1858,7 @@ class ImportProtectionEnv {
   /** Whether the ledger serves module `id` as the mock of its own violation. @internal */
   servesMock(id: string): boolean {
     const entry = this.served.get(normalizePath(id))
-    return !!entry?.self && entry.verdict === 'mock'
+    return entry?.verdict === 'mock'
   }
 
   /** What makes a denied module real in `graph` (an exempt or allowed import arriving at it: `incoming`), as the settlement's history names it; null: nothing. @internal */
@@ -1997,31 +1956,32 @@ class ImportProtectionEnv {
     return false
   }
 
-  /** What the Rspack loader stores in `buildInfo[RSPACK_BUILD_INFO_KEY]` for a compiled output (null: nothing). */
-  buildInfo(
-    importerId: string,
-    out: CompiledOutputLike,
-  ): {
+  /**
+   * What the Rspack loader stores in an importer's `buildInfo`: its judged
+   * record (`IpRecord`: the violations, judged edges, client references,
+   * and the verdict it was served in), plain data a restore replays
+   * (`replay`). Null when there is nothing to keep.
+   */
+  buildInfoOf(record: IpRecord): {
     key: string
     value: RspackImportProtectionBuildInfo
   } | null {
-    const violations = violationsOf(out)
-    const judged = judgedEdgesOf(out)
-    const edges = judged?.edges ?? []
-    const revision = judged?.revision ?? null
-    const served = this.served.get(normalizePath(importerId))?.verdict
-    const clientReferences = clientReferencesOf(out)
-    return violations.length > 0 || edges.length > 0 || clientReferences
+    const edges = record.edges?.edges ?? []
+    const revision = record.edges?.revision ?? null
+    const served = record.self?.verdict
+    return record.violations.length > 0 ||
+      edges.length > 0 ||
+      record.clientReferences
       ? {
           key: RSPACK_BUILD_INFO_KEY,
           value: {
             version: RSPACK_BUILD_INFO_VERSION,
             env: this.name,
-            violations,
+            violations: record.violations,
             ...(edges.length > 0 && { edges }),
             ...(revision !== null && { revision }),
             ...(served && { served }),
-            ...(clientReferences && { clientReferences: true as const }),
+            ...(record.clientReferences && { clientReferences: true as const }),
           },
         }
       : null
@@ -2032,7 +1992,7 @@ class ImportProtectionEnv {
     id: string,
   ): { key: string; value: RspackImportProtectionBuildInfo } | null {
     const ref = this.ip.ids.parse(id)
-    const served = ref?.kind === 'edge' && this.served.get(ref.key)?.verdict
+    const served = ref?.kind === 'edge' && this.edgeStates.get(ref.key)?.verdict
     return served
       ? {
           key: RSPACK_BUILD_INFO_KEY,
@@ -2114,11 +2074,7 @@ class ImportProtectionEnv {
     }
     for (const entry of this.served.values()) {
       const self = entry.self
-      if (
-        !self ||
-        entry.verdict !== 'mock' ||
-        !this.reachable(self.importerId)
-      ) {
+      if (entry.verdict !== 'mock' || !this.reachable(self.importerId)) {
         continue
       }
       for (const { v, owner } of this.devReportsOf(self, graph)) {
@@ -2145,7 +2101,8 @@ class ImportProtectionEnv {
   /** The module an edge module `allowImport` allowed re-exports (by its facts id); null for any other id. */
   allowedTarget(id: string): string | null {
     const ref = this.ip.ids.parse(id)
-    return ref?.kind === 'edge' && this.served.get(ref.key)?.verdict === 'real'
+    return ref?.kind === 'edge' &&
+      this.edgeStates.get(ref.key)?.verdict === 'real'
       ? (this.modules.get(ref.key)?.content.resolved ?? null)
       : null
   }
@@ -2450,7 +2407,7 @@ class ImportProtectionEnv {
     }
     const runtime = this.ip.ids.specifier({ env: this.name, kind: 'runtime' })
     const c = m.content
-    if (this.served.get(key)?.verdict === 'real') {
+    if (this.edgeStates.get(key)?.verdict === 'real') {
       return {
         code: allowedModuleCode(c, c.resolved ?? c.specifier),
         moduleSideEffects: null,
@@ -2478,11 +2435,11 @@ class ImportProtectionEnv {
       this.ip.ids,
       this.name,
       (key) =>
-        this.modules.has(key) && this.served.get(key)?.verdict !== 'real',
+        this.modules.has(key) && this.edgeStates.get(key)?.verdict !== 'real',
     )
     return (id) => {
       const served = this.served.get(normalizePath(id))
-      if (served?.self && served.verdict === 'mock') {
+      if (served && served.verdict === 'mock') {
         const key = served.self.module.key
         if (this.modules.has(key)) {
           return key
@@ -2523,7 +2480,7 @@ class ImportProtectionEnv {
     const out = new Map<string, Conflict>()
     for (const [id, entry] of this.served) {
       const self = entry.self
-      if (!self || (holds && !holds(id))) {
+      if (holds && !holds(id)) {
         continue
       }
       const incoming = this.incoming(self, graph)
@@ -2673,12 +2630,7 @@ class ImportProtectionEnv {
       }
       for (const id of await this.mismatches()) {
         const entry = this.served.get(id)
-        if (
-          entry?.self &&
-          entry.verdict === 'real' &&
-          holds(id) &&
-          !demanded.has(id)
-        ) {
+        if (entry?.verdict === 'real' && holds(id) && !demanded.has(id)) {
           unsettled.set(id, { verdict: 'real', self: entry.self, order: null })
         }
       }
@@ -2748,7 +2700,7 @@ class ImportProtectionEnv {
     // `export {} from`: its mock is never imported)
     const survived = new Set(liveKeys)
     for (const [key, m] of host.kept ? this.modules : []) {
-      if (survived.has(key) || this.served.get(key)?.verdict === 'real') {
+      if (survived.has(key) || this.edgeStates.get(key)?.verdict === 'real') {
         continue
       }
       for (const v of m.violations.values()) {
