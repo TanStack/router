@@ -15587,6 +15587,9 @@ importers:
       rimraf:
         specifier: 'catalog:'
         version: 6.1.2
+      selfsigned:
+        specifier: ^5.5.0
+        version: 5.5.0
       vite:
         specifier: ^8.3.8
         version: 8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)

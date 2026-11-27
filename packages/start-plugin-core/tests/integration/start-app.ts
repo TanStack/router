@@ -23,9 +23,9 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { createRsbuild } from '@rsbuild/core'
-import { createBuilder, createLogger, createServer } from 'vite'
+import { createBuilder, createLogger, createServer, preview } from 'vite'
 import { onTestFinished } from 'vitest'
-import type { ViteDevServer } from 'vite'
+import type { PreviewOptions, PreviewServer, ViteDevServer } from 'vite'
 
 /** The options of `tanstackStart()`. */
 export type StartOptions = Record<string, unknown>
@@ -177,6 +177,26 @@ export async function startViteDevServer(
     configFile: false,
     logLevel: 'error',
     server: { middlewareMode: true },
+    plugins: [await startPlugin('vite', options)],
+  })
+  onTestFinished(() => server.close())
+  return server
+}
+
+/**
+ * Serves the built app as `vite preview` does, on a free port; closed when the
+ * test finishes.
+ */
+export async function startVitePreview(
+  app: StartApp,
+  previewOptions: PreviewOptions = {},
+  options: StartOptions = {},
+): Promise<PreviewServer> {
+  const server = await preview({
+    root: app.root,
+    configFile: false,
+    logLevel: 'error',
+    preview: { port: 0, ...previewOptions },
     plugins: [await startPlugin('vite', options)],
   })
   onTestFinished(() => server.close())
