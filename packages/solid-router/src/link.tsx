@@ -207,7 +207,12 @@ function createLinkProps(
     base.disabled = disabled
     base.target = options.target
     if (disabled) {
-      Object.assign(base, STATIC_DISABLED_PROPS)
+      // An anchor without `href` has no implicit role. Default it to `link`,
+      // but keep a role the caller set (e.g. `menuitem` inside a menu).
+      if (options.role === undefined) {
+        base.role = 'link'
+      }
+      base['aria-disabled'] = true
     }
 
     if (
@@ -502,10 +507,6 @@ const STATIC_DEFAULT_ACTIVE_ATTRIBUTES = {
   class: 'active',
   'data-status': 'active',
   'aria-current': 'page',
-}
-const STATIC_DISABLED_PROPS = {
-  role: 'link' as const,
-  'aria-disabled': true,
 }
 const STATIC_ACTIVE_ATTRIBUTES = {
   'data-status': 'active',

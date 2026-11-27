@@ -524,7 +524,9 @@ function combineResultProps({
   }
 
   if (disabled) {
-    result.role = 'link'
+    // An anchor without `href` has no implicit role. Default it to `link`,
+    // but keep a role the caller set (e.g. `menuitem` inside a menu).
+    result.role ??= 'link'
     result['aria-disabled'] = true
   }
 
@@ -581,7 +583,9 @@ function getExternalLinkProps(
   }
 
   if (disabled) {
-    result.role = 'link'
+    // An anchor without `href` has no implicit role. Default it to `link`,
+    // but keep a role the caller set (e.g. `menuitem` inside a menu).
+    result.role ??= 'link'
     result['aria-disabled'] = true
   }
 
