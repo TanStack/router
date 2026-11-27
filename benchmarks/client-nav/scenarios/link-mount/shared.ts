@@ -78,8 +78,11 @@ export function assertStepResult(stepIndex: number, container: HTMLElement) {
   }
 }
 
-// 4 steps = 2 mount/unmount cycles of 300 Links per benchmark iteration.
-export const ticksPerIteration = 4
+// One lap (a single mount/unmount cycle of 300 Links) per benchmark iteration.
+// CodSpeed simulation ignores `benchOptions` and runs setup, the warm-up lap
+// and one iteration 8 times within one test timeout; a lap keeps Vue's run
+// well inside it.
+export const ticksPerIteration = 2
 
 export const benchOptions = {
   warmupIterations: 50,
