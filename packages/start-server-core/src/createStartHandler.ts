@@ -57,6 +57,7 @@ import type {
   AnyFunctionMiddleware,
   AnyRequestMiddleware,
   AnyStartInstanceOptions,
+  RequestValidatorSlots,
   RouteMethod,
   RouteMethodHandlerFn,
   RouterEntry,
@@ -1129,6 +1130,83 @@ function withParsedParams(
   }
 }
 
+const requestSlots = ['path', 'query', 'headers', 'body'] as const
+
+/**
+ * Validate the method's request slots before its handler runs and pass the
+ * result as `ctx.data`. Runs after middleware, so auth rejects before
+ * validation does.
+ */
+function withValidatedData(
+  handler: TODO,
+  validator: RequestValidatorSlots | undefined,
+): TODO {
+  if (!validator) {
+    return handler
+  }
+
+  return async (ctx: TODO) => {
+    const data: Record<string, unknown> = {}
+    const issues: Array<{ slot: string; issues: ReadonlyArray<unknown> }> = []
+
+    for (const slot of requestSlots) {
+      const schema = validator[slot]
+      if (!schema) {
+        continue
+      }
+      const result = await schema['~standard'].validate(
+        await readRequestSlot(slot, ctx),
+      )
+      if (result.issues) {
+        issues.push({ slot, issues: result.issues })
+      } else {
+        data[slot] = result.value
+      }
+    }
+
+    if (issues.length) {
+      return Response.json(
+        { message: 'Invalid request', issues },
+        { status: 400 },
+      )
+    }
+    return handler({ ...ctx, data })
+  }
+}
+
+async function readRequestSlot(
+  slot: (typeof requestSlots)[number],
+  ctx: { request: Request; params: Record<string, unknown> },
+): Promise<unknown> {
+  switch (slot) {
+    case 'path':
+      return ctx.params
+    case 'headers':
+      return Object.fromEntries(ctx.request.headers)
+    case 'query': {
+      const query: Record<string, string | Array<string>> = {}
+      const searchParams = new URL(ctx.request.url).searchParams
+      for (const key of searchParams.keys()) {
+        const values = searchParams.getAll(key)
+        query[key] = values.length > 1 ? values : values[0]!
+      }
+      return query
+    }
+    case 'body': {
+      // Clone so the handler can still read the body itself.
+      const text = await ctx.request.clone().text()
+      if (!text) {
+        return undefined
+      }
+      try {
+        return JSON.parse(text)
+      } catch {
+        return text
+      }
+    }
+  }
+}
+
 async function handleServerRoutes({
   getRouter,
   request,
@@ -1211,7 +1289,13 @@ async function handleServerRoutes({
       const routeHandler =
         typeof handler === 'function' ? handler : handler.handler
       if (routeHandler) {
-        const parsedHandler = withParsedParams(routeHandler, matchedRoutes)
+        const parsedHandler = withParsedParams(
+          withValidatedData(
+            routeHandler,
+            typeof handler === 'function' ? undefined : handler.validator,
+          ),
+          matchedRoutes,
+        )
         if (!mayDefer) {
           terminalHandler = parsedHandler
           terminalNext = throwIfMayNotDefer

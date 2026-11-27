@@ -3762,6 +3762,89 @@ describe('createStartHandler direct server routes', () => {
     expect(render).not.toHaveBeenCalled()
   })
 
+  describe('request slot validators', () => {
+    const schema = (check: (value: any) => any) => ({
+      '~standard': {
+        version: 1 as const,
+        vendor: 'test',
+        validate: (value: unknown) => {
+          const out = check(value)
+          return out === undefined
+            ? { issues: [{ message: 'invalid' }] }
+            : { value: out }
+        },
+      },
+    })
+    const idPath = schema((v) =>
+      v?.itemId ? { itemId: Number(v.itemId) } : undefined,
+    )
+    const limitQuery = schema((v) =>
+      v?.limit ? { limit: Number(v.limit) } : undefined,
+    )
+    const nameBody = schema((v) =>
+      typeof v?.name === 'string' ? v : undefined,
+    )
+
+    function setup(server: any) {
+      startMocks.router = makeRouter({
+        path: '/items/$itemId',
+        component: undefined,
+        server,
+      })
+      return createStartHandler(vi.fn(() => new Response('must not render')))
+    }
+
+    it('passes validated slots as ctx.data', async () => {
+      const handler = setup({
+        handlers: {
+          POST: {
+            validator: { path: idPath, query: limitQuery, body: nameBody },
+            handler: async ({ data, request }: any) =>
+              Response.json({ data, body: await request.json() }),
+          },
+        },
+      })
+
+      const response = await handler(
+        new Request('http://localhost/items/42?limit=5', {
+          method: 'POST',
+          body: JSON.stringify({ name: 'x' }),
+        }),
+        {},
+      )
+
+      expect(response.status).toBe(200)
+      await expect(response.json()).resolves.toEqual({
+        data: {
+          path: { itemId: 42 },
+          query: { limit: 5 },
+          body: { name: 'x' },
+        },
+        body: { name: 'x' },
+      })
+    })
+
+    it('returns 400 with issues when a slot fails validation', async () => {
+      const routeHandler = vi.fn(() => new Response('must not run'))
+      const handler = setup({
+        handlers: {
+          GET: { validator: { query: limitQuery }, handler: routeHandler },
+        },
+      })
+
+      const response = await handler(
+        new Request('http://localhost/items/42'),
+        {},
+      )
+
+      expect(response.status).toBe(400)
+      await expect(response.json()).resolves.toMatchObject({
+        issues: [{ slot: 'query' }],
+      })
+      expect(routeHandler).not.toHaveBeenCalled()
+    })
+  })
+
   it.each(
     [false, true].flatMap((component) =>
       ['function', 'object'].flatMap((handlerKind) =>
