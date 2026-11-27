@@ -62,6 +62,7 @@
             "projects": [
               "@benchmarks/client-nav-async-pipeline-react",
               "@benchmarks/client-nav-control-flow-react",
+              "@benchmarks/client-nav-create-link-react",
               "@benchmarks/client-nav-head-react",
               "@benchmarks/client-nav-history-react",
               "@benchmarks/client-nav-hydration-react",
@@ -93,6 +94,7 @@
             "projects": [
               "@benchmarks/client-nav-async-pipeline-solid",
               "@benchmarks/client-nav-control-flow-solid",
+              "@benchmarks/client-nav-create-link-solid",
               "@benchmarks/client-nav-head-solid",
               "@benchmarks/client-nav-history-solid",
               "@benchmarks/client-nav-hydration-solid",
@@ -124,6 +126,7 @@
             "projects": [
               "@benchmarks/client-nav-async-pipeline-vue",
               "@benchmarks/client-nav-control-flow-vue",
+              "@benchmarks/client-nav-create-link-vue",
               "@benchmarks/client-nav-head-vue",
               "@benchmarks/client-nav-history-vue",
               "@benchmarks/client-nav-link-churn-vue",
@@ -203,6 +206,9 @@
               "@benchmarks/client-nav-control-flow-react",
               "@benchmarks/client-nav-control-flow-solid",
               "@benchmarks/client-nav-control-flow-vue",
+              "@benchmarks/client-nav-create-link-react",
+              "@benchmarks/client-nav-create-link-solid",
+              "@benchmarks/client-nav-create-link-vue",
               "@benchmarks/client-nav-head-react",
               "@benchmarks/client-nav-head-solid",
               "@benchmarks/client-nav-head-vue",
