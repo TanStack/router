@@ -2565,6 +2565,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     router.stores.status.set('idle')
     if (!needsClientLoad) {
       router.stores.resolvedLocation.set(router.stores.location.get())
+      router._scroll.n = false
     }
   })
 }
