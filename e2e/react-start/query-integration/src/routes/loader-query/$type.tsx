@@ -1,9 +1,9 @@
-import { useQuery } from '@tanstack/solid-query'
-import { createFileRoute } from '@tanstack/solid-router'
+import { useQuery } from '@tanstack/react-query'
+import { createFileRoute } from '@tanstack/react-router'
 import z from 'zod'
 import { makeQueryOptions } from '~/queryOptions'
 
-export const Route = createFileRoute('/loader-fetchQuery/$type')({
+export const Route = createFileRoute('/loader-query/$type')({
   component: RouteComponent,
   params: {
     parse: ({ type }) =>
@@ -14,10 +14,10 @@ export const Route = createFileRoute('/loader-fetchQuery/$type')({
         .parse({ type }),
   },
   context: ({ params }) => ({
-    queryOptions: makeQueryOptions(`loader-fetchQuery-${params.type}`),
+    queryOptions: makeQueryOptions(`loader-query-${params.type}`),
   }),
   loader: ({ context, params }) => {
-    const queryPromise = context.queryClient.fetchQuery(context.queryOptions)
+    const queryPromise = context.queryClient.query(context.queryOptions)
     if (params.type === 'sync') {
       return queryPromise
     }
@@ -28,12 +28,12 @@ export const Route = createFileRoute('/loader-fetchQuery/$type')({
 function RouteComponent() {
   const loaderData = Route.useLoaderData()
   const context = Route.useRouteContext()
-  const query = useQuery(() => context().queryOptions)
+  const query = useQuery(context.queryOptions)
   return (
     <div>
       <div>
         loader data:{' '}
-        <div data-testid="loader-data">{loaderData() ?? 'undefined'}</div>
+        <div data-testid="loader-data">{loaderData ?? 'undefined'}</div>
       </div>
       <div>
         query data:{' '}
