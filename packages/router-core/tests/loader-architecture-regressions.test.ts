@@ -8,6 +8,8 @@ import {
   redirect,
 } from '../src'
 import { createTestRouter, loadServerResponse } from './routerTestUtils'
+import type { Readable } from '@tanstack/store'
+import type { ParsedLocation } from '../src'
 
 test.each([
   ['error', () => new Error('parent failed')],
@@ -170,6 +172,62 @@ test('superseding a load clears fetching state from the still-presented lane', a
   firstGate.resolve()
   secondGate.resolve()
   await Promise.all([firstNavigation, secondNavigation])
+})
+
+test('a store subscriber that navigates while the start publication flushes hands the lane over cleanly', async () => {
+  const pageGate = createControlledPromise<void>()
+  const rootRoute = new BaseRootRoute({})
+  const indexRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+  })
+  const pageRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/page',
+    beforeLoad: () => pageGate,
+  })
+  const otherRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/other',
+    loader: () => 'other data',
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([indexRoute, pageRoute, otherRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+  await router.load()
+
+  // Publications are batched, so the subscriber runs at the flush and
+  // re-enters navigation before the first lane has done any work.
+  let redirected: Promise<void> | undefined
+  // The test store factory creates reactive atoms.
+  const location = router.stores.location as unknown as Readable<ParsedLocation>
+  const subscription = location.subscribe((next) => {
+    if (next.pathname === '/page' && !redirected) {
+      redirected = router.navigate({ to: '/other' })
+    }
+  })
+  const first = router.navigate({ to: '/page' })
+  await Promise.all([first, redirected])
+  subscription.unsubscribe()
+
+  expect(router.state.location.pathname).toBe('/other')
+  expect(router.state.resolvedLocation?.pathname).toBe('/other')
+  expect(router.state.status).toBe('idle')
+  expect(router.state.matches.map((match) => match.routeId)).toEqual([
+    rootRoute.id,
+    otherRoute.id,
+  ])
+  expect(router.state.matches.at(-1)).toMatchObject({
+    loaderData: 'other data',
+    isFetching: false,
+  })
+
+  // The superseded lane cannot publish once its gate opens.
+  const presented = router.state.matches
+  pageGate.resolve()
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  expect(router.state.matches).toBe(presented)
 })
 
 test('an ignored preload flight is released after a navigation has planned its loaders', async () => {
