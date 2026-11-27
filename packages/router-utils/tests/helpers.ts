@@ -18,12 +18,9 @@ import type {
   EnvInfo,
   HostServices,
   InvalidateChange,
-  PlaceFrag,
   PlanContext,
   Planner,
-  Range,
   Settlement,
-  SymbolId,
   Unit,
 } from '../src/compiler'
 import type { Node } from 'yuku'
@@ -112,256 +109,119 @@ export function propertyOf(
   return null
 }
 
-/** The range of a property including its separating comma (removing it leaves a valid object). */
-export function propertyRangeWithComma(options: Node, prop: Node): Range {
-  if (options.type !== 'ObjectExpression') {
-    throw new Error('not an object')
-  }
-  const idx = options.properties.indexOf(prop as never)
-  const next = options.properties[idx + 1]
-  if (next) {
-    return { start: prop.start, end: next.start }
-  }
-  // last property: include the comma before it when present
-  const prev = options.properties[idx - 1]
-  if (prev) {
-    return { start: prev.end, end: prop.end }
-  }
-  return { start: prop.start, end: prop.end }
-}
-
-export interface ToySplitOptions {
-  /** Option keys to split (default ['component']). */
-  keys?: Array<string>
-  /** Keys split into one chunk (`?tsr-split=<a>---<b>`); any other key has its own. */
-  groups?: Array<Array<string>>
-  /** Option keys erased from the env output only (deleteNodes). */
-  deleteNodes?: Array<string>
-  /** Whether to add a dev HMR-like hoist of an inline component (claim → chunk). */
-  hoist?: boolean
-  /**
-   * Names of module bindings a chunk imports from the route module when it
-   * reads them (`RouteModule.imported`, the router planner's `Route` and
-   * `export const|let|var`); it copies the others. Set, the plan is a route
-   * file (`setRouteModule`).
-   */
-  imported?: ReadonlyArray<string>
-  /**
-   * An identifier option value is replaced by an env-scoped edit (the real
-   * splitter's shape: the binding travels by placement and the chunk roots
-   * it as a symbol) instead of a claim.
-   */
-  identifierEdits?: boolean
-  /** List, in the env module, the glue export names of these module-level bindings (`export const glueNames = […]`, `glueExportName`). */
-  glueNames?: ReadonlyArray<string>
-  /** Tag the env module's glue exports (`tagGlueExports`). */
-  glueTag?: string
-  /** Split a value whatever fallback placement reports for it (a planner that does not act on fallbacks, as the router's dev HMR hoist). */
-  ignoreFallbacks?: boolean
-}
-
 /**
  * Toy route splitter: splits `component` of `createFileRoute(...)({...})` into
  * `?tsr-split=component`, rooting the placeholder in the env module and the
- * option value in the chunk through a claim.
+ * option value in the chunk through a claim (an identifier value roots its
+ * binding in the chunk too). A value placement reports a fallback for stays.
  */
-export function toySplitPlanner(opts: ToySplitOptions = {}): Planner {
-  const keys = opts.keys ?? ['component']
+export function toySplitPlanner(): Planner {
+  const key = 'component'
   return {
     name: 'toy-split',
     tier: 1,
     gate: (t0) => t0.imports.some((i) => i.specifier === ROUTER_SPEC),
     plan(ctx) {
       const found = findRouteOptions(ctx)
-      if (!found) {
+      const p = found ? propertyOf(found.options, key) : null
+      if (!p) {
         return
       }
-      if (opts.glueTag !== undefined) {
-        ctx.tagGlueExports(opts.glueTag)
-      }
-      const { options, unit } = found
-      if (opts.imported !== undefined) {
-        const names = opts.imported
-        ctx.setRouteModule({
-          imported: new Set(
-            ctx.t1.units
-              .flatMap((u) => u.declares)
-              .filter((s) => names.includes(ctx.symbols.name(s))),
-          ),
-          shared: new Set(),
-        })
-      }
-      for (const key of opts.deleteNodes ?? []) {
-        const p = propertyOf(options, key)
-        if (p) {
-          ctx.rewrites.placeholder({
-            range: propertyRangeWithComma(options, p.prop),
-            body: [],
-            scope: ['env'],
-            by: 'toy-split',
-          })
-        }
-      }
-      let lazyImportSym: SymbolId | null = null
-      const reasons: Record<string, true> = {}
-      for (const key of keys) {
-        const p = propertyOf(options, key)
-        if (!p) {
-          continue
-        }
-        const valueRange = { start: p.value.start, end: p.value.end }
-        // an identifier value: the binding is the chunk's root (the core
-        // reports it when its effects keep it in the env module)
-        const valueBinding =
-          p.value.type === 'Identifier'
-            ? (ctx.analysis.file.referenceOf(p.value)?.binding ?? null)
-            : null
-        const valueSym = valueBinding
-          ? ctx.symbols.ofBinding(valueBinding)
+      const valueRange = { start: p.value.start, end: p.value.end }
+      // an identifier value: the binding is the chunk's root (the core
+      // reports it when its effects keep it in the env module)
+      const valueBinding =
+        p.value.type === 'Identifier'
+          ? (ctx.analysis.file.referenceOf(p.value)?.binding ?? null)
           : null
-        const declaringRanges =
-          valueSym === null
-            ? []
-            : (ctx.t1.declaringUnits.get(valueSym) ?? []).map(
-                (u) => ctx.t1.units[u]!.range,
-              )
-        const fallback =
-          ctx.fallbackAt(valueRange) ??
-          declaringRanges
-            .map((r) => ctx.fallbackAt(r))
-            .find((f) => f !== undefined)
-        if (fallback && opts.ignoreFallbacks !== true) {
-          reasons[key] = true
-          ctx.setFacts('toy-split', { notSplittable: key, reasons })
-          continue
-        }
-        const group =
-          opts.groups?.find((g) => g.includes(key))?.join('~') ?? key
-        const output = ctx.declareOutput({
-          kind: 'split',
-          key: group,
-          derived: { kind: 'split', value: group },
-        })
-        const derivedId = output.slice('derived:'.length)
-        const pascal = key.charAt(0).toUpperCase() + key.slice(1)
-        const split = ctx.names.alloc(`TsrSplit${pascal}`)
-        const importer = ctx.names.alloc(`tsrImport${pascal}`)
-        // (one import of the runtime wrapper, on the first importer)
-        const first = lazyImportSym === null
-        if (lazyImportSym === null) {
-          lazyImportSym = ctx.names.alloc('lazyRouteComponent').sym
-        }
-        const spec = sameFileSpecifier(derivedId)
-        // the importer const: `const tsrImportX = () => import('<chunk>')`, after the header, placed by needers
-        ctx.rewrites.addGenerated({
-          body: [
-            { k: 'text', parts: [`const ${importer.name} = () => import(`] },
-            {
+      const valueSym = valueBinding ? ctx.symbols.ofBinding(valueBinding) : null
+      const declaringRanges =
+        valueSym === null
+          ? []
+          : (ctx.t1.declaringUnits.get(valueSym) ?? []).map(
+              (u) => ctx.t1.units[u]!.range,
+            )
+      const fallback =
+        ctx.fallbackAt(valueRange) ??
+        declaringRanges
+          .map((r) => ctx.fallbackAt(r))
+          .find((f) => f !== undefined)
+      if (fallback) {
+        ctx.setFacts('toy-split', { notSplittable: key })
+        return
+      }
+      const output = ctx.declareOutput({
+        kind: 'split',
+        key,
+        derived: { kind: 'split', value: key },
+      })
+      const derivedId = output.slice('derived:'.length)
+      const split = ctx.names.alloc('TsrSplitComponent')
+      const importer = ctx.names.alloc('tsrImportComponent')
+      const lazy = ctx.names.alloc('lazyRouteComponent').sym
+      const spec = sameFileSpecifier(derivedId)
+      // the importer const: `const tsrImportX = () => import('<chunk>')`, after the header, placed by needers
+      ctx.rewrites.addGenerated({
+        body: [
+          { k: 'text', parts: [`const ${importer.name} = () => import(`] },
+          {
+            k: 'spec',
+            specifier: spec,
+            edgeKey: ctx.edgeKey(spec, 'dynamic', 'runtime'),
+            form: 'dynamic',
+          },
+          { k: 'text', parts: [')\n'] },
+        ],
+        declares: [importer.sym],
+        effectful: false,
+        anchor: { k: 'after-header' },
+        home: 'auto',
+        by: 'toy-split',
+        imports: [
+          {
+            names: [{ imported: 'lazyRouteComponent', local: lazy }],
+            spec: {
               k: 'spec',
-              specifier: spec,
-              edgeKey: ctx.edgeKey(spec, 'dynamic', 'runtime'),
-              form: 'dynamic',
+              specifier: ROUTER_SPEC,
+              edgeKey: ctx.edgeKey(ROUTER_SPEC, 'static', 'runtime'),
             },
-            { k: 'text', parts: [')\n'] },
-          ],
-          declares: [importer.sym],
-          effectful: false,
-          anchor: { k: 'after-header' },
-          home: 'auto',
-          by: 'toy-split',
-          imports: first
-            ? [
-                {
-                  names: [
-                    { imported: 'lazyRouteComponent', local: lazyImportSym },
-                  ],
-                  spec: {
-                    k: 'spec',
-                    specifier: ROUTER_SPEC,
-                    edgeKey: ctx.edgeKey(ROUTER_SPEC, 'static', 'runtime'),
-                  },
-                },
-              ]
-            : [],
-        })
-        // the chunk unit owning the option value (an identifier the env
-        // module rewrites in place: the chunk names its binding)
-        const identifierEdit =
-          opts.identifierEdits === true && valueSym !== null
-        const region = identifierEdit
-          ? null
-          : ctx.region(valueRange, 'option-value')
-        const owner = ctx.rewrites.addGenerated({
-          body: [
-            { k: 'text', parts: [`const ${split.name} = `] },
-            region === null
-              ? { k: 'text', parts: [{ sym: valueSym! }] }
-              : { k: 'region', id: region },
-            { k: 'text', parts: [`\nexport { ${split.name} as ${key} }\n`] },
-          ],
-          declares: [split.sym],
-          effectful: false,
-          anchor: { k: 'end' },
-          home: output,
-          by: 'toy-split',
-        })
-        if (valueSym !== null) {
-          ctx.addRoot(output, { t: 'sym', id: valueSym })
-        }
-        const placeholder: Array<PlaceFrag> = [
+          },
+        ],
+      })
+      // the chunk unit owning the option value
+      const region = ctx.region(valueRange, 'option-value')
+      const owner = ctx.rewrites.addGenerated({
+        body: [
+          { k: 'text', parts: [`const ${split.name} = `] },
+          { k: 'region', id: region },
+          { k: 'text', parts: [`\nexport { ${split.name} as ${key} }\n`] },
+        ],
+        declares: [split.sym],
+        effectful: false,
+        anchor: { k: 'end' },
+        home: output,
+        by: 'toy-split',
+      })
+      if (valueSym !== null) {
+        ctx.addRoot(output, { t: 'sym', id: valueSym })
+      }
+      ctx.rewrites.claim({
+        region,
+        owner,
+        placeholder: [
           {
             k: 'text',
             parts: [
               '/* @__PURE__ */ ',
-              { sym: lazyImportSym, ctx: 'callee' },
+              { sym: lazy, ctx: 'callee' },
               '(',
               { sym: importer.sym },
               `, '${key}')`,
             ],
           },
-        ]
-        if (region === null) {
-          ctx.rewrites.placeholder({
-            range: valueRange,
-            body: placeholder,
-            scope: ['env'],
-            by: 'toy-split',
-          })
-          continue
-        }
-        ctx.rewrites.claim({
-          region,
-          owner,
-          placeholder,
-          by: 'toy-split',
-        })
-      }
-      if (opts.glueNames) {
-        const names: Array<string> = []
-        for (const b of ctx.analysis.file.bindings) {
-          const sym = ctx.symbols.ofBinding(b)
-          if (
-            ctx.symbols.isModuleLevel(sym) &&
-            opts.glueNames.includes(ctx.symbols.name(sym))
-          ) {
-            names.push(JSON.stringify(ctx.glueExportName(sym)))
-          }
-        }
-        ctx.rewrites.addGenerated({
-          body: [
-            {
-              k: 'text',
-              parts: [`export const glueNames = [${names.join(', ')}]\n`],
-            },
-          ],
-          declares: [],
-          effectful: true,
-          anchor: { k: 'end' },
-          home: 'auto',
-          by: 'toy-split',
-        })
-      }
-      void unit
+        ],
+        by: 'toy-split',
+      })
     },
   }
 }
@@ -442,15 +302,8 @@ export function toyEnvPlanner(spec = 'toy-start'): Planner {
  * records a fact per import (`kind` of `make` export), so a consumer's plan
  * depends on its dependencies' export facts.
  */
-export function toySummaryPlanner(
-  opts: {
-    /** Also read `#name` imports (a `package.json` `imports` entry). */
-    subpathImports?: boolean
-  } = {},
-): Planner {
-  const reads = (specifier: string) =>
-    specifier.startsWith('.') ||
-    (opts.subpathImports === true && specifier.startsWith('#'))
+export function toySummaryPlanner(): Planner {
+  const reads = (specifier: string) => specifier.startsWith('.')
   return {
     name: 'toy-summary',
     tier: 1,
@@ -500,24 +353,7 @@ export interface MemoryHostOptions {
   >[0]['markerSpecifiers']
   /** Texts of virtual modules (`loadVirtual`), by id. */
   virtual?: Record<string, string>
-  /**
-   * The modification time `write` stamps a file with, from the count of
-   * writes so far (default: that count, a clock finer than any wait). A
-   * filesystem whose times are whole seconds stamps writes of one second
-   * alike.
-   */
-  clock?: (writes: number) => number
 }
-
-/**
- * The compiles of a test file, when it turns the log on (`enabled`): each
- * compile's source and output, for properties over every compile the file
- * runs. Off by default: the heap tests count what compiles leave behind.
- */
-export const compileLog: {
-  enabled: boolean
-  entries: Array<{ code: string; out: CompileOutput | null }>
-} = { enabled: false, entries: [] }
 
 export class MemoryHost implements HostServices {
   readonly files: Record<string, string>
@@ -585,8 +421,7 @@ export class MemoryHost implements HostServices {
 
   write(path: string, code: string): void {
     this.files[path] = code
-    const writes = ++this.writes
-    this.writtenAt.set(path, this.opts.clock?.(writes) ?? writes)
+    this.writtenAt.set(path, ++this.writes)
   }
 
   compile(
@@ -594,15 +429,7 @@ export class MemoryHost implements HostServices {
     planners: Array<Planner>,
     extra: Partial<CompileInput> = {},
   ): Promise<CompileOutput | null> {
-    const input = this.inputOf(id, planners, extra)
-    const out = compileModule(input, this, this.caches)
-    if (!compileLog.enabled) {
-      return out
-    }
-    return out.then((o) => {
-      compileLog.entries.push({ code: input.code, out: o })
-      return o
-    })
+    return compileModule(this.inputOf(id, planners, extra), this, this.caches)
   }
 
   /** `settleModule` of a request as `compile` makes it; `use` runs while it is open. */

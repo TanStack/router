@@ -8,59 +8,23 @@
 import { describe, expect, it } from 'vitest'
 import {
   MemoryHost,
-  compileLog,
   dedent,
   envInfo,
   toyEnvPlanner,
   toySplitPlanner,
 } from './helpers'
-import type { EnvInfo, Planner } from '../src/compiler'
+import type { Planner } from '../src/compiler'
 
-// every compile of this file is logged: the last test reads their reports
-compileLog.enabled = true
-
-async function split(
-  code: string,
-  opts: {
-    keys?: Array<string>
-    groups?: Array<Array<string>>
-    env?: 'client' | 'server'
-    identifierEdits?: boolean
-    imported?: Array<string>
-    files?: Record<string, string>
-    mode?: 'build' | 'dev'
-  } = {},
-) {
-  const host = new MemoryHost({
-    files: { '/app/route.tsx': code, ...opts.files },
-  })
-  const planners = [
-    toyEnvPlanner(),
-    toySplitPlanner({
-      keys: opts.keys,
-      groups: opts.groups,
-      identifierEdits: opts.identifierEdits,
-      imported: opts.imported,
-    }),
-  ]
-  const env = envInfo({
-    ...(opts.env === 'server' && { name: 'ssr', type: 'server' }),
-    ...(opts.mode !== undefined && { mode: opts.mode }),
-  })
-  const main = await host.compile('/app/route.tsx', planners, { env })
-  const chunks: Record<string, string> = {}
-  const chunkKeys = new Set(
-    (opts.keys ?? ['component']).map(
-      (key) => opts.groups?.find((g) => g.includes(key))?.join('---') ?? key,
-    ),
+/** The env module and the component chunk of `/app/route.tsx` (a client dev compile). */
+async function split(code: string, files: Record<string, string> = {}) {
+  const host = new MemoryHost({ files: { '/app/route.tsx': code, ...files } })
+  const planners = [toyEnvPlanner(), toySplitPlanner()]
+  const env = await host.compile('/app/route.tsx', planners)
+  const chunk = await host.compile(
+    '/app/route.tsx?tsr-split=component',
+    planners,
   )
-  for (const key of chunkKeys) {
-    const c = await host.compile(`/app/route.tsx?tsr-split=${key}`, planners, {
-      env,
-    })
-    chunks[key] = c?.code ?? ''
-  }
-  return { host, env: main?.code ?? '', chunks, main }
+  return { env: env?.code ?? '', chunk: chunk?.code ?? '' }
 }
 
 describe('a declaration only a chunk reads moves with its initialiser', () => {
@@ -76,11 +40,11 @@ describe('a declaration only a chunk reads moves with its initialiser', () => {
       })
     `)
     const r = await split(code, {
-      files: { '/app/db.ts': `export const secret = () => 's'\n` },
+      '/app/db.ts': `export const secret = () => 's'\n`,
     })
     expect(r.env).toContain('const { kept } = source')
     expect(r.env).not.toContain('secret')
-    expect(r.chunks.component).not.toContain('secret')
+    expect(r.chunk).not.toContain('secret')
   })
 })
 
@@ -89,28 +53,14 @@ describe('a declaration only a chunk reads moves with its initialiser', () => {
 // and assignments. Source: review of 2026-11-10, F1 (F1-1,
 // F1-2, F1-3a, F1-5a, Q2).
 describe('functions held, passed or called at load', () => {
-  const files = {
-    '/app/lib.ts':
-      'export const open = () => ({})\nexport const wrap = (x: unknown) => x\nexport const define = (x: unknown) => x\nexport const f = (x: unknown) => x\n',
-  }
-  async function compile(
-    code: string,
-    planners: Array<Planner> = [toySplitPlanner()],
-    env: EnvInfo = envInfo({ mode: 'build' }),
-  ) {
-    const host = new MemoryHost({ files: { '/app/route.tsx': code, ...files } })
-    const main = await host.compile('/app/route.tsx', planners, { env })
-    const chunk = await host.compile(
-      '/app/route.tsx?tsr-split=component',
+  const lib = { '/app/lib.ts': 'export const f = (x: unknown) => x\n' }
+  /** The env module's compile of `/app/route.tsx` (a client build). */
+  const compile = (code: string, planners: Array<Planner>) =>
+    new MemoryHost({ files: { '/app/route.tsx': code, ...lib } }).compile(
+      '/app/route.tsx',
       planners,
-      { env },
+      { env: envInfo({ mode: 'build' }) },
     )
-    return {
-      main,
-      env: main?.code ?? '',
-      chunk: chunk?.code ?? '',
-    }
-  }
 
   // a custom region in an exported declaration's call argument (a server
   // fn's handler) moved to a lazy module falls back for nothing it reads;
@@ -177,8 +127,8 @@ describe('functions held, passed or called at load', () => {
         })
       },
     }
-    const r = await compile(code, [toySplitPlanner(), region])
-    expect(r.main?.facts.planners['toy-region']).toEqual({
+    const main = await compile(code, [toySplitPlanner(), region])
+    expect(main?.facts.planners['toy-region']).toEqual({
       fallback: reason,
     })
   })

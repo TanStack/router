@@ -7,7 +7,6 @@
  * and its plan removes it, or fails to, the way a planner bug would.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { rangeOf } from './engine'
 import {
   MemoryHost,
   dedent,
@@ -16,6 +15,15 @@ import {
   toySplitPlanner,
 } from './helpers'
 import type { PlanContext, Planner } from '../src/compiler'
+
+/** The range of the first `needle` in `code`. */
+function rangeOf(code: string, needle: string) {
+  const start = code.indexOf(needle)
+  if (start === -1) {
+    throw new Error(`needle not found: ${needle}`)
+  }
+  return { start, end: start + needle.length }
+}
 
 const PATH = '/app/src/route.tsx'
 const SECRET = `() => 'SERVER_SECRET'`
