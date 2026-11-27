@@ -153,8 +153,9 @@ export function createViewportObserverStub() {
   }
 }
 
-// One lap (mount, then unmount the list) per tick pair; 10 laps per iteration.
-export const ticksPerIteration = stepDefs.length * 10
+// One lap through the 2-step sequence (mount, then unmount the list) per
+// benchmark iteration.
+export const ticksPerIteration = stepDefs.length
 
 export const benchOptions = {
   warmupIterations: 50,
