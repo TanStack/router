@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { Link, createFileRoute } from '@tanstack/react-router'
 import { readCarrierGet, readCarrierPost } from '~/serverFns'
 import logoUrl from '~/assets/logo.svg'
 
@@ -52,6 +52,10 @@ function Home() {
         Plain fetch
       </button>
       <span data-testid="result-user-fetch">{echo}</span>
+
+      <Link to="/split" data-testid="link-split">
+        Split route
+      </Link>
     </div>
   )
 }

@@ -22,6 +22,25 @@ async function loadAssetUrls(page: Page) {
   )
 }
 
+const lazyChunkPattern = /\/assets\/split-[^/]*\.js/
+
+async function loadLazyChunkUrls(page: Page) {
+  const urls: Array<URL> = []
+  page.on('request', (request) => {
+    if (lazyChunkPattern.test(request.url())) {
+      urls.push(new URL(request.url()))
+    }
+  })
+
+  await page.goto('/')
+  await expect(page.getByTestId('hydrated')).toBeAttached()
+  await page.getByTestId('link-split').click()
+  await expect(page.getByTestId('split-route')).toBeVisible()
+
+  expect(urls.length).toBeGreaterThan(0)
+  return urls
+}
+
 async function loadModulePreloadUrls(page: Page) {
   await page.goto('/')
 
@@ -52,6 +71,14 @@ test.describe('deployment metadata assets', () => {
       expect(url.searchParams.get(QUERY_CARRIER), `${url}`).toBe(DEPLOYMENT_ID)
     }
   })
+
+  test('tags lazy route chunk urls with the query carrier', async ({
+    page,
+  }) => {
+    for (const url of await loadLazyChunkUrls(page)) {
+      expect(url.searchParams.get(QUERY_CARRIER), `${url}`).toBe(DEPLOYMENT_ID)
+    }
+  })
 })
 
 test.describe('no deployment metadata assets', () => {
@@ -67,6 +94,12 @@ test.describe('no deployment metadata assets', () => {
 
   test('does not tag modulepreload urls', async ({ page }) => {
     for (const url of await loadModulePreloadUrls(page)) {
+      expect(url.search, `${url}`).toBe('')
+    }
+  })
+
+  test('does not tag lazy route chunk urls', async ({ page }) => {
+    for (const url of await loadLazyChunkUrls(page)) {
       expect(url.search, `${url}`).toBe('')
     }
   })

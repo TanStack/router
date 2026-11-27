@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SplitRouteImport } from './routes/split'
 import { Route as ApiUserFetchRouteImport } from './routes/api/user-fetch'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SplitRoute = SplitRouteImport.update({
+  id: '/split',
+  path: '/split',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiUserFetchRoute = ApiUserFetchRouteImport.update({
@@ -25,27 +31,31 @@ const ApiUserFetchRoute = ApiUserFetchRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/split': typeof SplitRoute
   '/api/user-fetch': typeof ApiUserFetchRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/split': typeof SplitRoute
   '/api/user-fetch': typeof ApiUserFetchRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/split': typeof SplitRoute
   '/api/user-fetch': typeof ApiUserFetchRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/user-fetch'
+  fullPaths: '/' | '/split' | '/api/user-fetch'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/user-fetch'
-  id: '__root__' | '/' | '/api/user-fetch'
+  to: '/' | '/split' | '/api/user-fetch'
+  id: '__root__' | '/' | '/split' | '/api/user-fetch'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SplitRoute: typeof SplitRoute
   ApiUserFetchRoute: typeof ApiUserFetchRoute
 }
 
@@ -56,6 +66,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/split': {
+      id: '/split'
+      path: '/split'
+      fullPath: '/split'
+      preLoaderRoute: typeof SplitRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/user-fetch': {
@@ -70,6 +87,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SplitRoute: SplitRoute,
   ApiUserFetchRoute: ApiUserFetchRoute,
 }
 export const routeTree = rootRouteImport
