@@ -108,7 +108,20 @@ export const serverOnly = createServerFn().handler(async () => 'MARK_FN')
         ],
       })
       // (the last rebuild fails on the id too)
-      await expect(build).rejects.toBeInstanceOf(StartBuildError)
+      const error = await build.then(
+        () => expect.fail('the rebuild succeeded'),
+        (e: unknown) => e,
+      )
+      if (!(error instanceof StartBuildError)) {
+        throw error
+      }
+      expect(
+        error.diagnostics.some(
+          ({ severity, text }) =>
+            severity === 'error' && text.includes('MARK_BAD/ID'),
+        ),
+        "the last edit's rebuild reports the id",
+      ).toBe(true)
       const counts = errors.map(
         (report) => report.filter((m) => m.includes('MARK_BAD/ID')).length,
       )

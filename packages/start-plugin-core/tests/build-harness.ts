@@ -76,6 +76,7 @@ import {
   withBuildEnvironment,
 } from '@tanstack/compiler-test-utils/build-harness'
 import {
+  SettleTimeout,
   rsbuildLogger,
   trackCompiles,
 } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
@@ -1191,6 +1192,10 @@ async function buildWithVite(
       }
     }
   } catch (error) {
+    // (a watch build that did not settle is no failed build)
+    if (error instanceof SettleTimeout) {
+      throw error
+    }
     throw new BuildError(
       'vite',
       [...errors, error instanceof Error ? error.message : String(error)].map(
@@ -1272,7 +1277,11 @@ function trackViteWatch() {
   const until = (done: () => boolean, timeout: number, what: string) =>
     new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => {
-        reject(new Error(`vite build --watch: no ${what} within ${timeout} ms`))
+        reject(
+          new SettleTimeout(
+            `vite build --watch: no ${what} within ${timeout} ms`,
+          ),
+        )
       }, timeout)
       changed = () => {
         if (done()) {
@@ -1671,6 +1680,10 @@ async function buildWithRsbuild(
       await rsbuild.build()
     }
   } catch (error) {
+    // (a watch build that did not settle is no failed build)
+    if (error instanceof SettleTimeout) {
+      throw error
+    }
     throw new BuildError(
       'rspack',
       errors.length

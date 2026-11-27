@@ -778,6 +778,16 @@ export interface CompileTracker {
 }
 
 /**
+ * A wait for the outcome of an edit or a build that ran out of time: not
+ * the build's outcome. A host that turns build failures into its own error
+ * lets this one through, so a row that expects a failed build cannot pass on
+ * a build that never settled.
+ */
+export class SettleTimeout extends Error {
+  override name = 'SettleTimeout'
+}
+
+/**
  * Follows the compiles of a watch mode Rspack build, to wait for the
  * outcome of an edit, bounded by a timeout: the edit is
  * applied once a compile that started after the last write ended and every
@@ -896,7 +906,7 @@ export function trackCompiles(): CompileTracker {
     new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => {
         unregister()
-        reject(new Error(message()))
+        reject(new SettleTimeout(message()))
       }, timeout)
       const unregister = register({
         resolve: () => {
@@ -953,7 +963,7 @@ export function trackCompiles(): CompileTracker {
         return
       }
       if (Date.now() > deadline) {
-        throw new Error(
+        throw new SettleTimeout(
           `Rsbuild's file watcher did not finish scanning the app within ${timeout} ms`,
         )
       }
