@@ -36,108 +36,70 @@ afterEach(() => {
 const routerPackage = '@tanstack/react-router'
 const router = `'${routerPackage}'`
 
-/** An app with a root route, `src/routes/<file>` holding `source` and `otherFiles`. */
-async function upkeepApp(
-  file: string,
-  source: string,
-  otherFiles: Record<string, string>,
-) {
-  const root = await createApp({
-    'src/routes/__root.tsx': rootRoute(),
-    [`src/routes/${file}`]: source,
-    ...otherFiles,
-  })
-  return { root, file: path.join(root, 'src/routes', file) }
-}
-
 /**
  * Runs the generator on an app with a root route, `src/routes/<file>`
- * holding `source` and `otherFiles` (paths relative to the app root); the
- * run must succeed. Returns the file as the generator left it, the warnings
- * and `routes()`, the route tree's routes (route id to file) as the real
- * router loads them.
+ * holding `source` and `otherFiles` (paths relative to the app root). The
+ * run must succeed, unless `reportAllowed`: a failed run is then returned
+ * (`error`, for `expectReported`). Returns the file as the generator left
+ * it, the warnings and `routes()`, the route tree's routes (route id to
+ * file) as the real router loads them (undefined after a failed run).
  */
 async function upkeep(
   file: string,
   source: string,
   config: Partial<Config> = {},
   otherFiles: Record<string, string> = {},
+  reportAllowed = false,
 ) {
-  const app = await upkeepApp(file, source, otherFiles)
-  const {
-    result: { generatedRouteTree },
-    diagnostics,
-  } = await captureDiagnostics(() =>
-    generate(app.root, { disableLogging: false, ...config }),
-  )
-  return {
-    ...app,
-    written: await read(app.root, `src/routes/${file}`),
-    diagnostics,
-    routes: () => routesOf(generatedRouteTree),
-  }
-}
-
-/**
- * `upkeep` of a file the generator may report instead of keeping up: a run
- * that fails is no failure of the test, its error is returned (`error`, and
- * `routes()` then gives undefined). `expectReported` checks such a report.
- */
-async function upkeepOrReport(
-  file: string,
-  source: string,
-  otherFiles: Record<string, string> = {},
-) {
-  const app = await upkeepApp(file, source, otherFiles)
+  const root = await createApp({
+    'src/routes/__root.tsx': rootRoute(),
+    [`src/routes/${file}`]: source,
+    ...otherFiles,
+  })
   let error: unknown
-  let generatedRouteTree: string | undefined
+  let tree: string | undefined
   const { diagnostics } = await captureDiagnostics(async () => {
     try {
-      ;({ generatedRouteTree } = await generate(app.root, {
-        disableLogging: false,
-      }))
+      tree = (await generate(root, { disableLogging: false, ...config }))
+        .generatedRouteTree
     } catch (e) {
+      if (!reportAllowed) {
+        throw e
+      }
       error = e
     }
   })
   return {
-    ...app,
-    written: await read(app.root, `src/routes/${file}`),
+    root,
+    file: path.join(root, 'src/routes', file),
+    written: await read(root, `src/routes/${file}`),
     diagnostics,
     error,
-    routes: async () =>
-      generatedRouteTree === undefined
-        ? undefined
-        : await routesOf(generatedRouteTree),
+    routes: async () => (tree === undefined ? undefined : routesOf(tree)),
   }
 }
+
+/** `upkeep` of a file the generator may report instead of keeping up. */
+const upkeepOrReport = (
+  file: string,
+  source: string,
+  otherFiles: Record<string, string> = {},
+) => upkeep(file, source, {}, otherFiles, true)
 
 /**
  * Asserts that the generator reported the file by name: the run failed
  * naming it, or it succeeded with a warning naming it.
  */
 function expectReported(
-  {
-    root,
-    file,
-    error,
-    diagnostics,
-  }: Pick<
-    Awaited<ReturnType<typeof upkeepOrReport>>,
-    'root' | 'file' | 'error' | 'diagnostics'
-  >,
+  { root, file, error, diagnostics }: Awaited<ReturnType<typeof upkeep>>,
   at?: { position: ReturnType<typeof diagnosticPosition> },
 ) {
-  if (error !== undefined) {
-    expectDiagnostic(diagnosticsOf(error), {
-      severity: 'error',
-      file,
-      root,
-      ...at,
-    })
-  } else {
-    expectDiagnostic(diagnostics, { severity: 'warning', file, root, ...at })
-  }
+  expectDiagnostic(error === undefined ? diagnostics : diagnosticsOf(error), {
+    severity: error === undefined ? 'warning' : 'error',
+    file,
+    root,
+    ...at,
+  })
 }
 
 /**

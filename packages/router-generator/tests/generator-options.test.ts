@@ -23,7 +23,15 @@ import {
 import { captureDiagnostics } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { Generator } from '../src'
-import { configOf, createApp, generate, read, rootRoute } from './app'
+import {
+  configOf,
+  createApp,
+  fileRoute,
+  generate,
+  lazyFileRoute,
+  read,
+  rootRoute,
+} from './app'
 import { recordInputs } from './consumer-inputs'
 import { expectOnlyOwnedEdits } from './owned-edits'
 import { routeCallOf, routeIdOf } from './route-id'
@@ -224,10 +232,7 @@ describe('empty route files', () => {
   async function scaffold(file: string) {
     const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
-      'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/')({})
-`,
+      'src/routes/index.tsx': fileRoute('/'),
       [`src/routes/${file}`]: '',
     })
     const { generatedRouteTree } = await generate(root)
@@ -245,10 +250,7 @@ export const Route = createFileRoute('/')({})
 
 describe('route files with unusual names and contents', () => {
   test('route files with non-ASCII names get routes with their paths', async () => {
-    const route = `import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/old')({})
-`
+    const route = fileRoute('/old')
     const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/café.tsx': route,
@@ -279,10 +281,7 @@ export const Route = createFileRoute('/old')({})
 
 describe('virtual route config in tsr.config.json', () => {
   test('a virtual route config object in tsr.config.json generates its routes, and fixes their ids', async () => {
-    const route = `import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/old')({})
-`
+    const route = fileRoute('/old')
     const root = await createApp({
       'tsr.config.json': JSON.stringify({
         virtualRouteConfig: {
@@ -343,18 +342,9 @@ describe('route tree options', () => {
   /** An app with a root, index, posts and lazy posts route. */
   const app = (ext = 'tsx') => ({
     [`src/routes/__root.${ext}`]: rootRoute(),
-    [`src/routes/index.${ext}`]: `import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/')({})
-`,
-    [`src/routes/posts.${ext}`]: `import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/posts')({})
-`,
-    [`src/routes/posts.lazy.${ext}`]: `import { createLazyFileRoute } from '@tanstack/react-router'
-
-export const Route = createLazyFileRoute('/posts')({})
-`,
+    [`src/routes/index.${ext}`]: fileRoute('/'),
+    [`src/routes/posts.${ext}`]: fileRoute('/posts'),
+    [`src/routes/posts.lazy.${ext}`]: lazyFileRoute('/posts'),
   })
 
   const appRoutes = (ext = 'tsx') => ({
@@ -600,16 +590,10 @@ export const Route = createLazyFileRoute('/posts')({})
 
 describe('ignored route files', () => {
   test('with the default routeFileIgnorePrefix, "-" route files and directories are left out of the route tree and untouched', async () => {
-    const notARoute = `import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/old')({})
-`
+    const notARoute = fileRoute('/old')
     const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
-      'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/')({})
-`,
+      'src/routes/index.tsx': fileRoute('/'),
       'src/routes/-disabled.tsx': notARoute,
       'src/routes/-components/card.tsx': notARoute,
       'src/routes/-empty.tsx': '',
@@ -631,10 +615,7 @@ export const Route = createFileRoute('/')({})
   test('with an empty routeFileIgnorePrefix, a "-" route file is a route', async () => {
     const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
-      'src/routes/-health.tsx': `import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/old')({})
-`,
+      'src/routes/-health.tsx': fileRoute('/old'),
     })
     const { generatedRouteTree } = await generate(root, {
       routeFileIgnorePrefix: '',
@@ -727,14 +708,8 @@ describe('token options', () => {
   test('a RegExp indexToken with the default routeToken generates index and layout routes', async () => {
     const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
-      'src/routes/posts/route.tsx': `import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/posts')({})
-`,
-      'src/routes/posts/page.tsx': `import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/posts/')({})
-`,
+      'src/routes/posts/route.tsx': fileRoute('/posts'),
+      'src/routes/posts/page.tsx': fileRoute('/posts/'),
     })
     const { generatedRouteTree } = await generate(root, {
       indexToken: /^page$/,
@@ -756,14 +731,8 @@ describe('custom tokens matching longer names', () => {
   test('a routeToken regex matching whole names makes such a file the layout route of its directory', async () => {
     const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
-      'src/routes/posts/main-layout.tsx': `import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/posts')({})
-`,
-      'src/routes/posts/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/posts/')({})
-`,
+      'src/routes/posts/main-layout.tsx': fileRoute('/posts'),
+      'src/routes/posts/index.tsx': fileRoute('/posts/'),
     })
     const { generatedRouteTree } = await generate(root, {
       routeToken: /[a-z]+-layout/,
@@ -781,14 +750,8 @@ export const Route = createFileRoute('/posts/')({})
   test('a Unicode-mode routeToken regex makes a file with a non-ASCII name the layout route of its directory', async () => {
     const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
-      'src/routes/posts/écran-layout.tsx': `import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/posts')({})
-`,
-      'src/routes/posts/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/posts/')({})
-`,
+      'src/routes/posts/écran-layout.tsx': fileRoute('/posts'),
+      'src/routes/posts/index.tsx': fileRoute('/posts/'),
     })
     const { generatedRouteTree } = await generate(root, {
       routeToken: /\p{L}+-layout/u,
@@ -831,10 +794,7 @@ describe('logging', () => {
   const app = (helpers = 'export const helper = 1\n') => ({
     'src/routes/__root.tsx': '',
     'src/routes/helpers.tsx': helpers,
-    'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/')({})
-`,
+    'src/routes/index.tsx': fileRoute('/'),
   })
 
   // A route file without a Route export is left out with a warning naming it
@@ -933,10 +893,7 @@ export namespace Route {
 
 export const Route = createFileRoute(\`/\${'old'}\`)({})
 `,
-        'src/routes/posts.tsx': `import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/posts')({})
-`,
+        'src/routes/posts.tsx': fileRoute('/posts'),
       })
       const posts = path.join(root, 'src/routes/posts.tsx')
       const config = configOf(root, { disableLogging })
@@ -993,10 +950,7 @@ describe('tmpDir', () => {
   test('after a run that could not create tmpDir, the next run generates the route tree', async () => {
     const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
-      'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/')({})
-`,
+      'src/routes/index.tsx': fileRoute('/'),
     })
     const config = configOf(root)
     await mkdir(path.dirname(config.tmpDir), { recursive: true })

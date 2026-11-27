@@ -19,7 +19,12 @@ import { expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { captureDiagnostics } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { Generator, createGeneratorSession, replaceBackslash } from '../src'
-import { configOf, createApp } from './app'
+import {
+  configOf,
+  createApp,
+  fileRoute,
+  rootRoute as rootRouteFile,
+} from './app'
 import type { Logger } from '../src'
 
 /** The route files the generator knows: `/`-separated on every platform. */
@@ -30,14 +35,8 @@ function routeFiles(generator: Generator) {
 // Main's `run()` rejected naming the file (`tsr generate` exited 1).
 test('a cold generation with a route file that does not parse fails naming the file', async () => {
   const root = await createApp({
-    'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
-
-export const Route = createRootRoute()
-`,
-    'src/routes/posts.tsx': `import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/posts')({})
-`,
+    'src/routes/__root.tsx': rootRouteFile(),
+    'src/routes/posts.tsx': fileRoute('/posts'),
   })
   const posts = path.join(root, 'src/routes/posts.tsx')
   // The committed tree lists `/posts`
@@ -53,14 +52,8 @@ export const Route = createFileRoute('/posts')({})
 
 test('a route file an edit breaks in a running generator keeps its route and is reported', async () => {
   const root = await createApp({
-    'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
-
-export const Route = createRootRoute()
-`,
-    'src/routes/posts.tsx': `import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/posts')({})
-`,
+    'src/routes/__root.tsx': rootRouteFile(),
+    'src/routes/posts.tsx': fileRoute('/posts'),
   })
   // (the warning is a log: `disableLogging` silences it)
   const config = configOf(root, { disableLogging: false })
@@ -90,14 +83,8 @@ export const Route = createFileRoute('/posts')({})
 // the file and the committed tree keeps the route, as on main.
 test('a dev server starting with a route file that does not parse reports it and keeps the committed tree', async () => {
   const root = await createApp({
-    'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
-
-export const Route = createRootRoute()
-`,
-    'src/routes/posts.tsx': `import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/posts')({})
-`,
+    'src/routes/__root.tsx': rootRouteFile(),
+    'src/routes/posts.tsx': fileRoute('/posts'),
   })
   const config = configOf(root)
   await new Generator({ config, root }).run()
@@ -119,10 +106,7 @@ export const Route = createFileRoute('/posts')({})
 // there the failure fails the build.
 test('a build starting with a route file that does not parse fails, naming the file', async () => {
   const root = await createApp({
-    'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
-
-export const Route = createRootRoute()
-`,
+    'src/routes/__root.tsx': rootRouteFile(),
     'src/routes/posts.tsx': 'export const Route = (',
   })
   const generator = new Generator({ config: configOf(root), root })
@@ -134,12 +118,6 @@ export const Route = createRootRoute()
 // Other failures of a generation fail a build too (R101): two route files for
 // one route, two routes with one URL, an empty path. The build never goes on
 // with a tree that leaves the new file out.
-const fileRoute = (
-  id: string,
-) => `import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('${id}')({})
-`
 const brokenTrees: Array<[string, Record<string, string>, string]> = [
   [
     'two route files for one route',
@@ -164,10 +142,7 @@ test.each(brokenTrees)(
   'a build whose route tree cannot be generated (%s) fails, naming the files',
   async (_, files, named) => {
     const root = await createApp({
-      'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
-
-export const Route = createRootRoute()
-`,
+      'src/routes/__root.tsx': rootRouteFile(),
       ...files,
     })
     const reports: Array<unknown> = []
@@ -189,10 +164,7 @@ test.each(brokenTrees)(
   'a dev run whose route tree cannot be generated (%s) reports it and keeps the last good tree',
   async (_, files, named) => {
     const root = await createApp({
-      'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
-
-export const Route = createRootRoute()
-`,
+      'src/routes/__root.tsx': rootRouteFile(),
     })
     const config = configOf(root)
     const generator = new Generator({ config, root })
@@ -222,14 +194,8 @@ export const Route = createRootRoute()
   },
 )
 
-const rootRoute = `import { createRootRoute } from '@tanstack/react-router'
-
-export const Route = createRootRoute()
-`
-const postsRoute = `import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/posts')({})
-`
+const rootRoute = rootRouteFile()
+const postsRoute = fileRoute('/posts')
 
 /**
  * A logger calling `whileReading` with each warning naming `file`, as it is
@@ -443,10 +409,7 @@ test('a route change a failed build read reaches the tree once the broken file i
   const root = await createApp({
     'src/routes/__root.tsx': rootRoute,
     'src/routes/posts.tsx': postsRoute,
-    'src/routes/about.tsx': `import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/about')({})
-`,
+    'src/routes/about.tsx': fileRoute('/about'),
   })
   const posts = path.join(root, 'src/routes/posts.tsx')
   const about = path.join(root, 'src/routes/about.tsx')
@@ -670,10 +633,7 @@ export const Route = createRootRoute()
 </script>
 <template><RouterView /></template>
 `,
-    'src/routes/posts.tsx': `import { createFileRoute } from '@tanstack/vue-router'
-
-export const Route = createFileRoute('/posts')({})
-`,
+    'src/routes/posts.tsx': fileRoute('/posts', '{}', 'vue'),
   })
   const config = configOf(root, { target: 'vue' })
   await new Generator({ config, root }).run()
