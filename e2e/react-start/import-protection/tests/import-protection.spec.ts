@@ -347,30 +347,19 @@ for (const mode of ['build', 'dev'] as const) {
   })
 }
 
-// SPEC J6.4: builds decide violations after tree-shaking. `leakyReference`
-// is exported but imported by nobody, so its `secret.server` edge is dead in
-// the client build and not reported; dev reports it.
-test('compiler leak dead edge is not reported in build', async () => {
-  const violations = await readViolations('build')
+// Dev only: builds decide violations after tree-shaking, and compiler-leak's
+// `secret.server` edge is dead in the client build (SPEC J6.4).
+test('compiler leak violation includes line/col in importer in dev', async () => {
+  const violations = await readViolations('dev')
   const v = violations.find(
-    (x) => x.envType === 'client' && x.importer.includes('compiler-leak'),
+    (x) =>
+      x.importer.includes('compiler-leak') &&
+      x.type === 'file' &&
+      /:\d+:\d+$/.test(x.importer),
   )
-  expect(v).toBeUndefined()
+  expect(v).toBeDefined()
+  expect(v!.importer).toMatch(/:\d+:\d+$/)
 })
-
-for (const mode of ['dev'] as const) {
-  test(`compiler leak violation includes line/col in importer in ${mode}`, async () => {
-    const violations = await readViolations(mode)
-    const v = violations.find(
-      (x) =>
-        x.importer.includes('compiler-leak') &&
-        x.type === 'file' &&
-        /:\d+:\d+$/.test(x.importer),
-    )
-    expect(v).toBeDefined()
-    expect(v!.importer).toMatch(/:\d+:\d+$/)
-  })
-}
 
 for (const mode of ['build', 'dev'] as const) {
   test(`leaky @tanstack/react-start/server import points to usage site in ${mode}`, async () => {
@@ -416,29 +405,27 @@ for (const mode of ['build', 'dev', 'dev.warm'] as const) {
   })
 }
 
-// Dev only: the build drops compiler-leak's dead edge (SPEC J6.4, above).
-for (const mode of ['dev'] as const) {
-  test(`compiler-processed module has code snippet in ${mode}`, async () => {
-    const violations = await readViolations(mode)
+// Dev only, as above.
+test('compiler-processed module has code snippet in dev', async () => {
+  const violations = await readViolations('dev')
 
-    // compiler-leak.ts is processed by the Start compiler (createServerFn),
-    // which shortens the output.  The snippet must still show the original
-    // source lines (mapped via sourcesContent in the compiler's sourcemap).
-    const compilerViolation = violations.find(
-      (v) =>
-        v.envType === 'client' &&
-        v.importer.includes('compiler-leak') &&
-        !!v.snippet,
-    )
+  // compiler-leak.ts is processed by the Start compiler (createServerFn),
+  // which shortens the output.  The snippet must still show the original
+  // source lines (mapped via sourcesContent in the compiler's sourcemap).
+  const compilerViolation = violations.find(
+    (v) =>
+      v.envType === 'client' &&
+      v.importer.includes('compiler-leak') &&
+      !!v.snippet,
+  )
 
-    expect(compilerViolation).toBeDefined()
-    expect(compilerViolation!.snippet).toBeDefined()
-    expect(compilerViolation!.snippet!.lines.length).toBeGreaterThan(0)
+  expect(compilerViolation).toBeDefined()
+  expect(compilerViolation!.snippet).toBeDefined()
+  expect(compilerViolation!.snippet!.lines.length).toBeGreaterThan(0)
 
-    const snippetText = compilerViolation!.snippet!.lines.join('\n')
-    expect(snippetText).toContain('getSecret')
-  })
-}
+  const snippetText = compilerViolation!.snippet!.lines.join('\n')
+  expect(snippetText).toContain('getSecret')
+})
 
 test('file-based violation: SSR importing .client. file', async () => {
   const violations = await readViolations('build')
