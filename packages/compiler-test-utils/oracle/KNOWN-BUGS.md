@@ -1187,6 +1187,19 @@ module "…" in the React Client Manifest`. Dev is not affected (the next compil
   `node_modules/.vite/deps/<dep>.js` with the original source's line and column; the code frame shows the token.
   Pre-bundles another plugin edited before Start's transform, or rewritten on disk after the optimizer wrote its
   map, are not attributed to a package (no package is told to change its manifest), or attributed by a stale map.
+- **Mock mode: `require()` of a denied CommonJS file gives the mock module's namespace, not a callable mock** (user
+  decision, 2026-11-27, option A: a stated limit; SPEC J6.8). The mock is an ESM module, and the bundler's interop
+  turns `require()` of it into its namespace, `{ default: <mock> }`: the names the importer reads
+  (`const { a } = require(…)`, `require(…).a`, a member of the binding) are safe mocks, but the result used as the
+  module's whole value (`const f = require('./x.server.cjs'); f()`, `require(…)()`, a `module.exports = () => …`
+  target) is that namespace (Vite build `[object Object]`, Rsbuild build and dev `[object Module]`), and calling it
+  throws a `TypeError` in the client. The secret never reaches the client. `main`: its Vite build fails
+  (`[PARSE_ERROR] Cannot use export statement outside a module` at the `.cjs` file, the entry above "Denied non-JS/TS
+  files … keep their content or fail the build"); Rsbuild build and dev give the same namespace and the same
+  `TypeError`. Vite dev cannot reach it on either side (`require` is undefined in the browser). Source: research
+  `/home/flo/compiler-rewrite-notes/cjs-mock-callable-main-vs-pr.md` (repro app and per-host results). No pin (the
+  outcome is the limit); `ip/dev-outcomes.test.ts` "denied CommonJS files read through require()" covers the names
+  read. Workaround: `require(…).default`, or an `import`.
 
 ## Fixed, kept as regression tests
 

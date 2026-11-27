@@ -1005,6 +1005,10 @@ createServerFn().validator(s); export const f = base.handler(h)`), user factorie
   complete safe mock; otherwise the build fails, and in dev the server warns at the `export *` (its file and
   position). Either way the denied module's value never reaches the client, and the importer of the name never fails
   to load in dev.
+  A `require()` of a mocked module evaluates to the mock module's namespace (`{ default: <mock> }`, the bundler's
+  interop of the ESM mock), not to the mock itself: the names the importer reads of it (destructured, as members of the
+  binding or of the call, and `.default`) are safe mocks, the namespace itself is not callable (KNOWN-BUGS, accepted
+  limits).
 - **J6.9 Every entry counts.** Edges reachable from any entry of the env (router entry, start entry, client entry, a
   custom `src/server.ts`) are reported.
 - **J6.10 Dependencies.** Files under `node_modules` skip file-pattern checks by default (`excludeFiles: []` turns
