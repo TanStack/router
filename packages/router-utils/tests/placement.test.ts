@@ -47,6 +47,13 @@ describe('a declaration only a chunk reads moves with its initialiser', () => {
     expect(r.env).toContain('const { kept } = source')
     expect(r.env).not.toContain('secret')
     expect(r.chunk).not.toContain('secret')
+    // (the component is the chunk's, its server call erased; the route
+    // module loads it lazily)
+    expect(r.chunk).toMatch(
+      /const (\w+) = \(\) => tsrStub\(\)\nexport \{ \1 as component \}/,
+    )
+    expect(r.env).toMatch(/component: .*lazyRouteComponent\(/)
+    expect(r.env).not.toContain('wrapServer')
   })
 })
 

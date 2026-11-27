@@ -414,7 +414,7 @@ import { splitFnDefault } from '../deps/splitFnDefault'
 const { picked = splitFnDefault(), kept } = { kept: 'MARK_SPLIT_FN_KEPT' } as { picked?: string; kept: string }
 export const Route = createFileRoute('/destructured-split-fn')({
   loader: () => kept,
-  component: () => typeof createServerOnlyFn(() => picked),
+  component: () => 'MARK_SPLIT_FN_COMPONENT' + typeof createServerOnlyFn(() => picked),
 })
 `,
       'src/routes/api.ts': `import { createFileRoute } from '@tanstack/react-router'
@@ -485,18 +485,21 @@ const get = async (path) =>
         destructured: build.client.where('MARK_DESTRUCTURED_TITLE'),
         rest: build.client.where('MARK_REST_TITLE'),
         splitFn: build.client.where('MARK_SPLIT_FN_KEPT'),
+        splitFnComponent: build.client.where('MARK_SPLIT_FN_COMPONENT'),
       }).toEqual({
         isomorphic: 'eager',
         component: 'lazy',
         destructured: 'lazy',
         rest: 'lazy',
         splitFn: 'eager',
+        splitFnComponent: 'lazy',
       })
     })
 
     // The route module keeps the loader's binding (`splitFn: 'eager'` above)
-    // and its declaration; the default value only the server-only fn read
-    // is in neither client module.
+    // and its declaration, the component is in its lazy chunk
+    // (`splitFnComponent: 'lazy'`); the default value only the server-only
+    // fn there read is in neither client module.
     test('a default value only a server-only fn in a route component reads is not in the client bundle', () => {
       expect(build.client.where('MARK_SPLIT_FN_DEFAULT')).toBe('nowhere')
     })

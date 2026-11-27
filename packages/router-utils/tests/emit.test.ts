@@ -59,41 +59,42 @@ async function envOf(code: string, plan: (ctx: PlanContext) => void) {
   return out!.code
 }
 
-/** Each top-level statement of `code` as its structure: what it calls, reads and declares, parentheses and spacing aside. */
-function statementsOf(code: string): Array<string> {
-  const { program } = parseSync('mod.ts', code, {
+/**
+ * `code`'s program, positions, parentheses and a literal's spelling aside
+ * (its value stays): two texts that differ only in formatting give the same
+ * tree, and every value (a literal, a returned or passed expression) is in it.
+ */
+function programOf(code: string): unknown {
+  const { program, errors } = parseSync('mod.ts', code, {
     lang: 'ts',
     sourceType: 'module',
   })
-  const shape = (n: any): string => {
-    switch (n.type) {
-      case 'ExpressionStatement':
-      case 'ParenthesizedExpression':
-        return shape(n.expression)
-      case 'ExportNamedDeclaration':
-        return `export ${shape(n.declaration)}`
-      case 'VariableDeclaration':
-        return n.declarations
-          .map((d: any) => `${n.kind} ${d.id.name} = ${shape(d.init)}`)
-          .join(', ')
-      case 'CallExpression':
-        return `call(${shape(n.callee)})`
-      case 'NewExpression':
-        return `new(${shape(n.callee)})`
-      case 'MemberExpression':
-        return `${shape(n.object)}.${n.property.name}`
-      case 'BinaryExpression':
-        return `(${shape(n.left)} ${n.operator} ${shape(n.right)})`
-      case 'ArrowFunctionExpression':
-        return 'arrow'
-      case 'Identifier':
-        return n.name
-      default:
-        return n.type
+  expect(errors, code).toEqual([])
+  const strip = (n: unknown): unknown => {
+    if (Array.isArray(n)) {
+      return n.map(strip)
     }
+    if (n === null || typeof n !== 'object') {
+      return n
+    }
+    const node = n as Record<string, unknown>
+    if (node.type === 'ParenthesizedExpression') {
+      return strip(node.expression)
+    }
+    const out: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(node)) {
+      if (k !== 'start' && k !== 'end' && k !== 'range' && k !== 'raw') {
+        out[k] = strip(v)
+      }
+    }
+    return out
   }
-  return program.body.map(shape)
+  return strip(program.body)
 }
+
+/** `code` is `expected`, whitespace, parentheses and semicolons that change nothing aside. */
+const expectProgram = (code: string, expected: string) =>
+  expect(programOf(code), code).toEqual(programOf(expected))
 
 describe('statement separation', () => {
   // A generated unit renders before the module's first statement: what
@@ -110,7 +111,7 @@ describe('statement separation', () => {
       })
       unwrap(ctx, callOf(ctx, 'wrap'))
     })
-    expect(statementsOf(code)).toEqual(['const g = call(init)', 'call(arrow)'])
+    expectProgram(code, 'const g = init();\n(() => 1)()\n')
   })
 
   it('starts the statement after a generated unit without a line end on a line of its own', async () => {
@@ -124,7 +125,9 @@ describe('statement separation', () => {
         by: 'toy-emit',
       })
     })
-    expect(code).toBe('console.log("init")\nexport const a = 1\n')
+    expectProgram(code, 'console.log("init")\nexport const a = 1\n')
+    // (the generated unit has its line: the statement starts the next one)
+    expect(code.split('\n')[1]).toMatch(/^export const a\b/)
   })
 })
 
@@ -185,7 +188,7 @@ describe('inserts', () => {
         })
       })
       expect(code.match(/\/\*ins\*\//g)).toEqual(['/*ins*/'])
-      expect(code).toContain('function renamed()')
+      expect(code).toMatch(/function renamed\s*\(/)
     },
   )
 })
@@ -197,12 +200,12 @@ describe('expression boundaries', () => {
     {
       name: 'an arrow called',
       code: 'export const x = outer(inner(() => 1))()\n',
-      expected: 'export const x = call(arrow)',
+      expected: 'export const x = (() => 1)()\n',
     },
     {
       name: 'a `new` without arguments, a member read',
       code: 'export const x = outer(inner(new Foo)).bar\n',
-      expected: 'export const x = new(Foo).bar',
+      expected: 'export const x = new Foo().bar\n',
     },
   ])(
     'keeps the shape of a nested boundary: $name',
@@ -211,7 +214,7 @@ describe('expression boundaries', () => {
         unwrap(ctx, callOf(ctx, 'outer'))
         unwrap(ctx, callOf(ctx, 'inner'))
       })
-      expect(statementsOf(out)).toEqual([expected])
+      expectProgram(out, expected)
     },
   )
 
@@ -227,7 +230,7 @@ describe('expression boundaries', () => {
         by: 'toy-emit',
       })
     })
-    expect(statementsOf(code)).toEqual(['export const r = (a in obj)'])
+    expectProgram(code, 'export const r = a in obj\n')
   })
 
   it('keeps a kept operand apart from an insert after an empty one', async () => {
@@ -242,6 +245,6 @@ describe('expression boundaries', () => {
         })
       }
     })
-    expect(statementsOf(code)).toEqual(['export const r = (a in (obj + b))'])
+    expectProgram(code, 'export const r = a in obj + b\n')
   })
 })
