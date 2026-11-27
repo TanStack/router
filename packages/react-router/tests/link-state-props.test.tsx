@@ -560,3 +560,103 @@ test.each([
     }
   },
 )
+
+test.each([false, true])(
+  "Link children win over state props' children (server: %s)",
+  (server) => {
+    const root = createRootRoute()
+    const router = createRouter({
+      routeTree: root.addChildren([
+        createRoute({ getParentRoute: () => root, path: '/target' }),
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/target'] }),
+      isServer: server,
+    })
+    // Only object literals get excess property checks.
+    const activeProps = { className: 'active', children: 'Active state' }
+    const inactiveProps = { className: 'inactive', children: 'Inactive state' }
+    const tree = (
+      <RouterContextProvider router={router}>
+        <Link to="/target" activeProps={activeProps}>
+          Label
+        </Link>
+        <Link to="/other" inactiveProps={inactiveProps}>
+          Other
+        </Link>
+      </RouterContextProvider>
+    )
+    const container = document.createElement('div')
+    if (server) {
+      container.innerHTML = renderToString(tree)
+    } else {
+      container.append(render(tree).container)
+    }
+    expect(
+      Array.from(container.querySelectorAll('a'), (a) => a.textContent),
+    ).toEqual(['Label', 'Other'])
+  },
+)
+
+test('a key in state props becomes the element key', () => {
+  // React's development `jsx` reports a key spread into props; `createElement`
+  // took it silently. Either way the key is the element's, not a prop.
+  const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+  const root = createRootRoute()
+  const router = createRouter({
+    routeTree: root.addChildren([
+      createRoute({ getParentRoute: () => root, path: '/target' }),
+    ]),
+    history: createMemoryHistory({ initialEntries: ['/target'] }),
+    isServer: false,
+  })
+  // Only object literals get excess property checks.
+  const activeProps = { key: 'k', className: 'active-k' }
+  try {
+    const view = render(
+      <RouterContextProvider router={router}>
+        <Link to="/target" activeProps={activeProps}>
+          Label
+        </Link>
+      </RouterContextProvider>,
+    )
+    const anchor = view.getByText('Label')
+    expect(anchor).toHaveClass('active-k')
+    expect(anchor).toHaveAttribute('href', '/target')
+    expect(anchor).not.toHaveAttribute('key')
+    for (const [message] of error.mock.calls) {
+      expect(message).toContain('"key" prop is being spread into JSX')
+    }
+  } finally {
+    error.mockRestore()
+  }
+})
+
+test('custom link hosts get class defaultProps but not function defaultProps', () => {
+  // React 19's `jsx` resolves `defaultProps` only for class components;
+  // `createElement` also applied them to function components.
+  function FunctionHost(props: React.ComponentPropsWithoutRef<'a'>) {
+    return <a data-testid="function" {...props} />
+  }
+  FunctionHost.defaultProps = { title: 'Function default' }
+  class ClassHost extends React.Component<React.ComponentPropsWithoutRef<'a'>> {
+    static defaultProps = { title: 'Class default' }
+    render() {
+      return <a data-testid="class" {...this.props} />
+    }
+  }
+  const FunctionLink = createLink(FunctionHost)
+  const ClassLink = createLink(ClassHost)
+  const router = createRouter({
+    routeTree: createRootRoute(),
+    history: createMemoryHistory(),
+    isServer: false,
+  })
+  render(
+    <RouterContextProvider router={router}>
+      <FunctionLink to="/target">Function</FunctionLink>
+      <ClassLink to="/target">Class</ClassLink>
+    </RouterContextProvider>,
+  )
+  expect(screen.getByTestId('function')).not.toHaveAttribute('title')
+  expect(screen.getByTestId('class')).toHaveAttribute('title', 'Class default')
+})
