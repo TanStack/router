@@ -136,15 +136,18 @@ test.each([false, true])(
       </RouterContextProvider>,
     )
     const link = view.getByText('Post')
-    for (const [to, active] of [
-      ['/posts/1', true],
-      ['/posts/1/details', !exact],
-      ['/posts/10', false],
-      ['/posts/1/', true],
+    for (const [to, active, currentPage] of [
+      ['/posts/1', true, true],
+      ['/posts/1/details', !exact, false],
+      ['/posts/10', false, false],
+      ['/posts/1/', true, true],
     ] as const) {
       await act(() => router.navigate({ to }))
       expect(link).toHaveAttribute('href', '/app/posts/1/')
-      expect(link.getAttribute('aria-current')).toBe(active ? 'page' : null)
+      expect(link.getAttribute('data-status')).toBe(active ? 'active' : null)
+      expect(link.getAttribute('aria-current')).toBe(
+        currentPage ? 'page' : null,
+      )
     }
     router.update({ basepath: '/new' })
     await act(() => router.navigate({ to: '/posts/1/' }))

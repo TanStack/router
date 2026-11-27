@@ -28,9 +28,10 @@ import type {
   ValidateLinkOptionsArray,
 } from './typePrimitives'
 
-// Undefined active state marks an external or blocked link.
-// Keep that classification with the href instead of parsing it again on render.
-type LinkState = [href: string | undefined, isActive?: boolean]
+// Active status: undefined = external/blocked, 0 = inactive, 1 = active
+// (fuzzy ancestor), 2 = exact current page (aria-current="page").
+type LinkActive = 0 | 1 | 2
+type LinkState = [href: string | undefined, active?: LinkActive]
 
 // Keep referentially stable values while their contents are equal. Links
 // routinely pass inline `params` / `search` object literals, which would
@@ -82,26 +83,28 @@ function resolveExternalLink(
   return to
 }
 
+// 0 = inactive, 1 = fuzzy-active, 2 = exact current page (aria-current).
 function resolveIsActive(
   location: ParsedLocation,
   next: ParsedLocation,
   activeOptions: ActiveOptions | undefined,
   basepath: string,
-): boolean {
+): LinkActive {
   const currentPath = removeTrailingSlash(location.pathname, basepath)
   const nextPath = removeTrailingSlash(next.pathname, basepath)
+  const pathExact = currentPath === nextPath
 
   // Both modes compare normalized paths; fuzzy matches need a segment boundary.
   if (
     activeOptions?.exact
-      ? currentPath !== nextPath
+      ? !pathExact
       : !(
           currentPath.startsWith(nextPath) &&
           (currentPath.length === nextPath.length ||
             currentPath[nextPath.length] === '/')
         )
   ) {
-    return false
+    return 0
   }
 
   if (activeOptions?.includeSearch ?? true) {
@@ -112,11 +115,15 @@ function resolveIsActive(
       activeOptions?.explicitUndefined,
     )
     if (!searchTest) {
-      return false
+      return 0
     }
   }
 
-  return !activeOptions?.includeHash || location.hash === next.hash
+  if (activeOptions?.includeHash && location.hash !== next.hash) {
+    return 0
+  }
+
+  return pathExact ? 2 : 1
 }
 
 /**
@@ -286,8 +293,8 @@ export function useLinkProps<
         // History formatters can depend on the current browser URL (hash history).
         const href = getHrefOption(next, router, disabled)
         // Internal and disabled links can be active; external and blocked
-        // links have no active state.
-        const isActive =
+        // links have no active state. aria-current requires an exact path.
+        const active =
           disabled || (href && !getUrlScheme(href))
             ? resolveIsActive(
                 location,
@@ -300,9 +307,9 @@ export function useLinkProps<
         if (
           !state ||
           state[0 /* href */] !== href ||
-          state[1 /* isActive */] !== isActive
+          state[1 /* active */] !== active
         ) {
-          state = [href, isActive]
+          state = [href, active]
         }
         source = location
       }
@@ -317,8 +324,8 @@ export function useLinkProps<
       stableActiveOptions?.includeHash &&
         ((): LinkState => {
           const state = getLinkState()
-          return state[1 /* isActive */]
-            ? (hydrationState ??= [state[0 /* href */], false])
+          return state[1 /* active */]
+            ? (hydrationState ??= [state[0 /* href */], 0])
             : state
         }),
     ] as const
@@ -340,12 +347,12 @@ export function useLinkProps<
   ])
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const [href, isActive] = React.useSyncExternalStore(
+  const [href, active] = React.useSyncExternalStore(
     scope[1 /* subscribe */],
     getLinkState,
     getHydrationState || getLinkState,
   )
-  const externalLink = isActive === undefined && href
+  const externalLink = active === undefined && href
   const linkDisabled = disabled || href === undefined
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -474,7 +481,7 @@ export function useLinkProps<
   props.onMouseEnter = composeHandlers(onMouseEnter, enqueuePreload)
   props.onMouseLeave = composeHandlers(onMouseLeave, handleLeave)
   props.onTouchStart = composeHandlers(onTouchStart, handleTouchStart)
-  return applyLinkState(props, options, isActive, href, linkDisabled, host)
+  return applyLinkState(props, options, active, href, linkDisabled, host)
 }
 
 const STATIC_EMPTY_OBJECT = {}
@@ -540,15 +547,15 @@ function applyLinkState(
     style?: React.CSSProperties
     target?: string
   },
-  isActive: boolean | undefined,
+  active: LinkActive | undefined,
   href: string | undefined,
   linkDisabled: boolean,
   host: 'a' | React.ElementType | undefined,
 ): React.ComponentPropsWithRef<'a'> {
   const { activeProps, inactiveProps, className, style, target } = options
   const stateProps: React.HTMLAttributes<HTMLAnchorElement> =
-    functionalUpdate((isActive ? activeProps : inactiveProps) as any, {}) ??
-    (isActive ? STATIC_ACTIVE_OBJECT : STATIC_EMPTY_OBJECT)
+    functionalUpdate((active ? activeProps : inactiveProps) as any, {}) ??
+    (active ? STATIC_ACTIVE_OBJECT : STATIC_EMPTY_OBJECT)
   Object.assign(props, stateProps)
   props.href = href
   if (host !== 'a') {
@@ -574,9 +581,12 @@ function applyLinkState(
     props.role = 'link'
     props['aria-disabled'] = true
   }
-  if (isActive) {
+  if (active) {
     props['data-status'] = 'active'
-    props['aria-current'] = 'page'
+    // Fuzzy ancestors stay visually active; only the exact page is current.
+    if (active > 1) {
+      props['aria-current'] = 'page'
+    }
   }
   return props
 }
@@ -620,24 +630,16 @@ function getServerLinkProps(
 
   const blockedLink = !disabled && !hrefOption
   // Hash is not available on the server: hash-sensitive links are inactive.
-  const isActive =
-    !!next &&
-    !blockedLink &&
-    !activeOptions?.includeHash &&
-    resolveIsActive(
-      router.stores.location.get(),
-      next,
-      activeOptions,
-      router.basepath,
-    )
-  return applyLinkState(
-    props,
-    options,
-    isActive,
-    hrefOption,
-    linkDisabled,
-    host,
-  )
+  const active =
+    next && !blockedLink && !activeOptions?.includeHash
+      ? resolveIsActive(
+          router.stores.location.get(),
+          next,
+          activeOptions,
+          router.basepath,
+        )
+      : 0
+  return applyLinkState(props, options, active, hrefOption, linkDisabled, host)
 }
 
 // A Link's own ref also holds its pending intent preload timer.

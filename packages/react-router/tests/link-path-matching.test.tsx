@@ -13,18 +13,54 @@ import {
 afterEach(cleanup)
 
 const cases = [
-  { current: '/posts', to: '/posts/', exact: true, active: true },
-  { current: '/posts/', to: '/posts', exact: true, active: true },
-  { current: '/posts/item', to: '/posts', exact: true, active: false },
-  { current: '/posts/item', to: '/posts', exact: false, active: true },
-  { current: '/posts/item', to: '/posts/', exact: false, active: true },
-  { current: '/posts-other', to: '/posts', exact: false, active: false },
+  {
+    current: '/posts',
+    to: '/posts/',
+    exact: true,
+    active: true,
+    currentPage: true,
+  },
+  {
+    current: '/posts/',
+    to: '/posts',
+    exact: true,
+    active: true,
+    currentPage: true,
+  },
+  {
+    current: '/posts/item',
+    to: '/posts',
+    exact: true,
+    active: false,
+    currentPage: false,
+  },
+  {
+    current: '/posts/item',
+    to: '/posts',
+    exact: false,
+    active: true,
+    currentPage: false,
+  },
+  {
+    current: '/posts/item',
+    to: '/posts/',
+    exact: false,
+    active: true,
+    currentPage: false,
+  },
+  {
+    current: '/posts-other',
+    to: '/posts',
+    exact: false,
+    active: false,
+    currentPage: false,
+  },
 ]
 
 for (const basepath of ['', '/app']) {
   test.each(cases)(
     `pathname matching agrees on server and client with basepath "${basepath}": $current -> $to, exact=$exact`,
-    ({ current, to, exact, active }) => {
+    ({ current, to, exact, active, currentPage }) => {
       const router = createRouter({
         routeTree: createRootRoute(),
         history: createMemoryHistory({ initialEntries: [basepath + current] }),
@@ -50,8 +86,13 @@ for (const basepath of ['', '/app']) {
       for (const container of [server, client]) {
         const anchor = container.querySelector('a')!
         expect(anchor.textContent).toBe(String(active))
-        expect(anchor.getAttribute('aria-current')).toBe(active ? 'page' : null)
+        expect(anchor.getAttribute('aria-current')).toBe(
+          currentPage ? 'page' : null,
+        )
         expect(anchor.className).toBe(active ? 'active' : 'inactive')
+        expect(anchor.getAttribute('data-status')).toBe(
+          active ? 'active' : null,
+        )
       }
     },
   )

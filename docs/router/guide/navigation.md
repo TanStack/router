@@ -648,6 +648,8 @@ export interface ActiveOptions {
 
 By default, it will check if the resulting **pathname** is a prefix of the current route. If any search params are provided, it will check that they _inclusively_ match those in the current location. Hashes are not checked by default.
 
+A fuzzy (non-exact) match still marks the link as active for styling (`activeProps`, `data-status`, and the `isActive` render-prop), but `aria-current="page"` is only set when the link's pathname matches the current location exactly. That keeps hierarchical navigation accessible: ancestor links can look active without announcing more than one "current page".
+
 For example, if you are on the `/blog/post/my-first-blog-post` route, the following links will be active:
 
 ```tsx

@@ -343,6 +343,69 @@ describe('Link', () => {
     expect(consoleErrorSpy).not.toHaveBeenCalled()
   })
 
+  test('sets aria-current only on the exactly matched link among hierarchical ancestors', async () => {
+    const rootRoute = createRootRoute({
+      component: () => (
+        <>
+          <Link to="/" data-testid="home" activeOptions={{ exact: true }}>
+            Home
+          </Link>
+          <Link to="/settings" data-testid="settings">
+            Settings
+          </Link>
+          <Link to="/settings/privacy" data-testid="privacy">
+            Privacy
+          </Link>
+          <Outlet />
+        </>
+      ),
+    })
+
+    const settingsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/settings',
+      component: () => (
+        <>
+          <h1>Settings</h1>
+          <Outlet />
+        </>
+      ),
+    })
+
+    const privacyRoute = createRoute({
+      getParentRoute: () => settingsRoute,
+      path: '/privacy',
+      component: () => <h1>Privacy</h1>,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        settingsRoute.addChildren([privacyRoute]),
+      ]),
+      history: createMemoryHistory({
+        initialEntries: ['/settings/privacy'],
+      }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const privacy = await screen.findByTestId('privacy')
+    const home = screen.getByTestId('home')
+    const settings = screen.getByTestId('settings')
+
+    expect(home).not.toHaveAttribute('data-status', 'active')
+    expect(home).not.toHaveAttribute('aria-current')
+
+    // Parent stays visually active for styling, but is not the current page.
+    expect(settings).toHaveAttribute('data-status', 'active')
+    expect(settings).toHaveClass('active')
+    expect(settings).not.toHaveAttribute('aria-current')
+
+    expect(privacy).toHaveAttribute('data-status', 'active')
+    expect(privacy).toHaveClass('active')
+    expect(privacy).toHaveAttribute('aria-current', 'page')
+  })
+
   test('when the current route is the root', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({

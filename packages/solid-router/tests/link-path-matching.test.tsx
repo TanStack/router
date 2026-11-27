@@ -15,7 +15,7 @@ afterEach(cleanup)
 for (const basepath of ['', '/app']) {
   test.each(linkPathCases)(
     `pathname matching with basepath "${basepath}": $current -> $to, exact=$exact`,
-    ({ current, to, exact, active }) => {
+    ({ current, to, exact, active, currentPage }) => {
       const router = createRouter({
         routeTree: createRootRoute(),
         history: createMemoryHistory({ initialEntries: [basepath + current] }),
@@ -38,8 +38,11 @@ for (const basepath of ['', '/app']) {
       ))
       const anchor = container.querySelector('a')!
       expect(anchor.textContent).toBe(String(active))
-      expect(anchor.getAttribute('aria-current')).toBe(active ? 'page' : null)
+      expect(anchor.getAttribute('aria-current')).toBe(
+        currentPage ? 'page' : null,
+      )
       expect(anchor.className).toBe(active ? 'active' : 'inactive')
+      expect(anchor.getAttribute('data-status')).toBe(active ? 'active' : null)
     },
   )
 }
@@ -68,7 +71,9 @@ test('pathname matching reacts when exact mode changes', () => {
   for (const mode of [true, false, true]) {
     setExact(mode)
     expect(anchor.textContent).toBe(String(!mode))
-    expect(anchor.getAttribute('aria-current')).toBe(mode ? null : 'page')
+    // Fuzzy ancestors stay active for styling, but never aria-current.
+    expect(anchor.getAttribute('aria-current')).toBe(null)
     expect(anchor.className).toBe(mode ? 'inactive' : 'active')
+    expect(anchor.getAttribute('data-status')).toBe(mode ? null : 'active')
   }
 })

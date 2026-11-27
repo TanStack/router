@@ -123,26 +123,22 @@ function useLinkPropsImpl(
 
     const next = router.buildLocation(options as any)
     const href = getHref(options, router, next)
+    const location = router.stores.location.get()
 
-    const isActive =
+    const active =
       !options.disabled && (href === undefined || !!getUrlScheme(href))
-        ? false
-        : getIsActive(
-            router.stores.location.get(),
-            next,
-            options.activeOptions,
-            router,
-          )
+        ? 0
+        : getIsActive(location, next, options.activeOptions, router)
 
     const { resolvedProps, resolvedClass, resolvedStyle } = resolveStyleProps(
       options,
-      isActive,
+      active,
     )
 
     const result = combineResultProps({
       href,
       options,
-      isActive,
+      active,
       resolvedProps,
       resolvedClass,
       resolvedStyle,
@@ -198,9 +194,9 @@ function useLinkPropsImpl(
     return options as any
   }
 
-  // [href, active] of an internal Link, derived in one computation. An
-  // unchanged result keeps its identity, so a navigation that leaves the Link
-  // as it was notifies nothing downstream.
+  // [href, active, current page] of an internal Link, derived in one
+  // computation. An unchanged result keeps its identity, so a navigation that
+  // leaves the Link as it was notifies nothing downstream.
   const state = Vue.computed((prev?: LinkState): LinkState => {
     const options = getOptions()
     const destOptions = dest.value
@@ -208,20 +204,16 @@ function useLinkPropsImpl(
     destOptions._fromLocation = currentLocation.value
     const next = router.buildLocation(destOptions as any)
     const href = getHref(options, router, next)
-    const isActive =
+    const location = currentLocation.value
+    const active =
       !options.disabled && (href === undefined || !!getUrlScheme(href))
-        ? false
-        : getIsActive(
-            currentLocation.value,
-            next,
-            options.activeOptions,
-            router,
-          )
+        ? 0
+        : getIsActive(location, next, options.activeOptions, router)
     return prev &&
       prev[0 /* href */] === href &&
-      prev[1 /* isActive */] === isActive
+      prev[1 /* active */] === active
       ? prev
-      : [href, isActive]
+      : [href, active]
   })
 
   // The requested mode does not depend on the location, so the preload
@@ -406,17 +398,17 @@ function useLinkPropsImpl(
       return getExternalLinkProps(options, router, ref, staticEventHandlers)
     }
 
-    const [href, isActive] = state.value
+    const [href, active] = state.value
     const { resolvedProps, resolvedClass, resolvedStyle } = resolveStyleProps(
       options,
-      isActive,
+      active,
     )
     return combineResultProps({
       href,
       options,
       ref,
       staticEventHandlers,
-      isActive,
+      active,
       resolvedProps,
       resolvedClass,
       resolvedStyle,
@@ -427,8 +419,10 @@ function useLinkPropsImpl(
   return computedProps as unknown as LinkHTMLAttributes
 }
 
+// Active: 0 = inactive, 1 = fuzzy-active, 2 = exact current page.
+type LinkActive = 0 | 1 | 2
 // [href, active] of an internal Link.
-type LinkState = [href: string | undefined, isActive: boolean]
+type LinkState = [href: string | undefined, active: LinkActive]
 
 // Options that decide where and how a Link navigates.
 const NAVIGATION_KEYS = [
@@ -449,10 +443,10 @@ const NAVIGATION_KEYS = [
   'href',
 ] as const
 
-function resolveStyleProps(options: AnyLinkPropsOptions, isActive: boolean) {
+function resolveStyleProps(options: AnyLinkPropsOptions, active: LinkActive) {
   const props =
-    (isActive ? options.activeProps : options.inactiveProps) ||
-    (isActive ? STATIC_ACTIVE_PROPS : EMPTY_OBJECT)
+    (active ? options.activeProps : options.inactiveProps) ||
+    (active ? STATIC_ACTIVE_PROPS : EMPTY_OBJECT)
   const resolvedProps: StyledProps =
     (typeof props === 'function' ? props() : props) || EMPTY_OBJECT
   const baseClass = options.class
@@ -489,7 +483,7 @@ const EMPTY_OBJECT = {}
 function combineResultProps({
   href,
   options,
-  isActive,
+  active,
   resolvedProps,
   resolvedClass,
   resolvedStyle,
@@ -499,7 +493,7 @@ function combineResultProps({
   initial?: LinkHTMLAttributes
   href: string | undefined
   options: AnyLinkPropsOptions
-  isActive: boolean
+  active: LinkActive
   resolvedProps: StyledProps
   resolvedClass?: StyledProps['class']
   resolvedStyle?: Record<string, string | number>
@@ -528,9 +522,12 @@ function combineResultProps({
     result['aria-disabled'] = true
   }
 
-  if (isActive) {
+  if (active) {
     result['data-status'] = 'active'
-    result['aria-current'] = 'page'
+    // Fuzzy ancestors stay visually active; only the exact page is current.
+    if (active > 1) {
+      result['aria-current'] = 'page'
+    }
   }
 
   for (const key of Object.keys(resolvedProps)) {
@@ -661,21 +658,22 @@ function getIsActive(
   },
   activeOptions: LinkOptions['activeOptions'],
   router: AnyRouter,
-) {
+): LinkActive {
   const currentPath = removeTrailingSlash(loc.pathname, router.basepath)
   const nextPath = removeTrailingSlash(nextLoc.pathname, router.basepath)
+  const pathExact = currentPath === nextPath
 
   // Both modes compare normalized paths; fuzzy matches need a segment boundary.
   if (
     activeOptions?.exact
-      ? currentPath !== nextPath
+      ? !pathExact
       : !(
           currentPath.startsWith(nextPath) &&
           (currentPath.length === nextPath.length ||
             currentPath[nextPath.length] === '/')
         )
   ) {
-    return false
+    return 0
   }
 
   if (activeOptions?.includeSearch ?? true) {
@@ -686,14 +684,15 @@ function getIsActive(
       activeOptions?.explicitUndefined,
     )
     if (!searchTest) {
-      return false
+      return 0
     }
   }
 
-  if (activeOptions?.includeHash) {
-    return loc.hash === nextLoc.hash
+  if (activeOptions?.includeHash && loc.hash !== nextLoc.hash) {
+    return 0
   }
-  return true
+
+  return pathExact ? 2 : 1
 }
 
 function getHref(
