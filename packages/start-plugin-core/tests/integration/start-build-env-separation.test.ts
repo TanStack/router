@@ -180,6 +180,7 @@ export const ${name} = (..._args: Array<unknown>) => '${marker}'
       ...dependency('routeSsr', 'MARK_ROUTE_SSR'),
       ...dependency('destructuredDefault', 'MARK_DESTRUCTURED_DEFAULT'),
       ...dependency('restDefault', 'MARK_REST_DEFAULT'),
+      ...dependency('splitFnDefault', 'MARK_SPLIT_FN_DEFAULT'),
       ...dependency('arrayServerOnly', 'MARK_ARRAY_SERVER_ONLY'),
       ...dependency('namespaceConst', 'MARK_NAMESPACE_CONST'),
       ...dependency('namespaceFunction', 'MARK_NAMESPACE_FUNCTION'),
@@ -402,6 +403,20 @@ export const Route = createFileRoute('/destructured-array-env')({
   component: () => title,
 })
 `,
+      // A binding only a server-only fn in the component reads (the client
+      // erases its implementation, in the component's chunk), beside one the
+      // loader reads: the declaration stays in the route module without the
+      // binding, and neither client module holds its default value.
+      // Source: router-utils placement row (R169 gate), moved here.
+      'src/routes/destructured-split-fn.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { createServerOnlyFn } from '@tanstack/react-start'
+import { splitFnDefault } from '../deps/splitFnDefault'
+const { picked = splitFnDefault(), kept } = { kept: 'MARK_SPLIT_FN_KEPT' } as { picked?: string; kept: string }
+export const Route = createFileRoute('/destructured-split-fn')({
+  loader: () => kept,
+  component: () => typeof createServerOnlyFn(() => picked),
+})
+`,
       'src/routes/api.ts': `import { createFileRoute } from '@tanstack/react-router'
 import { serverRouteHandler } from '../deps/serverRouteHandler'
 export const Route = createFileRoute('/api')({
@@ -469,12 +484,21 @@ const get = async (path) =>
         component: build.client.where('MARK_ROUTE_COMPONENT'),
         destructured: build.client.where('MARK_DESTRUCTURED_TITLE'),
         rest: build.client.where('MARK_REST_TITLE'),
+        splitFn: build.client.where('MARK_SPLIT_FN_KEPT'),
       }).toEqual({
         isomorphic: 'eager',
         component: 'lazy',
         destructured: 'lazy',
         rest: 'lazy',
+        splitFn: 'eager',
       })
+    })
+
+    // The route module keeps the loader's binding (`splitFn: 'eager'` above)
+    // and its declaration; the default value only the server-only fn read
+    // is in neither client module.
+    test('a default value only a server-only fn in a route component reads is not in the client bundle', () => {
+      expect(build.client.where('MARK_SPLIT_FN_DEFAULT')).toBe('nowhere')
     })
 
     // Source: review (Rsbuild, Start's plugin wiring and each construct were

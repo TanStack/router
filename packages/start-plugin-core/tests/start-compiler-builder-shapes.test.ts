@@ -149,6 +149,10 @@ const supported: Array<Shape> = [
     code: `import * as Start from '@tanstack/react-start'\nimport { db } from './db.server'\nconst { createServerFn: csf } = Start\nexport const fn = csf().handler(async () => db.x())`,
   },
   {
+    name: 'factories destructured from the package namespace by quoted keys',
+    code: `import * as Start from '@tanstack/react-start'\nimport { db } from './db.server'\nconst { 'createServerFn': csf, 'createIsomorphicFn': iso } = Start\nexport const read = iso().server(() => db.y()).client(() => 'client')\nexport const fn = csf().handler(async () => db.x())`,
+  },
+  {
     name: 'the factory destructured from the package namespace in a function',
     code: `import * as Start from '@tanstack/react-start'\nimport { db } from './db.server'\nconst make = () => {\n  const { createServerFn } = Start\n  return createServerFn()\n}\nexport const fn = make().handler(async () => db.x())`,
   },
@@ -656,6 +660,17 @@ const refused: Array<Refused> = [
     code: `import * as S from '@tanstack/react-start'\nimport { db } from './db.server'\nconst { createServerFn = S.createServerFn } = S\nexport const fn = createServerFn().handler(async () => db.x())`,
     // (at the default value: the factory the default reads)
     at: 'S.createServerFn } = S',
+  },
+  {
+    name: 'a factory destructured with a default that is no factory',
+    code: `import * as S from '@tanstack/react-start'\nimport { db } from './db.server'\nconst { createServerFn: csf = (() => null) as never } = S\nexport const fn = csf().handler(async () => db.x())`,
+    at: 'createServerFn: csf =',
+  },
+  {
+    name: 'a factory destructured from a nested pattern',
+    code: `import * as S from '@tanstack/react-start'\nimport { db } from './db.server'\nconst { a: { createServerFn } } = { a: S }\nexport const fn = createServerFn().handler(async () => db.x())`,
+    // (at the namespace the pattern reads into)
+    at: 'S }',
   },
   {
     name: 'the rest of the package namespace',
