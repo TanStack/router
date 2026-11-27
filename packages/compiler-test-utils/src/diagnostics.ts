@@ -20,6 +20,8 @@
  * - `findDiagnostics(diagnostics, expectation)` and
  *   `expectDiagnostic(diagnostics, expectation)`: the diagnostics meeting
  *   an expectation; the latter fails unless one (or exactly `times`) does.
+ *   An absence is `expectNoDiagnostic`, which reads every channel a
+ *   build's result or error carries (`everyChannelOf`).
  *   Unless an expectation asks for `info`, only a `warning` or an `error`
  *   meets it (SPEC G5, §5.7). A diagnostic of unknown owner (`shared`)
  *   meets one only when it names the expected file by its absolute path.
@@ -132,7 +134,10 @@ export function diagnosticsOf(
   const record = value as Record<string, unknown>
   const errors = Array.isArray(record.errors) ? record.errors : []
   const warnings = Array.isArray(record.warnings) ? record.warnings : []
-  if (!hasMessage(record) && (errors.length > 0 || warnings.length > 0)) {
+  if (
+    !hasMessage(record) &&
+    (Array.isArray(record.errors) || Array.isArray(record.warnings))
+  ) {
     // A build result or stats: its errors and warnings are the diagnostics.
     return [
       ...diagnosticsOf(errors, 'error'),
@@ -527,6 +532,33 @@ function toDiagnostics(captured: unknown): Array<Diagnostic> {
   return diagnosticsOf(captured)
 }
 
+/** What a build reported on each channel (`BuildResult`, `BuildError`). */
+export interface BuildReports {
+  /** The bundler's own reports and its plugins'. */
+  warnings: Array<Diagnostic>
+  /** What the build printed (`console.*`, the process streams). */
+  consoleMessages: Array<Diagnostic>
+}
+
+/**
+ * The diagnostics of `captured` (`toDiagnostics`) and, for a build's result
+ * or error, what it printed (`consoleMessages`): every channel, which an
+ * absence check reads.
+ */
+export function everyChannelOf(captured: unknown): Array<Diagnostic> {
+  const printed =
+    typeof captured === 'object' &&
+    captured !== null &&
+    !Array.isArray(captured) &&
+    !isDiagnostic(captured)
+      ? (captured as { consoleMessages?: unknown }).consoleMessages
+      : undefined
+  return [
+    ...toDiagnostics(captured),
+    ...(Array.isArray(printed) ? toDiagnostics(printed) : []),
+  ]
+}
+
 /**
  * Asserts that at least one diagnostic of `captured` (diagnostics, or any
  * value `diagnosticsOf` reads; exactly `times`, when given) meets
@@ -564,14 +596,15 @@ export function expectDiagnostic(
 /**
  * Asserts that no diagnostic of `captured` meets `expected` (the "is not
  * reported" check), and fails with the ones that do. Output of unknown owner
- * (`shared`) counts however it names the file: it may be this work's.
+ * (`shared`) counts however it names the file: it may be this work's. A
+ * build's result or error is read on every channel (`everyChannelOf`).
  */
 export function expectNoDiagnostic(
   captured: unknown,
   expected: Omit<DiagnosticExpectation, 'times'>,
   message = 'expected no diagnostic',
 ) {
-  const matching = toDiagnostics(captured).filter(
+  const matching = everyChannelOf(captured).filter(
     (diagnostic) => contentMismatches(diagnostic, expected).length === 0,
   )
   if (matching.length > 0) {

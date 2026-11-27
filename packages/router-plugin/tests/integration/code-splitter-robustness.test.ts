@@ -379,7 +379,7 @@ test.each([
         files: { 'entry.ts': clientMountEntry },
       }),
     })
-    expectNoDiagnostic([...app.warnings, ...app.consoleMessages], {
+    expectNoDiagnostic(app, {
       severity: 'warning',
       file: 'routes/index.tsx',
       root: app.root,

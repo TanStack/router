@@ -35,9 +35,14 @@
  */
 import { formatWithOptions, stripVTControlCharacters } from 'node:util'
 import { listen } from './console-hook'
-import { describeError, diagnosticsOf } from './diagnostics'
+import { describeError, diagnosticsOf, everyChannelOf } from './diagnostics'
 import type { ConsoleMethod, PrintedEntry } from './console-hook'
-import type { Diagnostic, DiagnosticSource, Severity } from './diagnostics'
+import type {
+  BuildReports,
+  Diagnostic,
+  DiagnosticSource,
+  Severity,
+} from './diagnostics'
 import type { LogErrorOptions, Logger } from 'vite'
 import type { Rspack } from '@rsbuild/core'
 
@@ -355,14 +360,16 @@ export function problems<T extends Diagnostic>(diagnostics: Array<T>) {
 
 /**
  * Asserts that no channel reported a problem (a `warning` or an `error`):
- * the "nothing reported" check. `info` output is allowed. The failure
- * lists every problem with its source.
+ * the "nothing reported" check. `info` output is allowed. Takes the
+ * diagnostics a scope recorded, or a whole build (`BuildResult`,
+ * `BuildError`): its reports and what it printed. The failure lists every
+ * problem with its source.
  */
 export function expectNoProblems(
-  diagnostics: Array<Diagnostic>,
+  diagnostics: Array<Diagnostic> | BuildReports,
   message = 'nothing reported',
 ) {
-  const found = problems(diagnostics)
+  const found = problems(everyChannelOf(diagnostics))
   if (found.length > 0) {
     throw new Error(
       `${message}: expected no warning or error on any channel, got ${found.length}:\n${found

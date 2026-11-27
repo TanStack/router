@@ -261,7 +261,8 @@ export class DanglingNameError extends Error {
 
 /**
  * A build failed; `errors` are the bundler's error messages, `warnings`
- * what it reported before (see `BuildResult.warnings`). A wait that ran out
+ * what it reported before (see `BuildResult.warnings`), `consoleMessages`
+ * what it printed before (`BuildResult.consoleMessages`). A wait that ran out
  * of time is no failed build: its `SettleTimeout` (`./outcome`) is thrown as
  * it is.
  */
@@ -270,6 +271,7 @@ export class BuildError extends Error {
     readonly bundler: Bundler,
     readonly errors: Array<string>,
     readonly warnings: Array<ChannelDiagnostic>,
+    readonly consoleMessages: Array<ChannelDiagnostic> = [],
   ) {
     super(`${bundler} build failed:\n${errors.join('\n')}`)
     this.name = 'BuildError'
@@ -1910,7 +1912,8 @@ function swcOptions(development: boolean, lang: 'ts' | 'tsx' | 'jsx') {
  * default, which decides e.g. the JSX runtime and the `development` export
  * condition; `null` unsets it; for the build alone: `./node-env`) and records in `messages` the warnings and
  * errors of the merged console/stream channel for this build’s async work,
- * with their severity. An error no one handles while the build runs fails the build: a
+ * with their severity; a `BuildError` it lets through keeps them
+ * (`consoleMessages`). An error no one handles while the build runs fails the build: a
  * bundler that loses a plugin's error (e.g. a throw in a hook Rspack calls
  * without catching it) would otherwise never finish the build, and the test
  * would wait for its timeout.
@@ -1920,7 +1923,15 @@ export function withBuildEnvironment<T>(
   messages: Array<ChannelDiagnostic>,
   run: (channel: DiagnosticChannel) => Promise<T>,
 ): Promise<T> {
-  return withNodeEnv(buildNodeEnv, () => withBuildChannel(messages, run))
+  return withNodeEnv(buildNodeEnv, () => withBuildChannel(messages, run)).catch(
+    (error: unknown) => {
+      // What the build printed before it failed
+      if (error instanceof BuildError) {
+        error.consoleMessages.push(...messages)
+      }
+      throw error
+    },
+  )
 }
 
 async function withBuildChannel<T>(

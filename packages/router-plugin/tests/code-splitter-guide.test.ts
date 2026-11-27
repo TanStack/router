@@ -41,8 +41,8 @@ async function production(
     root: built.root,
   }
   const warnings = findDiagnostics(built.warnings, about).map((d) => d.text)
-  /** Asserts that the build warns about nothing in the route file. */
-  const noWarning = () => expectNoDiagnostic(built.warnings, about)
+  /** Asserts that the build warns about nothing in the route file, on any channel. */
+  const noWarning = () => expectNoDiagnostic(built, about)
   return { built, warnings, noWarning }
 }
 

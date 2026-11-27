@@ -17,6 +17,7 @@ import {
   describeBuild,
   originalFrameOf,
 } from '../../src/build-harness'
+import { expectNoProblems } from '../../src/diagnostic-channel'
 import { findDiagnostics } from '../../src/diagnostics'
 import { SettleTimeout } from '../../src/outcome'
 import type {
@@ -725,6 +726,35 @@ test.each(['webpack', 'rspack'] as const)(
   },
   timeout,
 )
+
+// What a build printed is in its result and in its error: the whole-build
+// absence check reads it, which the bundler's reports alone miss.
+test('a build keeps what it printed, in its result and, when it fails, in its error', async () => {
+  const printing = (fail: boolean) => () => ({
+    name: 'printing',
+    buildStart() {
+      console.warn('MARK_PRINTED')
+      if (fail) {
+        throw new Error('MARK_FAILED')
+      }
+    },
+  })
+  const files = { 'entry.ts': `export const value = 1\n` }
+  const built = await bundleApp({
+    bundler: 'vite',
+    files,
+    plugins: { vite: printing(false) },
+  })
+  expectNoProblems(built.warnings)
+  expect(() => expectNoProblems(built)).toThrow(/MARK_PRINTED/)
+  const failed = await bundleApp({
+    bundler: 'vite',
+    files,
+    plugins: { vite: printing(true) },
+  }).catch((error: unknown) => error)
+  expect(failed).toBeInstanceOf(BuildError)
+  expect(() => expectNoProblems(failed as BuildError)).toThrow(/MARK_PRINTED/)
+})
 
 // A wait that ran out of time is not a failed build: a row expecting a
 // refusal cannot pass on it.

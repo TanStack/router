@@ -855,7 +855,7 @@ export class StartBuildError extends BuildError {
     /** What Start's `onViolation` received (`StartBuild.violations`). */
     readonly violations: Array<ViolationInfo>,
   ) {
-    super(error.bundler, error.errors, error.warnings)
+    super(error.bundler, error.errors, error.warnings, error.consoleMessages)
     this.name = 'StartBuildError'
   }
 }

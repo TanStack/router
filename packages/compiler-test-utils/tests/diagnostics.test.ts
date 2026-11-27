@@ -14,6 +14,7 @@ import {
   expectNoDiagnostic,
   findDiagnostics,
 } from '../src/diagnostics'
+import { expectNoProblems } from '../src/diagnostic-channel'
 
 const broken = `const a = 1
 export const b = (
@@ -913,4 +914,23 @@ describe('fields and the text', () => {
   ])('%s are the file’s', (_, text, expected) => {
     expectDiagnostic([{ severity: 'warning', text, raw: text }], expected)
   })
+})
+
+// A build splits what it reported (`warnings`) from what it printed
+// (`consoleMessages`): an absence check of the whole build reads both.
+test('an absence check reads what a build printed as well as what it reported', () => {
+  const printed = {
+    severity: 'warning' as const,
+    text: 'src/a.ts:1:1: careful',
+    raw: 'src/a.ts:1:1: careful',
+  }
+  const build = { warnings: [], consoleMessages: [printed] }
+  expect(() => expectNoProblems(build)).toThrow(/careful/)
+  expect(() =>
+    expectNoDiagnostic(build, { file: 'src/a.ts', root: '/app' }),
+  ).toThrow(/careful/)
+  // (a build with nothing on any channel has no problem)
+  expect(() =>
+    expectNoProblems({ warnings: [], consoleMessages: [] }),
+  ).not.toThrow()
 })
