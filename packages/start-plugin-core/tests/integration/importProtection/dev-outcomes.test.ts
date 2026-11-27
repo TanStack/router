@@ -408,6 +408,8 @@ export const jsxDEV = jsx
     importProtection?: ImportProtectionOptions
     /** What `entry.read()` gives, described (default: one safe mock). */
     expected?: Array<string>
+    /** Builds only (a module the Vite dev server serves the browser as it is). */
+    buildsOnly?: boolean
   }
 
   const twins: Record<string, TwinCase> = {
@@ -563,6 +565,33 @@ export const read = () => [Color.Red, Util.x]
       },
       expected: [mock, mock],
     },
+    // Twin of the core row "records the names a require() result is read
+    // by" (router-utils edges.test.ts, U1): a mock of a denied CommonJS
+    // target (its exports unknown to the compiler) that `require()` reads
+    // owns the names the importer reads, by destructuring (with a rename),
+    // as members of the binding or of the call. (Not the result itself as
+    // a value, the core row's `'*'`: the importer gets the mock module's
+    // namespace there, not a callable mock.) Builds only: the Vite dev
+    // server serves the module to the browser as written, where `require`
+    // is undefined.
+    'denied CommonJS files read through require()': {
+      files: {
+        'src/a.server.cjs': `exports.secret = () => 'MARK_SECRET'
+exports.token = () => 'MARK_SECRET'
+`,
+        'src/b.server.cjs': `exports.one = () => 'MARK_SECRET'
+exports.two = () => 'MARK_SECRET'
+`,
+        'src/d.server.cjs': `exports.only = () => 'MARK_SECRET'\n`,
+        'src/entry.ts': `const { secret, token: t } = require('./a.server.cjs')
+const b = require('./b.server.cjs')
+const d = require('./d.server.cjs').only
+export const read = () => [secret, t, b.one, b['two'], d]
+`,
+      },
+      expected: [mock, mock, mock, mock, mock],
+      buildsOnly: true,
+    },
   }
 
   /**
@@ -591,7 +620,7 @@ export const read = () => [Color.Red, Util.x]
           : [file, text.replaceAll('MARK_SECRET', 'MARK_SECRET_DBLIB')],
       ),
     )
-  /** The app of the twins `on`. */
+  /** The app of the twins `on` (all of them, or those that run in Vite dev). */
   const appOf = (on: Array<string>): Record<string, string> => ({
     ...Object.assign({}, ...on.map((name) => twinFiles(names.indexOf(name)))),
     'src/entry.ts': `${on.map((name, i) => `import * as t${i} from './${dirOf(name)}/entry'`).join('\n')}
@@ -655,7 +684,7 @@ try {
         if (channel === 'vite dev') {
           // (the options `startProtectedDevServer` gives Start)
           const server = await startBrowserStartDevServer({
-            files: appOf(names),
+            files: appOf(names.filter((name) => !twins[name]!.buildsOnly)),
             start: {
               importProtection: twinOptions,
               router: { entry: 'entry.ts' },
@@ -710,10 +739,12 @@ try {
   }
 
   for (const [i, name] of names.entries()) {
-    const { expected = [mock] } = twins[name]!
-    test(`vite dev: ${name}`, async () => {
-      expect(await (await hostOf('vite dev')).run(name)).toEqual(expected)
-    }, 30_000)
+    const { expected = [mock], buildsOnly } = twins[name]!
+    if (!buildsOnly) {
+      test(`vite dev: ${name}`, async () => {
+        expect(await (await hostOf('vite dev')).run(name)).toEqual(expected)
+      }, 30_000)
+    }
     for (const bundler of startBundlers) {
       test(`${bundler} build, mock mode: ${name}`, async () => {
         const { run, hasRealCode } = await hostOf(`${bundler} build`)
