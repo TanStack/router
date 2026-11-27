@@ -73,6 +73,7 @@ export interface RawFacts {
 }
 
 interface RawFactsOptions {
+  /** A file's text, null when it cannot be read (missing, deleted mid-read, any error): it never rejects. */
   readFile: (path: string) => Promise<string | null>
   /**
    * A virtual id's text, loaded by the environment that asks for its facts:
@@ -513,54 +514,46 @@ export class RawFactsCache {
     const entry = e
     const holder: { p: Promise<RawFacts> | null } = { p: null }
     holder.p = (async () => {
-      // (a read that throws leaves no pending read behind: the next ask
-      // reads again, `textOf`)
-      try {
-        const prior = entry.facts
-        const reading = this.textOf(entry, canonicalId, env)
-        const text = await this.readSaved(canonicalId, env, prior, reading)
-        const built = this.build(canonicalId, text ?? null)
-        // A file that stops parsing (saved mid-edit) keeps the last facts it
-        // parsed to: its importers' decisions stand until it parses again (a
-        // changed digest would evict their plans and hot-update modules that
-        // cannot accept, e.g. a route tree, into a full reload). A file that
-        // never parsed is unknown. One that still reads empty after
-        // `readSaved`'s retries is empty.
-        const facts =
-          text != null &&
-          !built.opaque &&
-          prior?.summary &&
-          built.summary === null
-            ? prior
-            : built
-        // a newer read may have superseded this one
-        if (entry.pending === holder.p) {
-          // (a load that threw is no fact: the entry stays, without facts, so
-          // that every read loads it again and an expiry or a change event of
-          // the module finds it)
-          entry.facts = text === undefined ? null : facts
-          entry.stale = false
-          entry.pending = null
-          if (entry.reading === reading) {
-            entry.reading = null
-          }
-          if (
-            text === null &&
-            !isVirtualId(canonicalId) &&
-            this.entries.get(key) === entry
-          ) {
-            // a missing file's facts are not kept (`forget`): its creation
-            // has an event. A virtual module's miss is kept: no file event
-            // names it, only its host's update or `expireVirtual` does
-            this.deleteEntry(key)
-          }
+      const prior = entry.facts
+      const reading = this.textOf(entry, canonicalId, env)
+      const text = await this.readSaved(canonicalId, env, prior, reading)
+      const built = this.build(canonicalId, text ?? null)
+      // A file that stops parsing (saved mid-edit) keeps the last facts it
+      // parsed to: its importers' decisions stand until it parses again (a
+      // changed digest would evict their plans and hot-update modules that
+      // cannot accept, e.g. a route tree, into a full reload). A file that
+      // never parsed is unknown. One that still reads empty after
+      // `readSaved`'s retries is empty.
+      const facts =
+        text != null &&
+        !built.opaque &&
+        prior?.summary &&
+        built.summary === null
+          ? prior
+          : built
+      // a newer read may have superseded this one
+      if (entry.pending === holder.p) {
+        // (a load that threw is no fact: the entry stays, without facts, so
+        // that every read loads it again and an expiry or a change event of
+        // the module finds it)
+        entry.facts = text === undefined ? null : facts
+        entry.stale = false
+        entry.pending = null
+        if (entry.reading === reading) {
+          entry.reading = null
         }
-        return facts
-      } finally {
-        if (entry.pending === holder.p) {
-          entry.pending = null
+        if (
+          text === null &&
+          !isVirtualId(canonicalId) &&
+          this.entries.get(key) === entry
+        ) {
+          // a missing file's facts are not kept (`forget`): its creation
+          // has an event. A virtual module's miss is kept: no file event
+          // names it, only its host's update or `expireVirtual` does
+          this.deleteEntry(key)
         }
       }
+      return facts
     })()
     entry.pending = holder.p
     return holder.p
@@ -578,27 +571,12 @@ export class RawFactsCache {
   }
 
   /** The entry's next text: its read in flight or carried, else a new read. */
-  /**
-   * The entry's read, shared by its readers (`get`, `marker`): a read that
-   * throws is dropped as it settles, so no reader keeps it and the next ask
-   * reads the module again.
-   */
   private textOf(
     entry: FactsEntry,
     canonicalId: string,
     env: string,
   ): Promise<Text> {
-    if (entry.reading) {
-      return entry.reading
-    }
-    const reading = this.read(canonicalId, env)
-    entry.reading = reading
-    reading.catch(() => {
-      if (entry.reading === reading) {
-        entry.reading = null
-      }
-    })
-    return reading
+    return (entry.reading ??= this.read(canonicalId, env))
   }
 
   /**
