@@ -458,6 +458,8 @@ interface App {
   click: (selector: string) => Promise<void>
   waitFor: (text: string) => Promise<void>
   evaluate: <T>(script: string) => Promise<T>
+  /** The page's uncaught errors and `console.error` output so far. */
+  pageErrors: () => Array<string>
   /**
    * Rsbuild, opened with `recordHot`: the hot updates the page fetched
    * since the last call, each body read in full.
@@ -511,6 +513,7 @@ async function open(
       click: (selector) => app.page.page.locator(selector).first().click(),
       waitFor: (text) => app.page.waitForText(text, { selector: '#app' }),
       evaluate: (script) => app.page.page.evaluate(script),
+      pageErrors: () => [...app.page.errors],
     }
   }
   const app = await openRouteHmrPage({
@@ -536,6 +539,7 @@ async function open(
     click: app.click,
     waitFor: (text) => app.page.waitForText(text, { selector: '#app' }),
     evaluate: app.evaluate,
+    pageErrors: () => [...app.page.errors],
     ...(recordHot && { hotUpdates: recordHotUpdates(app.page.page) }),
   }
 }
@@ -564,6 +568,7 @@ async function runRow(bundler: Bundler, fw: Fw, row: Row, ctx: TestContext) {
       await app.click('#go')
       await app.waitFor('away')
     }
+    expect(app.pageErrors(), 'page errors').toEqual([])
     return
   }
   if (!row.unmounted) {
@@ -581,6 +586,8 @@ async function runRow(bundler: Bundler, fw: Fw, row: Row, ctx: TestContext) {
   }
   /** The loader runs the previous edit reached: a late second run of it shows here. */
   let target: number | undefined
+  /** Page errors before the fix of a syntax error (none without one). */
+  let fixedErrors = 0
   for (const v of ['v2', 'v3']) {
     const before = await loaderRuns()
     if (target !== undefined) {
@@ -597,6 +604,7 @@ async function runRow(bundler: Bundler, fw: Fw, row: Row, ctx: TestContext) {
       expect(reloaded, `${v} reloaded`).toBe(false)
     }
     if (mayReload) {
+      fixedErrors = app.pageErrors().length
       continue
     }
     if (row.loaderRuns !== undefined) {
@@ -634,6 +642,8 @@ async function runRow(bundler: Bundler, fw: Fw, row: Row, ctx: TestContext) {
     await app.click('#go')
     await app.waitFor(row.shows('v3'))
   }
+  // (a failed compile may log on the page until its fix: the errors after it)
+  expect(app.pageErrors().slice(fixedErrors), 'page errors').toEqual([])
 }
 
 const cases = (['react', 'solid'] as const).flatMap((fw) =>
@@ -699,6 +709,7 @@ ${ui.page('value.text', label)}`,
         expect((await app.hotUpdates!()).flatMap((u) => u.modules)).toEqual([
           './shared.ts',
         ])
+        expect(app.pageErrors(), 'page errors').toEqual([])
       },
     )
   })
