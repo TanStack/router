@@ -357,6 +357,24 @@ export function render({ request }: { request: Request }) {
 
 <!-- ::end:framework -->
 
+### Reporting render errors
+
+React reports an error thrown while rendering to the `onError` option of its streaming renderers. By default `renderRouterToStream` writes these errors with `console.error`. Pass `onError` to send them to your own logger or error tracker instead. It receives the same arguments as React's `onError`, and a string it returns is sent to the client as the error's `digest`. React 18 passes only the error, so treat the second argument as optional. Errors caused by an aborted request are not reported.
+
+```tsx
+renderRouterToStream({
+  request,
+  responseHeaders,
+  router,
+  children: <RouterServer router={router} />,
+  onError: (error, errorInfo) => {
+    logger.error({ error, componentStack: errorInfo?.componentStack })
+  },
+})
+```
+
+`onError` is available in the React adapter.
+
 ## Streaming Dehydration/Hydration
 
 Streaming dehydration/hydration is an advanced pattern that goes beyond markup and allows you to dehydrate and stream any supporting data from the server to the client and rehydrate it on arrival. This is useful for applications that may need to further use/manage the underlying data that was used to render the initial markup on the server.
