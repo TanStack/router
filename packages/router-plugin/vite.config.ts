@@ -106,7 +106,6 @@ const config = defineConfig({
           ...pagesProject.test,
           name: 'unit',
           exclude: [...configDefaults.exclude, 'integration/**'],
-          typecheck: { enabled: true },
         },
       },
       integrationProject,

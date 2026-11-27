@@ -2,19 +2,9 @@ import { expectTypeOf, test } from 'vitest'
 import type { ReactElement } from 'react'
 
 import { renderServerComponent } from '../src/renderServerComponent.stub'
-import type {
-  RenderServerComponentElement,
-  RenderServerComponentResult,
-} from '../src/ServerComponentTypes'
 
 test('renderServerComponent infers nested access type', () => {
-  function MyServerComponent(_props: {}): any {
-    throw new Error('not executed')
-  }
-
-  const element = null as unknown as RenderServerComponentElement<{
-    foo: { bar: ReactElement }
-  }>
+  const element = null as unknown as { foo: { bar: ReactElement } }
 
   const dataPromise = renderServerComponent(element)
 
@@ -24,7 +14,6 @@ test('renderServerComponent infers nested access type', () => {
   expectTypeOf<Data>().toHaveProperty('foo')
   expectTypeOf<Data['foo']>().toHaveProperty('bar')
 
-  // also: directly renderable at top-level
-  type MustBeRenderable = true
-  expectTypeOf<MustBeRenderable>().toEqualTypeOf<true>()
+  // also: each selected node is directly renderable
+  expectTypeOf<Data['foo']['bar']>().toExtend<ReactElement>()
 })
