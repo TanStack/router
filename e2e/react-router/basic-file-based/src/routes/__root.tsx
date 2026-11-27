@@ -174,6 +174,14 @@ function RootComponent() {
         >
           FullPath Test
         </Link>
+        <Link
+          to="/global-blocker/single-blocker"
+          activeProps={{
+            className: 'font-bold',
+          }}
+        >
+          Global Blocker
+        </Link>
       </div>
       <hr />
       <Outlet />
