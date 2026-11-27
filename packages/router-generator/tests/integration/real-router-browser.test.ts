@@ -1,7 +1,7 @@
 /** Generated trees consumed by the real routers and renderers in Chromium. */
 import { test } from 'vitest'
 import { checkApp } from '../real-router'
-import { frameworkCases, groupLayout, shapeCases } from '../real-router-cases'
+import { frameworkCases, groupLayout } from '../real-router-cases'
 import type { Case } from '../real-router'
 
 const nativeAsyncVue: Case = {
@@ -24,7 +24,9 @@ export const Route = createFileRoute('/')({
   pages: { '/': ['native async page'] },
 }
 
-test.each([...frameworkCases, ...shapeCases, groupLayout, nativeAsyncVue])(
+// (the cases with pages: the route shapes of shapeCases render none, their
+// matching and hierarchy are real-router.test.ts's)
+test.each([...frameworkCases, groupLayout, nativeAsyncVue])(
   'the browser renders $name',
   (testCase) => checkApp(testCase, { types: false, client: true }),
 )

@@ -30,12 +30,18 @@ test('an unchanged route tree is not formatted again', async () => {
     'src/routes/__root.tsx': rootRoute(),
     'src/routes/index.tsx': fileRoute('/'),
   })
-  const config = configOf(root, { enableRouteTreeFormatting: true })
+  // (a footer Prettier reformats: the tree written is Prettier's output)
+  const config = configOf(root, {
+    enableRouteTreeFormatting: true,
+    routeTreeFileFooter: ['export const footer   =   {a:1}'],
+  })
   const generator = new Generator({ config, root })
   const before = format.calls
   await generator.run()
   expect(format.calls - before).toBe(1)
   const tree = await read(root, 'src/routeTree.gen.ts')
+  expect(tree).toContain('export const footer = { a: 1 }')
+  expect(tree).not.toContain('{a:1}')
 
   await generator.run()
   await generator.run({ type: 'build' })

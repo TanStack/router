@@ -27,6 +27,7 @@ import {
   replaceBackslash,
 } from '../src'
 import { recordInputs } from './consumer-inputs'
+import type { Logger } from '../src'
 
 /** The route files the generator knows: `/`-separated on every platform. */
 function routeFiles(generator: Generator) {
@@ -268,6 +269,27 @@ const postsRoute = `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/posts')({})
 `
 
+/**
+ * A logger calling `whileReading` with each warning naming `file`, as it is
+ * logged: in a session that knew the file's route, the generator warns that
+ * it does not parse as a batch reads it, so the call happens while that
+ * batch generates.
+ */
+function whileReading(file: string, onWarning: () => void): Logger {
+  const ignore = () => {}
+  return {
+    log: ignore,
+    debug: ignore,
+    info: ignore,
+    error: ignore,
+    warn: (...args) => {
+      if (args.join(' ').includes(path.basename(file))) {
+        onWarning()
+      }
+    },
+  }
+}
+
 // The root route file too: a cold run reads every route file.
 test('a cold generation with a root route file that does not parse fails naming the file', async () => {
   const root = await createApp({
@@ -356,9 +378,9 @@ test('a build after a watch run that kept the route of a broken file fails, nami
 })
 
 // A build's outcome is its drain's last batch: an event that arrives while
-// it generates (no host sends one; here the generator's own `run`, one
-// microtask later, once the drain took the build's batch) is a build too,
-// so it fails on the broken file rather than keep its last good route.
+// it generates (no host sends one; here the generator's own `run`, called
+// as the build's batch reads the broken file) is a build too, so it fails on
+// the broken file rather than keep its last good route.
 test('a build fails on a route file that does not parse when another event arrives while it generates', async () => {
   const root = await createApp({
     'src/routes/__root.tsx': rootRoute,
@@ -366,7 +388,17 @@ test('a build fails on a route file that does not parse when another event arriv
   })
   const config = configOf(root)
   const posts = path.join(root, 'src/routes/posts.tsx')
-  const generator = new Generator({ config, root })
+  let later: Promise<void> | undefined
+  const generator = new Generator({
+    config,
+    root,
+    logger: whileReading(posts, () => {
+      later ??= generator.run({
+        type: 'update',
+        path: path.join(root, 'src/routes/__root.tsx'),
+      })
+    }),
+  })
   const session = createGeneratorSession({
     generator: () => generator,
     report: () => {},
@@ -375,12 +407,8 @@ test('a build fails on a route file that does not parse when another event arriv
   const tree = await readFile(config.generatedRouteTree, 'utf8')
   await writeFile(posts, 'export const Route = (')
   const built = session.build()
-  await Promise.resolve()
-  const later = generator.run({
-    type: 'update',
-    path: path.join(root, 'src/routes/__root.tsx'),
-  })
   await expect(built).rejects.toThrow('posts.tsx')
+  expect(later).toBeDefined()
   await expect(later).rejects.toThrow('posts.tsx')
   expect(await readFile(config.generatedRouteTree, 'utf8')).toBe(tree)
 })
@@ -393,7 +421,15 @@ test('a build arriving during a dev batch fails on a route file that does not pa
     'src/routes/posts.tsx': postsRoute,
   })
   const posts = path.join(root, 'src/routes/posts.tsx')
-  const generator = new Generator({ config: configOf(root), root })
+  // (the build arrives as the dev batch reads the broken file)
+  let built: Promise<void> | undefined
+  const generator = new Generator({
+    config: configOf(root),
+    root,
+    logger: whileReading(posts, () => {
+      built ??= session.build()
+    }),
+  })
   const session = createGeneratorSession({
     generator: () => generator,
     report: () => {},
@@ -401,30 +437,41 @@ test('a build arriving during a dev batch fails on a route file that does not pa
   await session.run()
   await writeFile(posts, 'export const Route = (')
   const dev = session.run({ type: 'update', path: posts })
-  await Promise.resolve()
-  await Promise.resolve()
-  await expect(session.build()).rejects.toThrow('posts.tsx')
   await dev
+  expect(built).toBeDefined()
+  await expect(built).rejects.toThrow('posts.tsx')
 })
 
+// (the fix lands, and its event arrives, as the build's batch reads the
+// broken file)
 test('a build resolves when an event arriving while it generates fixes the route file', async () => {
   const root = await createApp({
     'src/routes/__root.tsx': rootRoute,
     'src/routes/posts.tsx': postsRoute,
   })
   const posts = path.join(root, 'src/routes/posts.tsx')
-  const generator = new Generator({ config: configOf(root), root })
+  let building = false
+  let fixed: Promise<void> | undefined
+  const generator = new Generator({
+    config: configOf(root),
+    root,
+    logger: whileReading(posts, () => {
+      if (building && !fixed) {
+        writeFileSync(posts, postsRoute)
+        fixed = generator.run({ type: 'update', path: posts })
+      }
+    }),
+  })
   const session = createGeneratorSession({
     generator: () => generator,
     report: () => {},
   })
   await session.run()
   await writeFile(posts, 'export const Route = (')
-  const built = session.build()
-  await Promise.resolve()
-  await writeFile(posts, postsRoute)
-  await generator.run({ type: 'update', path: posts })
-  await built
+  building = true
+  await session.build()
+  expect(fixed).toBeDefined()
+  await fixed
   expect(routeFiles(generator)).toContain(replaceBackslash(posts))
 })
 

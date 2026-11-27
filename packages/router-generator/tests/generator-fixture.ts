@@ -75,6 +75,9 @@ export const customTemplates = {
   ].join(''),
 }
 
+/** The footer of the no-formatted-route-tree fixture, as Prettier would not print it. */
+export const unformattedFooter = 'export const footer   =   {a:1}'
+
 /**
  * The configuration of the fixture `name` in `dir`: its `tsr.config.json`
  * if it has one, its `routes` directory and `routeTree.gen.ts`, and the
@@ -99,6 +102,8 @@ export function fixtureConfig(name: string, dir = fixtureDir(name)): Config {
       break
     case 'no-formatted-route-tree':
       config.enableRouteTreeFormatting = false
+      // (code Prettier would reformat: the tree keeps it as configured)
+      config.routeTreeFileFooter = [unformattedFooter]
       break
     case 'custom-tokens':
     case 'escaped-custom-tokens':

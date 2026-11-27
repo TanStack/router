@@ -36,12 +36,26 @@ afterEach(() => {
 const routerPackage = '@tanstack/react-router'
 const router = `'${routerPackage}'`
 
+/** An app with a root route, `src/routes/<file>` holding `source` and `otherFiles`. */
+async function upkeepApp(
+  file: string,
+  source: string,
+  otherFiles: Record<string, string>,
+) {
+  const root = await createApp({
+    'src/routes/__root.tsx': rootRoute(),
+    [`src/routes/${file}`]: source,
+    ...otherFiles,
+  })
+  return { root, file: path.join(root, 'src/routes', file) }
+}
+
 /**
  * Runs the generator on an app with a root route, `src/routes/<file>`
- * holding `source` and `otherFiles` (paths relative to the app root).
- * Returns the file as the generator left it, the route
- * tree's routes (route id to file) and the warnings; or the error of a run
- * that fails.
+ * holding `source` and `otherFiles` (paths relative to the app root); the
+ * run must succeed. Returns the file as the generator left it, the warnings
+ * and `routes()`, the route tree's routes (route id to file) as the real
+ * router loads them.
  */
 async function upkeep(
   file: string,
@@ -49,31 +63,80 @@ async function upkeep(
   config: Partial<Config> = {},
   otherFiles: Record<string, string> = {},
 ) {
-  const root = await createApp({
-    'src/routes/__root.tsx': rootRoute(),
-    [`src/routes/${file}`]: source,
-    ...otherFiles,
-  })
-  let error: Error | undefined
-  let routes: Record<string, string | null> | undefined
+  const app = await upkeepApp(file, source, otherFiles)
+  const {
+    result: { generatedRouteTree },
+    diagnostics,
+  } = await captureDiagnostics(() =>
+    generate(app.root, { disableLogging: false, ...config }),
+  )
+  return {
+    ...app,
+    written: await read(app.root, `src/routes/${file}`),
+    diagnostics,
+    routes: () => routesOf(generatedRouteTree),
+  }
+}
+
+/**
+ * `upkeep` of a file the generator may report instead of keeping up: a run
+ * that fails is no failure of the test, its error is returned (`error`, and
+ * `routes()` then gives undefined). `expectReported` checks such a report.
+ */
+async function upkeepOrReport(
+  file: string,
+  source: string,
+  otherFiles: Record<string, string> = {},
+) {
+  const app = await upkeepApp(file, source, otherFiles)
+  let error: unknown
+  let generatedRouteTree: string | undefined
   const { diagnostics } = await captureDiagnostics(async () => {
     try {
-      const { generatedRouteTree } = await generate(root, {
+      ;({ generatedRouteTree } = await generate(app.root, {
         disableLogging: false,
-        ...config,
-      })
-      routes = await routesOf(generatedRouteTree)
+      }))
     } catch (e) {
-      error = e as Error
+      error = e
     }
   })
   return {
-    root,
-    file: path.join(root, 'src/routes', file),
-    written: await read(root, `src/routes/${file}`),
-    routes,
+    ...app,
+    written: await read(app.root, `src/routes/${file}`),
     diagnostics,
     error,
+    routes: async () =>
+      generatedRouteTree === undefined
+        ? undefined
+        : await routesOf(generatedRouteTree),
+  }
+}
+
+/**
+ * Asserts that the generator reported the file by name: the run failed
+ * naming it, or it succeeded with a warning naming it.
+ */
+function expectReported(
+  {
+    root,
+    file,
+    error,
+    diagnostics,
+  }: Pick<
+    Awaited<ReturnType<typeof upkeepOrReport>>,
+    'root' | 'file' | 'error' | 'diagnostics'
+  >,
+  at?: { position: ReturnType<typeof diagnosticPosition> },
+) {
+  if (error !== undefined) {
+    expectDiagnostic(diagnosticsOf(error), {
+      severity: 'error',
+      file,
+      root,
+      ...at,
+    })
+  } else {
+    expectDiagnostic(diagnostics, { severity: 'warning', file, root, ...at })
   }
 }
 
@@ -83,7 +146,7 @@ async function upkeep(
  * a route of the router package's kind for `createdWith`, created with
  * `createdWith` (bound to the router package export under any local name or
  * through a namespace import) and `id`, and it changed only where the
- * generator may edit it (owned-edits.ts).
+ * generator may edit it (owned-edits.ts). Returns its exports.
  */
 async function expectRouteFile(
   written: string,
@@ -113,6 +176,7 @@ async function expectRouteFile(
     id,
   })
   expectOnlyOwnedEdits(source, written, fileName)
+  return exports
 }
 
 describe('route ids the generator fixes', () => {
@@ -139,7 +203,7 @@ export const Route = ${call}
     const { written, routes } = await upkeep('new.tsx', source)
 
     await expectRouteFile(written, { id: '/new', source })
-    expect(routes).toEqual({
+    expect(await routes()).toEqual({
       __root__: 'routes/__root.tsx',
       '/new': 'routes/new.tsx',
     })
@@ -189,7 +253,7 @@ export const Route = createFileRoute('/old')({
     const { written, routes } = await upkeep('new.ts', source)
 
     await expectRouteFile(written, { id: '/new', source, fileName: 'new.ts' })
-    expect(routes).toEqual({
+    expect(await routes()).toEqual({
       __root__: 'routes/__root.tsx',
       '/new': 'routes/new.ts',
     })
@@ -243,9 +307,8 @@ export const Route = Router.createFileRoute('/old')({})
   ])(
     'a route file with $name gets its id and constructor',
     async ({ file, source, createdWith, withId }) => {
-      const { written, error } = await upkeep(file, source)
+      const { written } = await upkeep(file, source)
 
-      expect(error).toBeUndefined()
       await expectRouteFile(written, {
         id: '/new',
         createdWith,
@@ -433,10 +496,9 @@ export const Route = createRootRouteWithContext<RouterContext>()({
   ])(
     'a route file created with $name gets createFileRoute with its id',
     async ({ source, call }) => {
-      const { written, routes, error } = await upkeep('new.tsx', source)
+      const { written, routes } = await upkeep('new.tsx', source)
 
-      expect(error).toBeUndefined()
-      await expectRouteFile(written, {
+      const exports = await expectRouteFile(written, {
         id: '/new',
         // (the same file with the file route's call, as far as the
         // generator's edits go)
@@ -447,9 +509,8 @@ export const Route = createRootRouteWithContext<RouterContext>()({
             : `createFileRoute('/new')`,
         ),
       })
-      const { exports } = await evaluateModule(written)
       expect(exports.Route.options.component()).toBe('new page')
-      expect(routes).toEqual({
+      expect(await routes()).toEqual({
         __root__: 'routes/__root.tsx',
         '/new': 'routes/new.tsx',
       })
@@ -524,7 +585,7 @@ describe('a constructor of the other kind with an id that is not a string litera
 const routeId = '/new'
 export const Route = ${from}(routeId)({ component: () => 'new page' })
 `
-      const { root, file, written, diagnostics, error } = await upkeep(
+      const { root, file, written, diagnostics } = await upkeep(
         fileName,
         source,
       )
@@ -541,11 +602,7 @@ export const Route = ${from}(routeId)({ component: () => 'new page' })
       expect(exports.Route.options.component()).toBe('new page')
       expect(routeCallOf(written, fileName).constructor).toBe(to)
       expectOnlyOwnedEdits(source, written, fileName)
-      expectDiagnostic([...diagnosticsOf(error), ...diagnostics], {
-        severity: ['warning', 'error'],
-        file,
-        root,
-      })
+      expectDiagnostic(diagnostics, { severity: 'warning', file, root })
     },
   )
 
@@ -558,7 +615,7 @@ export const Route = ${from}(routeId)({ component: () => 'new page' })
   ] as const)(
     '$from in $fileName: the id is reported once, at its position in the file as written',
     async ({ fileName, from }) => {
-      const { root, file, written, diagnostics, error } = await upkeep(
+      const { root, file, written, diagnostics } = await upkeep(
         fileName,
         `import { ${from} } from ${router}
 
@@ -566,7 +623,6 @@ const routeId = '/new'
 export const Route = ${from}(routeId)({ component: () => 'new page' })
 `,
       )
-      expect(error).toBeUndefined()
       expectDiagnostic(diagnostics, {
         severity: 'warning',
         file,
@@ -897,15 +953,13 @@ export const Route = createFileRoute('/old')({})
   ])(
     'a createFileRoute $name keeps its meaning: the file is left as it is, or reported',
     async ({ source }) => {
-      const { root, file, written, routes, diagnostics, error } = await upkeep(
-        'new.tsx',
-        source,
-        {},
-        { 'src/routes/-factory.ts': factory },
-      )
+      const outcome = await upkeepOrReport('new.tsx', source, {
+        'src/routes/-factory.ts': factory,
+      })
+      const { root, written } = outcome
 
       expect(written).toBe(source)
-      if (routes?.['/new'] === 'routes/new.tsx') {
+      if ((await outcome.routes())?.['/new'] === 'routes/new.tsx') {
         // (the route is the app's constructor's: with its pending component)
         await withRouteTree(
           path.join(root, 'src/routeTree.gen.ts'),
@@ -917,11 +971,7 @@ export const Route = createFileRoute('/old')({})
         )
         return
       }
-      expectDiagnostic([...diagnosticsOf(error), ...diagnostics], {
-        severity: ['warning', 'error'],
-        file,
-        root,
-      })
+      expectReported(outcome)
     },
   )
 
@@ -938,8 +988,7 @@ export const Route = createFileRoute('/old')({})
     const { written } = await upkeep('new.tsx', source)
 
     // (the inner call keeps its bytes: expectOnlyOwnedEdits)
-    await expectRouteFile(written, { id: '/new', source })
-    const { exports } = await evaluateModule(written)
+    const exports = await expectRouteFile(written, { id: '/new', source })
     expect(exports.local.id).toBe('/other')
   })
 })
@@ -980,16 +1029,14 @@ export const makeRoute = () => createFileRoute('/new')
   ])(
     '$name is left as it is and registered, or reported by name',
     async ({ source, helper: [helperFile, helperSource] }) => {
-      const { root, file, written, routes, diagnostics, error } = await upkeep(
-        'new.tsx',
-        source,
-        {},
-        { [helperFile]: helperSource },
-      )
+      const outcome = await upkeepOrReport('new.tsx', source, {
+        [helperFile]: helperSource,
+      })
+      const { root, written } = outcome
 
       expect(written).toBe(source)
       expect(await read(root, helperFile)).toBe(helperSource)
-      if (routes?.['/new'] === 'routes/new.tsx') {
+      if ((await outcome.routes())?.['/new'] === 'routes/new.tsx') {
         await withRouteTree(
           path.join(root, 'src/routeTree.gen.ts'),
           async ({ renderAt }) => {
@@ -998,11 +1045,7 @@ export const makeRoute = () => createFileRoute('/new')
         )
         return
       }
-      expectDiagnostic([...diagnosticsOf(error), ...diagnostics], {
-        severity: ['warning', 'error'],
-        file,
-        root,
-      })
+      expectReported(outcome)
     },
   )
 
@@ -1035,23 +1078,18 @@ export const Route = createFileRoute(\`/\${x}\`)({})
   ])(
     'a route file with $name gets the literal id or is reported by name',
     async ({ source }) => {
-      const { root, file, written, routes, diagnostics, error } = await upkeep(
-        'new.tsx',
-        source,
-      )
+      const outcome = await upkeepOrReport('new.tsx', source)
+      const { written } = outcome
 
       if (routeCallOf(written).id === '/new') {
+        expect(outcome.error).toBeUndefined()
         await expectRouteFile(written, { id: '/new', source })
-        expect(routes).toEqual({
+        expect(await outcome.routes()).toEqual({
           __root__: 'routes/__root.tsx',
           '/new': 'routes/new.tsx',
         })
       } else {
-        expectDiagnostic([...diagnosticsOf(error), ...diagnostics], {
-          severity: ['warning', 'error'],
-          file,
-          root,
-        })
+        expectReported(outcome)
         expect(written).toBe(source)
       }
     },
@@ -1078,16 +1116,12 @@ export const Route = createFileRoute(('/old' as const))({})
   ])(
     'a route id $name gets the id of its path, nothing reported',
     async ({ source, kept }) => {
-      const { written, routes, diagnostics, error } = await upkeep(
-        'new.tsx',
-        source,
-      )
-      expect(error).toBeUndefined()
+      const { written, routes, diagnostics } = await upkeep('new.tsx', source)
       expectNoProblems(diagnostics)
       expect(written).toBe(
         source.replace(/createFileRoute\(.*\)\(\{\}\)/, kept),
       )
-      expect(routes).toEqual({
+      expect(await routes()).toEqual({
         __root__: 'routes/__root.tsx',
         '/new': 'routes/new.tsx',
       })
@@ -1097,19 +1131,17 @@ export const Route = createFileRoute(('/old' as const))({})
   // The stale id of a call without the options
   // call is named in parentheses too.
   test('a parenthesised stale id of a call without the options call is reported by name', async () => {
-    const { root, file, diagnostics, error } = await upkeep(
+    const outcome = await upkeepOrReport(
       'new.tsx',
       `import { createFileRoute } from ${router}
 export const Route = createFileRoute(('/old'))
 `,
     )
-    expectDiagnostic([...diagnosticsOf(error), ...diagnostics], {
-      severity: ['warning', 'error'],
-      file,
-      root,
-    })
+    expectReported(outcome)
     expect(
-      [...diagnosticsOf(error), ...diagnostics].map((d) => d.text).join('\n'),
+      [...diagnosticsOf(outcome.error), ...outcome.diagnostics]
+        .map((d) => d.text)
+        .join('\n'),
     ).toContain('without route options')
   })
 
@@ -1128,17 +1160,9 @@ export const Route = createFileRoute(('/old'))
 const segment = 'old'
 export const Route = createFileRoute(${id})
 `
-      const { root, file, written, diagnostics, error } = await upkeep(
-        'new.tsx',
-        source,
-      )
-      expect(written).toBe(source)
-      expectDiagnostic([...diagnosticsOf(error), ...diagnostics], {
-        severity: ['warning', 'error'],
-        file,
-        root,
-        position: diagnosticPosition(source, id),
-      })
+      const outcome = await upkeepOrReport('new.tsx', source)
+      expect(outcome.written).toBe(source)
+      expectReported(outcome, { position: diagnosticPosition(source, id) })
     },
   )
 
@@ -1165,13 +1189,7 @@ export const Route = fileRoute('/old')
 `,
     },
   ])('a route file with $name is reported by name', async ({ source }) => {
-    const { root, file, diagnostics, error } = await upkeep('new.tsx', source)
-
-    expectDiagnostic([...diagnosticsOf(error), ...diagnostics], {
-      severity: ['warning', 'error'],
-      file,
-      root,
-    })
+    expectReported(await upkeepOrReport('new.tsx', source))
   })
 
   // R130: a route made by the app's own helper gets nothing, whatever the
@@ -1181,7 +1199,7 @@ export const Route = fileRoute('/old')
     const source = `import { createFileRoute } from './-route-helper'
 export const Route = createFileRoute('/old')
 `
-    const { root, file, written, diagnostics, error } = await upkeep(
+    const { root, file, written, diagnostics } = await upkeep(
       'new.tsx',
       source,
       {},
@@ -1193,7 +1211,6 @@ export const createFileRoute = (id: any) =>
       },
     )
 
-    expect(error).toBeUndefined()
     expect(written).toBe(source)
     expectNoDiagnostic(diagnostics, {
       severity: ['warning', 'error'],
@@ -1226,15 +1243,13 @@ export const Route = createLazyFileRoute({ component: () => null })
   ] as const)(
     'a route file with $name is reported by name or repaired',
     async ({ source, constructor, fileName = 'new.tsx' }) => {
-      const { root, file, written, routes, diagnostics, error } = await upkeep(
-        fileName,
-        source,
-      )
+      const outcome = await upkeepOrReport(fileName, source)
+      const { written } = outcome
 
-      if (!error && written !== source) {
+      if (outcome.error === undefined && written !== source) {
         // (repaired: the same file with the curried call, as far as the
         // generator's edits go)
-        await expectRouteFile(written, {
+        const exports = await expectRouteFile(written, {
           id: '/new',
           createdWith: constructor,
           source: source.replace(
@@ -1243,9 +1258,8 @@ export const Route = createLazyFileRoute({ component: () => null })
           ),
           fileName,
         })
-        const { exports } = await evaluateModule(written, fileName)
         expect(exports.Route.options.component()).toBeNull()
-        expect(routes).toEqual({
+        expect(await outcome.routes()).toEqual({
           __root__: 'routes/__root.tsx',
           // (a lazy-only route is created by the tree)
           '/new':
@@ -1253,11 +1267,7 @@ export const Route = createLazyFileRoute({ component: () => null })
         })
         return
       }
-      expectDiagnostic([...diagnosticsOf(error), ...diagnostics], {
-        severity: ['warning', 'error'],
-        file,
-        root,
-      })
+      expectReported(outcome)
     },
   )
 })

@@ -26,6 +26,7 @@ import {
   fixtureConfig,
   fixtureNames,
   prepareFixture,
+  unformattedFooter,
 } from './generator-fixture'
 import { crlfRoutes, generateCrlf } from './crlf-app'
 import { fixtureRoutes } from './generator-fixtures'
@@ -135,6 +136,22 @@ async function postprocess(
           expect(html).toContain(`Hello /(foo)/asdf/(bar)/_layout/${page}!`)
         }
       })
+      break
+    }
+    case 'add-extensions-custom': {
+      // (addExtensions '.js': each route file is imported as `<name>.js`)
+      await withRouteTree(config.generatedRouteTree, ({ imports }) => {
+        expect(new Set(imports.map(({ file }) => file)).size).toBe(3)
+        for (const { specifier } of imports) {
+          expect(specifier).toMatch(/[^.]\.js$/)
+        }
+      })
+      break
+    }
+    case 'no-formatted-route-tree': {
+      // (enableRouteTreeFormatting false: the configured footer as written)
+      const tree = await fs.readFile(config.generatedRouteTree, 'utf8')
+      expect(tree.split('\n')).toContain(unformattedFooter)
       break
     }
     case 'append-and-prepend': {

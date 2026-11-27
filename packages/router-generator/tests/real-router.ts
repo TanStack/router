@@ -143,6 +143,9 @@ export async function checkApp(
   { files, config, expected, visits, pages }: Case,
   { runtime = true, types = true, client = false } = {},
 ) {
+  if (client && !pages) {
+    throw new Error('A case for the browser needs the pages it renders')
+  }
   const root = await createApp({ ...files, 'src/vue-shim.d.ts': vueShim })
   const { generatedRouteTree } = await generate(root, config)
 

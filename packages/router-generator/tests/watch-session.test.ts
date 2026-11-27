@@ -73,48 +73,48 @@ test('a route tree written as a route file is deleted is never replaced by one t
   await new Generator({ config, root }).run()
   const committed = await readFile(config.generatedRouteTree, 'utf8')
   const extra = await save(root, 'src/routes/extra.tsx', fileRoute('/extra'))
-  const session = await watchApp(root, config)
+  // Every content the generator publishes as the route tree file from the
+  // operation on, read as each write lands (`onWrite`: once it is renamed
+  // in place, before anything else runs)
+  const published = new Set<string>()
+  let recording = false
+  const session = await watchApp(
+    root,
+    config,
+    new Generator({
+      config,
+      root,
+      onWrite: ({ destination }) => {
+        if (recording && destination === config.generatedRouteTree) {
+          published.add(readFileSync(destination, 'utf8'))
+        }
+      },
+    }),
+  )
   expect(await routesOf(config.generatedRouteTree)).toEqual({
     ...appRoutes,
     '/extra': 'routes/extra.tsx',
   })
 
   // One operation, as git makes it
+  recording = true
   writeFileSync(config.generatedRouteTree, committed)
   rmSync(extra)
 
-  // Every content the route tree file holds from then on
-  const seen = new Set<string>()
-  const sampling = new AbortController()
-  const sampler = (async () => {
-    while (!sampling.signal.aborted) {
-      try {
-        seen.add(readFileSync(config.generatedRouteTree, 'utf8'))
-      } catch {
-        // (between a rename's two steps on some platforms)
-      }
-      await new Promise((resolve) => setTimeout(resolve, 2))
-    }
-  })()
+  await waitForOutcome({
+    applied: async () =>
+      !session.routeFiles().includes('src/routes/extra.tsx') &&
+      (await readFile(config.generatedRouteTree, 'utf8')) === committed,
+    problems: () => session.reported,
+    timeout: 10_000,
+    describe: () => `routes handed over: ${session.routeFiles().join(', ')}`,
+  })
 
-  try {
-    await waitForOutcome({
-      applied: async () =>
-        !session.routeFiles().includes('src/routes/extra.tsx') &&
-        (await readFile(config.generatedRouteTree, 'utf8')) === committed,
-      problems: () => session.reported,
-      timeout: 10_000,
-      describe: () => `routes handed over: ${session.routeFiles().join(', ')}`,
-    })
-  } finally {
-    sampling.abort()
-    await sampler
-  }
-
-  // Each tree the file held loads with the app's files (the deleted one gone)
+  // Each tree the generator published loads with the app's files (the
+  // deleted one gone)
   const observed = path.join(path.dirname(config.generatedRouteTree), 'seen')
   let index = 0
-  for (const content of seen) {
+  for (const content of published) {
     const file = `${observed}-${index++}.gen.ts`
     await writeFile(file, content)
     expect(await routesOf(file)).toEqual(appRoutes)

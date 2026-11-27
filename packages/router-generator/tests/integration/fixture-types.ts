@@ -43,8 +43,15 @@ export async function typeErrorsOfFixture(name: string) {
     ),
   )
   // (the checks compare string literal types only: no DOM types needed,
-  // which halves the time of a program)
-  return typeErrorsOfModules([checks], ['lib.es2022.d.ts']).get(checks)
+  // which halves the time of a program). The tree's own errors too: its
+  // configured header decides whether it is checked (the default one turns
+  // checking off; append-and-prepend's does not)
+  const tree = path.resolve(config.generatedRouteTree)
+  const errors = typeErrorsOfModules([checks, tree], ['lib.es2022.d.ts'])
+  return [
+    ...errors.get(checks)!,
+    ...errors.get(tree)!.map((error) => `${path.basename(tree)}: ${error}`),
+  ]
 }
 
 /**

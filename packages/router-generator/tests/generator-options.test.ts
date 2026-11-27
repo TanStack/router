@@ -13,7 +13,6 @@ import {
   stat,
   writeFile,
 } from 'node:fs/promises'
-import os from 'node:os'
 import path from 'node:path'
 import { parseSync } from 'vite'
 import { afterEach, describe, expect, onTestFinished, test, vi } from 'vitest'
@@ -1024,12 +1023,11 @@ export const Route = createFileRoute('/posts')({})
 })
 
 /**
- * A writable directory on another filesystem than the system's temporary
- * directory, which holds the apps of these tests (shared memory, if the host
- * has it there).
+ * A writable directory on another filesystem than the run directory, which
+ * holds the apps of these tests (shared memory, if the host has it there).
  */
 async function directoryOnAnotherDevice() {
-  const { dev } = await stat(os.tmpdir())
+  const { dev } = await stat(runDirectory())
   const candidate = '/dev/shm'
   const found = await stat(candidate).catch(() => undefined)
   if (
@@ -1063,7 +1061,8 @@ export const Route = createFileRoute('/')({})
     await mkdir(path.dirname(config.tmpDir), { recursive: true })
     await writeFile(config.tmpDir, '')
     const generator = new Generator({ config, root })
-    await expect(generator.run()).rejects.toThrow()
+    // (the error names the directory it could not create)
+    await expect(generator.run()).rejects.toThrow(config.tmpDir)
 
     await rm(config.tmpDir)
     await generator.run()

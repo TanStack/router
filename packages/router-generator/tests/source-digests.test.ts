@@ -43,10 +43,13 @@ describe('sourceDigest', () => {
     expect(generator.sourceDigest(about)).toBe(
       contentDigest(await readFile(about, 'utf8')),
     )
+    const before = generator.sourceDigest(about)
     const edited = fileRoute('/about', '{ component: () => null }')
     await save(root, 'src/routes/about.tsx', edited)
     await generator.run({ type: 'update', path: about })
     expect(generator.sourceDigest(about)).toBe(contentDigest(edited))
+    // (other bytes, another digest: a plugin comparing them sees the edit)
+    expect(generator.sourceDigest(about)).not.toBe(before)
   })
 
   test('an empty route file the generator fills in answers the digest of the bytes it wrote', async () => {
@@ -123,6 +126,7 @@ describe('treeDigest', () => {
     expect(generator.treeDigest()).toBe(
       contentDigest(await readFile(config.generatedRouteTree, 'utf8')),
     )
+    const before = generator.treeDigest()
     await save(root, 'src/routes/extra.tsx', fileRoute('/extra'))
     await generator.run({
       type: 'create',
@@ -131,6 +135,7 @@ describe('treeDigest', () => {
     expect(generator.treeDigest()).toBe(
       contentDigest(await readFile(config.generatedRouteTree, 'utf8')),
     )
+    expect(generator.treeDigest()).not.toBe(before)
   })
 })
 

@@ -11,6 +11,10 @@ import { readFileSync } from 'node:fs'
 import { mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
+import {
+  captureThrow,
+  expectDiagnostic,
+} from '@tanstack/compiler-test-utils/diagnostics'
 import { Generator, contentDigest, replaceBackslash } from '../src'
 import { configOf, createApp, fileRoute, rootRoute, save } from './app'
 import type { GeneratorPlugin, GetRoutesByFileMapResult } from '../src'
@@ -204,9 +208,29 @@ describe('the registry', () => {
   })
 })
 
+/**
+ * Asserts that `run` fails on the route conflict of `files` (paths relative
+ * to the app root), naming each (its wording is free).
+ */
+async function expectConflict(
+  run: Promise<void>,
+  root: string,
+  files: Array<string>,
+) {
+  const error = await captureThrow(() => run)
+  for (const file of files) {
+    expectDiagnostic(error, {
+      severity: 'error',
+      root,
+      file: path.join(root, file),
+    })
+  }
+}
+
 describe('a batch that fails', () => {
   // A second file for route `/b` fails every batch until it goes; the
   // registry keeps the published routes, with what their files say now.
+  const conflicting = ['src/routes/b.tsx', 'src/routes/(g)/b.tsx']
   async function failing(files: Record<string, string> = {}) {
     const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
@@ -224,9 +248,11 @@ describe('a batch that fails', () => {
           'src/routes/(g)/b.tsx',
           fileRoute('/(g)/b'),
         )
-        await expect(
+        await expectConflict(
           generator.run({ type: 'create', path: conflict }),
-        ).rejects.toThrow()
+          root,
+          conflicting,
+        )
       },
     }
   }
@@ -238,7 +264,11 @@ describe('a batch that fails', () => {
     const generator = new Generator({ config: configOf(root), root })
     await start(generator)
     const a = await save(root, 'src/routes/a.tsx', 'export const helper = 1\n')
-    await expect(generator.run({ type: 'update', path: a })).rejects.toThrow()
+    await expectConflict(
+      generator.run({ type: 'update', path: a }),
+      root,
+      conflicting,
+    )
     expect(generator.getRoutesByFileMap().get(replaceBackslash(a))).toEqual({
       routeId: '/a',
       kind: 'file',
@@ -270,14 +300,21 @@ describe('a batch that fails', () => {
       'src/routes/(g)/c.tsx',
       fileRoute('/(g)/c'),
     )
-    await expect(
+    const conflictingC = ['src/routes/c.tsx', 'src/routes/(g)/c.tsx']
+    await expectConflict(
       generator.run({ type: 'create', path: conflict }),
-    ).rejects.toThrow()
+      root,
+      conflictingC,
+    )
 
     const a = path.join(root, 'src/routes/a.tsx')
     await rm(a)
     await symlink(path.join(root, 'src/shared/page.tsx'), a)
-    await expect(generator.run({ type: 'update', path: a })).rejects.toThrow()
+    await expectConflict(
+      generator.run({ type: 'update', path: a }),
+      root,
+      conflictingC,
+    )
 
     const shared = replaceBackslash(path.join(root, 'src/shared/page.tsx'))
     expect(generator.getRoutesByFileMap().get(shared)?.routeId).toBe('/b')
@@ -306,9 +343,11 @@ describe('a batch that fails', () => {
     await writeFile(targetB, textB)
     await rm(link)
     await symlink(targetB, link)
-    await expect(
+    await expectConflict(
       generator.run({ type: 'update', path: link }),
-    ).rejects.toThrow()
+      root,
+      conflicting,
+    )
 
     const routes = generator.getRoutesByFileMap()
     const entry = { routeId: '/ext', kind: 'file', routerConstructor: true }

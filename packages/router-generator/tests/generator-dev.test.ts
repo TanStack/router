@@ -985,7 +985,14 @@ describe('a batch whose read of another file fails', () => {
           generator.run({ type: 'update', path: about }),
           generator.run({ type: 'update', path: posts }),
         ])
-        expect(runs.map((run) => run.status)).toContain('rejected')
+        // (a batch fails on the file it cannot read: the error is that read's)
+        const failures = runs.flatMap((run) =>
+          run.status === 'rejected' ? [run.reason] : [],
+        )
+        expect(failures.length).toBeGreaterThan(0)
+        for (const failure of failures) {
+          expect(failure).toMatchObject({ code: 'EACCES' })
+        }
       } finally {
         await chmod(posts, 0o644)
       }
