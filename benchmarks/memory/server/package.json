@@ -50,7 +50,8 @@
               "@benchmarks/memory-server-aborted-requests-react",
               "@benchmarks/memory-server-peak-large-page-react",
               "@benchmarks/memory-server-streaming-peak-react",
-              "@benchmarks/memory-server-serialization-payload-react"
+              "@benchmarks/memory-server-serialization-payload-react",
+              "@benchmarks/memory-server-raw-stream-peak-react"
             ],
             "target": "build:ssr"
           }
@@ -68,7 +69,8 @@
               "@benchmarks/memory-server-aborted-requests-solid",
               "@benchmarks/memory-server-peak-large-page-solid",
               "@benchmarks/memory-server-streaming-peak-solid",
-              "@benchmarks/memory-server-serialization-payload-solid"
+              "@benchmarks/memory-server-serialization-payload-solid",
+              "@benchmarks/memory-server-raw-stream-peak-solid"
             ],
             "target": "build:ssr"
           }
@@ -86,7 +88,8 @@
               "@benchmarks/memory-server-aborted-requests-vue",
               "@benchmarks/memory-server-peak-large-page-vue",
               "@benchmarks/memory-server-streaming-peak-vue",
-              "@benchmarks/memory-server-serialization-payload-vue"
+              "@benchmarks/memory-server-serialization-payload-vue",
+              "@benchmarks/memory-server-raw-stream-peak-vue"
             ],
             "target": "build:ssr"
           }
@@ -104,7 +107,8 @@
               "@benchmarks/memory-server-aborted-requests-react",
               "@benchmarks/memory-server-peak-large-page-react",
               "@benchmarks/memory-server-streaming-peak-react",
-              "@benchmarks/memory-server-serialization-payload-react"
+              "@benchmarks/memory-server-serialization-payload-react",
+              "@benchmarks/memory-server-raw-stream-peak-react"
             ],
             "target": "build:ssr:flame"
           }
@@ -122,7 +126,8 @@
               "@benchmarks/memory-server-aborted-requests-solid",
               "@benchmarks/memory-server-peak-large-page-solid",
               "@benchmarks/memory-server-streaming-peak-solid",
-              "@benchmarks/memory-server-serialization-payload-solid"
+              "@benchmarks/memory-server-serialization-payload-solid",
+              "@benchmarks/memory-server-raw-stream-peak-solid"
             ],
             "target": "build:ssr:flame"
           }
@@ -140,7 +145,8 @@
               "@benchmarks/memory-server-aborted-requests-vue",
               "@benchmarks/memory-server-peak-large-page-vue",
               "@benchmarks/memory-server-streaming-peak-vue",
-              "@benchmarks/memory-server-serialization-payload-vue"
+              "@benchmarks/memory-server-serialization-payload-vue",
+              "@benchmarks/memory-server-raw-stream-peak-vue"
             ],
             "target": "build:ssr:flame"
           }
@@ -158,7 +164,8 @@
               "@benchmarks/memory-server-aborted-requests-react",
               "@benchmarks/memory-server-peak-large-page-react",
               "@benchmarks/memory-server-streaming-peak-react",
-              "@benchmarks/memory-server-serialization-payload-react"
+              "@benchmarks/memory-server-serialization-payload-react",
+              "@benchmarks/memory-server-raw-stream-peak-react"
             ],
             "target": "test:flame"
           }
@@ -176,7 +183,8 @@
               "@benchmarks/memory-server-aborted-requests-solid",
               "@benchmarks/memory-server-peak-large-page-solid",
               "@benchmarks/memory-server-streaming-peak-solid",
-              "@benchmarks/memory-server-serialization-payload-solid"
+              "@benchmarks/memory-server-serialization-payload-solid",
+              "@benchmarks/memory-server-raw-stream-peak-solid"
             ],
             "target": "test:flame"
           }
@@ -194,7 +202,8 @@
               "@benchmarks/memory-server-aborted-requests-vue",
               "@benchmarks/memory-server-peak-large-page-vue",
               "@benchmarks/memory-server-streaming-peak-vue",
-              "@benchmarks/memory-server-serialization-payload-vue"
+              "@benchmarks/memory-server-serialization-payload-vue",
+              "@benchmarks/memory-server-raw-stream-peak-vue"
             ],
             "target": "test:flame"
           }
@@ -248,6 +257,7 @@
               "@benchmarks/memory-server-peak-large-page-react",
               "@benchmarks/memory-server-streaming-peak-react",
               "@benchmarks/memory-server-serialization-payload-react",
+              "@benchmarks/memory-server-raw-stream-peak-react",
               "@benchmarks/memory-server-request-churn-solid",
               "@benchmarks/memory-server-server-fn-churn-solid",
               "@benchmarks/memory-server-error-paths-solid",
@@ -255,13 +265,15 @@
               "@benchmarks/memory-server-peak-large-page-solid",
               "@benchmarks/memory-server-streaming-peak-solid",
               "@benchmarks/memory-server-serialization-payload-solid",
+              "@benchmarks/memory-server-raw-stream-peak-solid",
               "@benchmarks/memory-server-request-churn-vue",
               "@benchmarks/memory-server-server-fn-churn-vue",
               "@benchmarks/memory-server-error-paths-vue",
               "@benchmarks/memory-server-aborted-requests-vue",
               "@benchmarks/memory-server-peak-large-page-vue",
               "@benchmarks/memory-server-streaming-peak-vue",
-              "@benchmarks/memory-server-serialization-payload-vue"
+              "@benchmarks/memory-server-serialization-payload-vue",
+              "@benchmarks/memory-server-raw-stream-peak-vue"
             ],
             "target": "test:types:ssr"
           }

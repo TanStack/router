@@ -2,11 +2,12 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   createStream,
   crossSerializeStream,
+  getCrossReferenceHeader,
   toCrossJSONAsync,
   toCrossJSONStream,
   fromCrossJSON,
 } from 'seroval'
-import type { SerovalNode } from 'seroval'
+import type { SerovalNode, Stream } from 'seroval'
 import { RawStream } from '../src/ssr/serializer/RawStream'
 import {
   RawStreamJSONDeserializePlugin,
@@ -23,8 +24,7 @@ import {
   defaultSerovalPlugins,
 } from '../src/ssr/serializer/seroval-plugins'
 
-type EncodedStream = ReturnType<typeof createStream<any>>
-type EncodedStreamListener = Parameters<EncodedStream['on']>[0]
+type EncodedStream = Stream<string | undefined>
 type RawStreamFactory = (stream: EncodedStream) => ReadableStream<Uint8Array>
 
 function getRawStreamFactory(
@@ -51,49 +51,15 @@ function getRawStreamFactory(
   }
 }
 
-function createTrackedEncodedStream() {
-  const listeners = new Set<EncodedStreamListener>()
-  let unsubscribeCalls = 0
-  const stream: EncodedStream = {
-    __SEROVAL_STREAM__: true,
-    on(listener) {
-      listeners.add(listener)
-      let subscribed = true
-      return () => {
-        if (subscribed) {
-          subscribed = false
-          unsubscribeCalls++
-          listeners.delete(listener)
-        }
-      }
-    },
-    next(value) {
-      for (const listener of listeners) {
-        listener.next(value)
-      }
-    },
-    throw(value) {
-      for (const listener of listeners) {
-        listener.throw(value)
-      }
-      listeners.clear()
-    },
-    return(value) {
-      for (const listener of listeners) {
-        listener.return(value)
-      }
-      listeners.clear()
-    },
-  }
-  return {
-    stream,
-    get listenerCount() {
-      return listeners.size
-    },
-    get unsubscribeCalls() {
-      return unsubscribeCalls
-    },
-  }
+/** Spies on `stream.on`; the returned mock forwards to the real disposer. */
+function spyOnSubscription(stream: EncodedStream) {
+  const on = stream.on.bind(stream)
+  const unsubscribe = vi.fn<() => void>()
+  vi.spyOn(stream, 'on').mockImplementation((listener) => {
+    unsubscribe.mockImplementation(on(listener))
+    return unsubscribe
+  })
+  return unsubscribe
 }
 
 describe('RawStream', () => {
@@ -521,24 +487,22 @@ describe('RawStream', () => {
     ] as const)(
       'unsubscribes the %s factory on cancellation',
       async (_, emitted) => {
-        const factory = getRawStreamFactory(pluginIndex, emitted)
-        const encodedStream = createTrackedEncodedStream()
-        const output = factory(encodedStream.stream)
-        const reader = output.getReader()
+        const stream = createStream<string | undefined>()
+        const unsubscribe = spyOnSubscription(stream)
+        const reader = getRawStreamFactory(
+          pluginIndex,
+          emitted,
+        )(stream).getReader()
 
-        expect(encodedStream.listenerCount).toBe(1)
-        encodedStream.stream.next(encoded)
+        expect(stream.on).toHaveBeenCalledOnce()
+        stream.next(encoded)
         const chunk = await reader.read()
         expect(chunk.done).toBe(false)
         expect(Array.from(chunk.value!)).toEqual([65])
 
         await reader.cancel()
         await reader.cancel()
-        expect(encodedStream.unsubscribeCalls).toBe(1)
-        expect(encodedStream.listenerCount).toBe(0)
-
-        encodedStream.stream.next(encoded)
-        expect(encodedStream.listenerCount).toBe(0)
+        expect(unsubscribe).toHaveBeenCalledOnce()
       },
     )
 
@@ -548,18 +512,10 @@ describe('RawStream', () => {
     ] as const)(
       'does not retain a synchronous terminal disposer in the %s factory',
       async (_, emitted) => {
-        const unsubscribe = vi.fn()
-        const stream = {
-          __SEROVAL_STREAM__: true,
-          on(listener: EncodedStreamListener) {
-            listener.next(encoded)
-            listener.return(undefined)
-            return unsubscribe
-          },
-          next() {},
-          throw() {},
-          return() {},
-        } as EncodedStream
+        const stream = createStream<string | undefined>()
+        stream.next(encoded)
+        stream.return(undefined)
+        const unsubscribe = spyOnSubscription(stream)
         const reader = getRawStreamFactory(
           pluginIndex,
           emitted,
@@ -580,12 +536,7 @@ describe('RawStream', () => {
         if (ended) {
           stream.return(undefined)
         }
-        const on = stream.on.bind(stream)
-        const unsubscribe = vi.fn()
-        vi.spyOn(stream, 'on').mockImplementation((listener) => {
-          unsubscribe.mockImplementation(on(listener))
-          return unsubscribe
-        })
+        const unsubscribe = spyOnSubscription(stream)
 
         const reader = getRawStreamFactory(
           pluginIndex,
@@ -611,18 +562,191 @@ describe('RawStream', () => {
     ] as const)(
       'does not retain a live terminal disposer in the %s factory',
       async (_, emitted) => {
-        const encodedStream = createTrackedEncodedStream()
+        const stream = createStream<string | undefined>()
+        const unsubscribe = spyOnSubscription(stream)
         const reader = getRawStreamFactory(
           pluginIndex,
           emitted,
-        )(encodedStream.stream).getReader()
+        )(stream).getReader()
 
-        encodedStream.stream.next(encoded)
-        encodedStream.stream.return(undefined)
+        stream.next(encoded)
+        stream.return(undefined)
         await reader.cancel()
 
-        expect(encodedStream.unsubscribeCalls).toBe(0)
+        expect(unsubscribe).not.toHaveBeenCalled()
       },
     )
+  })
+
+  describe('SSR live stream', () => {
+    const scopeId = 'raw-stream-ssr'
+
+    /** Evaluates hydration sources the way inline scripts run in a browser. */
+    function createBrowserScope() {
+      const self: { $R?: Record<string, Array<any>> } = {}
+      new Function('self', getCrossReferenceHeader(scopeId))(self)
+      return {
+        run: (source: string) =>
+          new Function('self', '$R', `return ${source}`)(self, self.$R),
+        refs: self.$R![scopeId]!,
+      }
+    }
+
+    function serializeToBrowser(rawStream: RawStream) {
+      const scope = createBrowserScope()
+      return new Promise<{
+        output: ReadableStream<Uint8Array>
+        refs: Array<any>
+      }>((resolve, reject) => {
+        let output: ReadableStream<Uint8Array> | undefined
+        crossSerializeStream(rawStream, {
+          refs: new Map(),
+          plugins: [RawStreamSSRPlugin],
+          scopeId,
+          onSerialize(source, initial) {
+            const value = scope.run(source)
+            if (initial) {
+              output = value
+            }
+          },
+          onError: reject,
+          onDone() {
+            resolve({ output: output!, refs: scope.refs })
+          },
+        })
+      })
+    }
+
+    async function readAll(stream: ReadableStream<Uint8Array>) {
+      const reader = stream.getReader()
+      const chunks: Array<Array<number>> = []
+      for (;;) {
+        const next = await reader.read()
+        if (next.done) {
+          return chunks
+        }
+        chunks.push(Array.from(next.value))
+      }
+    }
+
+    it.each(['binary', 'text'] as const)(
+      'rebuilds a %s-hinted stream from the emitted hydration scripts',
+      async (hint) => {
+        const expected = [
+          Uint8Array.of(0x41, 0x42),
+          Uint8Array.of(0xe2, 0x28),
+          new Uint8Array(),
+        ]
+        const source = new ReadableStream<Uint8Array>({
+          start(controller) {
+            for (const chunk of expected) {
+              controller.enqueue(chunk)
+            }
+            controller.close()
+          },
+        })
+
+        const { output, refs } = await serializeToBrowser(
+          new RawStream(source, { hint }),
+        )
+
+        expect(await readAll(output)).toEqual(
+          expected.map((chunk) => Array.from(chunk)),
+        )
+        expect(source.locked).toBe(false)
+        // The browser receives a live Seroval stream: the factory is its only
+        // subscriber, so nothing is kept for replay.
+        const live = refs.find((ref) => ref?.__SEROVAL_STREAM__)
+        expect(() => live.on({ next() {}, throw() {}, return() {} })).toThrow(
+          'Stream consumed',
+        )
+      },
+    )
+
+    it('fails the rebuilt stream when the source read fails', async () => {
+      const source = new ReadableStream<Uint8Array>({
+        pull() {
+          throw new Error('source failed')
+        },
+      })
+
+      const { output } = await serializeToBrowser(new RawStream(source))
+
+      await expect(output.getReader().read()).rejects.toMatchObject({
+        message: 'source failed',
+      })
+      expect(source.locked).toBe(false)
+    })
+
+    it('reads the source only as fast as serialized records are accepted', async () => {
+      const chunkCount = 8
+      let pulls = 0
+      const source = new ReadableStream<Uint8Array>({
+        pull(controller) {
+          if (pulls++ < chunkCount) {
+            controller.enqueue(Uint8Array.of(pulls))
+          } else {
+            controller.close()
+          }
+        },
+      })
+      let acceptFirst!: () => void
+      const firstAccepted = new Promise<void>((resolve) => {
+        acceptFirst = resolve
+      })
+      let records = 0
+
+      const done = new Promise<void>((resolve, reject) => {
+        crossSerializeStream(new RawStream(source), {
+          refs: new Map(),
+          plugins: [RawStreamSSRPlugin],
+          scopeId,
+          onSerialize(_, initial) {
+            if (initial) {
+              return undefined
+            }
+            records++
+            return records === 1 ? firstAccepted : undefined
+          },
+          onError: reject,
+          onDone: resolve,
+        })
+      })
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      // The first chunk is still being accepted: the source has only refilled
+      // its own one-chunk queue.
+      expect(records).toBe(1)
+      expect(pulls).toBe(2)
+
+      acceptFirst()
+      await done
+
+      expect(records).toBe(chunkCount + 1)
+      expect(pulls).toBe(chunkCount + 1)
+      expect(source.locked).toBe(false)
+    })
+
+    it('forwards the dispose reason to the source', () => {
+      const cancel = vi.fn()
+      const source = new ReadableStream<Uint8Array>({
+        pull: () => new Promise(() => {}),
+        cancel,
+      })
+      const dispose = crossSerializeStream(new RawStream(source), {
+        refs: new Map(),
+        plugins: [RawStreamSSRPlugin],
+        scopeId,
+        onSerialize() {},
+      })
+
+      const reason = new Error('client went away')
+      dispose(reason)
+
+      expect(cancel).toHaveBeenCalledTimes(1)
+      expect(cancel).toHaveBeenCalledWith(reason)
+      expect(source.locked).toBe(false)
+    })
   })
 })

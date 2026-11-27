@@ -1,6 +1,6 @@
 import { createPlugin } from 'seroval'
 import { RawStream } from './RawStream'
-import { encodeText, pumpEncodedStream, toBase64 } from './rawStreamCodec'
+import { encodeText, pumpEncodedLiveStream, toBase64 } from './rawStreamCodec'
 import type { PluginInfo, SerovalNode } from 'seroval'
 
 // This module is server-only. Node's Buffer encodes base64 ~25x faster than
@@ -76,12 +76,19 @@ export const RawStreamSSRPlugin = /* @__PURE__ */ createPlugin<
     stream(value, ctx) {
       const text = value.hint === 'text'
       const factory = ctx.parse(text ? TEXT_FACTORY : BINARY_FACTORY)
-      const [stream, stop] = pumpEncodedStream(
+      const [stream, stop] = pumpEncodedLiveStream(
         value.stream,
         text ? encodeText : toBase64Fast,
       )
-      ctx.addCleanup(stop)
-      return { factory, stream: ctx.parse(stream) }
+      // Disposing the serialization cancels the live stream, which stops the
+      // pump with the dispose reason. Only a failed parse leaves the reader
+      // to this plugin.
+      try {
+        return { factory, stream: ctx.parse(stream) }
+      } catch (error) {
+        stop(error)
+        throw error
+      }
     },
   },
   serialize(node, ctx) {
