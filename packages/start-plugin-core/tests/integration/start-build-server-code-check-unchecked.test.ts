@@ -11,8 +11,9 @@
  * loads: this file runs in a process of its own (project
  * `integration-alone`) and turns it off before anything loads.
  */
-import { describe, expect, test, vi } from 'vitest'
+import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest'
 import { buildStart, startBundlers } from '../build-harness'
+import type { StartBuild } from '../build-harness'
 
 vi.hoisted(() => {
   process.env.TSR_COMPILER_VERIFY = '0'
@@ -118,15 +119,40 @@ export const Route = createFileRoute('/')({
 })
 `
 
+/** The rows: each a route module, whose text marks its server code `SECRET` and its loader's client code `LOADER`. */
+const rows = [
+  ...KINDS.map((kind) => ({ input: kind as object, route: routeModule(kind) })),
+  ...ROUTE_OPTIONS.map((option) => ({
+    input: option as object,
+    route: routeWithOption(option.option),
+  })),
+]
+
+/** The markers of the `index`th row in the shared build. */
+const markersOf = (index: number) => ({
+  secret: `${SECRET}_R${index}_`,
+  loader: `${LOADER}_R${index}_`,
+})
+
 describe.each(startBundlers)('%s build', (bundler) => {
-  const build = (route: string) =>
+  /** An app of `routes` (by path, `/` included or not), each a route module of `src/routes/`. */
+  const build = (
+    routes: Record<string, string>,
+    registerCleanup?: (cleanup: () => Promise<void>) => void,
+  ) =>
     buildStart({
       bundler,
+      registerCleanup,
       files: {
         'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute()
 `,
-        'src/routes/index.tsx': route,
+        ...Object.fromEntries(
+          Object.entries(routes).map(([file, route]) => [
+            `src/routes/${file}.tsx`,
+            route,
+          ]),
+        ),
         'src/router.ts': `import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 export const getRouter = () => createRouter({ routeTree })
@@ -146,27 +172,70 @@ export const getRouter = () => createRouter({ routeTree })
       },
     })
 
+  /**
+   * Every row in one app, each its route `/r<index>` with markers of its
+   * own (`markersOf`); none when the build fails (each row then builds
+   * alone, its route at `/`).
+   */
+  let together: StartBuild | undefined
+  let dispose: (() => Promise<void>) | undefined
+  beforeAll(async () => {
+    together = await build(
+      Object.fromEntries(
+        rows.map(({ route }, index) => {
+          const { secret, loader } = markersOf(index)
+          return [
+            `r${index}`,
+            route
+              .replace("createFileRoute('/')", `createFileRoute('/r${index}')`)
+              .replaceAll(SECRET, secret)
+              .replaceAll(LOADER, loader),
+          ]
+        }),
+      ),
+      (cleanup) => {
+        dispose = cleanup
+      },
+    ).catch(() => undefined)
+  }, timeout)
+  afterAll(() => dispose?.())
+
+  /** The row's build and markers: the shared build's, or a build of the row alone. */
+  const builtRow = async (index: number) =>
+    together
+      ? { built: together, ...markersOf(index) }
+      : {
+          built: await build({ index: rows[index]!.route }),
+          secret: SECRET,
+          loader: LOADER,
+        }
+
   /** The client build holds none of the secret, the SSR build does, and no error is reported. */
-  const expectServerOnly = (built: Awaited<ReturnType<typeof build>>) => {
+  const expectServerOnly = ({
+    built,
+    secret,
+  }: Awaited<ReturnType<typeof builtRow>>) => {
     expect(built.diagnostics.filter((d) => d.severity === 'error')).toEqual([])
-    expect(built.client.where(SECRET)).toBe('nowhere')
-    expect(built.ssr.where(SECRET)).not.toBe('nowhere')
+    expect(built.client.where(secret)).toBe('nowhere')
+    expect(built.ssr.where(secret)).not.toBe('nowhere')
   }
 
   test.each(KINDS)(
     'the client build of $kind in a split loader holds none of it, without an error',
     async (kind) => {
-      const built = await build(routeModule(kind))
-      expect(built.client.where(LOADER), 'the loader').toBe('lazy')
-      expectServerOnly(built)
+      const row = await builtRow(rows.findIndex((r) => r.input === kind))
+      expect(row.built.client.where(row.loader), 'the loader').toBe('lazy')
+      expectServerOnly(row)
     },
     timeout,
   )
 
   test.each(ROUTE_OPTIONS)(
     "the client build of a route's `$key` option holds none of it, without an error",
-    async ({ option }) => {
-      expectServerOnly(await build(routeWithOption(option)))
+    async (option) => {
+      expectServerOnly(
+        await builtRow(rows.findIndex((r) => r.input === option)),
+      )
     },
     timeout,
   )
