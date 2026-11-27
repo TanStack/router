@@ -8,6 +8,7 @@ import {
   waitFor,
 } from '@testing-library/react'
 import { createPortal } from 'react-dom'
+import { hydrateRoot } from 'react-dom/client'
 import ReactDOMServer from 'react-dom/server'
 import { hydrate } from '@tanstack/router-core/ssr/client'
 import { dehydrateSsrMatchId } from '../../router-core/src/ssr/ssr-match-id'
@@ -25,6 +26,7 @@ import {
   createRouter,
 } from '../src'
 import { Scripts } from '../src/Scripts'
+import { HeadContent as DevHeadContent } from '../src/HeadContent.dev'
 import type { Manifest } from '@tanstack/router-core'
 
 // React 19 keeps stylesheet resources keyed by href alive for the lifetime of
@@ -58,6 +60,7 @@ const createTestBrowserHistory = () => {
 
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
   browserHistories.splice(0).forEach((history) => history.destroy())
   window.history.replaceState(null, 'root', '/')
   delete window.$_TSR
@@ -989,6 +992,263 @@ describe('ssr HeadContent', () => {
       ),
     ).toHaveLength(1)
   })
+
+  test.each([
+    ['production', HeadContent],
+    ['development', DevHeadContent],
+  ])(
+    'server renders head tags without key warnings and keeps dedupe (%s)',
+    async (_, Head) => {
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {})
+      const sharedLink = { rel: 'icon', href: '/shared-icon.png' }
+
+      const rootRoute = createRootRoute({
+        head: () => ({
+          meta: [
+            { title: 'Root' },
+            { name: 'description', content: 'Root' },
+            { property: 'og:title', content: 'Root' },
+          ],
+          links: [sharedLink, { rel: 'manifest', href: '/site.webmanifest' }],
+          styles: [{ children: 'body{color:red}' }],
+        }),
+        component: () => <Head />,
+      })
+
+      const indexRoute = createRoute({
+        path: '/',
+        getParentRoute: () => rootRoute,
+        head: () => ({
+          meta: [{ name: 'description', content: 'Index' }],
+          links: [{ ...sharedLink }],
+        }),
+      })
+
+      const router = createRouter({
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+        routeTree: rootRoute.addChildren([indexRoute]),
+        isServer: true,
+      })
+
+      await router.load()
+
+      const html = ReactDOMServer.renderToString(
+        <RouterProvider router={router} />,
+      )
+
+      expect(html).toEqual(
+        `<title>Root</title><meta property="og:title" content="Root"/><meta name="description" content="Index"/><link rel="icon" href="/shared-icon.png"/><link rel="manifest" href="/site.webmanifest"/><style>body{color:red}</style>`,
+      )
+      expect(consoleError).not.toHaveBeenCalled()
+    },
+  )
+
+  test('keeps unchanged head tags mounted when preceding tags change', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const history = createTestBrowserHistory()
+
+    const rootRoute = createRootRoute({
+      head: () => ({
+        styles: [{ id: 'root-style', children: 'body{color:red}' }],
+      }),
+      component: () => (
+        <>
+          <div data-testid="head">
+            <HeadContent />
+          </div>
+          <Outlet />
+        </>
+      ),
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      head: () => ({
+        meta: [{ name: 'page', content: 'index' }],
+      }),
+      component: () => <Link to="/about">Go to about page</Link>,
+    })
+
+    const aboutRoute = createRoute({
+      path: '/about',
+      getParentRoute: () => rootRoute,
+      head: () => ({
+        meta: [
+          { name: 'page', content: 'about' },
+          { name: 'about-extra-1', content: '1' },
+          { name: 'about-extra-2', content: '2' },
+        ],
+      }),
+      component: () => <Link to="/">Back to home</Link>,
+    })
+
+    const router = createRouter({
+      history,
+      routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
+    })
+
+    await router.load()
+
+    await act(() => render(<RouterProvider router={router} />))
+
+    const getRootStyle = () => document.getElementById('root-style')
+
+    await waitFor(() => {
+      expect(getRootStyle()).toBeInstanceOf(HTMLStyleElement)
+    })
+
+    const initialStyle = getRootStyle()
+
+    fireEvent.click(screen.getByRole('link', { name: 'Go to about page' }))
+    await screen.findByRole('link', { name: 'Back to home' })
+    await waitFor(() => {
+      expect(
+        document.querySelector('meta[name="about-extra-2"]'),
+      ).not.toBeNull()
+    })
+
+    expect(getRootStyle()).toBe(initialStyle)
+
+    fireEvent.click(screen.getByRole('link', { name: 'Back to home' }))
+    await screen.findByRole('link', { name: 'Go to about page' })
+    await waitFor(() => {
+      expect(document.querySelector('meta[name="about-extra-2"]')).toBeNull()
+    })
+
+    expect(getRootStyle()).toBe(initialStyle)
+    expect(document.querySelectorAll('#root-style')).toHaveLength(1)
+    expect(consoleError).not.toHaveBeenCalled()
+  })
+
+  test.each([
+    ['production', HeadContent],
+    ['development', DevHeadContent],
+  ])(
+    'hydrates server-rendered head tags and keeps them mounted across navigation (%s)',
+    async (_, Head) => {
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {})
+      const onRecoverableError = vi.fn()
+
+      const makeRouteTree = () => {
+        const rootRoute = createRootRoute({
+          head: () => ({
+            styles: [{ id: 'hydrated-root-style', children: 'b{color:red}' }],
+          }),
+          component: () => (
+            <>
+              <div>
+                <Head />
+              </div>
+              <Outlet />
+            </>
+          ),
+        })
+        const indexRoute = createRoute({
+          path: '/',
+          getParentRoute: () => rootRoute,
+          head: () => ({
+            meta: [{ name: 'page', content: 'index' }],
+          }),
+          component: () => <Link to="/about">Go to about page</Link>,
+        })
+        const aboutRoute = createRoute({
+          path: '/about',
+          getParentRoute: () => rootRoute,
+          head: () => ({
+            meta: [
+              { name: 'page', content: 'about' },
+              { name: 'about-extra-1', content: '1' },
+              { name: 'about-extra-2', content: '2' },
+            ],
+          }),
+          component: () => <Link to="/">Back to home</Link>,
+        })
+        return rootRoute.addChildren([indexRoute, aboutRoute])
+      }
+
+      const serverRouter = createRouter({
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+        routeTree: makeRouteTree(),
+        isServer: true,
+      })
+      await serverRouter.load()
+      const serverHtml = ReactDOMServer.renderToString(
+        <RouterProvider router={serverRouter} />,
+      )
+
+      const clientRouter = createRouter({
+        history: createTestBrowserHistory(),
+        routeTree: makeRouteTree(),
+      })
+      window.$_TSR = {
+        router: {
+          manifest: { routes: {} },
+          dehydratedData: {},
+          matches: serverRouter.stores.matches.get().map((match) => ({
+            i: dehydrateSsrMatchId(match.id),
+            u: match.updatedAt,
+            s: match.status,
+            ssr: match.ssr,
+          })),
+        },
+        h: vi.fn(),
+        e: vi.fn(),
+        c: vi.fn(),
+        p: vi.fn(),
+        buffer: [],
+        initialized: false,
+      }
+      await hydrate(clientRouter)
+
+      const container = document.createElement('div')
+      container.innerHTML = serverHtml
+      document.body.appendChild(container)
+      const serverStyle = document.getElementById('hydrated-root-style')
+      expect(serverStyle).toBeInstanceOf(HTMLStyleElement)
+
+      let root!: ReturnType<typeof hydrateRoot>
+      await act(async () => {
+        root = hydrateRoot(
+          container,
+          <RouterProvider router={clientRouter} />,
+          { onRecoverableError },
+        )
+      })
+
+      try {
+        await screen.findByRole('link', { name: 'Go to about page' })
+        expect(document.getElementById('hydrated-root-style')).toBe(serverStyle)
+
+        fireEvent.click(screen.getByRole('link', { name: 'Go to about page' }))
+        await screen.findByRole('link', { name: 'Back to home' })
+        await waitFor(() => {
+          expect(
+            document.querySelector('meta[name="about-extra-2"]'),
+          ).not.toBeNull()
+        })
+        expect(document.getElementById('hydrated-root-style')).toBe(serverStyle)
+
+        fireEvent.click(screen.getByRole('link', { name: 'Back to home' }))
+        await screen.findByRole('link', { name: 'Go to about page' })
+        await waitFor(() => {
+          expect(
+            document.querySelector('meta[name="about-extra-2"]'),
+          ).toBeNull()
+        })
+        expect(document.getElementById('hydrated-root-style')).toBe(serverStyle)
+        expect(onRecoverableError).not.toHaveBeenCalled()
+        expect(consoleError).not.toHaveBeenCalled()
+      } finally {
+        await act(() => root.unmount())
+        container.remove()
+      }
+    },
+  )
 
   test('does not render retained descendant assets past a terminal parent boundary', async () => {
     let failParent = false

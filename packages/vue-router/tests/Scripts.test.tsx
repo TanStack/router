@@ -6,7 +6,8 @@ import {
   screen,
   waitFor,
 } from '@testing-library/vue'
-import { Teleport } from 'vue'
+import { Teleport, createSSRApp } from 'vue'
+import { renderToString } from 'vue/server-renderer'
 import { hydrate } from '@tanstack/router-core/ssr/client'
 import { dehydrateSsrMatchId } from '../../router-core/src/ssr/ssr-match-id'
 
@@ -23,6 +24,7 @@ import {
   createRouter,
 } from '../src'
 import { Scripts } from '../src/Scripts'
+import { HeadContent as DevHeadContent } from '../src/HeadContent.dev'
 import type { Manifest } from '@tanstack/router-core'
 
 const createTestManifest = (
@@ -49,6 +51,7 @@ const createTestBrowserHistory = () => {
 
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
   browserHistories.splice(0).forEach((history) => history.destroy())
   window.history.replaceState(null, 'root', '/')
   delete window.$_TSR
@@ -873,6 +876,161 @@ describe('ssr HeadContent', () => {
       { property: 'og:image', content: 'index-image.jpg' },
     ])
   })
+
+  test.each([
+    ['production', HeadContent],
+    ['development', DevHeadContent],
+  ])(
+    'server renders head tags without warnings and keeps dedupe (%s)',
+    async (_, Head) => {
+      const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {})
+      const sharedLink = { rel: 'icon', href: '/shared-icon.png' }
+
+      const rootRoute = createRootRoute({
+        head: () => ({
+          meta: [
+            { title: 'Root' },
+            { name: 'description', content: 'Root' },
+            { property: 'og:title', content: 'Root' },
+          ],
+          links: [sharedLink, { rel: 'manifest', href: '/site.webmanifest' }],
+        }),
+        component: () => <Head />,
+      })
+
+      const indexRoute = createRoute({
+        path: '/',
+        getParentRoute: () => rootRoute,
+        head: () => ({
+          meta: [{ name: 'description', content: 'Index' }],
+          links: [{ ...sharedLink }],
+        }),
+      })
+
+      const router = createRouter({
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+        routeTree: rootRoute.addChildren([indexRoute]),
+      })
+
+      router.isServer = true
+
+      await router.load()
+
+      const html = await renderToString(
+        createSSRApp(() => <RouterProvider router={router} />),
+      )
+      const container = document.createElement('div')
+      container.innerHTML = html
+
+      expect(
+        Array.from(
+          container.querySelectorAll('title, meta, link'),
+          (el) => el.outerHTML,
+        ),
+      ).toEqual([
+        '<title>Root</title>',
+        '<meta property="og:title" content="Root">',
+        '<meta name="description" content="Index">',
+        '<link rel="icon" href="/shared-icon.png">',
+        '<link rel="manifest" href="/site.webmanifest">',
+      ])
+      expect(consoleWarn).not.toHaveBeenCalled()
+      expect(consoleError).not.toHaveBeenCalled()
+    },
+  )
+
+  test.each([
+    ['production', HeadContent],
+    ['development', DevHeadContent],
+  ])(
+    'keeps unchanged head tags mounted when preceding tags change (%s)',
+    async (_, Head) => {
+      const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {})
+      const history = createTestBrowserHistory()
+
+      const rootRoute = createRootRoute({
+        head: () => ({
+          links: [{ id: 'root-icon', rel: 'icon', href: '/root-icon.png' }],
+        }),
+        component: () => (
+          <>
+            <div>
+              <Head />
+            </div>
+            <Outlet />
+          </>
+        ),
+      })
+
+      const indexRoute = createRoute({
+        path: '/',
+        getParentRoute: () => rootRoute,
+        head: () => ({
+          meta: [{ name: 'page', content: 'index' }],
+        }),
+        component: () => <Link to="/about">Go to about page</Link>,
+      })
+
+      const aboutRoute = createRoute({
+        path: '/about',
+        getParentRoute: () => rootRoute,
+        head: () => ({
+          meta: [
+            { name: 'page', content: 'about' },
+            { name: 'about-extra-1', content: '1' },
+            { name: 'about-extra-2', content: '2' },
+          ],
+        }),
+        component: () => <Link to="/">Back to home</Link>,
+      })
+
+      const router = createRouter({
+        history,
+        routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
+      })
+
+      await router.load()
+
+      render(<RouterProvider router={router} />)
+
+      const getRootIcon = () => document.getElementById('root-icon')
+
+      await waitFor(() => {
+        expect(getRootIcon()).toBeInstanceOf(HTMLLinkElement)
+      })
+
+      const initialIcon = getRootIcon()
+
+      await fireEvent.click(
+        await screen.findByRole('link', { name: 'Go to about page' }),
+      )
+      await screen.findByRole('link', { name: 'Back to home' })
+      await waitFor(() => {
+        expect(
+          document.querySelector('meta[name="about-extra-2"]'),
+        ).not.toBeNull()
+      })
+
+      expect(getRootIcon()).toBe(initialIcon)
+
+      await fireEvent.click(screen.getByRole('link', { name: 'Back to home' }))
+      await screen.findByRole('link', { name: 'Go to about page' })
+      await waitFor(() => {
+        expect(document.querySelector('meta[name="about-extra-2"]')).toBeNull()
+      })
+
+      expect(getRootIcon()).toBe(initialIcon)
+      expect(document.querySelectorAll('#root-icon')).toHaveLength(1)
+      expect(consoleWarn).not.toHaveBeenCalled()
+      expect(consoleError).not.toHaveBeenCalled()
+    },
+  )
 
   test('keeps manifest stylesheet links mounted when history state changes', async () => {
     const history = createTestBrowserHistory()

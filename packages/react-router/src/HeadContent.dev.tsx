@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { DEV_STYLES_ATTR } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import { useHydrated } from './ClientOnly'
@@ -42,8 +43,16 @@ export function HeadContent(props: HeadContentProps) {
 
   return (
     <>
-      {filteredTags.map((tag) => (
-        <Asset {...tag} key={`tsr-meta-${JSON.stringify(tag)}`} nonce={nonce} />
+      {filteredTags.map((tag, i) => (
+        <Asset
+          {...tag}
+          key={
+            (isServer ?? router.isServer)
+              ? i
+              : `tsr-meta-${JSON.stringify(tag)}`
+          }
+          nonce={nonce}
+        />
       ))}
     </>
   )

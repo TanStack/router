@@ -123,15 +123,8 @@ export const HeadContent = Vue.defineComponent({
     const tags = useTags(props.assetCrossOrigin)
 
     if (isServer ?? router.isServer) {
-      return () => {
-        return tags().map((tag) => {
-          const key = JSON.stringify(tag)
-          return Vue.h(Asset, {
-            ...tag,
-            key: `tsr-meta-${key}`,
-          })
-        })
-      }
+      // Vue SSR does not diff or serialize keys, and hydration matches by position.
+      return () => tags().map((tag) => Vue.h(Asset, { ...tag }))
     }
 
     const preservedHeadTagElements: Record<string, Array<Element>> = {}

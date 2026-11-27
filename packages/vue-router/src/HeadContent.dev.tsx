@@ -1,9 +1,11 @@
 import * as Vue from 'vue'
 import { DEV_STYLES_ATTR } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 
 import { Asset } from './Asset'
 import { useHydrated } from './ClientOnly'
 import { useTags } from './headContentUtils'
+import { useRouter } from './useRouter'
 import type { AssetCrossOriginConfig } from '@tanstack/router-core'
 
 /**
@@ -21,7 +23,13 @@ export const HeadContent = Vue.defineComponent({
     },
   },
   setup(props) {
+    const router = useRouter()
     const tags = useTags(props.assetCrossOrigin)
+
+    if (isServer ?? router.isServer) {
+      return () => tags().map((tag) => Vue.h(Asset, { ...tag }))
+    }
+
     const hydrated = useHydrated()
 
     // Fallback cleanup for hydration mismatch cases
