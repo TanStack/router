@@ -5,6 +5,7 @@ import {
   encodePathLikeUrl,
   escapeHtml,
   hasOwn,
+  isModuleNotFoundError,
   isPlainArray,
   isPlainObject,
   nullReplaceEqualDeep,
@@ -1842,5 +1843,40 @@ describe('encodePathLikeUrl', () => {
     expect(encodePathLikeUrl('/path/\u{1F600}/file')).toBe(
       '/path/%F0%9F%98%80/file',
     )
+  })
+})
+
+describe('isModuleNotFoundError', () => {
+  it.each([
+    [
+      'chrome',
+      'Failed to fetch dynamically imported module: http://localhost:5173/assets/posts-abc123.js',
+    ],
+    [
+      'firefox',
+      'error loading dynamically imported module: http://localhost:5173/assets/posts-abc123.js',
+    ],
+    ['safari', 'Importing a module script failed.'],
+    [
+      'safari non-JS fallback',
+      "'text/html' is not a valid JavaScript MIME type for module script 'http://localhost:5173/assets/posts-abc123.js'.",
+    ],
+  ])('should detect the %s error', (_browser, message) => {
+    expect(isModuleNotFoundError(new TypeError(message))).toBe(true)
+  })
+
+  it('should not detect unrelated errors', () => {
+    expect(isModuleNotFoundError(new Error('Network request failed'))).toBe(
+      false,
+    )
+    expect(
+      isModuleNotFoundError(
+        new TypeError(
+          "Cannot read properties of undefined (reading 'default')",
+        ),
+      ),
+    ).toBe(false)
+    expect(isModuleNotFoundError(undefined)).toBe(false)
+    expect(isModuleNotFoundError({ message: 42 })).toBe(false)
   })
 })
