@@ -148,7 +148,9 @@ function makeWindowsCompilation(readCss: () => string | Uint8Array) {
 describe('normalizeRspackClientBuild', () => {
   // The query rules the route-split and Hydrate derived ids rely on: literal
   // keys only, the first value, `+`/`%` decoding. Source: upstream #8799.
-  test.each([
+  // One build: each query is a module of its own (`q<i>.js`) in an async
+  // chunk of its own, so a row reads only its chunk's metadata.
+  const queryRows = [
     {
       query: 'tsr-split=component&tss-hydrate=first&tss-hydrate=second',
       route: true,
@@ -179,16 +181,31 @@ describe('normalizeRspackClientBuild', () => {
       route: false,
       hydrationIds: [],
     },
-  ])(
+  ].map((row, index) => ({ ...row, module: `q${index}` }))
+  let queryBuild: ReturnType<typeof buildClientFixture> | undefined
+  const builtQueries = () =>
+    (queryBuild ??= buildClientFixture({
+      'index.js': `globalThis.routes = [\n${queryRows
+        .map(
+          ({ module, query }) =>
+            `  () => import(/* webpackChunkName: "${module}" */ './${module}.js?${query}'),`,
+        )
+        .join('\n')}\n]`,
+      ...Object.fromEntries(
+        queryRows.map(({ module }) => [
+          `${module}.js`,
+          `export const render = () => globalThis.${module}()`,
+        ]),
+      ),
+    }))
+
+  test.each(queryRows)(
     'preserves literal query filtering and first values for $query',
-    async ({ query, route, hydrationIds }) => {
-      const { clientBuild, directory } = await buildClientFixture({
-        'index.js': `globalThis.route = () => import(/* webpackChunkName: "alpha" */ './alpha.js?${query}')`,
-        'alpha.js': `export const render = () => globalThis.render()`,
-      })
-      const chunk = clientBuild.chunksByFileName.get('alpha.js')!
+    async ({ module, route, hydrationIds }) => {
+      const { clientBuild, directory } = await builtQueries()
+      const chunk = clientBuild.chunksByFileName.get(`${module}.js`)!
       expect(chunk.routeFilePaths).toEqual(
-        route ? [join(directory, 'alpha.js')] : [],
+        route ? [join(directory, `${module}.js`)] : [],
       )
       expect(chunk.hydrationIds).toEqual(hydrationIds)
     },
