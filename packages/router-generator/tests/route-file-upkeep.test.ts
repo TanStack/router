@@ -40,9 +40,13 @@ const router = `'${routerPackage}'`
  * Runs the generator on an app with a root route, `src/routes/<file>`
  * holding `source` and `otherFiles` (paths relative to the app root). The
  * run must succeed, unless `reportAllowed`: a failed run is then returned
- * (`error`, for `expectReported`). Returns the file as the generator left
- * it, the warnings and `routes()`, the route tree's routes (route id to
- * file) as the real router loads them (undefined after a failed run).
+ * (`error`, for `expectReported`). A run that succeeds is followed by a
+ * load of its route tree with the real router, which must succeed too, but
+ * with `reportAllowed`: a file the generator reports as no route is
+ * imported as written, so its tree may not load; such a load leaves
+ * `routes` undefined, and only the report can pass (`expectReported`).
+ * Returns the file as the generator left it, the warnings (the load's
+ * included) and `routes`, the tree's routes (route id to file).
  */
 async function upkeep(
   file: string,
@@ -57,8 +61,9 @@ async function upkeep(
     ...otherFiles,
   })
   let error: unknown
-  let tree: string | undefined
+  let routes: Record<string, string | null> | undefined
   const { diagnostics } = await captureDiagnostics(async () => {
+    let tree: string
     try {
       tree = (await generate(root, { disableLogging: false, ...config }))
         .generatedRouteTree
@@ -67,7 +72,14 @@ async function upkeep(
         throw e
       }
       error = e
+      return
     }
+    routes = await routesOf(tree).catch((e: unknown) => {
+      if (!reportAllowed) {
+        throw e
+      }
+      return undefined
+    })
   })
   return {
     root,
@@ -75,7 +87,7 @@ async function upkeep(
     written: await read(root, `src/routes/${file}`),
     diagnostics,
     error,
-    routes: async () => (tree === undefined ? undefined : routesOf(tree)),
+    routes,
   }
 }
 
@@ -165,7 +177,7 @@ export const Route = ${call}
     const { written, routes } = await upkeep('new.tsx', source)
 
     await expectRouteFile(written, { id: '/new', source })
-    expect(await routes()).toEqual({
+    expect(routes).toEqual({
       __root__: 'routes/__root.tsx',
       '/new': 'routes/new.tsx',
     })
@@ -215,7 +227,7 @@ export const Route = createFileRoute('/old')({
     const { written, routes } = await upkeep('new.ts', source)
 
     await expectRouteFile(written, { id: '/new', source, fileName: 'new.ts' })
-    expect(await routes()).toEqual({
+    expect(routes).toEqual({
       __root__: 'routes/__root.tsx',
       '/new': 'routes/new.ts',
     })
@@ -472,7 +484,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
         ),
       })
       expect(exports.Route.options.component()).toBe('new page')
-      expect(await routes()).toEqual({
+      expect(routes).toEqual({
         __root__: 'routes/__root.tsx',
         '/new': 'routes/new.tsx',
       })
@@ -903,7 +915,7 @@ export const Route = createFileRoute('/old')({})
       const { root, written } = outcome
 
       expect(written).toBe(source)
-      if ((await outcome.routes())?.['/new'] === 'routes/new.tsx') {
+      if (outcome.routes?.['/new'] === 'routes/new.tsx') {
         // (the route is the app's constructor's: with its pending component)
         await withRouteTree(
           path.join(root, 'src/routeTree.gen.ts'),
@@ -980,7 +992,7 @@ export const makeRoute = () => createFileRoute('/new')
 
       expect(written).toBe(source)
       expect(await read(root, helperFile)).toBe(helperSource)
-      if ((await outcome.routes())?.['/new'] === 'routes/new.tsx') {
+      if (outcome.routes?.['/new'] === 'routes/new.tsx') {
         await withRouteTree(
           path.join(root, 'src/routeTree.gen.ts'),
           async ({ renderAt }) => {
@@ -1028,7 +1040,7 @@ export const Route = createFileRoute(\`/\${x}\`)({})
       if (routeCallOf(written).id === '/new') {
         expect(outcome.error).toBeUndefined()
         await expectRouteFile(written, { id: '/new', source })
-        expect(await outcome.routes()).toEqual({
+        expect(outcome.routes).toEqual({
           __root__: 'routes/__root.tsx',
           '/new': 'routes/new.tsx',
         })
@@ -1065,7 +1077,7 @@ export const Route = createFileRoute(('/old' as const))({})
       expect(written).toBe(
         source.replace(/createFileRoute\(.*\)\(\{\}\)/, kept),
       )
-      expect(await routes()).toEqual({
+      expect(routes).toEqual({
         __root__: 'routes/__root.tsx',
         '/new': 'routes/new.tsx',
       })
@@ -1203,7 +1215,7 @@ export const Route = createLazyFileRoute({ component: () => null })
           fileName,
         })
         expect(exports.Route.options.component()).toBeNull()
-        expect(await outcome.routes()).toEqual({
+        expect(outcome.routes).toEqual({
           __root__: 'routes/__root.tsx',
           // (a lazy-only route is created by the tree)
           '/new':
