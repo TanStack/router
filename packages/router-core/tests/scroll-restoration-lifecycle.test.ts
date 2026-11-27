@@ -4,6 +4,8 @@ import {
   BaseRootRoute,
   getElementScrollRestorationEntry,
   setupScrollRestoration,
+  teardownScrollRestoration,
+  disposeRouter,
 } from '../src'
 import { createTestRouter } from './routerTestUtils'
 
@@ -185,3 +187,50 @@ test('does not take over browser restoration or register listeners on the server
     ),
   ).toEqual([])
 })
+
+test('setupScrollRestoration returns cleanup function that removes listeners', () => {
+  const router = createRouter({
+    routeTree: new BaseRootRoute({}),
+    scrollRestoration: true,
+  })
+  const removeSpy = vi.spyOn(document, 'removeEventListener')
+  const removeWindowSpy = vi.spyOn(window, 'removeEventListener')
+
+  const cleanup = setupScrollRestoration(router)
+  expect(typeof cleanup).toBe('function')
+  expect(router._scroll.s).toBe(true)
+  expect(router._scroll.r).toBe(true)
+
+  cleanup!()
+  expect(removeSpy).toHaveBeenCalledWith('scroll', expect.any(Function), true)
+  expect(removeWindowSpy).toHaveBeenCalledWith('pagehide', expect.any(Function))
+  expect(removeWindowSpy).toHaveBeenCalledWith('pageshow', expect.any(Function))
+  expect(router._scroll.s).toBe(false)
+  expect(router._scroll.r).toBe(false)
+  expect(router._scroll.c).toBeUndefined()
+})
+
+test('disposeRouter and teardownScrollRestoration unbinds router subscriptions and removes window listeners', () => {
+  const router = createRouter({
+    routeTree: new BaseRootRoute({}),
+    scrollRestoration: true,
+  })
+  const removeSpy = vi.spyOn(document, 'removeEventListener')
+  const removeWindowSpy = vi.spyOn(window, 'removeEventListener')
+
+  expect(router.subscribers.size).toBe(2)
+
+  disposeRouter(router)
+  expect(removeSpy).toHaveBeenCalledWith('scroll', expect.any(Function), true)
+  expect(removeWindowSpy).toHaveBeenCalledWith('pagehide', expect.any(Function))
+  expect(removeWindowSpy).toHaveBeenCalledWith('pageshow', expect.any(Function))
+  expect(router.subscribers.size).toBe(0)
+  expect(router._scroll.s).toBe(false)
+  expect(router._scroll.r).toBe(false)
+  expect(router._scroll.c).toBeUndefined()
+
+  // Calling again is a safe no-op
+  expect(() => teardownScrollRestoration(router)).not.toThrow()
+  expect(() => disposeRouter(router)).not.toThrow()
+})
+
