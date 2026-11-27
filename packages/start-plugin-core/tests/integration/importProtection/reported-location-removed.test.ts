@@ -18,12 +18,14 @@ import {
 import {
   channels,
   expectRelevantLocation,
+  otherErrorsOf,
   reportedLocationsOfCases,
   timeout,
 } from './reported-location-app'
 import type { Channel } from './reported-location-app'
 import type { Recorded } from '../../importProtection/start-apps'
 import type { StartBuildError } from '../../build-harness'
+import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 
 // A use inside code the Start compiler removes from the client (a safe
 // boundary) is not reported: the client no longer imports the denied file.
@@ -159,9 +161,11 @@ export const readServer = createIsomorphicFn().server(() => widget())
     of: (name: CaseName) => Array<string>
     all: Array<string>
     failed: boolean
+    otherErrors: Array<string>
   }> {
     const names: Array<CaseName> = groups[group]
     let failed = false
+    let diagnostics: Array<Diagnostic> = []
     const files = {
       ...Object.fromEntries(
         names.flatMap((name) => [
@@ -182,6 +186,7 @@ export const readServer = createIsomorphicFn().server(() => widget())
       const server = await startProtectedDevServer(files)
       await server.load('/src/entry.ts', { environment: 'ssr' })
       output = server
+      diagnostics = server.diagnostics
     } else {
       const bundler = channel === 'vite build' ? 'vite' : 'rsbuild'
       output = await buildStart({
@@ -189,12 +194,16 @@ export const readServer = createIsomorphicFn().server(() => widget())
         files,
         entry: { client: 'src/client.ts', ssr: 'src/entry.ts' },
       }).then(
-        (build) => build,
+        (build) => {
+          diagnostics = build.diagnostics
+          return build
+        },
         (error: StartBuildError) => {
           if (reportedViolations(error).length === 0) {
             throw error
           }
           failed = true
+          diagnostics = error.diagnostics
           return error
         },
       )
@@ -211,6 +220,11 @@ export const readServer = createIsomorphicFn().server(() => widget())
         ),
       all: reports,
       failed,
+      // (a compile error that is no report: of a case printed with another's)
+      otherErrors: otherErrorsOf(
+        { ...output, diagnostics },
+        names.map((name) => `src/${name}/a.ts`),
+      ),
     }
   }
   const serverReportsOn = new Map<
@@ -226,9 +240,12 @@ export const readServer = createIsomorphicFn().server(() => widget())
     }
     return reports
   }
-  /** The reports of the kept-use case `name` on `channel`. */
-  const serverReports = async (channel: ServerChannel, name: CaseName) =>
-    (await groupReports(channel, 'kept')).of(name)
+  /** The reports of the kept-use case `name` on `channel` (its app compiled nothing else wrong). */
+  const serverReports = async (channel: ServerChannel, name: CaseName) => {
+    const reports = await groupReports(channel, 'kept')
+    expect(reports.otherErrors).toEqual([])
+    return reports.of(name)
+  }
 
   test.each(serverChannels)(
     '%s: a use outside createClientOnlyFn is reported on the server at the use or the import; the use inside is not',
@@ -270,7 +287,8 @@ export const readServer = createIsomorphicFn().server(() => widget())
   test.each(serverChannels)(
     '%s: the app of the kept uses reports each case once, and nothing else',
     async (channel) => {
-      const { all } = await groupReports(channel, 'kept')
+      const { all, otherErrors } = await groupReports(channel, 'kept')
+      expect(otherErrors).toEqual([])
       expect(
         all.map((report) => locationParts(report.split(' ')[1]!).file).sort(),
       ).toEqual(groups.kept.map((name) => `src/${name}/a.ts`).sort())
@@ -282,8 +300,12 @@ export const readServer = createIsomorphicFn().server(() => widget())
     '%s: a use only inside createClientOnlyFn is not reported',
     async (channel) => {
       // (the whole safe-only app: no report, and a build succeeds)
-      const { all, failed } = await groupReports(channel, 'safe')
-      expect({ all, failed }).toEqual({ all: [], failed: false })
+      const { all, failed, otherErrors } = await groupReports(channel, 'safe')
+      expect({ all, failed, otherErrors }).toEqual({
+        all: [],
+        failed: false,
+        otherErrors: [],
+      })
     },
     timeout,
   )

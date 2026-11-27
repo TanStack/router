@@ -84,13 +84,17 @@ async function reportsOf(
     entry: 'src/entry.ts',
     sourcemap,
   }).then(
-    (build) => ({ output: build, diagnostics: [], failed: false }),
+    (build) => ({
+      output: build,
+      diagnostics: build.diagnostics,
+      failed: false,
+    }),
     (error: StartBuildError) => {
       // (a build that fails for another reason fails the test)
       if (reportedViolations(error).length === 0) {
         throw error
       }
-      return { output: error, diagnostics: [], failed: true }
+      return { output: error, diagnostics: error.diagnostics, failed: true }
     },
   )
 }
@@ -168,7 +172,7 @@ export async function reportedLocationsOfCases(
   return {
     of: (name) =>
       importers.filter((importer) => fileOf(importer) === caseFile(name)),
-    otherErrors: otherErrorsOf({ ...output, diagnostics }),
+    otherErrors: otherErrorsOf({ ...output, diagnostics }, names.map(caseFile)),
     files: distinct(importers.map(fileOf)).sort(),
     importers,
     failed,
@@ -189,21 +193,29 @@ export function expectNoOtherErrors(
   expect(otherErrorsOf(output)).toEqual([])
 }
 
-/** The texts of the errors `expectNoOtherErrors` fails on. */
-function otherErrorsOf(
+/**
+ * The texts of the errors `expectNoOtherErrors` fails on: an error that
+ * names none of the reported importers' files, or that names one of
+ * `importerFiles` (root-relative: the cases' importers) no violation was
+ * reported for (a compile error printed with another case's report).
+ */
+export function otherErrorsOf(
   output: Recorded & {
     diagnostics: Array<{ severity: string; text: string }>
   },
+  importerFiles: Array<string> = [],
 ): Array<string> {
   const reported = distinct(
     reportedViolations(output).map(({ importer }) => appFileOf(importer)),
   )
+  const unreported = importerFiles.filter((file) => !reported.includes(file))
+  const names = (text: string, file: string) =>
+    mentionsFile(text, file, { root: output.root })
   return findDiagnostics(output.diagnostics, { severity: 'error' })
     .filter(
       ({ text }) =>
-        !reported.some((file) =>
-          mentionsFile(text, file, { root: output.root }),
-        ),
+        !reported.some((file) => names(text, file)) ||
+        unreported.some((file) => names(text, file)),
     )
     .map(({ text }) => text)
 }
