@@ -647,8 +647,16 @@ export class RawFactsCache {
       (this.mayHaveMarker(text) ||
         (text === '' && this.maySave(canonicalId, entry.facts)))
     ) {
-      // (the target facts are built from the text taken here: one read)
-      return (await this.targetOf(canonicalId, env, taken)).targetFacts.marker
+      // (the target facts are built from the text taken here, one read,
+      // unless an event landed meanwhile: that text may be from before it,
+      // and the target facts take the text current now)
+      return (
+        await this.targetOf(
+          canonicalId,
+          env,
+          this.changes === changes ? taken : null,
+        )
+      ).targetFacts.marker
     }
     if (this.changes === changes) {
       if (
