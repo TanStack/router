@@ -11,9 +11,9 @@
  * - the server-fn provider: SSR and the client serve callers only, and the
  *   provider registers the handler: SSR and the browser reach it by id
  *   (SPEC J4.1, J4.2, J4.12);
- * - import protection's `'use client'` exception: a `'use client'` module's
- *   imports are judged where its code runs, not in the provider (SPEC J6.1;
- *   the dev and build apps are react-start-rsc's rsc-use-client-*);
+ * - import protection's `'use client'` exception: in
+ *   start-compiler-rsc-import-protection.test.ts (a host of its own, in a
+ *   process of its own);
  * - RSC CSS: the Flight stream a module renders names the stylesheet the
  *   module imports, for each JSX leaf of a conditional (SPEC J7.2, J7.3;
  *   the page-level matrix is react-start-rsc's rsc-css-*).
@@ -143,62 +143,6 @@ export const k = kept
     const client = await c.client(`module.c()
 return [...(await load('record.ts')).calls]`)
     expect(client.result).toEqual(['client'])
-  })
-})
-
-// (The host below is its own RSC dev server, unshared: `@vitejs/plugin-rsc`
-// keeps the runner a server fn call from SSR reaches the provider through
-// in one process-global (`__VITE_ENVIRONMENT_RUNNER_IMPORT__`), which the
-// last RSC dev server created sets. After this one closes, a shared RSC
-// host's SSR can no longer call its provider: the rows above that call
-// server fns run before it, the ones below only compile and render.)
-describe("Vite with RSC: import protection's 'use client' exception", () => {
-  const violations: Array<{
-    env: string
-    importer: string
-    specifier: string
-  }> = []
-  const host = useStartHost({
-    rsc: true,
-    start: {
-      importProtection: {
-        behavior: 'mock',
-        onViolation: (info: {
-          env: string
-          importer: string
-          specifier: string
-        }) => {
-          violations.push(info)
-        },
-      },
-    },
-  })
-
-  // SPEC J6.1: the provider compiles the module, which the RSC plugin
-  // replaces by client references: nothing of its code runs there, so its
-  // `.client` import is no violation in the rsc environment; SSR runs it,
-  // so it is one there (and SSR gets the mock).
-  test("a 'use client' module's .client import is judged in SSR, not in the rsc environment", async () => {
-    const c = await (
-      await host()
-    ).case({
-      'label.client.ts': `export const label = () => 'MARK_CLIENT_LABEL'\n`,
-      'module.tsx': `'use client'
-import { label } from './label.client'
-export function Box() {
-  return <span>{label()}</span>
-}
-`,
-    })
-    const reported = () =>
-      violations
-        .filter(({ importer }) => importer.includes(c.dir))
-        .map(({ env, specifier }) => `${env} ${specifier}`)
-    const rsc = await c.rsc()
-    expect(rsc.Box.$$typeof).toBe(Symbol.for('react.client.reference'))
-    expect(reported()).toEqual([])
-    await c.ssr()
-    expect(reported()).toEqual(['ssr ./label.client'])
   })
 })
 

@@ -29,6 +29,17 @@ const aloneTests = [
   'integration/rsbuild/server-fn-resolver-repeat-unchecked.test.ts',
 ]
 
+/**
+ * Fast-tier tests that run in a process of their own (project `unit-alone`,
+ * part of `test:unit`): an RSC host no other file shares.
+ * `@vitejs/plugin-rsc` keeps the runner an SSR call reaches the provider
+ * through in one process-global (`__VITE_ENVIRONMENT_RUNNER_IMPORT__`), set
+ * by the last RSC dev server created: after a second RSC dev server of the
+ * process closes, the shared RSC host's SSR cannot call its provider. Paths
+ * relative to `tests/`.
+ */
+const unitAloneTests = ['start-compiler-rsc-import-protection.test.ts']
+
 /** This package's build output (`dist`), as its `exports` name it. */
 const builtPackage = new RegExp(
   `^${path.join(path.dirname(fileURLToPath(import.meta.url)), 'dist').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/`,
@@ -136,7 +147,16 @@ const config = defineConfig({
             ...configDefaults.exclude,
             'integration/**',
             ...noncompilerTests,
+            ...unitAloneTests,
           ],
+        },
+      },
+      {
+        // `unitAloneTests`, each file in a new process (`isolate: true`)
+        extends: true,
+        test: {
+          name: 'unit-alone',
+          include: unitAloneTests,
         },
       },
       integrationProject,
