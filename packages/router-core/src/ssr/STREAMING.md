@@ -274,8 +274,11 @@ It does not use them as safe points.
 The script-close profile lets a late record follow a complete React patch script.
 It can also emit router data while React waits for later Suspense work.
 
-The adapter uses `renderToReadableStream` when that function exists.
-Otherwise, it uses `renderToPipeableStream`.
+The adapter uses `renderToPipeableStream` when that function exists, since it
+only exists in Node-compatible builds. Otherwise, it uses
+`renderToReadableStream`. Since React 19.2 the Node build also exports
+`renderToReadableStream`, so checking readable first would silently switch
+Node apps to Web Streams on upgrade.
 Both paths use the same script-close profile.
 Both paths set `progressiveChunkSize` to positive infinity so React does not split completed Suspense boundaries into separate patches based only on output size.
 The adapter does not inspect the React version.

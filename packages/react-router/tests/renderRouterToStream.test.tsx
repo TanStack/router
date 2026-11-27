@@ -45,10 +45,22 @@ const { renderRouterToStream } = await import('../src/ssr/renderRouterToStream')
 
 afterEach(() => {
   reactDomServerMocks.renderToReadableStream = undefined
-  reactDomServerMocks.renderToPipeableStream.mockReset()
+  const pipeable = reactDomServerMocks.renderToPipeableStream
+  if (typeof pipeable === 'function') {
+    pipeable.mockReset()
+  } else {
+    reactDomServerMocks.renderToPipeableStream = vi.fn()
+  }
   routerTransformMocks.readableOptions.mockReset()
   vi.restoreAllMocks()
 })
+
+function hidePipeableRenderer() {
+  // Simulate an environment where only Web Streams exist, so a test
+  // exercises the readable branch. Restored by afterEach.
+  reactDomServerMocks.renderToPipeableStream =
+    undefined as unknown as typeof reactDomServerMocks.renderToPipeableStream
+}
 
 async function buildRouter(dehydratedData?: { lateData: Promise<string> }) {
   const rootRoute = createRootRoute({ component: () => null })
@@ -181,6 +193,7 @@ describe('renderRouterToStream - renderer selection and pipeable errors', () => 
   })
 
   test('disables React progressive chunking for the readable renderer', async () => {
+    hidePipeableRenderer()
     const router = await buildRouter()
     const renderedScripts = takeInitialScriptHtml(router)
     const rendererStream = Object.assign(
@@ -274,6 +287,7 @@ describe('renderRouterToStream - renderer selection and pipeable errors', () => 
       }),
       { allReady: new Promise<void>(() => {}) },
     )
+    hidePipeableRenderer()
     reactDomServerMocks.renderToReadableStream = vi.fn(() =>
       Promise.resolve(rendererStream),
     )
@@ -337,46 +351,47 @@ describe('renderRouterToStream - renderer selection and pipeable errors', () => 
     }
   })
 
-  test('prefers the readable renderer when both APIs exist', async () => {
-    const cancelReadable = vi.fn()
-    const readableStream = Object.assign(
-      new ReadableStream<Uint8Array>({
-        cancel: cancelReadable,
-      }),
-      { allReady: Promise.resolve() },
-    )
-    const readable = vi.fn(() => Promise.resolve(readableStream))
-    reactDomServerMocks.renderToReadableStream = readable
-
+  test('prefers the pipeable renderer when both APIs exist', async () => {
     const router = await buildRouter()
-    const requestController = new AbortController()
+    const renderedScripts = takeInitialScriptHtml(router)
+    const readable = vi.fn()
+    reactDomServerMocks.renderToReadableStream = readable
+    reactDomServerMocks.renderToPipeableStream.mockImplementationOnce(
+      (_children, options) => {
+        queueMicrotask(options.onShellReady)
+        return {
+          abort: vi.fn(),
+          pipe(destination: NodeJS.WritableStream) {
+            destination.write(renderedScripts)
+            destination.end()
+          },
+        }
+      },
+    )
+
     try {
       const response = unwrapResponse(
         await renderRouterToStream({
-          request: new Request('http://localhost/', {
-            signal: requestController.signal,
-          }),
+          request: new Request('http://localhost/'),
           router,
           responseHeaders: new Headers(),
           children: null,
         }),
       )
+      await response.text()
 
-      expect(readable).toHaveBeenCalledOnce()
-      expect(reactDomServerMocks.renderToPipeableStream).not.toHaveBeenCalled()
+      expect(reactDomServerMocks.renderToPipeableStream).toHaveBeenCalledOnce()
+      expect(readable).not.toHaveBeenCalled()
       expect(routerTransformMocks.readableOptions).toHaveBeenCalledWith(
         expect.objectContaining({ rendererSafePoint: 'script-close' }),
       )
-
-      requestController.abort(new Error('test-complete'))
-      await expectBodyRejects(response, 'test-complete')
-      expect(cancelReadable).toHaveBeenCalledOnce()
     } finally {
       router.serverSsr?.cleanup()
     }
   })
 
   test('readable renderer cancellation does not log a render error', async () => {
+    hidePipeableRenderer()
     const cancelReadable = vi.fn()
     reactDomServerMocks.renderToReadableStream = vi.fn((_children, options) => {
       const readableStream = Object.assign(
@@ -414,6 +429,7 @@ describe('renderRouterToStream - renderer selection and pipeable errors', () => 
   })
 
   test('request abort does not log a renderer cancellation error', async () => {
+    hidePipeableRenderer()
     const controller = new AbortController()
     const renderError = new Error('renderer cancellation')
     reactDomServerMocks.renderToReadableStream = vi.fn((_children, options) => {
@@ -453,6 +469,7 @@ describe('renderRouterToStream - renderer selection and pipeable errors', () => 
   })
 
   test('request abort unblocks the readable renderer bot wait', async () => {
+    hidePipeableRenderer()
     let resolveCancel!: () => void
     let markCancelStarted!: () => void
     const cancelStarted = new Promise<void>((resolve) => {
@@ -507,6 +524,7 @@ describe('renderRouterToStream - renderer selection and pipeable errors', () => 
   })
 
   test('stream lifetime rejects the readable bot wait while readiness and cancellation stay pending', async () => {
+    hidePipeableRenderer()
     let resolveReady!: () => void
     const allReady = new Promise<void>((resolve) => {
       resolveReady = resolve
