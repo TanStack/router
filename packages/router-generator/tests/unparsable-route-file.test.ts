@@ -18,7 +18,12 @@ import path from 'node:path'
 import { expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { captureDiagnostics } from '@tanstack/compiler-test-utils/diagnostic-channel'
-import { Generator, createGeneratorSession, replaceBackslash } from '../src'
+import {
+  Generator,
+  createGeneratorSession,
+  logging,
+  replaceBackslash,
+} from '../src'
 import {
   configOf,
   createApp,
@@ -204,12 +209,8 @@ const postsRoute = fileRoute('/posts')
  * batch generates.
  */
 function whileReading(file: string, onWarning: () => void): Logger {
-  const ignore = () => {}
   return {
-    log: ignore,
-    debug: ignore,
-    info: ignore,
-    error: ignore,
+    ...logging({ disabled: true }),
     warn: (...args) => {
       if (args.join(' ').includes(path.basename(file))) {
         onWarning()

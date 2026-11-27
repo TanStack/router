@@ -540,7 +540,7 @@ describe('a constructor of the other kind with an id that is not a string litera
       to: 'createLazyFileRoute',
     },
   ] as const)(
-    '$name gets the constructor of its kind, and its id is reported',
+    '$name gets the constructor of its kind, and its id is reported once, at its position',
     async ({ fileName, from, to }) => {
       const source = `import { ${from} } from ${router}
 
@@ -564,27 +564,9 @@ export const Route = ${from}(routeId)({ component: () => 'new page' })
       expect(exports.Route.options.component()).toBe('new page')
       expect(routeCallOf(written, fileName).constructor).toBe(to)
       expectOnlyOwnedEdits(source, written, fileName)
-      expectDiagnostic(diagnostics, { severity: 'warning', file, root })
-    },
-  )
-
-  // (the id was reported at its column before
-  // the constructor's repair, which the generator wrote: a stale position,
-  // and a second report once the repaired file was read again)
-  test.each([
-    { fileName: 'new.tsx', from: 'createLazyFileRoute' },
-    { fileName: 'new.lazy.tsx', from: 'createFileRoute' },
-  ] as const)(
-    '$from in $fileName: the id is reported once, at its position in the file as written',
-    async ({ fileName, from }) => {
-      const { root, file, written, diagnostics } = await upkeep(
-        fileName,
-        `import { ${from} } from ${router}
-
-const routeId = '/new'
-export const Route = ${from}(routeId)({ component: () => 'new page' })
-`,
-      )
+      // (once, at the id's position in the file as written: it was reported
+      // at its column before the constructor's repair, a stale position,
+      // and again once the repaired file was read)
       expectDiagnostic(diagnostics, {
         severity: 'warning',
         file,
