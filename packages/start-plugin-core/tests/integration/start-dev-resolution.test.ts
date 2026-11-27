@@ -644,8 +644,22 @@ export const Route = createRootRoute({})
 `,
     'src/routes/index.tsx': route,
   }
-  /** Long enough that a compile can't have read a text older than the file. */
-  const readWindow = () => new Promise((resolve) => setTimeout(resolve, 2_100))
+  /**
+   * Dates the route file a minute back, before its first compile: long
+   * enough before it that the compile can't have read a text older than the
+   * file (the dev read window). The dev server stops watching the file
+   * first: the time change is no file event of the app (one that reached the
+   * compiler after the first compile would evict its plan).
+   */
+  const saveLongAgo = async (server: {
+    root: string
+    vite: { watcher: { unwatch: (file: string) => unknown } }
+  }) => {
+    const file = path.join(server.root, 'src/routes/index.tsx')
+    await server.vite.watcher.unwatch(file)
+    const old = new Date(Date.now() - 60_000)
+    await utimes(file, old, old)
+  }
   /** What the server reported about the route file. */
   const aboutRoute = (server: { root: string }) =>
     ({
@@ -671,7 +685,7 @@ export const Route = createRootRoute({})
           },
         ],
       })
-      await readWindow()
+      await saveLongAgo(server)
       await server.load('/src/routes/index.tsx')
       expect(
         findDiagnostics(server.diagnostics, aboutRoute(server)).length,
@@ -690,10 +704,9 @@ export const Route = createRootRoute({})
     'a chunk compiled from another text than its route module, the file %s',
     async (_, backdated, expected) => {
       const server = await startDevServer({ files: app })
-      await readWindow()
+      await saveLongAgo(server)
       const file = path.join(server.root, 'src/routes/index.tsx')
       await server.transform('/src/routes/index.tsx')
-      await server.vite.watcher.unwatch(file)
       await writeFile(file, route.replace('MARK_V1', 'MARK_V2'))
       if (backdated) {
         const old = new Date(Date.now() - 60_000)
@@ -737,6 +750,11 @@ describe('a registry change with a resolver that throws', () => {
         }
       })
       let failing = false
+      /** Resolves once the resolver threw. */
+      let threw!: () => void
+      const thrown = new Promise<void>((resolve) => {
+        threw = resolve
+      })
       const server = await startDevServer({
         plugins: [
           {
@@ -744,6 +762,7 @@ describe('a registry change with a resolver that throws', () => {
             enforce: 'pre',
             resolveId(source: string) {
               if (failing && source === './routes/a') {
+                threw()
                 throw new Error('MARK_RESOLVER_FAILED')
               }
               return null
@@ -772,7 +791,12 @@ export const value = 1
 export const Route = createFileRoute('/a')({})
 `,
       })
-      await new Promise((resolve) => setTimeout(resolve, 2_000))
+      // the invalidation asked the resolver, and what it started ended (a
+      // rejection nothing handles is reported once the turn that dropped it
+      // ends)
+      await thrown
+      await server.idle()
+      await new Promise((resolve) => setTimeout(resolve, 0))
       expect(rejections).toEqual([])
       await expect(server.transform('/src/helper.ts')).resolves.toBeTypeOf(
         'string',
