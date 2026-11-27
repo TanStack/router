@@ -83,6 +83,9 @@ describe('ServerComponent (client)', () => {
       await Promise.resolve()
     })
 
+    // The decoder is imported lazily, so wait for the first decode call.
+    await vi.waitFor(() => expect(decodeMock).toHaveBeenCalled())
+
     // Should only decode once even though we render twice
     expect(decodeMock).toHaveBeenCalledTimes(1)
     expect(createdReadableStream).toBeDefined()
