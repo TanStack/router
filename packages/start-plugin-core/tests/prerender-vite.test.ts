@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { prerenderWithVite } from '../src/vite/prerender'
 
@@ -121,5 +124,59 @@ describe('Vite prerender network sink', () => {
       'http://127.0.0.1:4173/about/',
       'http://127.0.0.1:4173/next/?from=about',
     ])
+  })
+
+  it('crawls a fragment link as its document, once', async () => {
+    const outDir = mkdtempSync(join(tmpdir(), 'tss-prerender-'))
+    const html = (links: string) =>
+      new Response(`<html><body>${links}</body></html>`, {
+        status: 200,
+        headers: { 'content-type': 'text/html' },
+      })
+    const fetch = vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(input instanceof Request ? input.url : String(input))
+      if (url.pathname === '/') {
+        return html(
+          '<a href="/#mission">Mission</a><a href="/about#team">Team</a><a href="/about">About</a>',
+        )
+      }
+      return html('<a href="/#top">Top</a>')
+    })
+    vi.stubGlobal('fetch', fetch)
+    const startConfig = {
+      ...makeStartConfig(),
+      pages: [{ path: '/' }],
+      prerender: {
+        enabled: true,
+        crawlLinks: true,
+        autoStaticPathsDiscovery: false,
+        concurrency: 1,
+        failOnError: true,
+        retryCount: 0,
+      },
+    }
+    const builder = {
+      environments: {
+        ssr: { config: { configFile: '/vite.config.ts' } },
+        client: { config: { build: { outDir } } },
+      },
+    } as any
+
+    try {
+      await prerenderWithVite({ startConfig, builder })
+    } finally {
+      rmSync(outDir, { recursive: true, force: true })
+    }
+
+    const requests = fetch.mock.calls.map(([request]) =>
+      request instanceof Request ? request.url : String(request),
+    )
+    expect(requests.sort()).toEqual([
+      'http://127.0.0.1:4173/',
+      'http://127.0.0.1:4173/about/',
+    ])
+    expect(
+      startConfig.pages.map((page: { path: string }) => page.path),
+    ).toEqual(['/', '/about'])
   })
 })
