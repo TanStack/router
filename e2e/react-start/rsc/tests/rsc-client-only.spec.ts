@@ -35,7 +35,6 @@ test.describe('RSC <ClientOnly>', () => {
     page,
   }) => {
     await page.goto('/rsc-client-only')
-    await page.waitForURL('/rsc-client-only')
     await waitForHydration(page)
     await expectChildren(page)
   })
@@ -44,10 +43,17 @@ test.describe('RSC <ClientOnly>', () => {
     page,
   }) => {
     await page.goto('/')
-    await page.waitForURL('/')
     await waitForHydration(page)
+    // a document reload would drop it
+    await page.evaluate(() => {
+      document.body.dataset.clientNavigation = 'same document'
+    })
     await page.getByTestId('nav-client-only').click()
-    await page.waitForURL('/rsc-client-only')
+    await expect(page).toHaveURL('/rsc-client-only')
     await expectChildren(page)
+    await expect(page.locator('body')).toHaveAttribute(
+      'data-client-navigation',
+      'same document',
+    )
   })
 })
