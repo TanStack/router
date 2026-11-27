@@ -7,6 +7,7 @@ import {
   createRoute,
   createRouter,
   linkOptions,
+  useNavigate,
 } from '../src'
 import type {
   CreateLinkProps,
@@ -4665,4 +4666,110 @@ test('when navigating to a route with conflicting validateSearch', () => {
       page?: number | undefined
       rootPage?: number | undefined
     }>()
+})
+
+test('when navigating to a route whose path has a trailing slash', () => {
+  const rootRoute = createRootRoute()
+
+  const langIndexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '$lang/',
+  })
+
+  const postsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'posts',
+  })
+
+  const postsAllRoute = createRoute({
+    getParentRoute: () => postsRoute,
+    path: 'all/',
+  })
+
+  const routeTree = rootRoute.addChildren([
+    langIndexRoute,
+    postsRoute.addChildren([postsAllRoute]),
+  ])
+
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const defaultRouter = createRouter({ routeTree })
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const neverRouter = createRouter({ routeTree, trailingSlash: 'never' })
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const alwaysRouter = createRouter({ routeTree, trailingSlash: 'always' })
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  const preserveRouter = createRouter({ routeTree, trailingSlash: 'preserve' })
+
+  expectTypeOf(Link<typeof defaultRouter, string, '/'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<'..' | '.' | '/' | '/$lang' | '/posts' | '/posts/all'>()
+
+  expectTypeOf(Link<typeof neverRouter, string, '/'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<'..' | '.' | '/' | '/$lang' | '/posts' | '/posts/all'>()
+
+  expectTypeOf(Link<typeof alwaysRouter, string, '/'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<'../' | './' | '/' | '/$lang/' | '/posts/' | '/posts/all/'>()
+
+  expectTypeOf(Link<typeof preserveRouter, string, '/'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | '../'
+      | './'
+      | '..'
+      | '.'
+      | '/'
+      | '/$lang'
+      | '/$lang/'
+      | '/posts'
+      | '/posts/'
+      | '/posts/all'
+      | '/posts/all/'
+    >()
+
+  expectTypeOf(Link<typeof neverRouter, string, '/$lang'>)
+    .parameter(0)
+    .toHaveProperty('params')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{ lang: string }>()
+
+  expectTypeOf(Link<typeof alwaysRouter, string, '/$lang/'>)
+    .parameter(0)
+    .toHaveProperty('params')
+    .exclude<Function | boolean>()
+    .toEqualTypeOf<{ lang: string }>()
+
+  const navigate = useNavigate()
+
+  expectTypeOf(navigate<typeof neverRouter, '/posts/all'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<'..' | '.' | '/' | '/$lang' | '/posts' | '/posts/all'>()
+
+  expectTypeOf(navigate<typeof alwaysRouter, '/posts/all/'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<'../' | './' | '/' | '/$lang/' | '/posts/' | '/posts/all/'>()
+
+  expectTypeOf(navigate<typeof preserveRouter, '/posts/all'>)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<
+      | '../'
+      | './'
+      | '..'
+      | '.'
+      | '/'
+      | '/$lang'
+      | '/$lang/'
+      | '/posts'
+      | '/posts/'
+      | '/posts/all'
+      | '/posts/all/'
+    >()
 })
