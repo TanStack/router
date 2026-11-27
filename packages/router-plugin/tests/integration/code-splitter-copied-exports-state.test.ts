@@ -17,7 +17,7 @@ import { viteVersions } from '@tanstack/compiler-vite-versions'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
 import { runNodeProgram } from '@tanstack/compiler-test-utils/run-node'
 import { tanstackRouter } from '../../src/vite'
-import { batchBuild } from '../batch-build'
+import { batchCases } from '../batch-build'
 import { build, buildWithRsbuild, head, rootRoute } from '../build-harness'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
@@ -335,27 +335,28 @@ return [html, entry.registry.size]`,
 type Runner = { name: string; run: (c: Case) => Promise<unknown> }
 
 /**
- * Vite 8: one production SSR build of every case (`batchBuild`); each
+ * Vite 8: one production SSR build of every case (`batchCases`); each
  * case's script runs in a Node process of its own, on its case's entry.
  */
 function viteBatch(cases: Array<Case>): Runner['run'] {
+  const add = batchCases({
+    bundler: 'vite',
+    env: 'ssr',
+    minify: false,
+    prefix: '.copied-exports-',
+  })
   const batched = new Map(
     cases.map((c) => [
       c,
-      {
+      add({
         name: c.name,
         route: `${head}${c.route}`,
         entry: entryOf(c.reexports),
         files: c.files,
-      },
+      }),
     ]),
   )
-  const caseApp = batchBuild(
-    { bundler: 'vite', env: 'ssr', minify: false, prefix: '.copied-exports-' },
-    [...batched.values()],
-  )
-  return async (c) =>
-    (await (await caseApp(batched.get(c)!)).run(c.script)).result
+  return async (c) => (await (await batched.get(c)!()).run(c.script)).result
 }
 
 const bundler = (name: 'rspack' | 'webpack') => async (c: Case) => {

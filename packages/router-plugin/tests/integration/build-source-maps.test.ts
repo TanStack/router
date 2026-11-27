@@ -18,9 +18,7 @@ import { originalFrameOf } from '@tanstack/compiler-test-utils/build-harness'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import { positionAt } from '@tanstack/compiler-test-utils/source-maps'
 import { tanstackRouter as tanstackRouterVite } from '../../src/vite'
-import { batchCases } from '../batch-build'
 import { build, routeApp, routeHead } from '../build-harness'
-import type { CaseApp } from '../batch-build'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
 import type { RouterPluginOptions } from '../build-harness'
 
@@ -70,7 +68,7 @@ function thrownAt(code: string) {
 
 /**
  * Asserts that the innermost frame of `stack` in a chunk of `app` maps to
- * the throw of `source` (`file`, default `routes/index.tsx`): its line always, its column
+ * the throw of `source` (`routes/index.tsx`): its line always, its column
  * unless the build minified (minifiers map the throw to different tokens of
  * the statement), and that the map holds `source` for the file.
  */
@@ -78,10 +76,7 @@ function expectFrameAtThrow(
   app: Parameters<typeof originalFrameOf>[0],
   stack: unknown,
   source: string,
-  {
-    minify,
-    file: routeFile = 'routes/index.tsx',
-  }: { minify: boolean; file?: string },
+  { minify }: { minify: boolean },
 ) {
   const { file, line, column, text } =
     originalFrameOf(app, stack as string) ?? {}
@@ -91,8 +86,8 @@ function expectFrameAtThrow(
     `the frame of ${String(stack).split('\n')[1]?.trim()}`,
   ).toEqual(
     minify
-      ? { file: routeFile, line: expected.line, text: source }
-      : { file: routeFile, ...expected, text: source },
+      ? { file: 'routes/index.tsx', line: expected.line, text: source }
+      : { file: 'routes/index.tsx', ...expected, text: source },
   )
 }
 
@@ -176,60 +171,37 @@ export const Route = createFileRoute('/')({
 ]
 
 /**
- * rspack and webpack: one unminified client build with source maps of the
- * split-component throw (`route`, asserted as `expectThrowMapsToRouteFile`
- * asserts its own build) and of `moduleThrows` (their loader's throw maps
- * to its line and column), each a case of `batchCases`.
+ * Builds `source` for the client (unminified, with source maps), calls its
+ * loader, which throws `marker`, and maps the error's stack frame through
+ * the emitted source map to the throw's line and column in the route file.
  */
-function unminifiedThrows(bundler: 'rspack' | 'webpack') {
-  const add = batchCases({
+async function expectModuleThrowMapsToRouteFile(
+  bundler: Bundler,
+  source: string,
+  marker: string,
+) {
+  if (bundler === 'vite') {
+    await expectModuleThrowMapsToRouteFileVite(source, marker)
+    return
+  }
+  const app = await build({
     bundler,
     env: 'client',
     minify: false,
     sourcemap: true,
-  })
-  const label = { 'lib/label.ts': `export const label = 'MARK_LABEL'\n` }
-  const component = add({
-    name: 'a throw in a split component',
-    route,
-    entry: mountEntry,
-    files: label,
-  })
-  const modules = moduleThrows.map(({ name, route: source, marker }) => ({
-    name,
-    marker,
-    app: add({
-      name,
-      route: source,
-      entry: `export * from './routes/index'\n`,
-      files: label,
+    files: routeApp(source, {
+      env: 'client',
+      files: {
+        'lib/label.ts': `export const label = 'MARK_LABEL'\n`,
+        'entry.ts': `export * from './routes/index'\n`,
+      },
     }),
-  }))
-  return {
-    component: async () => {
-      const app = await component()
-      expect(app.where('MARK_PAGE_THROW')).toBe('lazy')
-      const { result: stack } = await app.run(
-        'return await entry.mountError(entry.Route.options.component)',
-      )
-      expect(stack).toMatch(/MARK_PAGE_THROW MARK_LABEL/)
-      expectFrameAtThrow(app.build, stack, app.route, {
-        minify: false,
-        file: app.file,
-      })
-    },
-    modules,
-    moduleThrow: async (app: CaseApp, marker: string) => {
-      const { result: stack } = await app.run(
-        `try { entry.Route.options.loader() } catch (error) { return error.stack }`,
-      )
-      expect(stack).toMatch(marker)
-      expectFrameAtThrow(app.build, stack, app.route, {
-        minify: false,
-        file: app.file,
-      })
-    },
-  }
+  })
+  const { result: stack } = await app.run(
+    `try { entry.Route.options.loader() } catch (error) { return error.stack }`,
+  )
+  expect(stack).toMatch(marker)
+  expectFrameAtThrow(app, stack, source, { minify: false })
 }
 
 describe('vite', () => {
@@ -269,7 +241,7 @@ describe('vite', () => {
   test.each(moduleThrows)(
     'a throw in $name maps to its line and column in the route file',
     ({ route: source, marker }) =>
-      expectModuleThrowMapsToRouteFileVite(source, marker),
+      expectModuleThrowMapsToRouteFile('vite', source, marker),
     timeout,
   )
 })
@@ -322,13 +294,9 @@ export const Route = createFileRoute('/')({ component: Page })
 // Impact: stack traces, devtools and error trackers point at lines of the
 // generated split module (here line 3 instead of line 5 of the route file).
 describe.each(['rspack', 'webpack'] as const)('%s', (bundler) => {
-  const unminified = unminifiedThrows(bundler)
   test.each(builds)(
     'a throw in a split component maps to its line in the route file ($name)',
-    (options) =>
-      options.minify
-        ? expectThrowMapsToRouteFile(bundler, options)
-        : unminified.component(),
+    (options) => expectThrowMapsToRouteFile(bundler, options),
     timeout,
   )
 
@@ -345,9 +313,10 @@ describe.each(['rspack', 'webpack'] as const)('%s', (bundler) => {
     timeout,
   )
 
-  test.each(unminified.modules)(
+  test.each(moduleThrows)(
     'a throw in $name maps to its line and column in the route file',
-    async ({ app, marker }) => unminified.moduleThrow(await app(), marker),
+    ({ route: source, marker }) =>
+      expectModuleThrowMapsToRouteFile(bundler, source, marker),
     timeout,
   )
 
@@ -459,10 +428,8 @@ export const Route = createFileRoute('/')({
 })
 
 /**
- * Builds `source` for the client on Vite (unminified, with source maps),
- * through the public plugin host (`vite build` with the app's plugins),
- * calls its loader, which throws `marker`, and maps the error's stack frame
- * to the throw's line and column in the route file: every chunk the build emits is
+ * `expectModuleThrowMapsToRouteFile` on Vite, through the public plugin host
+ * (`vite build` with the app's plugins): every chunk the build emits is
  * read with the map it has, if any (a chunk with no mapping of its own, e.g.
  * a facade re-exporting another chunk, may have none); the frame of the
  * throw is resolved through the map of the chunk it names.
