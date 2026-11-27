@@ -405,7 +405,7 @@ export async function prefetchStartValues(
     answerFromRegistry: opts.answerFromRegistry,
   })
 
-  /** An export of `id` (or of a namespace it exports) that server code can still be attached to. An ordinary package's are not followed. */
+  /** An export of `id` (or of a namespace it exports) that server code can still be attached to. An ordinary package's are not followed (the package class, not the summaries). */
   const openExport = async (
     id: string,
     seen: Set<string>,
@@ -613,7 +613,7 @@ export async function prefetchStartValues(
     refs: ReadonlyArray<{ node: Node }>,
   ) => {
     const id = await ctx.resolveFrom(specifier, ctx.identity.canonicalId)
-    // a module without a summary (a package, opaque) exports nothing to follow: every member reads as unknown
+    // a module without a summary (unreadable, or a host's opaque pre-bundle) exports nothing to follow: every member reads as unknown
     if (id !== null && (await ctx.resolver.readable(id))) {
       await followNamespace(
         specifier,

@@ -155,6 +155,21 @@ const MISSING_TARGET: Omit<TargetFacts, 'digest'> = {
   useClient: false,
 }
 
+/** The target facts of a module that does not parse: it exists, nothing else is known. */
+const UNREADABLE_TARGET: TargetFacts = (() => {
+  const tf: Omit<TargetFacts, 'digest'> = {
+    exists: true,
+    marker: null,
+    exportNames: [],
+    stars: [],
+    imports: [],
+    lazyImports: [],
+    esm: false,
+    useClient: false,
+  }
+  return { ...tf, digest: digestOf(tf) }
+})()
+
 /** (computed once: an opaque module's read is on every pre-bundled module's path) */
 const OPAQUE_DIGEST = digestOf(OPAQUE_TARGET)
 const MISSING_DIGEST = digestOf(MISSING_TARGET)
@@ -498,46 +513,54 @@ export class RawFactsCache {
     const entry = e
     const holder: { p: Promise<RawFacts> | null } = { p: null }
     holder.p = (async () => {
-      const prior = entry.facts
-      const reading = this.textOf(entry, canonicalId, env)
-      const text = await this.readSaved(canonicalId, env, prior, reading)
-      const built = this.build(canonicalId, text ?? null)
-      // A file that stops parsing (saved mid-edit) keeps the last facts it
-      // parsed to: its importers' decisions stand until it parses again (a
-      // changed digest would evict their plans and hot-update modules that
-      // cannot accept, e.g. a route tree, into a full reload). A file that
-      // never parsed is unknown. One that still reads empty after
-      // `readSaved`'s retries is empty.
-      const facts =
-        text != null &&
-        !built.opaque &&
-        prior?.summary &&
-        built.summary === null
-          ? prior
-          : built
-      // a newer read may have superseded this one
-      if (entry.pending === holder.p) {
-        // (a load that threw is no fact: the entry stays, without facts, so
-        // that every read loads it again and an expiry or a change event of
-        // the module finds it)
-        entry.facts = text === undefined ? null : facts
-        entry.stale = false
-        entry.pending = null
-        if (entry.reading === reading) {
-          entry.reading = null
+      // (a read that throws leaves no rejected read behind: the next ask
+      // reads again)
+      try {
+        const prior = entry.facts
+        const reading = this.textOf(entry, canonicalId, env)
+        const text = await this.readSaved(canonicalId, env, prior, reading)
+        const built = this.build(canonicalId, text ?? null)
+        // A file that stops parsing (saved mid-edit) keeps the last facts it
+        // parsed to: its importers' decisions stand until it parses again (a
+        // changed digest would evict their plans and hot-update modules that
+        // cannot accept, e.g. a route tree, into a full reload). A file that
+        // never parsed is unknown. One that still reads empty after
+        // `readSaved`'s retries is empty.
+        const facts =
+          text != null &&
+          !built.opaque &&
+          prior?.summary &&
+          built.summary === null
+            ? prior
+            : built
+        // a newer read may have superseded this one
+        if (entry.pending === holder.p) {
+          // (a load that threw is no fact: the entry stays, without facts, so
+          // that every read loads it again and an expiry or a change event of
+          // the module finds it)
+          entry.facts = text === undefined ? null : facts
+          entry.stale = false
+          entry.pending = null
+          if (entry.reading === reading) {
+            entry.reading = null
+          }
+          if (
+            text === null &&
+            !isVirtualId(canonicalId) &&
+            this.entries.get(key) === entry
+          ) {
+            // a missing file's facts are not kept (`forget`): its creation
+            // has an event. A virtual module's miss is kept: no file event
+            // names it, only its host's update or `expireVirtual` does
+            this.deleteEntry(key)
+          }
         }
-        if (
-          text === null &&
-          !isVirtualId(canonicalId) &&
-          this.entries.get(key) === entry
-        ) {
-          // a missing file's facts are not kept (`forget`): its creation
-          // has an event. A virtual module's miss is kept: no file event
-          // names it, only its host's update or `expireVirtual` does
-          this.deleteEntry(key)
+        return facts
+      } finally {
+        if (entry.pending === holder.p) {
+          entry.pending = null
         }
       }
-      return facts
     })()
     entry.pending = holder.p
     return holder.p
@@ -889,29 +912,23 @@ export class RawFactsCache {
         opaque: true,
       }
     }
-    const parsed = parse === null ? null : parseModule(text, parse)
-    if (!parsed?.ok) {
-      const tf = {
-        exists: true,
-        marker: null,
-        exportNames: [],
-        stars: [],
-        imports: [],
-        lazyImports: [],
-        esm: false,
-        useClient: false,
+    // (a module whose analysis cannot be built, e.g. a chain too deep for
+    // the value analysis' recursion, is read as one that does not parse:
+    // its importer's compile is not its to fail)
+    try {
+      const parsed = parse === null ? null : parseModule(text, parse)
+      if (parsed?.ok) {
+        const analysis = new ModuleAnalysis(parsed.file, parsed.source, {
+          path: id.path,
+          markerSpecifiers: this.opts.markerSpecifiers,
+          jsx: this.opts.jsx,
+        })
+        return this.fromAnalysis(analysis)
       }
-      return {
-        summary: null,
-        targetFacts: { ...tf, digest: digestOf(tf) },
-      }
+    } catch {
+      // read below as a module without facts
     }
-    const analysis = new ModuleAnalysis(parsed.file, parsed.source, {
-      path: id.path,
-      markerSpecifiers: this.opts.markerSpecifiers,
-      jsx: this.opts.jsx,
-    })
-    return this.fromAnalysis(analysis)
+    return { summary: null, targetFacts: { ...UNREADABLE_TARGET } }
   }
 
   private fromAnalysis(analysis: ModuleAnalysis): RawFacts {

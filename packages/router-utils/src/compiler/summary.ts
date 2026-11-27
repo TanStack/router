@@ -3,11 +3,13 @@
  * module's raw text, env-independent, holds no AST, and its digest covers only
  * what importers can observe.
  */
+import { BindingFlags } from 'yuku'
 import { digestOf } from './identity'
 import { ownEntry } from './strings'
 import { ValueAnalysis, stripSites } from './values'
 import type { AbstractValue, RecognizerTable } from './values'
 import type { ModuleAnalysis } from './analysis'
+import type { Binding } from 'yuku'
 
 /**
  * `local`: the binding an export reads (`*default*` for the value of an
@@ -89,6 +91,20 @@ export function exportKeysOf(
   return keys
 }
 
+/**
+ * Whether a module assigns a binding after its declaration (an assignment,
+ * an update, a destructuring or for-in/of target: Yuku's writes; a `var`
+ * declared again).
+ */
+function assignedAgain(binding: Binding | undefined): boolean {
+  return (
+    binding !== undefined &&
+    (binding.references.some((r) => r.isWrite) ||
+      (binding.declarations.length > 1 &&
+        binding.has(BindingFlags.FunctionScopedVariable)))
+  )
+}
+
 export function buildSummary(
   analysis: ModuleAnalysis,
   table: RecognizerTable,
@@ -131,7 +147,12 @@ export function buildSummary(
         let value: AbstractValue = { t: 'unknown' }
         let local = e.snapshot ? DEFAULT_LOCAL : e.name
         if (e.local !== null) {
-          value = values.valueOfBinding(e.local)
+          // (a binding the module assigns again holds what was assigned
+          // last, which the summary does not settle: unknown, as a module
+          // without a summary exports)
+          if (!assignedAgain(file.bindings[e.local])) {
+            value = values.valueOfBinding(e.local)
+          }
           if (!e.snapshot) {
             local = file.bindings[e.local]?.name ?? e.name
           }

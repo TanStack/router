@@ -381,9 +381,42 @@ export const guard = (options) => createMiddleware({ type: 'function' }).server(
     timeout,
   )
 
+  // A builder export the module assigns again holds whatever was assigned
+  // last: its summary cannot tell, so the export is no Start value, as when
+  // the module had no summary. Here an ordinary object replaces it, whose
+  // own `.inputValidator()` is ordinary code: the build keeps it.
+  // Source: review of the dependency summaries (2026-11-27, Astra's
+  // `mutable` fixture).
+  test(
+    'a package that does not declare Start, a builder export assigned an ordinary object: its `.inputValidator()` builds and runs on the client',
+    async () => {
+      const lib = installPackage('npm', {
+        name: 'dep-x',
+        declaration: 'none',
+        files: {
+          'barrel.js': `export { createServerFn as make } from '@tanstack/react-start'\n`,
+          'base.js': `import { make } from './barrel.js'\nexport let base = make()\nbase = { inputValidator(fn) { return fn } }\n`,
+          'index.js': `import { base } from './base.js'\nexport const run = base.inputValidator(() => 'MARK_ORDINARY_RESULT')\n`,
+        },
+      })
+      const build = await buildStart({
+        bundler,
+        files: {
+          ...lib.files,
+          'src/entry.ts': `import { run } from 'dep-x'\nexport const result = () => run()\n`,
+        },
+        packageJson: appManifest([lib]),
+        entry: 'src/entry.ts',
+      })
+      expect(build.client.where('MARK_ORDINARY_RESULT')).not.toBe('nowhere')
+    },
+    timeout,
+  )
+
   // A Start package's module is read like the app's: its namespace handed
   // to code the compiler cannot follow carries its builder there, which is
-  // refused as for an app module (an ordinary package's is not read).
+  // refused as for an app module (an ordinary package's namespace is not checked: the class decides
+  // that check, not the summaries).
   // Source: node_modules policy, decision 7 (A, S4).
   test(
     "a Start package's namespace passed to unknown code fails the build at the use",
@@ -408,6 +441,41 @@ export const guard = (options) => createMiddleware({ type: 'function' }).server(
         file: 'src/entry.ts',
         root: (error as { root?: string }).root,
       })
+    },
+    timeout,
+  )
+})
+
+// A summary is the module's own business: one whose analysis cannot be
+// built (a very long chain overflows the value analysis' stack) is no
+// summary, as for a module that does not parse, and its importer builds.
+// Vite only: Rspack's own pipeline fails on a 5,000-term expression.
+// Source: review of the dependency summaries (2026-11-27, Fable finding 1,
+// Gemini).
+describe('vite build, a package whose module has an export Start cannot read', () => {
+  test(
+    'a 5,000-term chain in an export the app does not use: the app builds and keeps the export it uses',
+    async () => {
+      const chain = Array.from({ length: 5000 }, (_, i) => `c === ${i}`).join(
+        ' || ',
+      )
+      const lib = installPackage('npm', {
+        name: 'dep-y',
+        declaration: 'none',
+        files: {
+          'index.js': `export const unused = (c) => ${chain}\nexport const used = () => 'MARK_USED_EXPORT'\n`,
+        },
+      })
+      const build = await buildStart({
+        bundler: 'vite',
+        files: {
+          ...lib.files,
+          'src/entry.ts': `import { used } from 'dep-y'\nexport const label = () => used()\n`,
+        },
+        packageJson: appManifest([lib]),
+        entry: 'src/entry.ts',
+      })
+      expect(build.client.where('MARK_USED_EXPORT')).not.toBe('nowhere')
     },
     timeout,
   )

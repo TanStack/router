@@ -1262,10 +1262,10 @@ export class StartCompilerSession {
    * The warning of a package module whose compile recognised a Start use
    * (`usesStartInPackage`), in a package Start does not read as one, once
    * per package instance and run (the warning ledger), or null: (i) its
-   * manifest does not declare Start (`declaresStart`): Vite pre-bundles it
-   * in development, where a Start value it forwards under another name is
-   * not followed, and it is not read like the app's (the late pass, a
-   * namespace's escape); (ii) a host that bundles
+   * manifest does not declare Start (`declaresStart`): its modules are not
+   * read like the app's (a namespace's escape, the late pass), and Vite
+   * pre-bundles it in development, where a value it forwards under another
+   * name is not followed; (ii) a host that bundles
    * only the packages it found (`reach`, Vite) did not find it: the app
    * does not list it, or reaches it through an installed package that does
    * not declare Start, which the server keeps external. Nothing for Start's
@@ -1443,7 +1443,12 @@ function undeclaredPackageMessage(
   file: string,
 ): string {
   const start = `@tanstack/${opts.framework}-start`
-  return `[tanstack-start] ${displayPath(file, opts.root)} uses TanStack Start, but its package (${displayPath(root, opts.root)}/package.json) does not declare it. Start bundles and reads a package that lists ${start} in peerDependencies (or dependencies) like the app's; it reads this one's modules only in part (Vite's dependency optimizer pre-bundles it in development), so a Start value one of its modules hands to another under a new name may not be followed, and the server code of the app's functions built on it can ship to the client. Ask the package to declare ${start} as a peer dependency.`
+  // (a host with modules the summaries never read pre-bundles this package
+  // in development: Vite's optimizer)
+  const partly = opts.opaque
+    ? "Vite's dependency optimizer pre-bundles it in development, where a Start value one of its modules hands to another under a new name is not followed"
+    : 'a namespace of it passed to code Start cannot follow is not checked'
+  return `[tanstack-start] ${displayPath(file, opts.root)} uses TanStack Start, but its package (${displayPath(root, opts.root)}/package.json) does not declare it. Start bundles and reads a package that lists ${start} in peerDependencies (or dependencies) like the app's; it reads this one's modules only in part: ${partly}, so the server code of the app's functions built on it can ship to the client. Ask the package to declare ${start} as a peer dependency.`
 }
 
 function unreachedPackageMessage(

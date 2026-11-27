@@ -62,7 +62,8 @@ export async function compileHandlerReach(
     }
     seen.set(id, reachedClient)
     const identity = identify(id)
-    // (an ordinary package defines no server function)
+    // (an ordinary package's modules are not walked: the package class
+    // decides the reach, not the summaries)
     if (!s.start.classes.readsOnDemand(identity.path)) {
       continue
     }
