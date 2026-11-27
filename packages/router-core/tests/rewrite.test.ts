@@ -401,4 +401,25 @@ describe('router rewrites', () => {
       '/app/public',
     )
   })
+
+  // https://github.com/TanStack/router/issues/8448
+  test('canonicalizes the search string on publicHref so a parsed location matches a built one', () => {
+    const router = createTestRouter({
+      routeTree: new BaseRootRoute({}),
+      history: createMemoryHistory({ initialEntries: ['/posts?q=a%2Ab'] }),
+      rewrite: {
+        input: ({ url: _url }): undefined => {},
+        output: ({ url: _url }): undefined => {},
+      },
+    })
+
+    const landed = router.latestLocation
+    const built = router.buildLocation({ to: '/posts', search: { q: 'a*b' } })
+
+    // The internal href was already canonical; publicHref used to keep the raw
+    // `?q=a%2Ab` from history, which made the transitioner re-run every loader.
+    expect(landed.searchStr).toBe(built.searchStr)
+    expect(landed.publicHref).toBe(built.publicHref)
+    expect(landed.publicHref).toBe(landed.href)
+  })
 })
