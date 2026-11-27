@@ -1,9 +1,8 @@
 /**
- * Kept (R169 gate, 2026-11-17): the sole coverage of two Start paths no oracle
- * test reaches yet, to become start-plugin-core behaviour tests: the names a
- * CommonJS `require()` result is read by (an import-protection mock of a
- * denied CommonJS target), and a resolver that throws during a dev
- * invalidation (the plan counts as stale).
+ * Kept: the sole coverage of two Start paths no oracle test reaches yet, to
+ * become start-plugin-core behaviour tests: the names a CommonJS `require()`
+ * result is read by (an import-protection mock of a denied CommonJS target),
+ * and a resolver that throws during a dev invalidation (the plan is stale).
  */
 import { describe, expect, it } from 'vitest'
 import { invalidate } from '../src/compiler'

@@ -1,6 +1,6 @@
 /**
- * Kept (2a review, 2026-11-27): the sole coverage of a dev window no oracle
- * test reaches. The window is a host read of a marked module still in flight
+ * Kept: the sole coverage of a dev window no oracle test reaches. The
+ * window is a host read of a marked module still in flight
  * when that file's change event lands; a dev server or watch build cannot
  * hold its filesystem read open, and the oracle settles edits by their
  * outcome with no hold point inside a read, so no public input meets it
@@ -13,9 +13,7 @@
  * expires a virtual module (`expireVirtual`). The read in flight held the
  * text from before the edit and, since it held a marker literal, `marker`
  * went on to build the target facts.
- * Source: Fable's re-check of 52bdcff9cc (2026-11-27, `stale.mjs`):
- * `marker` handed that old text to the facts, which published it as
- * current.
+ * Source: Fable's re-check of the marker's read (`stale.mjs`).
  */
 import { describe, expect, it } from 'vitest'
 import { RawFactsCache } from '../src/compiler'

@@ -1,10 +1,10 @@
 /**
- * Kept (R169 gate, 2026-11-17): the sole coverage of a Start path no oracle
- * test reaches yet: an export resolver bounded to some modules, and the
- * unbounded lookup of the same barrel beside it (a `<Hydrate>` package
- * boundary fixture would have to tell all four answers apart). Builder
- * values read through destructuring are start-plugin-core's builder shapes
- * (quoted keys, a start instance, defaults, nested patterns).
+ * Kept: the sole coverage of a Start path no oracle test reaches yet: an
+ * export resolver bounded to some modules, and the unbounded lookup of the
+ * same barrel beside it (a `<Hydrate>` package boundary fixture would have
+ * to tell all four answers apart). Builder values read through
+ * destructuring are start-plugin-core's builder shapes (quoted keys, a
+ * start instance, defaults, nested patterns).
  */
 import { describe, expect, it } from 'vitest'
 import { MemoryHost } from './helpers'

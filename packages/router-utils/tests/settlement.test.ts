@@ -335,16 +335,11 @@ describe('outputs of one text', () => {
   })
 })
 
-// The same-text rule of the settlement design (§2 rev 3, §8.2), decided by
-// a run in step 1 and not built: a request whose every attempt was
+// The same-text rule of the settlement design (§2 rev 3, §8.2), not built
+// (KNOWN-BUGS, accepted limits): a request whose every attempt was
 // overtaken (a dependency saved during each) answers unpublished, and its
 // host still acts on it while the stale-set rebuild of the same text
-// publishes with the current facts. Both answers read current, with
-// different facts. The rule that would end the first (moving the generation
-// at publication) also ends an unpublished env-module answer when a split
-// sibling of the text publishes first, which writes no server functions:
-// worse than this case (KNOWN-BUGS, accepted limits). A pin of the outcome
-// the rule gave.
+// publishes with the current facts: both read current, facts differing.
 // Source: Fable's and Gemini's reviews of settlement step 1, question 3.
 describe('an answer every attempt of which was overtaken', () => {
   it.fails(

@@ -1,15 +1,13 @@
 /**
- * Kept (R169 gate, 2026-11-17): the sole coverage of dev races no public input
- * reaches deterministically: a compile in flight while a save, an event that
- * makes a failed import resolve, or a file removed and created again within
- * one change lands; an older text's request answered after the newer text's
- * compile. Each sequence ends with the outputs a cold compile of the final
- * files gives, and the caches keep nothing of files gone. Added for the
- * settlement design's step 0 (2026-11-25): a check (hit, attempt, restore)
- * whose read waits while an event lands, and the facts version moving during
- * an attempt's check (step 6a: one `stable(snapshot)`; step 6b: nothing else
- * restarts a compile); a restored plan and an untouched compile of its module
- * (C6-09).
+ * Kept: the sole coverage of dev races no public input reaches
+ * deterministically: a compile in flight while a save, an event that makes a
+ * failed import resolve, or a file removed and created again within one
+ * change lands; an older text's request answered after the newer text's
+ * compile; a check (hit, attempt, restore) whose read waits while an event
+ * lands, and the facts version moving during an attempt's check; a restored
+ * plan and an untouched compile of its module. Each sequence ends with the
+ * outputs a cold compile of the final files gives, and the caches keep
+ * nothing of files gone.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -159,8 +157,7 @@ describe('events that move the file set', () => {
   // across it and finds the twin. Its key has a published plan (of a text
   // that did not import `./a`) or none; `a.ts` is back with its text or
   // another.
-  // Source: design 3 final review, finding 2 (form a: the compile restarted
-  // and its next attempt read the twin from the resolution memo).
+  // Source: design 3 final review, finding 2.
   it.for([
     [false, true],
     [false, false],
@@ -238,9 +235,7 @@ describe('a request of an older text', () => {
   // to import `m.ts`, and the request of that text compiles it. The older
   // request then answers its own text, and the newer text's plan keeps its
   // dependencies: an edit of `m.ts` re-plans `a.ts`.
-  // Source: phase-end gates F-PEG-2 (property (b) rows seed 169216 with
-  // stretch 1, jitter 8, where the SSR `m2.ts` kept `./m0` as a server
-  // function, and seed 167651 with stretch 1, jitter 12, SSR `m5.ts`).
+  // Source: phase-end gates F-PEG-2.
   it("an older text's request answered after the newer text's compile leaves the newer plan's dependencies", async () => {
     let holding = false
     let release!: () => void
@@ -324,8 +319,7 @@ describe('a check that waits while an event lands', () => {
   // exists: the host builds the file again if the compile was not kept (its
   // stale set), and afterwards a change of what the file reads reaches the
   // host as a rebuild of the file.
-  // Source: whole-PR review C6-03 (Astra's current-input probe); Astra's
-  // review of settlement step 0, finding 6.
+  // Source: whole-PR review C6-03; settlement step 0 review, finding 6.
   it("C6-03: after the event of a file's own save, a change of what it reads still rebuilds it", async () => {
     const { host, arm } = aliasHost()
     const banner = `/* a plugin's banner */\n${files[PAGE]}`
@@ -387,14 +381,13 @@ describe('a check that waits while an event lands', () => {
   })
 })
 
-// The facts version moving during a check (design-settlement.md §4, p1),
-// green through the snapshot alone (its check asks again when the facts
-// version moved during it). `a.ts` read
-// `b.ts`'s export; `b.ts` is saved, and its event (the file set moved)
-// waits on its read of `b.ts`; the attempt reaches its check, which asks
-// `./b` again and waits; the event applies; the resolver answers.
-// Source: Fable's settlement design probe `p1-facts-move-during-check.mjs`;
-// the comment-only edit is its control.
+// The facts version moving during a check (design-settlement.md §4, p1):
+// the snapshot alone answers it (its check asks again when the facts
+// version moved during it). `a.ts` read `b.ts`'s export; `b.ts` is saved,
+// and its event (the file set moved) waits on its read of `b.ts`; the
+// attempt reaches its check, which asks `./b` again and waits; the event
+// applies; the resolver answers. The comment-only edit is the control.
+// Source: Fable's settlement design probe `p1-facts-move-during-check.mjs`.
 describe('a dependency saved while a compile checks its snapshot', () => {
   /**
    * The compile of `a.ts` while `b.ts` is saved as `saved` in the timeline
@@ -511,8 +504,7 @@ describe('a dependency saved while a compile checks its snapshot', () => {
 // (a later change of the dependency rebuilds the file). Whether the first
 // answer is still current while its caller acts on it is the session's
 // question (step 1's `current()`), not reachable here.
-// Source: Fable's review of settlement step 0 (narrowing 3, tried at the
-// core).
+// Source: Fable's review of settlement step 0 (narrowing 3).
 describe('a compile whose attempts were all overtaken, and the rebuild of its text', () => {
   it('the rebuild answers the dependency as it is and publishes', async () => {
     const files = {
@@ -554,8 +546,7 @@ describe('a compile whose attempts were all overtaken, and the rebuild of its te
 // importers' decisions stand), with other exports, or with a comment only,
 // stales the same importers under every knob. The knobs are read when the
 // caches are created.
-// Source: Fable's re-check of settlement step 0 (round 3), finding 2
-// (`getTarget` built past the entry with `targets` off).
+// Source: Fable's re-check of settlement step 0 (round 3), finding 2.
 describe('a cache knob and what a dependency save reaches', () => {
   const reader = (): Planner => ({
     name: 'reads-target',
@@ -1390,7 +1381,7 @@ const messagesOf = (out: CompileOutput | null) =>
 // throttle). The event reads the file empty and reads it again for a
 // moment, since a compile in flight read what resolves to it; the compile
 // then reads the saved exports.
-// Source: Astra's review of settlement step 6b (`physical-vite-6b.mjs`).
+// Source: settlement step 6b review (`physical-vite-6b.mjs`).
 describe('a dependency truncated and written while a compile that resolved it runs', () => {
   onFakeClock()
   const DEP = '/app/dep.ts'

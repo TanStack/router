@@ -1,6 +1,6 @@
 /**
- * Kept (R169 gate, 2026-11-17): the sole coverage of two paths no oracle test
- * reaches yet: a planner's lazy module (Start's handler module) whose region
+ * Kept: the sole coverage of two paths no oracle test reaches yet: a
+ * planner's lazy module (Start's handler module) whose region
  * is a function passed to a call, and a destructured binding that only a call
  * every output erases reads, inside a split option. The second has a
  * start-plugin-core build row (env separation: a server-only fn in a route

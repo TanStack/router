@@ -1,6 +1,5 @@
 /**
- * Assumption test (no tripwire: R136 superseded, "Assumption tests",
- * 2026-11-13). The assumption, of the filesystem the compiler runs on: a
+ * Assumption test. The assumption, of the filesystem the compiler runs on: a
  * save that truncates a file before writing it (an in-place save) moves the
  * file's modification time, or the filesystem stamps whole seconds (a
  * coarse clock, which the rule treats as unknown and always waits on). The

@@ -4,13 +4,12 @@ import { MemoryHost } from './helpers'
 import type { PlanContext, Planner } from '../src/compiler'
 import type { Node } from 'yuku'
 
-// Kept: the sole coverage of emit paths no shipped planner reaches yet. The
+// Kept: the sole coverage of emit paths no shipped planner reaches yet: the
 // edits, inserts and generated units below are a planner's that the
-// oracle's public inputs cannot write (whole-PR review C5-gemini-r2, V-21,
-// V-24, V-26); each row is a contract the renderer owns for any planner:
-// statement separation, an expression boundary's shape, rule L. Outputs
-// are checked as text the planner could not have written otherwise, and
-// re-parsed.
+// oracle's public inputs cannot write. Each row is a contract the renderer
+// owns for any planner (statement separation, an expression boundary's
+// shape, rule L), checked as text and re-parsed.
+// Source: whole-PR review C5-gemini-r2 (V-21, V-24, V-26).
 
 /** A planner running `plan` on every module. */
 const planner = (plan: (ctx: PlanContext) => void): Planner => ({
