@@ -6,6 +6,7 @@
  */
 import { expect } from 'vitest'
 import { createApp, fileRoute, generate, lazyFileRoute } from './app'
+import { createClientConsumer } from './consumer-client'
 import { withRouteTree } from './route-tree'
 import { typeAssertions, typeErrorsOf } from './type-check'
 import type { Config } from '../src'
@@ -154,6 +155,27 @@ export async function checkApp(
   }
   if (types) {
     await checkTypes(root, expected)
+  }
+}
+
+/**
+ * Generates the app of a case and renders each of its pages in Chromium only
+ * (its routes, matching and server-rendered pages: `checkApp`'s, in the unit
+ * tier).
+ */
+export async function checkClientPages({ files, config, pages }: Case) {
+  if (!pages) {
+    throw new Error('A case for the browser needs the pages it renders')
+  }
+  const root = await createApp({ ...files, 'src/vue-shim.d.ts': vueShim })
+  const { generatedRouteTree, target } = await generate(root, config)
+  const client = await createClientConsumer(generatedRouteTree, target)
+  try {
+    for (const [url, texts] of Object.entries(pages)) {
+      expect(paragraphs(await client.renderAt(url, texts))).toEqual(texts)
+    }
+  } finally {
+    await client.close()
   }
 }
 
