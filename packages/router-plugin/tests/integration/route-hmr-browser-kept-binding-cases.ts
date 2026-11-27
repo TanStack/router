@@ -670,7 +670,7 @@ const devtoolRows = new Set([
 
 /** The rows of one webpack-style host: every row on Rsbuild, the `devtool` rows on webpack. */
 export function keptBindingSuite(bundler: keyof typeof hosts) {
-  describe.concurrent(
+  describe(
     'route HMR of a binding the route module keeps and a chunk reads',
     { timeout: 90_000 },
     () => {
@@ -687,7 +687,7 @@ export function keptBindingSuite(bundler: keyof typeof hosts) {
 
 /** The hot updates of an edit: one module, the edited one (the update stays narrow). */
 export function keptBindingHotUpdatesSuite() {
-  describe.concurrent('hot updates of a route with a kept binding', () => {
+  describe('hot updates of a route with a kept binding', () => {
     const route = (ui: Ui, label: string) => ({
       [FILE]: `${ui.imports(`import { base } from '../shared'\n`)}const value = { text: base }
 export const Route = createFileRoute('/')({

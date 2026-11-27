@@ -115,7 +115,7 @@ async function clickOnce(app: RouteHmrPage) {
   await app.page.waitForText('page data v1 count 1', { selector: '#app' })
 }
 
-describe.concurrent.each(['vite', 'rsbuild'] as const)(
+describe.each(['vite', 'rsbuild'] as const)(
   '%s: a loader edit of a React route',
   (bundler) => {
     it(

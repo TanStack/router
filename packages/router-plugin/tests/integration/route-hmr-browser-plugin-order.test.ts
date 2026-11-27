@@ -7,8 +7,6 @@
  * listing `react()` (or `solid()`) before `tanstackRouter()` keeps route
  * HMR: an edit shows in place without a full reload, the component React
  * Refresh patches keeps its state, and no warning is reported.
- *
- * Concurrent: each test has its own dev server and page.
  */
 import { describe, test } from 'vitest'
 import { countMounts, mountsOf, openRouteHmrPage } from '../route-hmr-page'
@@ -53,7 +51,7 @@ function Page() {
 }
 `
 
-describe.concurrent('the framework plugin before the router plugin', () => {
+describe('the framework plugin before the router plugin', () => {
   test.for([
     { name: 'a named component', route: reactRoute, shows: 'page' },
     { name: 'an inline component', route: reactInlineRoute, shows: 'inline' },

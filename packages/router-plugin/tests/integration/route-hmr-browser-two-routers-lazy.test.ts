@@ -25,7 +25,7 @@ function WidgetPage() {
 }
 `
 
-describe.concurrent.each(hosts)(
+describe.each(hosts)(
   '$bundler $target: two routers that both load a lazy `/`',
   ({ bundler, target }) => {
     it.for(['widget-last', 'widget-first'] as const)(

@@ -18,7 +18,7 @@ const check = async (row: Row) => checkRow(await host(), row)
 // parameter the function's body declares again (`var`, a function declaration)
 // starts the body's binding with its value: it stays. A TypeScript parameter
 // property is read by its class.
-describe.concurrent('a plain parameter', () => {
+describe('a plain parameter', () => {
   test.each<Row>([
     {
       // D4_plain_param_reading_default
@@ -152,7 +152,7 @@ export const run = () => configure()
 // destructured, a `null` still throws where the source throws. A rest element
 // is code of its own: it keeps its declarator (D2 B); a plain never-read name
 // leaves with its declarator.
-describe.concurrent('destructuring patterns', () => {
+describe('destructuring patterns', () => {
   test.each<Row>([
     {
       // R2_plain_sibling_goes
@@ -465,7 +465,7 @@ export function run() {
 // read is before the value in the initialiser, in the pattern up to the
 // binding's own element and in the default of a pattern around it; only a
 // direct read counts (no function between: KNOWN-BUGS).
-describe.concurrent('self-reads', () => {
+describe('self-reads', () => {
   test.each<Row>([
     {
       // S2_default_of_enclosing_pattern_reads_leaf
@@ -590,7 +590,7 @@ export function run() {
 
 // A function's locals, a block's declarations and the helpers of a removed
 // helper leave with the code that alone read them.
-describe.concurrent('definitions below the top level', () => {
+describe('definitions below the top level', () => {
   test.each<Row>([
     // router-utils orphans.test.ts (moved): a loop head whose declarators
     // only erased code reads
@@ -700,7 +700,7 @@ export function run() {
 // Rows of the implementation's coverage review (2026-11-23): statement slots,
 // parameters of every kind, comma lists with comments and annotations, a
 // `using` (it disposes, so it stays), a namespace's exported and private members.
-describe.concurrent('more slots and shapes', () => {
+describe('more slots and shapes', () => {
   test.each<Row>([
     {
       // review 1 L7_using_top_level

@@ -37,7 +37,7 @@ ${inline ? '' : `function Page() {\n  ${setup}return ${body}\n}\n`}export const 
 `
 }
 
-describe.concurrent.each([
+describe.each([
   { bundler: 'vite', target: 'react' },
   { bundler: 'vite', target: 'solid' },
   { bundler: 'vite', target: 'vue' },
@@ -86,7 +86,7 @@ export const Route = createLazyFileRoute('/about')({
 })
 `
 
-describe.concurrent.each([
+describe.each([
   { bundler: 'vite', target: 'react' },
   { bundler: 'vite', target: 'solid' },
   { bundler: 'vite', target: 'vue' },
@@ -120,11 +120,9 @@ describe.concurrent.each([
 
 // React: the component of a lazy route file keeps its state across an edit,
 // as a route module's component does (React Refresh patches it in place)
-describe.concurrent.each(['vite', 'rsbuild'] as const)(
-  '%s: a react app',
-  (bundler) => {
-    const counter = (version: string) =>
-      `import { useState } from 'react'
+describe.each(['vite', 'rsbuild'] as const)('%s: a react app', (bundler) => {
+  const counter = (version: string) =>
+    `import { useState } from 'react'
 import { createLazyFileRoute } from '@tanstack/react-router'
 function Page() {
   const [count, setCount] = useState(0)
@@ -132,28 +130,27 @@ function Page() {
 }
 export const Route = createLazyFileRoute('/')({ component: Page })
 `
-    it(
-      'keeps the state of an edited lazy route component',
-      { timeout },
-      async ({ expect, onTestFinished }: TestContext) => {
-        const app = await openRouteHmrPage({
-          bundler,
-          onTestFinished,
-          files: {
-            'routes/index.tsx': routeFile('react'),
-            'routes/index.lazy.tsx': counter('v1'),
-          },
-          ready: 'lazy v1 count 0',
-        })
-        await app.click('button')
-        await app.page.waitForText('lazy v1 count 1', { selector: '#app' })
-        expect(
-          await app.edit(
-            { 'routes/index.lazy.tsx': counter('v2') },
-            'lazy v2 count 1',
-          ),
-        ).toEqual({ reloaded: false, errors: [] })
-      },
-    )
-  },
-)
+  it(
+    'keeps the state of an edited lazy route component',
+    { timeout },
+    async ({ expect, onTestFinished }: TestContext) => {
+      const app = await openRouteHmrPage({
+        bundler,
+        onTestFinished,
+        files: {
+          'routes/index.tsx': routeFile('react'),
+          'routes/index.lazy.tsx': counter('v1'),
+        },
+        ready: 'lazy v1 count 0',
+      })
+      await app.click('button')
+      await app.page.waitForText('lazy v1 count 1', { selector: '#app' })
+      expect(
+        await app.edit(
+          { 'routes/index.lazy.tsx': counter('v2') },
+          'lazy v2 count 1',
+        ),
+      ).toEqual({ reloaded: false, errors: [] })
+    },
+  )
+})

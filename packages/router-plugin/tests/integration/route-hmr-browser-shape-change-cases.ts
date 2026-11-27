@@ -55,47 +55,44 @@ function Page() {
 }
 
 export function shapeChangeSuite(bundler: Bundler) {
-  describe.concurrent(
-    `${bundler} react: one save changing a loader's data shape and the component reading it`,
-    () => {
-      it.for([
-        { loader: 'sync', autoCodeSplitting: true },
-        { loader: 'async', autoCodeSplitting: true },
-        { loader: 'sync', autoCodeSplitting: false },
-      ] as const)(
-        'shows each save in place ($loader loader, autoCodeSplitting: $autoCodeSplitting)',
-        { timeout },
-        async (
-          { loader, autoCodeSplitting },
-          { expect, onTestFinished }: TestContext,
-        ) => {
-          const app = await openRouteHmrPage({
-            bundler,
-            onTestFinished,
-            pluginOptions: { autoCodeSplitting },
-            files: { 'routes/index.tsx': reactRoute(1, loader) },
-            ready: 'shape v1 count 0',
-          })
-          await app.click('button')
-          await app.page.waitForText('shape v1 count 1', { selector: '#app' })
-          for (const n of [2, 3, 4]) {
-            await app.edit(
-              { 'routes/index.tsx': reactRoute(n, loader) },
-              new RegExp(`^shape v${n} count \\d$`),
-            )
-            // (the count is the state of a component that threw rendering
-            // the other version's data: it starts again)
-            expect({
-              text: await app.page.text('#app'),
-              loads: app.loads(),
-            }).toEqual({ text: `shape v${n} count 0`, loads: 1 })
-          }
-        },
-      )
-    },
-  )
+  describe(`${bundler} react: one save changing a loader's data shape and the component reading it`, () => {
+    it.for([
+      { loader: 'sync', autoCodeSplitting: true },
+      { loader: 'async', autoCodeSplitting: true },
+      { loader: 'sync', autoCodeSplitting: false },
+    ] as const)(
+      'shows each save in place ($loader loader, autoCodeSplitting: $autoCodeSplitting)',
+      { timeout },
+      async (
+        { loader, autoCodeSplitting },
+        { expect, onTestFinished }: TestContext,
+      ) => {
+        const app = await openRouteHmrPage({
+          bundler,
+          onTestFinished,
+          pluginOptions: { autoCodeSplitting },
+          files: { 'routes/index.tsx': reactRoute(1, loader) },
+          ready: 'shape v1 count 0',
+        })
+        await app.click('button')
+        await app.page.waitForText('shape v1 count 1', { selector: '#app' })
+        for (const n of [2, 3, 4]) {
+          await app.edit(
+            { 'routes/index.tsx': reactRoute(n, loader) },
+            new RegExp(`^shape v${n} count \\d$`),
+          )
+          // (the count is the state of a component that threw rendering
+          // the other version's data: it starts again)
+          expect({
+            text: await app.page.text('#app'),
+            loads: app.loads(),
+          }).toEqual({ text: `shape v${n} count 0`, loads: 1 })
+        }
+      },
+    )
+  })
 
-  describe.concurrent.each(['solid', 'vue'] as const)(
+  describe.each(['solid', 'vue'] as const)(
     `${bundler} %s: one save changing a loader's data shape and the component reading it`,
     (target) => {
       it.for([

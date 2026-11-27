@@ -623,7 +623,7 @@ async function countOf(page: { text: (selector: string) => Promise<string> }) {
 }
 
 export function solidIdentitySuite(bundler: Bundler) {
-  describe.concurrent.each([false, true])(
+  describe.each([false, true])(
     `${bundler}, solid, autoCodeSplitting: %s`,
     { timeout: 90_000 },
     (split) => {

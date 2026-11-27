@@ -90,7 +90,7 @@ async function sameDocumentOnce(
   }
 }
 
-describe.concurrent.each(['vite', 'rsbuild', 'webpack'] as const)(
+describe.each(['vite', 'rsbuild', 'webpack'] as const)(
   '%s: a solid app',
   (bundler) => {
     it(

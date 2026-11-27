@@ -254,7 +254,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
   }, timeout)
   afterAll(() => dispose?.())
 
-  describe.concurrent('server code under side-effect hints', () => {
+  describe('server code under side-effect hints', () => {
     test.each([
       { construct: 'a handler', name: 'viaHandler', tag: 'Handler' },
       { construct: 'a validator', name: 'viaValidator', tag: 'Validator' },

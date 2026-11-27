@@ -470,7 +470,7 @@ export function solidPageSuite(bundler: StartBundler) {
     return page
   }
 
-  describe.concurrent('boundaries hydrate the HTML the server rendered', () => {
+  describe('boundaries hydrate the HTML the server rendered', () => {
     test('a nested boundary and a later sibling', async () => {
       await expectChildrenHydrate('nested', ['outer', 'nested', 'sibling'])
     })
@@ -571,152 +571,147 @@ return button().textContent`,
   // "paint is not defined" / "el is not defined" in the error boundary for
   // the server-half directive and the refs of a `let` nothing else reads,
   // and refused the nested server-half ref; main renders and builds them).
-  describe.concurrent(
-    'locals the children use only through a directive or a ref',
-    () => {
-      test.each([
-        {
-          fixture: 'directiveServerHalf',
-          how: 'a directive in the server implementation of an isomorphic fn',
-          painted: null,
-        },
-        {
-          fixture: 'directiveClientHalf',
-          how: 'a directive in the client implementation of an isomorphic fn',
-          painted: 'client-directive-mark',
-        },
-        {
-          fixture: 'refServerHalfNested',
-          how: 'a ref in the server implementation of an isomorphic fn, under two boundaries',
-          painted: null,
-        },
-        {
-          fixture: 'refClientHalf',
-          how: 'a ref in the client implementation of an isomorphic fn',
-          painted: 'client-ref-mark',
-        },
-        {
-          fixture: 'refLetFunction',
-          how: 'a ref naming a let holding a function',
-          painted: 'ref',
-        },
-        {
-          fixture: 'refLetElement',
-          how: 'a ref of a let nothing else reads',
-          painted: null,
-        },
-      ] as const)('$how', async ({ fixture, painted }) => {
-        for (const mode of ['hydrate', 'mount'] as const) {
-          const page = await app.hydrate(fixture, {
-            mode,
-            script: readCaptureOnly,
-          })
-          expect({
-            mode,
-            shown: page.result,
-            consoleErrors: page.consoleErrors,
-          }).toEqual({
-            mode,
-            shown: { error: null, text: 'ok', painted },
-            consoleErrors: [],
-          })
-        }
-      })
-
-      // What only the server's code uses stays out of the client; the same
-      // local in the client implementation ships (the control).
-      test.each([
-        { canary: 'server-directive-canary', mark: 'client-directive-mark' },
-        { canary: 'server-ref-canary', mark: 'client-ref-mark' },
-      ])('the client ships no $canary', ({ canary, mark }) => {
-        const shipped = (marker: string) => {
-          const { eager, lazy } = app.build.client.locate(marker)
-          return eager.length + lazy.length
-        }
-        expect({ canary: shipped(canary), mark: shipped(mark) > 0 }).toEqual({
-          canary: 0,
-          mark: true,
+  describe('locals the children use only through a directive or a ref', () => {
+    test.each([
+      {
+        fixture: 'directiveServerHalf',
+        how: 'a directive in the server implementation of an isomorphic fn',
+        painted: null,
+      },
+      {
+        fixture: 'directiveClientHalf',
+        how: 'a directive in the client implementation of an isomorphic fn',
+        painted: 'client-directive-mark',
+      },
+      {
+        fixture: 'refServerHalfNested',
+        how: 'a ref in the server implementation of an isomorphic fn, under two boundaries',
+        painted: null,
+      },
+      {
+        fixture: 'refClientHalf',
+        how: 'a ref in the client implementation of an isomorphic fn',
+        painted: 'client-ref-mark',
+      },
+      {
+        fixture: 'refLetFunction',
+        how: 'a ref naming a let holding a function',
+        painted: 'ref',
+      },
+      {
+        fixture: 'refLetElement',
+        how: 'a ref of a let nothing else reads',
+        painted: null,
+      },
+    ] as const)('$how', async ({ fixture, painted }) => {
+      for (const mode of ['hydrate', 'mount'] as const) {
+        const page = await app.hydrate(fixture, {
+          mode,
+          script: readCaptureOnly,
         })
-      })
-    },
-  )
-
-  describe.concurrent(
-    'which elements are boundaries, and when code loads',
-    () => {
-      // Control of the pin below: a named import's children load when the
-      // boundary hydrates.
-      test('a boundary loads its children when it hydrates', async () => {
-        const page = await app.hydrate('gated', { script: loadedOnInteraction })
-        expect(page.result).toEqual({ beforeClick: 0, loadedByClick: true })
-        expect(page.consoleErrors).toEqual([])
-      })
-
-      // Goal (SPEC J5.1, J7.2): a
-      // namespace member `<Start.Hydrate>` of `@tanstack/solid-start` is a
-      // boundary like a named import. On main it is left unsplit (it hydrates:
-      // "namespace-imported Start.Hydrate boundaries" above), so the click
-      // loads nothing.
-      test('a namespace-imported Start.Hydrate loads its children when it hydrates', async () => {
-        const page = await app.hydrate('namespaceGated', {
-          script: loadedOnInteraction,
+        expect({
+          mode,
+          shown: page.result,
+          consoleErrors: page.consoleErrors,
+        }).toEqual({
+          mode,
+          shown: { error: null, text: 'ok', painted },
+          consoleErrors: [],
         })
-        expect(page.result).toEqual({ beforeClick: 0, loadedByClick: true })
-        expect(page.consoleErrors).toEqual([])
+      }
+    })
+
+    // What only the server's code uses stays out of the client; the same
+    // local in the client implementation ships (the control).
+    test.each([
+      { canary: 'server-directive-canary', mark: 'client-directive-mark' },
+      { canary: 'server-ref-canary', mark: 'client-ref-mark' },
+    ])('the client ships no $canary', ({ canary, mark }) => {
+      const shipped = (marker: string) => {
+        const { eager, lazy } = app.build.client.locate(marker)
+        return eager.length + lazy.length
+      }
+      expect({ canary: shipped(canary), mark: shipped(mark) > 0 }).toEqual({
+        canary: 0,
+        mark: true,
       })
+    })
+  })
 
-      // SPEC J5.1: recognition by binding follows the app's re-exports of the
-      // Start `Hydrate` (`hydrateBarrelFiles`), as with a direct import.
-      test.each(barrelRows)(
-        'a Hydrate the app re-exports (%s) loads its children when it hydrates',
-        async (name) => {
-          const page = await app.hydrate(name, { script: loadedOnInteraction })
-          expect({
-            result: page.result,
-            consoleErrors: page.consoleErrors,
-          }).toEqual({
-            result: { beforeClick: 0, loadedByClick: true },
-            consoleErrors: [],
-          })
-        },
-      )
+  describe('which elements are boundaries, and when code loads', () => {
+    // Control of the pin below: a named import's children load when the
+    // boundary hydrates.
+    test('a boundary loads its children when it hydrates', async () => {
+      const page = await app.hydrate('gated', { script: loadedOnInteraction })
+      expect(page.result).toEqual({ beforeClick: 0, loadedByClick: true })
+      expect(page.consoleErrors).toEqual([])
+    })
 
-      // The `#ui` barrel is another module in each environment.
-      test('a barrel resolving to another module in each environment hydrates every boundary the server rendered', async () => {
-        await expectChildrenHydrate('barrelPerEnv', ['child', 'after'])
+    // Goal (SPEC J5.1, J7.2): a
+    // namespace member `<Start.Hydrate>` of `@tanstack/solid-start` is a
+    // boundary like a named import. On main it is left unsplit (it hydrates:
+    // "namespace-imported Start.Hydrate boundaries" above), so the click
+    // loads nothing.
+    test('a namespace-imported Start.Hydrate loads its children when it hydrates', async () => {
+      const page = await app.hydrate('namespaceGated', {
+        script: loadedOnInteraction,
       })
+      expect(page.result).toEqual({ beforeClick: 0, loadedByClick: true })
+      expect(page.consoleErrors).toEqual([])
+    })
 
-      // Not followed: a re-export under another name.
-      test('a Hydrate re-exported under another name still defers hydration', async () => {
-        const page = await app.hydrate('reexportRenamed', {
-          script: deferredUntilFocus,
+    // SPEC J5.1: recognition by binding follows the app's re-exports of the
+    // Start `Hydrate` (`hydrateBarrelFiles`), as with a direct import.
+    test.each(barrelRows)(
+      'a Hydrate the app re-exports (%s) loads its children when it hydrates',
+      async (name) => {
+        const page = await app.hydrate(name, { script: loadedOnInteraction })
+        expect({
+          result: page.result,
+          consoleErrors: page.consoleErrors,
+        }).toEqual({
+          result: { beforeClick: 0, loadedByClick: true },
+          consoleErrors: [],
         })
-        expect(page.result).toBe('child:0')
-        expect(page.consoleErrors).toEqual([])
-      })
+      },
+    )
 
-      // Not analysed (SPEC 2.2): split or not, it keeps the server's HTML until
-      // its strategy fires (a focus, not a click).
-      test('a Hydrate destructured from the namespace still defers hydration', async () => {
-        const page = await app.hydrate('destructured', {
-          script: `const button = () => root.querySelector('button')
+    // The `#ui` barrel is another module in each environment.
+    test('a barrel resolving to another module in each environment hydrates every boundary the server rendered', async () => {
+      await expectChildrenHydrate('barrelPerEnv', ['child', 'after'])
+    })
+
+    // Not followed: a re-export under another name.
+    test('a Hydrate re-exported under another name still defers hydration', async () => {
+      const page = await app.hydrate('reexportRenamed', {
+        script: deferredUntilFocus,
+      })
+      expect(page.result).toBe('child:0')
+      expect(page.consoleErrors).toEqual([])
+    })
+
+    // Not analysed (SPEC 2.2): split or not, it keeps the server's HTML until
+    // its strategy fires (a focus, not a click).
+    test('a Hydrate destructured from the namespace still defers hydration', async () => {
+      const page = await app.hydrate('destructured', {
+        script: `const button = () => root.querySelector('button')
   button().click()
   await settled()
   const beforeFocus = button().textContent
   button().focus()
   await clickUntil(() => button(), () => button().textContent === 'child:1')
   return beforeFocus`,
-        })
-        expect(page.result).toBe('child:0')
-        expect(page.consoleErrors).toEqual([])
       })
+      expect(page.result).toBe('child:0')
+      expect(page.consoleErrors).toEqual([])
+    })
 
-      // The prefetched boundary's children load before any interaction; the
-      // other boundary's on its click; the prefetched one's click loads
-      // nothing more.
-      test('a prefetched boundary loads its own children before any interaction', async () => {
-        const page = await app.hydrate('prefetch', {
-          script: `const button = (label) => root.querySelector('button[data-label="' + label + '"]')
+    // The prefetched boundary's children load before any interaction; the
+    // other boundary's on its click; the prefetched one's click loads
+    // nothing more.
+    test('a prefetched boundary loads its own children before any interaction', async () => {
+      const page = await app.hydrate('prefetch', {
+        script: `const button = (label) => root.querySelector('button[data-label="' + label + '"]')
   // What the prefetch requested before any interaction (a prefetch still
   // loading is not in the resource timeline yet)
   const prefetched = await waitFor(() => requested().length > 0 && requested()).catch(() => [])
@@ -728,48 +723,42 @@ return button().textContent`,
   const other = await click('other')
   const child = await click('child')
   return { prefetched: prefetched.length > 0, other: other.length > 0, child }`,
-        })
-        expect(page.result).toEqual({
-          prefetched: true,
-          other: true,
-          child: [],
-        })
-        expect(page.consoleErrors).toEqual([])
       })
-    },
-  )
+      expect(page.result).toEqual({
+        prefetched: true,
+        other: true,
+        child: [],
+      })
+      expect(page.consoleErrors).toEqual([])
+    })
+  })
 
   // A boundary that appears after the app started shows its fallback until
   // its children load, then the children (J5.3: the client keeps the
   // fallback, however it is passed).
-  describe.concurrent(
-    'the fallback of a boundary mounted on the client',
-    () => {
-      test.each([
-        { name: 'fallbackDirect', how: 'a direct fallback' },
-        { name: 'fallbackSpread', how: 'a spread used once' },
-        { name: 'fallbackModuleElement', how: 'a module-level element' },
-      ])('$how shows, then the children', async ({ name }) => {
-        const page = await app.hydrate(name, {
-          mode: 'mount',
-          script: `await waitFor(() => root.querySelector('button'))
+  describe('the fallback of a boundary mounted on the client', () => {
+    test.each([
+      { name: 'fallbackDirect', how: 'a direct fallback' },
+      { name: 'fallbackSpread', how: 'a spread used once' },
+      { name: 'fallbackModuleElement', how: 'a module-level element' },
+    ])('$how shows, then the children', async ({ name }) => {
+      const page = await app.hydrate(name, {
+        mode: 'mount',
+        script: `await waitFor(() => root.querySelector('button'))
   await clickUntil(() => root.querySelector('button'), () => root.querySelector('button').textContent === 'child:1')`,
-        })
-        const fallbackAt = page.snapshots.findIndex((html) =>
-          html.includes('fallback-marker'),
-        )
-        expect(fallbackAt).toBeGreaterThanOrEqual(0)
-        expect(page.snapshots.slice(0, fallbackAt).join()).not.toContain(
-          'child:',
-        )
-        expect(page.html).not.toContain('fallback-marker')
-        expect(page.html).toContain('child:1')
-        expect(page.consoleErrors).toEqual([])
       })
-    },
-  )
+      const fallbackAt = page.snapshots.findIndex((html) =>
+        html.includes('fallback-marker'),
+      )
+      expect(fallbackAt).toBeGreaterThanOrEqual(0)
+      expect(page.snapshots.slice(0, fallbackAt).join()).not.toContain('child:')
+      expect(page.html).not.toContain('fallback-marker')
+      expect(page.html).toContain('child:1')
+      expect(page.consoleErrors).toEqual([])
+    })
+  })
 
-  describe.concurrent('the children under parent updates', () => {
+  describe('the children under parent updates', () => {
     // The split children read the newest signals, context and callbacks
     // (never a frozen first read), before their boundary hydrates, after
     // their code loaded and after a reorder, in the boundary clicked. The

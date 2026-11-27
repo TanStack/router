@@ -37,7 +37,7 @@ function Page() {
   return <p>item ${version} {params.itemId} {search.term} {context.label ?? 'no context'}</p>
 }`
 
-describe.concurrent.each(['vite', 'rsbuild'] as const)(
+describe.each(['vite', 'rsbuild'] as const)(
   '%s: route metadata delivered by the real host',
   (bundler) => {
     test.for([false, true])(

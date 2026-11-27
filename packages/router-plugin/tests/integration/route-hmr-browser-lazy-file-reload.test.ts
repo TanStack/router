@@ -56,7 +56,7 @@ document.body.append(element)
 createRoot(element).render(<RouterProvider router={widget} />)
 `
 
-describe.concurrent.each(['vite', 'rsbuild'] as const)(
+describe.each(['vite', 'rsbuild'] as const)(
   '%s: a react app with a second router',
   (bundler) => {
     it(
@@ -102,7 +102,7 @@ const lazyFile = (target: Target, options: string) =>
 export const Route = createLazyFileRoute('/')({ ${options} })
 `
 
-describe.concurrent.each([
+describe.each([
   { bundler: 'vite', target: 'react' },
   { bundler: 'vite', target: 'solid' },
   { bundler: 'vite', target: 'vue' },
@@ -144,7 +144,7 @@ describe.concurrent.each([
   )
 })
 
-describe.concurrent.each(['vite', 'rsbuild'] as const)(
+describe.each(['vite', 'rsbuild'] as const)(
   '%s: a react app whose lazy route is not on screen',
   (bundler) => {
     it(
@@ -200,7 +200,7 @@ export const Route = createFileRoute('/')({ component: () => <p>Home</p> })
   },
 )
 
-describe.concurrent.each(['vite', 'rsbuild'] as const)(
+describe.each(['vite', 'rsbuild'] as const)(
   '%s: a react app whose lazy route is not on screen, its route file without a component',
   (bundler) => {
     it(

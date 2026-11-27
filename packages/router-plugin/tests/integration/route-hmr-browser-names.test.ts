@@ -9,8 +9,6 @@
  *
  * What modules importing the exports get:
  * react-refresh-route-components.test.ts.
- *
- * Concurrent: each test has its own dev server and page, and mostly waits.
  */
 import { describe, test } from 'vitest'
 import {
@@ -31,7 +29,7 @@ const withoutLoaderErrors = (errors: Array<string>) =>
 // name, with a default: the property keeps its name, whatever the compiler
 // calls the binding. Not the declaration's own pattern alone: `var` nested in a
 // block, an assignment pattern.
-describe.concurrent.each(['vite', 'rsbuild'] as const)(
+describe.each(['vite', 'rsbuild'] as const)(
   '%s: a lowercase component destructured with a default',
   { timeout: 60_000 },
   (bundler) => {
@@ -83,7 +81,7 @@ export const Route = createFileRoute('/')({ component: comp })
   },
 )
 
-describe.concurrent('vite: React route components', { timeout: 60_000 }, () => {
+describe('vite: React route components', { timeout: 60_000 }, () => {
   /**
    * A route at `/` whose `mode` search parameter picks what the page shows:
    * its component (no mode), its error component (`error`: the loader

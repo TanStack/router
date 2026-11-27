@@ -189,9 +189,8 @@ export function Page({ entries }) {
   ).toContain('<li>a-1</li>')
 })
 
-// One test at a time: its tests set globals of this process (the server
-// realm)
-describe('a binding named like an intrinsic tag', { concurrent: false }, () => {
+// Its tests set globals of this process (the server realm)
+describe('a binding named like an intrinsic tag', () => {
   afterEach(() => {
     delete (globalThis as { sideEffect?: unknown }).sideEffect
     delete (globalThis as { __sideEffects?: unknown }).__sideEffects
@@ -291,9 +290,8 @@ export function Page({ v }: { v: unknown }) {
   ).toContain('<ul>1</ul><p>xx</p>')
 })
 
-// One test at a time: its tests set globals of this process (the server
-// realm)
-describe('names the compiler generates', { concurrent: false }, () => {
+// Its tests set globals of this process (the server realm)
+describe('names the compiler generates', () => {
   /**
    * A page with a prefetched boundary and a nested one, whose children read
    * `reads` (an array expression); `setup` runs first in the component.
@@ -497,9 +495,8 @@ test('client: member names and object keys are no reads of a local declared late
   ).toContain('<p>L!</p>')
 })
 
-// One test at a time: its tests set globals of this process (the server
-// realm)
-describe('globals', { concurrent: false }, () => {
+// Its tests set globals of this process (the server realm)
+describe('globals', () => {
   afterEach(() => {
     delete (globalThis as { GlobalWidget?: unknown }).GlobalWidget
     delete (globalThis as { hydrateDefaults?: unknown }).hydrateDefaults

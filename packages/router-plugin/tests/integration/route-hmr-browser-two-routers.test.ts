@@ -31,7 +31,7 @@ function Page() {
 }
 `
 
-describe.concurrent.each(hosts)(
+describe.each(hosts)(
   '$bundler $target: two routers on a page',
   ({ bundler, target }) => {
     it.for([
@@ -106,7 +106,7 @@ ${mount[target]("document.getElementById('app')!", 'router')}
 
 // Review of the implementation (Fable re-check R1): a router registers for
 // route HMR in its first update, before it read its route tree
-describe.concurrent.each(hosts)(
+describe.each(hosts)(
   '$bundler $target: a second router whose constructor threw',
   ({ bundler, target }) => {
     it(

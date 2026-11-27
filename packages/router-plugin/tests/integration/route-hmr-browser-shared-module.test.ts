@@ -58,7 +58,7 @@ async function expectSharedModuleLoaded(
   ).toBeGreaterThanOrEqual(2)
 }
 
-describe.concurrent.each(['vite', 'rsbuild'] as const)(
+describe.each(['vite', 'rsbuild'] as const)(
   '%s: a React route whose split options share a binding',
   (bundler) => {
     test(

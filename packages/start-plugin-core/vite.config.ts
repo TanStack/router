@@ -200,16 +200,13 @@ const config = defineConfig({
         // Slow tier too (`test:integration` runs both projects): `<Hydrate>`
         // cases rendered and hydrated in pages of the Start host
         // (`render.ts`), as the fast tier runs them, whose cost does not fit
-        // the fast tier. The tests of a file run concurrently: each
-        // case has its own directory of the file's host, and each page run
-        // holds one of the host's pages alone (`start-host.ts`). A test
-        // process keeps its browser and the hosts a file gives back for
-        // later files (`isolate: false`).
+        // the fast tier. Each case has its own directory of the file's host
+        // (`start-host.ts`). A test process keeps its browser and the hosts
+        // a file gives back for later files (`isolate: false`).
         extends: true,
         test: {
           name: 'integration-pages',
           include: ['integration/pages/**/*.test.ts'],
-          sequence: { concurrent: true },
           isolate: false,
           testTimeout: 30_000,
           hookTimeout: 60_000,

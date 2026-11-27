@@ -33,7 +33,7 @@ if (true) {${comment}
 }
 export const meta = 1${comment}`
 
-describe.concurrent.each(['vite', 'rsbuild'] as const)(
+describe.each(['vite', 'rsbuild'] as const)(
   '%s react: statements with a @refresh comment',
   (bundler) => {
     it(
@@ -92,7 +92,7 @@ function Page() {
 `
 }
 
-describe.concurrent.each([
+describe.each([
   { bundler: 'vite', target: 'react' },
   { bundler: 'vite', target: 'solid' },
   { bundler: 'vite', target: 'vue' },

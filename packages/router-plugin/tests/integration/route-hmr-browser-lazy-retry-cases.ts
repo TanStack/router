@@ -50,7 +50,7 @@ export const Route = createFileRoute('/away')({ component: () => <p>away</p> })
 `
 
 export function lazyRetrySuite(bundler: 'vite' | 'rsbuild') {
-  describe.concurrent.each(['react', 'solid', 'vue'] as const)(
+  describe.each(['react', 'solid', 'vue'] as const)(
     `${bundler} %s: a lazy route component whose import failed, saved while it still fails`,
     (target) => {
       it.for(['a navigation back', 'router.invalidate()'] as const)(
@@ -119,7 +119,7 @@ export const Route = createFileRoute('/')({ component: () => <p>home</p> })
 `
 
 export function overlappingFailuresSuite(bundler: 'vite' | 'rsbuild') {
-  describe.concurrent.each(['react', 'solid', 'vue'] as const)(
+  describe.each(['react', 'solid', 'vue'] as const)(
     `${bundler} %s: a loaded lazy route component, two saves whose imports both fail`,
     (target) => {
       it(

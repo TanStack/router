@@ -10,7 +10,7 @@ import { editRoute, inPlace } from '../route-hmr-edit'
 import type { TestContext } from 'vitest'
 import type { RouteHmrPageOptions } from '../route-hmr-page'
 
-describe.concurrent('route HMR in a real page', { timeout: 60_000 }, () => {
+describe('route HMR in a real page', { timeout: 60_000 }, () => {
   /** A React route at `/` whose component, `name`, keeps a click count. */
   const counterRoute = (
     version: string,

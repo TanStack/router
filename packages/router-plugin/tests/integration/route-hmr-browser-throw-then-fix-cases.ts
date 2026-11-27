@@ -40,7 +40,7 @@ function Page() {
 }
 
 export function throwThenFixSuite(bundler: 'vite' | 'rsbuild') {
-  describe.concurrent.each(['react', 'solid', 'vue'] as const)(
+  describe.each(['react', 'solid', 'vue'] as const)(
     `${bundler} %s, client-only: an edit makes the route component throw, the next one fixes it`,
     (target) => {
       it.for([

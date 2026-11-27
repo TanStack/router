@@ -148,11 +148,11 @@ ${callByIdExports}`,
     timeout,
   )
 
-  // Concurrent: the rows share one build and run it in Node processes and
-  // browser pages. The last test builds: runs give their working directory
-  // and environment explicitly, so the build's process-global state does not
+  // The rows share one build and run it in Node processes and browser
+  // pages. The last test builds: runs give their working directory and
+  // environment explicitly, so the build's process-global state does not
   // reach them.
-  describe.concurrent('server code of each construct', () => {
+  describe('server code of each construct', () => {
     /**
      * `src/deps/<name>.ts`: an export returning `marker`, in a module whose
      * top-level code also sets it.
@@ -733,7 +733,6 @@ const get = async (path) =>
 ${callByIdExports}`,
           },
           entry: { client: 'src/fns.ts', ssr: 'src/ssr-entry.ts' },
-          // This test's own hook: the tests of the block run concurrently.
           registerCleanup: onTestFinished,
         })
         const urls = (

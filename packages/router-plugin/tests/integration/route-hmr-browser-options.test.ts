@@ -11,8 +11,6 @@
  * Replaces the in-process registration and signature checks of
  * react-refresh-route-components.test.ts, which read the names
  * and hook signatures React Refresh's transform computed.
- *
- * Concurrent: each test has its own dev server and page, and mostly waits.
  */
 import { describe, test } from 'vitest'
 import { countMounts, mountsOf, openRouteHmrPage } from '../route-hmr-page'
@@ -20,7 +18,7 @@ import type { TestContext } from 'vitest'
 
 const inPlace = { reloaded: false, errors: [] }
 
-describe.concurrent('vite: React route components', { timeout: 60_000 }, () => {
+describe('vite: React route components', { timeout: 60_000 }, () => {
   /**
    * Opens an app whose route file `file` holds `route('v1')`, waits until it
    * shows `shows('v1')` (after navigating to `path`, when given), edits it

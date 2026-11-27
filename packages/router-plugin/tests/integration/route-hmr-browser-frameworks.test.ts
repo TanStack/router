@@ -34,7 +34,7 @@ function Page() {
 }
 `
 
-describe.concurrent.each([
+describe.each([
   { bundler: 'vite', target: 'solid' },
   { bundler: 'vite', target: 'vue' },
   { bundler: 'rsbuild', target: 'solid' },
@@ -92,33 +92,30 @@ function Root() {
 // Rsbuild kept showing the old Solid root component: the route HMR code set
 // `hot.data` before Solid Refresh read it as a previous run's data. React
 // apps: route-hmr-browser.test.ts.
-describe.concurrent.each(['vite', 'rsbuild'] as const)(
-  '%s: a solid app',
-  (bundler) => {
-    it.for([true, false])(
-      'shows the new code of an edited root route in place (autoCodeSplitting: %s)',
-      { timeout },
-      async (
-        autoCodeSplitting: boolean,
-        { expect, onTestFinished }: TestContext,
-      ) => {
-        const app = await openRouteHmrPage({
-          bundler,
-          target: 'solid',
-          onTestFinished,
-          pluginOptions: { autoCodeSplitting },
-          files: {
-            'routes/__root.tsx': solidRoot('v1'),
-            'routes/index.tsx': route('solid', 'v1'),
-          },
-          ready: /root v1[\s\S]*page v1 data v1/,
-        })
-        const result = await app.edit(
-          { 'routes/__root.tsx': solidRoot('v2') },
-          /root v2[\s\S]*page v1 data v1/,
-        )
-        expect(result).toEqual({ reloaded: false, errors: [] })
-      },
-    )
-  },
-)
+describe.each(['vite', 'rsbuild'] as const)('%s: a solid app', (bundler) => {
+  it.for([true, false])(
+    'shows the new code of an edited root route in place (autoCodeSplitting: %s)',
+    { timeout },
+    async (
+      autoCodeSplitting: boolean,
+      { expect, onTestFinished }: TestContext,
+    ) => {
+      const app = await openRouteHmrPage({
+        bundler,
+        target: 'solid',
+        onTestFinished,
+        pluginOptions: { autoCodeSplitting },
+        files: {
+          'routes/__root.tsx': solidRoot('v1'),
+          'routes/index.tsx': route('solid', 'v1'),
+        },
+        ready: /root v1[\s\S]*page v1 data v1/,
+      })
+      const result = await app.edit(
+        { 'routes/__root.tsx': solidRoot('v2') },
+        /root v2[\s\S]*page v1 data v1/,
+      )
+      expect(result).toEqual({ reloaded: false, errors: [] })
+    },
+  )
+})

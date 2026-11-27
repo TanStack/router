@@ -50,7 +50,7 @@ const tsrConfig = (target: 'react' | 'solid') =>
 
 // The router plugin, configured as the plugin's public API allows: each
 // configuration serves route HMR, so an edit shows in place.
-describe.concurrent('the router plugin configured with', () => {
+describe('the router plugin configured with', () => {
   const rows: Array<{
     name: string
     target?: 'react' | 'solid'
@@ -123,7 +123,7 @@ describe.concurrent('the router plugin configured with', () => {
 // Source: utils.test.ts routeFactoryCallCodeFilter (type arguments and
 // whitespace before the call); the former code-splitter-route-options
 // "hot-update a root route created with ...".
-describe.concurrent('vite: an edited root route created with', () => {
+describe('vite: an edited root route created with', () => {
   it.for([
     'createRootRoute({',
     'createRootRoute ({',
@@ -163,7 +163,7 @@ export const Route = ${call}
 // server's logger or console, or the page), possibly after a reload. A
 // warning never excuses an edit that does not show (SPEC G10;
 // `expectEditShownOrReportedFallback`).
-describe.concurrent.each(['vite', 'rsbuild'] as const)(
+describe.each(['vite', 'rsbuild'] as const)(
   '%s: an edit of a route created inside',
   (bundler) => {
     const factoryRoutes = {
@@ -232,7 +232,7 @@ export const Route = (() =>
 // reloaded the page. An edit shows its new code in place. (Without a refresh
 // runtime the new component may be mounted anew: a subtree replacement, not
 // a document reload.)
-describe.concurrent('vite: an edit of', () => {
+describe('vite: an edit of', () => {
   /** A root route rendering the loader data of the active matches. */
   const root = `import { createRootRoute, Outlet, useRouterState } from '@tanstack/react-router'
 export const Route = createRootRoute({
@@ -305,7 +305,7 @@ export const Route = createFileRoute('/')({ loader: () => 'data ${version}' })
 // Bug (Rsbuild, as on main): the edit to the app's helper is applied
 // without showing, silently; a reload shows it, and the edit back to the
 // router's constructor shows in place. Pinned.
-describe.concurrent.each(['vite', 'rsbuild'] as const)(
+describe.each(['vite', 'rsbuild'] as const)(
   '%s: a route file switching between the router constructor and an app helper',
   (bundler) => {
     const helper = `import { createFileRoute } from '@tanstack/react-router'

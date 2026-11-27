@@ -55,7 +55,7 @@ export const Route = createFileRoute('${path}')({
 })
 `
 
-describe.concurrent('an annotated lowercase component binding', () => {
+describe('an annotated lowercase component binding', () => {
   describe.for([
     { bundler: 'vite', autoCodeSplitting: true },
     { bundler: 'vite', autoCodeSplitting: false },

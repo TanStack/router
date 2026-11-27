@@ -148,7 +148,7 @@ const rows: Array<Comments> = [
   },
 ]
 
-test.concurrent.each(rows)(
+test.each(rows)(
   'with the comment $name, an edit of the split route shows what it shows unsplit',
   async (comments) => {
     const [unsplit, split] = await Promise.all([

@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -7,27 +7,34 @@ import type { TestProjectInlineConfiguration } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/vite-config'
 import packageJson from './package.json'
 
+const testsDir = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  'tests',
+)
+
 /**
- * The projects whose tests check route apps in pages of a real browser
- * (`tests/route-app.ts`): the tests of a file run concurrently, each on dev
- * servers it holds alone (a test leases a host of the test process; a
- * concurrent test of the same configuration gets another one) and on pages
- * of the file's bounded page pool (`@tanstack/compiler-test-utils/
- * browser`), closed when the file ended. A test process keeps its browser
- * and its free hosts across test files (`isolate: false`): a file starts
- * only the hosts no earlier file left free. Both are bounded (Chromium's
- * shared memory limits how many pages can be open at once).
+ * The slow-tier files whose tests run concurrently (project
+ * `integration-concurrent`): the route HMR files (`route-hmr-browser*`),
+ * whose every test opens its own dev server, page and app directory,
+ * starts only dev servers, and asserts only on its own server's log and
+ * its own page. Every other project runs one test at a time. Left out:
+ * the files whose warning and error assertions read what the process
+ * printed (`RouteHmrPage.warnings`, Rsbuild's `serverErrors`), which
+ * concurrent tests share. Paths relative to `tests/`.
  */
-const pagesProject = {
-  extends: true,
-  test: {
-    sequence: { concurrent: true },
-    isolate: false,
-    // Client checks run in a real browser page: the first run on a new dev
-    // server (dependency pre-bundling) takes seconds under load
-    testTimeout: 30_000,
-  },
-} as const
+const serialHmrTests = [
+  'route-hmr-browser-plugin.test.ts',
+  'route-hmr-browser-plugin-order.test.ts',
+  'route-hmr-browser-kept-binding.test.ts',
+]
+const concurrentTests = readdirSync(path.join(testsDir, 'integration'))
+  .filter(
+    (file) =>
+      file.startsWith('route-hmr-browser') &&
+      file.endsWith('.test.ts') &&
+      !serialHmrTests.includes(file),
+  )
+  .map((file) => `integration/${file}`)
 
 /**
  * The slow-tier files the other platforms run (`test:integration:smoke`,
@@ -43,10 +50,6 @@ const smokeTests = [
   'integration/split-module-ids.test.ts',
 ]
 if (process.env.VITEST) {
-  const testsDir = path.join(
-    path.dirname(fileURLToPath(import.meta.url)),
-    'tests',
-  )
   for (const file of smokeTests) {
     if (!existsSync(path.join(testsDir, file))) {
       throw new Error(
@@ -70,6 +73,7 @@ const integrationProject = {
       ...configDefaults.exclude,
       'integration/pages/**',
       'integration/perf-guards/**',
+      ...concurrentTests,
     ],
     testTimeout: 30_000,
     hookTimeout: 30_000,
@@ -100,15 +104,34 @@ const config = defineConfig({
     projects: [
       {
         // Fast tier (`test:unit`): compiles in process; client checks run in
-        // pages of a real browser (see `pagesProject`).
-        ...pagesProject,
+        // pages of a real browser (`route-app.ts`). A test process keeps its
+        // browser and its free hosts across test files (`isolate: false`).
+        extends: true,
         test: {
-          ...pagesProject.test,
           name: 'unit',
+          isolate: false,
           exclude: [...configDefaults.exclude, 'integration/**'],
+          // Client checks run in a real browser page: the first run on a new
+          // dev server (dependency pre-bundling) takes seconds under load
+          testTimeout: 30_000,
         },
       },
       integrationProject,
+      {
+        // Slow tier too (`test:integration`): `concurrentTests`, the tests of
+        // a file at once, at most 4; `NODE_ENV` is the dev servers' value
+        // (`vite dev`, `rsbuild dev`) for the whole run.
+        ...integrationProject,
+        test: {
+          ...integrationProject.test,
+          name: 'integration-concurrent',
+          include: concurrentTests,
+          exclude: [...configDefaults.exclude],
+          sequence: { concurrent: true },
+          maxConcurrency: 4,
+          env: { NODE_ENV: 'development' },
+        },
+      },
       {
         // `smokeTests` alone, as the slow tier runs them
         ...integrationProject,
@@ -133,15 +156,15 @@ const config = defineConfig({
         },
       },
       {
-        // Slow tier too (`test:integration` runs the three projects): route apps
-        // checked in pages of a real browser (`route-app.ts`), as the fast
-        // tier checks them, whose cost does not fit the fast tier.
-        ...pagesProject,
+        // Slow tier too (`test:integration`): route apps checked in pages of
+        // a real browser (`route-app.ts`), as the fast tier checks them,
+        // whose cost does not fit the fast tier.
+        ...integrationProject,
         test: {
-          ...pagesProject.test,
+          ...integrationProject.test,
           name: 'integration-pages',
           include: ['integration/pages/**/*.test.ts'],
-          hookTimeout: 30_000,
+          exclude: [...configDefaults.exclude],
         },
       },
     ],

@@ -62,7 +62,7 @@ ${data ? `  loader: () => '${data}',\n` : ''}${staticData ? `  staticData: { fir
 
 const liveOptionKeys = `Object.keys(window.__APP_ROUTER__.routesById['/'].options).filter((key) => key === 'loader' || key === 'staticData')`
 
-describe.concurrent.each([
+describe.each([
   { bundler: 'vite', target: 'vue' },
   { bundler: 'rsbuild', target: 'vue' },
   { bundler: 'vite', target: 'react' },

@@ -267,7 +267,7 @@ const rows = {
   },
 } satisfies Record<string, Row>
 
-describe.concurrent('RSC CSS through the real transport (Vite dev)', () => {
+describe('RSC CSS through the real transport (Vite dev)', () => {
   const app = rscCssApp({
     rows: Object.values(rows),
     files: {

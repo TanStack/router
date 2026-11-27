@@ -15,7 +15,7 @@ const check = async (row: Row) => checkRow(await host(), row)
 // names the value, a type position the type declarations, and a type the
 // client erases names what its text names. A value only the type of the same
 // name was used for stays where nothing else changed.
-describe.concurrent('a name that is a value and a type', () => {
+describe('a name that is a value and a type', () => {
   test.each<Row>([
     {
       // T1_type_use_follows_shared_type_to_typeof
@@ -133,7 +133,7 @@ export function run() {
 // A type export (`export type X = …`, `export interface`, `export type { X }`,
 // `export { type X }`) is no JavaScript: what only it names was used by the
 // source and leaves.
-describe.concurrent('type exports', () => {
+describe('type exports', () => {
   test.each<Row>([
     {
       // X_V7A_export_type_alias_chain
@@ -674,7 +674,7 @@ export const run = () => 1
 // holds only types is a type declaration: a qualified name follows the member
 // it names, and never a value declared beside the namespace; an enum's member
 // names the enum.
-describe.concurrent('namespaces', () => {
+describe('namespaces', () => {
   test.each<Row>([
     {
       // T3_type_namespace_alone
@@ -971,7 +971,7 @@ export const run = () => seen.length
 // A `declare` of a value is the value's own text, erased with the types: what
 // its type names leaves with the code that named it. A definition beside a
 // `declare` of its name runs, and code that reads it keeps it.
-describe.concurrent('ambient declarations', () => {
+describe('ambient declarations', () => {
   test.each<Row>([
     {
       // T5_declare_type
@@ -1210,7 +1210,7 @@ export const run = () => [seen.length, typeof db]
 // for what `N.M` names: a reference to it for a type names what the whole
 // path selects there, and every alias of a chain it goes through leaves
 // unread.
-describe.concurrent('imports and aliases of types', () => {
+describe('imports and aliases of types', () => {
   test.each<Row>([
     {
       // T8_type_import_const_namespace_qualifier
@@ -1458,7 +1458,7 @@ export const run = () => [seen.length, live()]
 // Rows of the implementation's coverage review (2026-11-23): type declarations
 // in functions, blocks and namespace bodies, names a local shadows, overloads,
 // and `declare` shapes, each named only by erased code.
-describe.concurrent('local and nested type declarations', () => {
+describe('local and nested type declarations', () => {
   test.each<Row>([
     {
       // review 1 R2_inner_const_shadows_outer_type
@@ -1707,7 +1707,7 @@ export function run() {
 // Review round 1 (2026-11-23): an alias chain of any length (Astra: nine hops
 // fell back to the value), and a type a reopened namespace's other block
 // declares (Astra, Gemini).
-describe.concurrent('review round 1', () => {
+describe('review round 1', () => {
   test.each<Row>([
     {
       // Astra, qualified_depth_reg_9 (twelve hops here)
@@ -1835,7 +1835,7 @@ export const run = () => [seen.length, typeof NS.make()]
 // text whatever else the module holds; an import that only types in code
 // that stays name is the host's, however many aliases lead to it; what
 // runs for JSX and for decorator metadata is read by value.
-describe.concurrent('a type never keeps a value: reviews', () => {
+describe('a type never keeps a value: reviews', () => {
   const M = `export const f = createServerOnlyFn(() => 1)\nexport const run = () => 1\n`
   test.each<Row>([
     // (Fable 1, Gemini 1: no type in these modules names a local value)

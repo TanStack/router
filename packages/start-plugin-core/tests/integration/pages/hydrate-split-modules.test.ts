@@ -1260,8 +1260,7 @@ function Widget() {
     // still run when the split code renders: once on the client.
     // Source: React Compiler fixtures react-namespace.js,
     // unused-optional-method-assigned-to-variable.js, error.todo-reassign-const.js
-    // One row at a time: each resets a global of this process (the server
-    // realm)
+    // Each row resets a global of this process (the server realm)
     test.each([
       { name: 'a call', initializer: `useTracked('call')` },
       { name: 'an optional call', initializer: `useTracked?.('optional')` },
@@ -1271,7 +1270,6 @@ function Widget() {
       },
     ])(
       'client: an unused local initialized by $name still runs',
-      { concurrent: false },
       async ({ initializer }) => {
         const code = widgetPage(`function useTracked(label) {
   globalThis.__hydrateCalls.push(label)

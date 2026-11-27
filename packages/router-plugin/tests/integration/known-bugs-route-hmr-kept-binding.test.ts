@@ -33,7 +33,7 @@ export function Other() {
 }
 `
 
-describe.concurrent(
+describe(
   'an edit of a binding the route file exports and another module imports',
   { timeout: 60_000 },
   () => {

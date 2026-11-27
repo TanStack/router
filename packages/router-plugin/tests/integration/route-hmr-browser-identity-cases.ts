@@ -291,7 +291,7 @@ async function countOf(page: { text: (selector: string) => Promise<string> }) {
 }
 
 export function identitySuite(bundler: Bundler) {
-  describe.concurrent.each([false, true])(
+  describe.each([false, true])(
     `${bundler}, react, autoCodeSplitting: %s`,
     { timeout: 60_000 },
     (autoCodeSplitting) => {

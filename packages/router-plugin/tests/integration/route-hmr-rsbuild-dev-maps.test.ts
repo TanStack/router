@@ -83,7 +83,7 @@ async function servedTexts(
   return texts
 }
 
-describe.concurrent('rsbuild: the maps of a split route after an edit', () => {
+describe('rsbuild: the maps of a split route after an edit', () => {
   it(
     'hold the route file as it is on disk, also where the edit left the code unchanged',
     { timeout },

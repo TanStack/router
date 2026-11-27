@@ -35,7 +35,7 @@ function Page() {
 
 const apart = `[['loader'], ['component']]`
 
-describe.concurrent.each([
+describe.each([
   { bundler: 'vite', target: 'react' },
   { bundler: 'vite', target: 'solid' },
   { bundler: 'vite', target: 'vue' },

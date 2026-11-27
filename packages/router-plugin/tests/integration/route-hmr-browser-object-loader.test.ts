@@ -27,39 +27,36 @@ function Page() {
 }
 `
 
-describe.concurrent.each(['react', 'solid'] as const)(
-  'vite: a %s app',
-  (target) => {
-    it(
-      'shows the new data of an edited loader handler in place and keeps the loader options',
-      { timeout },
-      async ({ expect, onTestFinished }: TestContext) => {
-        const app = await openRouteHmrPage({
-          target,
-          onTestFinished,
-          // only the loader is split
-          pluginOptions: {
-            codeSplittingOptions: { defaultBehavior: [['loader']] },
-          },
-          files: {
-            'tag.ts': `export const tag = (text: string) => 'tagged ' + text\n`,
-            'routes/index.tsx': route(target, 'v1'),
-          },
-          ready: 'page tagged data v1',
-        })
-        expect(app.splitOutputs() > 0, 'split').toBe(true)
-        expect(
-          await app.edit(
-            { 'routes/index.tsx': route(target, 'v2') },
-            'page tagged data v2',
-          ),
-        ).toEqual({ reloaded: false, errors: [] })
-        expect(
-          await app.evaluate(
-            `window.__APP_ROUTER__.routesById['/'].options.loader.staleReloadMode`,
-          ),
-        ).toBe('blocking')
-      },
-    )
-  },
-)
+describe.each(['react', 'solid'] as const)('vite: a %s app', (target) => {
+  it(
+    'shows the new data of an edited loader handler in place and keeps the loader options',
+    { timeout },
+    async ({ expect, onTestFinished }: TestContext) => {
+      const app = await openRouteHmrPage({
+        target,
+        onTestFinished,
+        // only the loader is split
+        pluginOptions: {
+          codeSplittingOptions: { defaultBehavior: [['loader']] },
+        },
+        files: {
+          'tag.ts': `export const tag = (text: string) => 'tagged ' + text\n`,
+          'routes/index.tsx': route(target, 'v1'),
+        },
+        ready: 'page tagged data v1',
+      })
+      expect(app.splitOutputs() > 0, 'split').toBe(true)
+      expect(
+        await app.edit(
+          { 'routes/index.tsx': route(target, 'v2') },
+          'page tagged data v2',
+        ),
+      ).toEqual({ reloaded: false, errors: [] })
+      expect(
+        await app.evaluate(
+          `window.__APP_ROUTER__.routesById['/'].options.loader.staleReloadMode`,
+        ),
+      ).toBe('blocking')
+    },
+  )
+})

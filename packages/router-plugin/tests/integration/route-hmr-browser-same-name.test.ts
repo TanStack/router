@@ -7,8 +7,6 @@
  * name (J3.2): the two are different refresh families, so nothing patches
  * the held one in place. Keeping a component is tested in
  * route-hmr-browser-names.test.ts and route-hmr-browser.test.ts.
- *
- * Concurrent: each test has its own dev server and page, and mostly waits.
  */
 import { describe, test } from 'vitest'
 import { openRouteHmrPage } from '../route-hmr-page'
@@ -33,7 +31,7 @@ const layouts = Object.fromEntries(
 // patches the held one with.
 // Impact: the page went on showing the old layout, without a reload or an
 // error, and later edits of the new layout never showed either.
-describe.concurrent.each(['react', 'solid'] as const)(
+describe.each(['react', 'solid'] as const)(
   'vite, %s: a same-named component imported from another module',
   { timeout: 60_000 },
   (target) => {
@@ -111,7 +109,7 @@ export const Route = createFileRoute('/')({})
 // declaration), which React Refresh registers for a function or a call but
 // not for a conditional: the runtime kept the held component.
 // Impact: flipping the condition showed nothing.
-describe.concurrent('vite, react: a conditional component value', () => {
+describe('vite, react: a conditional component value', () => {
   const route = (
     flag: boolean,
   ) => `import { createFileRoute } from '@tanstack/react-router'
@@ -144,7 +142,7 @@ export const Route = createFileRoute('/')({ component: flag ? Wide : Narrow })
 // A frozen component object as a split React component: dev code writes
 // nothing onto a component value, so the chunk evaluates, and an edit
 // shows.
-describe.concurrent('vite, react: a frozen split component', () => {
+describe('vite, react: a frozen split component', () => {
   const route = (
     version: string,
   ) => `import { createFileRoute } from '@tanstack/react-router'

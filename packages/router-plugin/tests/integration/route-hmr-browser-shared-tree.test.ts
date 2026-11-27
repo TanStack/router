@@ -59,7 +59,7 @@ createRoot(document.getElementById('app')!).render(<StrictMode><App /></StrictMo
 `,
 }
 
-describe.concurrent.each(['vite', 'rsbuild'] as const)(
+describe.each(['vite', 'rsbuild'] as const)(
   '%s react: two routers of one route tree',
   (bundler) => {
     it.for(Object.keys(sharedMains) as Array<keyof typeof sharedMains>)(
@@ -111,7 +111,7 @@ const state = `({
   widgetRuns: globalThis.__widgetRuns,
 })`
 
-describe.concurrent.each([
+describe.each([
   { bundler: 'vite', target: 'react', plugins: 'tanstackRouter()' },
   { bundler: 'vite', target: 'solid', plugins: 'tanstackRouter()' },
   { bundler: 'vite', target: 'vue', plugins: 'tanstackRouter()' },
