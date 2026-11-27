@@ -8,7 +8,7 @@ import { runInPage } from '@tanstack/compiler-test-utils/browser'
 import { runAsDevCommand } from '@tanstack/compiler-test-utils/dev-command'
 import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { onFileFinished } from '@tanstack/compiler-test-utils/test-scope'
-import { inputsOf } from './consumer-inputs'
+import { forgetApp, inputsOf } from './consumer-inputs'
 import type { PluginOption, ViteDevServer } from 'vite'
 
 const nodeModules = path.resolve(import.meta.dirname, '../node_modules')
@@ -162,6 +162,8 @@ export async function renderAt(url, expectedParagraphs) {
 `,
   )
   const server = await serverOf(framework)
+  // (the app's files as they are now)
+  forgetApp(server.environments.client, root)
   const base = server.resolvedUrls!.local[0]!
   return {
     async renderAt(url: string, expectedParagraphs: Array<string>) {

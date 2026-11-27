@@ -2,6 +2,7 @@
 import { existsSync, realpathSync } from 'node:fs'
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
+import type { EnvironmentModuleGraph } from 'vite'
 
 /**
  * The canonical form of a path: the native real path (Windows: long names
@@ -74,5 +75,23 @@ export function inputsOf(file: string) {
     files: Object.fromEntries(
       Object.entries(entry[1].files).filter(([input]) => existsSync(input)),
     ),
+  }
+}
+
+/**
+ * Makes a server shared by several apps forget the modules of the app at
+ * `root`: an earlier load of the same app (a tree generated again, an
+ * edited route file) left its transforms, and the server watches no file.
+ */
+export function forgetApp(
+  environment: { moduleGraph: EnvironmentModuleGraph },
+  root: string,
+) {
+  const posix = (file: string) => file.replaceAll(path.sep, '/')
+  const prefix = posix(root) + '/'
+  for (const module of environment.moduleGraph.idToModuleMap.values()) {
+    if (module.file && posix(module.file).startsWith(prefix)) {
+      environment.moduleGraph.invalidateModule(module)
+    }
   }
 }

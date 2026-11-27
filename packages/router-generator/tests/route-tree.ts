@@ -15,10 +15,9 @@ import {
 } from 'vite'
 import { linkDirectory } from '@tanstack/compiler-test-utils/app-directory'
 import { runAsDevCommand } from '@tanstack/compiler-test-utils/dev-command'
-import { openDiagnosticChannel } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { onFileFinished } from '@tanstack/compiler-test-utils/test-scope'
-import { inputsOf, recordInputs } from './consumer-inputs'
+import { forgetApp, inputsOf, recordInputs } from './consumer-inputs'
 import type { PluginOption, ViteDevServer } from 'vite'
 import type { createClientConsumer as CreateClientConsumer } from './consumer-client'
 
@@ -254,17 +253,10 @@ async function withModule<T>(
   // (the process takes up the dev servers' environment again, as at their
   // start)
   runAsDevCommand()
-  // The app's files as they are now: an earlier load of the same app (a
-  // tree generated again, an edited route file) left its transforms
   const environment = host.server.environments.ssr
-  for (const module of environment.moduleGraph.idToModuleMap.values()) {
-    if (module.file && posix(module.file).startsWith(load.posixRoot + '/')) {
-      environment.moduleGraph.invalidateModule(module)
-    }
-  }
+  forgetApp(environment, root)
   const entry = path.join(path.dirname(file), `.consumer-${randomUUID()}.ts`)
   await writeFile(entry, consumerSource(framework))
-  const channel = openDiagnosticChannel()
   host.loads.add(load)
   const runner = createServerModuleRunner(environment, { hmr: false })
   try {
@@ -289,7 +281,6 @@ async function withModule<T>(
   } finally {
     host.loads.delete(load)
     await runner.close()
-    channel.close()
     await rm(entry, { force: true })
   }
 }
@@ -327,6 +318,8 @@ export interface LoadedRouteTree {
   routerPackage: Record<string, any>
   framework: string
   fileOf: (routeId: string) => string | null
+  /** Each route's file (`fileOf`), by route id. */
+  routeFiles: () => Record<string, string | null>
   /** Fixture-owned modules requested by the real host, relative to the tree. */
   loadedFiles: () => Array<string>
   import: (file: string) => Promise<Record<string, any>>
@@ -385,6 +378,10 @@ export function withRouteTree<T>(
           routerPackage: runtime,
           framework,
           fileOf,
+          routeFiles: () =>
+            Object.fromEntries(
+              Object.keys(router.routesById).map((id) => [id, fileOf(id)]),
+            ),
           imports,
           loadedFiles: () => loadedFiles().map(relative).sort(),
           import: importFile,
@@ -441,11 +438,7 @@ export function withRouteTree<T>(
 export function routesOf(
   treeFile: string,
 ): Promise<Record<string, string | null>> {
-  return withRouteTree(treeFile, ({ router, fileOf }) =>
-    Object.fromEntries(
-      Object.keys(router.routesById).map((id) => [id, fileOf(id)]),
-    ),
-  )
+  return withRouteTree(treeFile, ({ routeFiles }) => routeFiles())
 }
 
 /**
