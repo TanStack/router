@@ -477,6 +477,15 @@ export interface StartCase {
    */
   loads: (file?: string) => Promise<Array<string>>
   /**
+   * What a page run of the case (`client`, which imported `file`, default
+   * `module.tsx`) loaded, read as `loads` reads its own import: what the
+   * page requested during the run, and what Vite's client module graph
+   * holds for the module. A page check that runs the module's code once
+   * reads its loads here instead of importing it again (`loads`); what the
+   * run's own code requested counts too.
+   */
+  loadsOf: (run: ClientRun, file?: string) => Array<string>
+  /**
    * The case files that the SSR environment's module graph reaches from a
    * case file (default `module.tsx`) once evaluated (`./name`, with and
    * without their extension, packages by name), static and dynamic. A
@@ -1106,6 +1115,10 @@ try {
             `${url(file)} did not load in the page: ${run.result.error}\n${run.errors.join('\n')}`,
           )
         }
+        return startCase.loadsOf(run, file)
+      },
+      loadsOf: (run, file = 'module.tsx') => {
+        devOnly('loadsOf()')
         const names = new Set<string>()
         for (const request of run.requests) {
           for (const name of caseNames(request)) {

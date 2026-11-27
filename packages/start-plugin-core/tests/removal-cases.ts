@@ -1,7 +1,6 @@
 import { expect } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
-import { inPage, serveCase } from './regression-helpers'
-import type { PageSettled } from './regression-helpers'
+import type { PageSettled, StartHost } from './regression-helpers'
 
 // The dead-code removal rule's rows (SPEC G16, R153 amendment, R170): a
 // definition the source used from removed code (a server fn handler, a
@@ -75,20 +74,27 @@ export interface Row {
   absent?: string
 }
 
-/** Serves a row's module and checks the client against the source. */
+/**
+ * Serves a row's module and checks the client against the source: every
+ * environment serves it, the SSR environment evaluates it, and one page run
+ * imports it (without a page error), calls `run()` and reads what it
+ * recorded; the row's loads are that run's (`StartCase.loadsOf`).
+ */
 export async function checkRow(
-  host: Parameters<typeof serveCase>[0],
+  host: StartHost,
   { code, expected, gone, absent }: Row,
 ) {
-  const served = await serveCase(host, { 'module.tsx': code, ...support })
-  const { settled, calls } = await inPage<{
+  const startCase = await host.case({ 'module.tsx': code, ...support })
+  const client = await startCase.served('module.tsx', 'client')
+  await startCase.served('module.tsx', 'ssr')
+  await startCase.ssr()
+  const run = await startCase.client<{
     settled: PageSettled
     calls: Array<string>
-  }>(
-    served,
-    `const settled = await settle(() => module.run())
-return { settled, calls: [...(await load('record.ts')).calls] }`,
-  )
+  }>(`const settled = await settle(() => module.run())
+return { settled, calls: [...(await load('record.ts')).calls] }`)
+  expect(run.errors, 'page errors').toEqual([])
+  const { settled, calls } = run.result
   expect({
     ...('thrown' in settled
       ? { throws: settled.thrown.name }
@@ -96,9 +102,9 @@ return { settled, calls: [...(await load('record.ts')).calls] }`,
     ...(calls.length > 0 ? { calls } : {}),
   }).toEqual(expected)
   if (gone) {
-    expectNotLoaded(await served.loads(), ['./db.server'])
+    expectNotLoaded(startCase.loadsOf(run), ['./db.server'])
   }
   if (absent !== undefined) {
-    expect(served.code.client).not.toContain(absent)
+    expect(client).not.toContain(absent)
   }
 }
