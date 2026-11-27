@@ -4,6 +4,7 @@
  * `R`. A split component reading them gets the binding on every bundler.
  */
 import { describe, expect, test } from 'vitest'
+import { batchBuild } from '../batch-build'
 import { build, head, rootRoute } from '../build-harness'
 
 const timeout = 60_000
@@ -74,30 +75,28 @@ const shapes: Array<[string, string, string]> = [
   ],
 ]
 
+/** Every shape as a case of one build per bundler (`batchBuild`). */
+const shapeCases = shapes.map(([name, source, read]) => ({
+  name,
+  route: `${head}${source}${component(read)}`,
+  entry,
+  files: { 'types.ts': `export type T = string\n` },
+}))
+
 describe.each(['vite', 'rspack', 'webpack'] as const)('on %s', (bundler) => {
-  test.each(shapes)(
+  const caseApp = batchBuild(
+    { bundler, env: 'client', minify: false },
+    shapeCases,
+  )
+  test.each(shapeCases.map((c) => [c.name, c] as const))(
     '%s renders',
-    async (_, source, read) => {
-      const app = await build({
-        bundler,
-        env: 'client',
-        minify: false,
-        files: {
-          'routes/__root.tsx': rootRoute,
-          'routes/index.tsx': `${head}${source}${component(read)}`,
-          'types.ts': `export type T = string\n`,
-          'entry.ts': entry,
-        },
-      })
-      try {
-        const { result } = await app.run(
-          'return entry.render(entry.Route.options.component)',
-        )
-        expect(result).toBe('<p title="MARK_PAGE">MARK_NS_END</p>')
-        expect(app.where('MARK_PAGE')).toBe('lazy')
-      } finally {
-        await app.dispose()
-      }
+    async (_, c) => {
+      const app = await caseApp(c)
+      const { result } = await app.run(
+        'return entry.render(entry.Route.options.component)',
+      )
+      expect(result).toBe('<p title="MARK_PAGE">MARK_NS_END</p>')
+      expect(app.where('MARK_PAGE')).toBe('lazy')
     },
     timeout,
   )
