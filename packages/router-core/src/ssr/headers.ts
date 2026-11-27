@@ -1,12 +1,11 @@
 import { splitSetCookieString } from 'cookie-es'
-import type { OutgoingHttpHeaders } from 'node:http2'
 
 export type AnyHeaders =
   | Headers
   | HeadersInit
   | Record<string, string>
   | Array<[string, string]>
-  | OutgoingHttpHeaders
+  | Record<string, string | number | Array<string> | undefined>
   | undefined
 
 // Helper function to convert various HeaderInit types to a Headers instance
