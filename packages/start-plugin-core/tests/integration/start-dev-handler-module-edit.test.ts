@@ -16,7 +16,14 @@
  * handler reaches server code and HTTP calls. On
  * Vite's and Rsbuild's dev servers.
  */
-import { describe, expect, onTestFinished, test } from 'vitest'
+import {
+  afterAll,
+  beforeAll,
+  describe,
+  expect,
+  onTestFinished,
+  test,
+} from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import { pluginReact } from '@rsbuild/plugin-react'
@@ -187,26 +194,43 @@ interface Served {
   edit: (files: Record<string, string>) => Promise<unknown>
 }
 
-const servers: Record<string, () => Promise<Served>> = {
-  vite: async () => {
-    const server = await startDevServer({ browser: true, files })
+type Cleanup = (cleanup: () => Promise<void>) => void
+
+const servers: Record<string, (registerCleanup: Cleanup) => Promise<Served>> = {
+  vite: async (registerCleanup) => {
+    const server = await startDevServer({
+      browser: true,
+      files,
+      registerCleanup,
+    })
     return { url: server.url!, edit: (f) => server.edit(f) }
   },
-  rsbuild: async () => {
+  rsbuild: async (registerCleanup) => {
     const server = await startRsbuildStartDevServer({
       browser: true,
       config: { plugins: [pluginReact()] },
       files,
+      registerCleanup,
     })
     return { url: server.url!, edit: (f) => server.edit(f) }
   },
 }
 
 describe.each(Object.keys(servers))('%s dev', (bundler) => {
+  // One dev server for the bundler's rows: each row serves its own route
+  // and edits files no other row reads (its starting state is the app's).
+  let server!: Served
+  let stop: (() => Promise<void>) | undefined
+  beforeAll(async () => {
+    server = await servers[bundler]!((cleanup) => {
+      stop = cleanup
+    })
+  }, timeout)
+  afterAll(() => stop?.())
+
   test(
     'edits of a pinned declaration, of the handler and of a handler kept in place reach server code and HTTP calls',
     async () => {
-      const server = await servers[bundler]!()
       /** The server render's loader value, once it is `expected`. */
       const rendered = async (expected: string) => {
         let last = ''
@@ -243,7 +267,6 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
   test(
     "edits of a module only the lazy module's server fn imports and of its handler reach HTTP calls",
     async () => {
-      const server = await servers[bundler]!()
       /** The call's result from a fresh page of the route, once it is `expected`. */
       const reaches = (expected: string) =>
         expect
@@ -264,7 +287,6 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
   test(
     'a hoisted server fn a plain file names: an edit of its handler reaches server code and HTTP calls',
     async () => {
-      const server = await servers[bundler]!()
       const url = `${server.url}nested-dev`
       /** The server render's loader value, once it is `expected`. */
       const rendered = async (expected: string) => {
@@ -296,7 +318,6 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
   test(
     "an edit of a module only the lazy module's chain reads reaches HTTP calls, one instance",
     async () => {
-      const server = await servers[bundler]!()
       /** Two calls answered by the `mark` validator, one instance counting on (n, n + 1). */
       const reaches = (mark: string) =>
         reachesTwice(
@@ -316,7 +337,6 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
   test(
     "a server fn on an imported builder only the split component calls: edits of the builder's module and of the handler reach HTTP calls, one instance",
     async () => {
-      const server = await servers[bundler]!()
       /** Two calls answered with the builder's `builder` mark and the handler's `handler` mark, one instance counting on. */
       const reaches = (builder: string, handler: string) =>
         reachesTwice(
