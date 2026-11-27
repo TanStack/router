@@ -668,15 +668,20 @@ const devtoolRows = new Set([
   'loader-only edit',
 ])
 
-/** The rows of one webpack-style host: every row on Rsbuild, the `devtool` rows on webpack. */
-export function keptBindingSuite(bundler: keyof typeof hosts) {
+/**
+ * The rows of one webpack-style host: every row on Rsbuild, the `devtool`
+ * rows on webpack; those of framework `only` when given.
+ */
+export function keptBindingSuite(bundler: keyof typeof hosts, only?: Fw) {
   describe(
     'route HMR of a binding the route module keeps and a chunk reads',
     { timeout: 90_000 },
     () => {
       test.for(
         cases.filter(
-          ({ row }) => bundler === 'rsbuild' || devtoolRows.has(row.name),
+          ({ fw, row }) =>
+            (bundler === 'rsbuild' || devtoolRows.has(row.name)) &&
+            (only === undefined || fw === only),
         ),
       )(`${hosts[bundler]} $fw: $row.name`, ({ fw, row }, ctx) =>
         runRow(bundler, fw, row, ctx),

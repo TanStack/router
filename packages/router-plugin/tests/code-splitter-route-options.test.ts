@@ -636,7 +636,7 @@ export const createBits = () => {
   })
 
   // A method splits as the function expression with its body would
-  // (#8623: code-splitter-main-shapes.test.ts, "method shorthand and
+  // (#8623: code-splitter-main-shapes-this.test.ts, "method shorthand and
   // `this`"); state a method shares with a split option is one instance.
   // Source: #8504 code-splitter-route-options.test.ts "route options written
   // as methods or accessors" (methods only: no route file writes an option

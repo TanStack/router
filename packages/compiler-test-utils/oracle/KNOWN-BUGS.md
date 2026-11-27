@@ -1883,7 +1883,7 @@ Paths under `start-plugin-core/tests/` unless noted.
   naming a module let binds the let the module reads", "client: children with a Solid ref naming a module let in a helper
   only the children render stay in place with one warning", "Solid: split children with $name build and bind it";
   `start-plugin-core/tests/integration/hydrate-pages-solid.ts`: "a split handler reads an element a later ref outside
-  the boundary binds"; `router-plugin/tests/code-splitter-main-shapes.test.ts`: "keeps beforeLoad reading the element
+  the boundary binds"; `router-plugin/tests/code-splitter-main-shapes-this.test.ts`: "keeps beforeLoad reading the element
   the component's ref binds".
   Paths under `start-plugin-core/tests/integration/`; `pages/` means `integration/pages/`.
 

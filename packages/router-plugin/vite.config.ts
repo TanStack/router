@@ -24,8 +24,10 @@ const testsDir = path.join(
  */
 const serialHmrTests = [
   'route-hmr-browser-plugin.test.ts',
+  'route-hmr-browser-plugin-routes.test.ts',
   'route-hmr-browser-plugin-order.test.ts',
   'route-hmr-browser-kept-binding.test.ts',
+  'route-hmr-browser-kept-binding-solid.test.ts',
 ]
 const concurrentTests = readdirSync(path.join(testsDir, 'integration'))
   .filter(
