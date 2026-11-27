@@ -288,6 +288,10 @@ describe('directives', () => {
   )
 })
 
+// Build ids (SPEC J4.4: deterministic for an unchanged project, a custom
+// `generateFunctionId`, colliding custom ids) and relocation to another root
+// are build clauses: integration/start-compiler-build-determinism.test.ts and
+// integration/start-compiler-build-custom-ids.test.ts.
 describe('server function ids', () => {
   test('dev providers export the handler', async () => {
     const served = await serveCase(await host(), {

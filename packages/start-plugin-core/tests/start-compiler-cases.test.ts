@@ -647,11 +647,7 @@ export let read: () => unknown
   // source carry a position/code frame"), J4.6.
   // On main, in a module with several server fns the user has to find the
   // misplaced one by hand.
-  test.each(
-    placements.filter(
-      (placement) => !placement.nested && !placement.declarator,
-    ),
-  )(
+  test.each(placements.filter((placement) => !placement.declarator))(
     'with another Start factory imported, a server fn in $name works or is rejected at the call',
     async ({ code, read }) => {
       await expectNoClientHandler(

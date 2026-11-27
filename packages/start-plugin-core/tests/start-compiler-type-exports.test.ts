@@ -22,6 +22,7 @@ import {
   inPage,
   useStartHost,
 } from './regression-helpers'
+import type { StartHost } from './regression-helpers'
 
 const host = useStartHost({
   plugins: [
@@ -91,8 +92,10 @@ export { label, type Row as Alias } from './rows'`,
 describe.each(cases)(
   'a module with $name, through a Babel plugin after Start',
   ({ code, label }) => {
+    // (one case for both tests: each environment compiles it once)
+    let written: ReturnType<StartHost['case']> | undefined
     const caseOf = async () =>
-      (await host()).case({ 'module.tsx': code, 'rows.ts': rows })
+      (written ??= (await host()).case({ 'module.tsx': code, 'rows.ts': rows }))
 
     test('works on the client', async () => {
       const startCase = await caseOf()

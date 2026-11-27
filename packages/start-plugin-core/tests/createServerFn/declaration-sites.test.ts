@@ -15,13 +15,12 @@ import {
   callServerFnThroughCallers,
   compileError,
   expectCompileError,
-  expectNoClientHandler,
   inPage,
   serveCase,
   serverFnUrls,
   useStartHost,
 } from '../regression-helpers'
-import { placementModule, placements } from './placements'
+import { placementModule } from './placements'
 import type { PlacementHead } from './placements'
 
 const host = useStartHost()
@@ -105,47 +104,12 @@ test.each(literalPlacements)(
   },
 )
 
-// Loosened regression, paired with the pins "with another Start factory
-// imported, a server fn in $name works or is rejected at the call" of
-// start-compiler-cases.test.ts (main's rejection has no position).
-// Next to another Start factory, these placements never ship the handler
-// to the client: each environment rejects the code with a compile error
-// or serves a working module without the handler, and calling the server
-// fn from the client and from server code runs it. With createServerFn
-// alone, and for declarators below the top level (in a function, a switch
-// case or a top-level block), they are pinned in
-// start-compiler-cases.test.ts.
-test.each(placements.filter((placement) => !placement.declarator))(
-  'next to another Start factory, a server fn in $name does not ship its handler to the client',
-  async ({ code, read }) => {
-    await expectNoClientHandler(
-      await host(),
-      placementModule('another Start factory', code),
-      { rejection: 'unpositioned', read },
-    )
-  },
-)
-
 /**
  * A top-level server fn wrapped in two calls of a user helper. Its handler
  * holds the marker `MARK_INNER_HANDLER` (a fallback it never returns).
  */
 const wrappedTwice = `const wrap = <T,>(fn: T) => fn
 export const fn = wrap(wrap(createServerFn().handler(async () => db.inner() ?? 'MARK_INNER_HANDLER')))`
-
-// Loosened regression of the goal below: wrapped in user helper calls,
-// a top-level server fn never ships its handler to the client, whatever
-// factories the module imports.
-test.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
-  'with %s imported, a server fn wrapped in two calls does not ship its handler to the client',
-  async (importHead) => {
-    await expectNoClientHandler(
-      await host(),
-      placementModule(importHead, wrappedTwice),
-      { rejection: 'unpositioned', read: 'module.fn' },
-    )
-  },
-)
 
 // On main, the build fails for a module whose server fn the user can only write
 // unwrapped.
@@ -159,6 +123,7 @@ test.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
     })
     expectNotLoaded(await served.loads(), ['./db.server'])
     expect(served.code.client).not.toContain('MARK_INNER_HANDLER')
+    expect(served.code.client).not.toContain('db.inner()')
     expect(await callServerFnThroughCallers(served, 'module.fn')).toBe('inner')
   },
 )

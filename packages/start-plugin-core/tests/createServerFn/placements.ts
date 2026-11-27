@@ -1,8 +1,7 @@
 /**
  * Places a `createServerFn` can be written other than a top-level `const`
- * declarator, shared by the loosened placement tests
- * (declaration-sites.test.ts), their goal pins and the bug pins
- * (start-compiler-cases.test.ts). Each handler reads the server-only
+ * declarator, shared by the placement tests of start-compiler-cases.test.ts
+ * and the wrapped server fn of declaration-sites.test.ts. Each handler reads the server-only
  * module (`serverOnlyModule`, `db.inner()`; where a test checks that the
  * client holds no handler code, the handler also holds the marker
  * `MARK_INNER_HANDLER`, a fallback it never returns); `read` is where the server fn

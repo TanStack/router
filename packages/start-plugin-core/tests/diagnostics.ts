@@ -96,8 +96,6 @@ const serverOnlyFile = `export const db = { inner: () => 'inner', top: () => 'to
 const misplacedHandlerBody = 'db.inner()'
 
 export interface MisplacementOptions {
-  /** What a rejection must report (default: the position). */
-  rejection?: 'positioned' | 'unpositioned'
   /**
    * The misplaced server fn: a JavaScript expression with the module as
    * `module` (e.g. `module.make()`), read in the page and on the server.
@@ -120,9 +118,6 @@ export interface MisplacementOptions {
  * (`callFromClient`) and calling it from server code runs it
  * (`callOnServer`), both giving what the misplaced handler returns. One
  * environment rejecting the code does not excuse another.
- *
- * `rejection: 'unpositioned'` is the loosened form of the regressions
- * paired with a goal pin: any compile error, at no particular position.
  */
 export async function expectNoClientHandler(
   host: StartHost,
@@ -138,13 +133,7 @@ export async function expectNoClientHandler(
   for (const environment of ['client', 'ssr'] as const) {
     const failure = await compileError(startCase, environment)
     if (failure) {
-      expectCompileError(failure, {
-        source: code,
-        at:
-          options.rejection === 'unpositioned'
-            ? undefined
-            : misplacedHandlerBody,
-      })
+      expectCompileError(failure, { source: code, at: misplacedHandlerBody })
     } else {
       served[environment] = await startCase.served('module.tsx', environment)
     }
