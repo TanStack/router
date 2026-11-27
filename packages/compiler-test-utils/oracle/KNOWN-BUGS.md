@@ -1194,7 +1194,7 @@ module "…" in the React Client Manifest`. Dev is not affected (the next compil
   module's whole value (`const f = require('./x.server.cjs'); f()`, `require(…)()`, a `module.exports = () => …`
   target) is that namespace (Vite build `[object Object]`, Rsbuild build and dev `[object Module]`), and calling it
   throws a `TypeError` in the client. The secret never reaches the client. `main`: its Vite build fails
-  (`[PARSE_ERROR] Cannot use export statement outside a module` at the `.cjs` file, the entry above "Denied non-JS/TS
+  (`[PARSE_ERROR] Cannot use export statement outside a module` at the `.cjs` file, the entry below "Denied non-JS/TS
   files … keep their content or fail the build"); Rsbuild build and dev give the same namespace and the same
   `TypeError`. Vite dev cannot reach it on either side (`require` is undefined in the browser). Source: research
   `/home/flo/compiler-rewrite-notes/cjs-mock-callable-main-vs-pr.md` (repro app and per-host results). No pin (the
