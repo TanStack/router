@@ -332,15 +332,13 @@ function HydrationGate(props: { gate: Gate; children: React.ReactNode }) {
     return props.children as React.JSX.Element
   }
 
-  if (props.gate.resolved) {
-    return props.children as React.JSX.Element
-  }
-
-  if (!reactUse) {
+  if (reactUse) {
+    // Called even once resolved: React 19 warns if a component that suspended
+    // through use() finishes without calling it
+    reactUse(props.gate.promise)
+  } else if (!props.gate.resolved) {
     throw props.gate.promise
   }
-
-  reactUse(props.gate.promise)
 
   return props.children as React.JSX.Element
 }

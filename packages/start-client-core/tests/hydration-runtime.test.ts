@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { waitForHydrationPrefetchStrategy } from '../src/hydration/runtime'
+import {
+  getOrCreateGate,
+  releaseGate,
+  waitForHydrationPrefetchStrategy,
+} from '../src/hydration/runtime'
 import type { HydrationPrefetchStrategy } from '../src/hydration/types'
 
 describe('waitForHydrationPrefetchStrategy', () => {
@@ -96,5 +100,17 @@ describe('waitForHydrationPrefetchStrategy', () => {
     await expect(result).resolves.toBe('abort')
     expect(setup).not.toHaveBeenCalled()
     expect(onHydrate).not.toHaveBeenCalled()
+  })
+})
+
+describe('hydration gate', () => {
+  it('marks its promise as fulfilled as soon as it resolves', () => {
+    const gate = getOrCreateGate('fulfilled-gate', 'idle')
+    expect(gate.promise).not.toHaveProperty('status')
+
+    gate.resolve()
+
+    expect(gate.promise).toHaveProperty('status', 'fulfilled')
+    releaseGate(gate)
   })
 })
