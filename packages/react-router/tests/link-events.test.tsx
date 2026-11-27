@@ -228,3 +228,38 @@ test.each([false, 'render', 'viewport', 'intent'] as const)(
     expect(preload).toHaveBeenCalledTimes(mode === 'intent' ? 3 : 0)
   },
 )
+
+test.each([false, 'render', 'viewport', 'intent'] as const)(
+  'element focus, hover and touch handlers with preload=%s run for already-prevented events unless preloading on intent',
+  (mode) => {
+    const router = createRouter({
+      routeTree: createRootRoute(),
+      history: createMemoryHistory(),
+      isServer: false,
+    })
+    vi.spyOn(router, 'preloadRoute').mockResolvedValue(undefined)
+    const handlers = {
+      onFocus: vi.fn(),
+      onBlur: vi.fn(),
+      onMouseEnter: vi.fn(),
+      onMouseLeave: vi.fn(),
+      onTouchStart: vi.fn(),
+    }
+    const { result } = renderHook(
+      () => useLinkProps({ to: '/target', preload: mode, ...handlers }),
+      {
+        wrapper: ({ children }) => (
+          <RouterContextProvider router={router}>
+            {children}
+          </RouterContextProvider>
+        ),
+      },
+    )
+    for (const name of Object.keys(handlers) as Array<keyof typeof handlers>) {
+      result.current[name]!({ defaultPrevented: true } as any)
+      // Without intent preloading the element's own handler is attached as
+      // given, like on a plain anchor; intent wraps it and skips it.
+      expect(handlers[name]).toHaveBeenCalledTimes(mode === 'intent' ? 0 : 1)
+    }
+  },
+)

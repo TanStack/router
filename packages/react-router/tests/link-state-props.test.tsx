@@ -596,3 +596,67 @@ test.each([false, true])(
     ).toEqual(['Label', 'Other'])
   },
 )
+
+test('a key in state props becomes the element key', () => {
+  // React's development `jsx` reports a key spread into props; `createElement`
+  // took it silently. Either way the key is the element's, not a prop.
+  const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+  const root = createRootRoute()
+  const router = createRouter({
+    routeTree: root.addChildren([
+      createRoute({ getParentRoute: () => root, path: '/target' }),
+    ]),
+    history: createMemoryHistory({ initialEntries: ['/target'] }),
+    isServer: false,
+  })
+  // Only object literals get excess property checks.
+  const activeProps = { key: 'k', className: 'active-k' }
+  try {
+    const view = render(
+      <RouterContextProvider router={router}>
+        <Link to="/target" activeProps={activeProps}>
+          Label
+        </Link>
+      </RouterContextProvider>,
+    )
+    const anchor = view.getByText('Label')
+    expect(anchor).toHaveClass('active-k')
+    expect(anchor).toHaveAttribute('href', '/target')
+    expect(anchor).not.toHaveAttribute('key')
+    for (const [message] of error.mock.calls) {
+      expect(message).toContain('"key" prop is being spread into JSX')
+    }
+  } finally {
+    error.mockRestore()
+  }
+})
+
+test('custom link hosts get class defaultProps but not function defaultProps', () => {
+  // React 19's `jsx` resolves `defaultProps` only for class components;
+  // `createElement` also applied them to function components.
+  function FunctionHost(props: React.ComponentPropsWithoutRef<'a'>) {
+    return <a data-testid="function" {...props} />
+  }
+  FunctionHost.defaultProps = { title: 'Function default' }
+  class ClassHost extends React.Component<React.ComponentPropsWithoutRef<'a'>> {
+    static defaultProps = { title: 'Class default' }
+    render() {
+      return <a data-testid="class" {...this.props} />
+    }
+  }
+  const FunctionLink = createLink(FunctionHost)
+  const ClassLink = createLink(ClassHost)
+  const router = createRouter({
+    routeTree: createRootRoute(),
+    history: createMemoryHistory(),
+    isServer: false,
+  })
+  render(
+    <RouterContextProvider router={router}>
+      <FunctionLink to="/target">Function</FunctionLink>
+      <ClassLink to="/target">Class</ClassLink>
+    </RouterContextProvider>,
+  )
+  expect(screen.getByTestId('function')).not.toHaveAttribute('title')
+  expect(screen.getByTestId('class')).toHaveAttribute('title', 'Class default')
+})

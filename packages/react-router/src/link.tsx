@@ -852,8 +852,11 @@ export const Link: LinkComponent<'a'> = React.memo(
           })
         : props.children
 
-    // `linkProps` is a fresh object without `key`, so React 19's `jsx` uses
-    // it as the element's props instead of copying it.
+    // Called directly because compiled JSX would copy `linkProps` into a new
+    // object. React 19's `jsx` uses a key-less config object as the element's
+    // props instead of copying it (https://github.com/facebook/react/pull/28768),
+    // so `linkProps` must be fresh per render, never cached, and never mutated
+    // after this call: development builds freeze `element.props`.
     return jsx(host, linkProps)
   }),
   areLinkPropsEqual,
