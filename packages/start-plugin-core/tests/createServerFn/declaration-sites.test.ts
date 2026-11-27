@@ -16,6 +16,7 @@ import {
   compileError,
   expectCompileError,
   expectNoClientHandler,
+  inPage,
   serveCase,
   serverFnUrls,
   useStartHost,
@@ -382,6 +383,18 @@ function check(value: unknown) {
       if (failures.client === undefined && failures.ssr === undefined) {
         const served = await serveCase(await host(), { 'module.tsx': source })
         expect(await callServerFnThroughCallers(served, read)).toEqual(result)
+      } else if (failures.client === undefined) {
+        // The server refuses the module, so no call reaches a handler: the
+        // client still gives the page a server fn (an RPC), not the handler
+        expect(
+          await inPage(
+            startCase,
+            `const fn = ${read}\nreturn typeof fn === 'function' && typeof fn.url`,
+          ),
+        ).toBe('string')
+      } else if (failures.ssr === undefined) {
+        // The client refuses the module: server code still runs the handler
+        expect(await callOnServer(startCase, read)).toEqual(result)
       }
     },
   )

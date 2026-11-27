@@ -13,6 +13,7 @@
 import { describe, expect, test } from 'vitest'
 import {
   diagnosticPosition,
+  expectNoDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
@@ -1085,13 +1086,19 @@ describe('builder shapes the client refuses at the use', () => {
       at: shape.at,
       column: true,
     })
-    if (!shape.everyEnv) {
-      for (const f of Object.keys(caseFiles(shape))) {
-        expect(
-          await compileError(startCase, 'ssr', f),
-          `ssr: ${f}`,
-        ).toBeUndefined()
-      }
+    if (shape.everyEnv) {
+      expectCompileError(await compileError(startCase, 'ssr', file), {
+        source,
+        at: shape.at,
+        column: true,
+      })
+      return
+    }
+    for (const f of Object.keys(caseFiles(shape))) {
+      expect(
+        await compileError(startCase, 'ssr', f),
+        `ssr: ${f}`,
+      ).toBeUndefined()
     }
   })
 })
@@ -1105,6 +1112,9 @@ async function reportedBy(startCase: StartCase, environment: 'client' | 'ssr') {
     code,
     of: (severity: 'warning' | 'error') =>
       findDiagnostics(reported, { severity, file: startCase.file() }),
+    /** Asserts that the compile reported nothing of `severity` about the file. */
+    expectNone: (severity: 'warning' | 'error') =>
+      expectNoDiagnostic(reported, { severity, file: startCase.file() }),
     reported,
   }
 }
@@ -1113,7 +1123,7 @@ describe('a parameter that reaches server code by being read', () => {
   test.each(warned)('warns once at the definition: $name', async (shape) => {
     const startCase = await (await host()).case(caseFiles(shape))
     const client = await reportedBy(startCase, 'client')
-    expect(client.of('error')).toEqual([])
+    client.expectNone('error')
     const found = findDiagnostics(client.reported, {
       severity: 'warning',
       file: startCase.file(),
@@ -1127,12 +1137,15 @@ describe('a parameter that reaches server code by being read', () => {
     if (shape.ships) {
       expect(client.code).toContain(shape.ships)
     }
-    expect((await reportedBy(startCase, 'ssr')).of('warning')).toEqual([])
+    const ssr = await reportedBy(startCase, 'ssr')
+    ssr.expectNone('warning')
+    ssr.expectNone('error')
   })
 
   test.each(unwarned)('says nothing: $name', async (shape) => {
     const startCase = await (await host()).case(caseFiles(shape))
     const client = await reportedBy(startCase, 'client')
-    expect([...client.of('error'), ...client.of('warning')]).toEqual([])
+    client.expectNone('error')
+    client.expectNone('warning')
   })
 })

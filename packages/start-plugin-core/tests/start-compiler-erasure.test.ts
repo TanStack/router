@@ -1172,14 +1172,19 @@ describe('a server fn has one instance on the server', () => {
     async (key) => {
       const run = await (
         await host()
-      ).run<unknown>(`(async () => {
+      ).run<unknown>(
+        `(async () => {
   const route = await import('/src/routes/hydrate-in-${key}.tsx')
   await route.Route.options.component.preload?.()
   return performance
     .getEntriesByType('resource')
     .map((entry) => new URL(entry.name).pathname)
     .filter((path) => /hydrate-(heavy|render)/.test(path))
-})()`)
+})()`,
+        // A new document: the resource timeline of a reused one holds what
+        // earlier runs loaded, and stops recording once its buffer is full
+        { fresh: true },
+      )
       expect(run.errors).toEqual([])
       expect(run.result).toEqual([])
     },

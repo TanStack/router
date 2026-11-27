@@ -159,12 +159,18 @@ async function clientValue(
 
 /**
  * The client of a case of `code` does not load the server-only module, and
- * calling its `read` export throws the server-only error.
+ * the server-only fn (`fn`, a page expression with the module as `module`)
+ * is a function there that throws the server-only error when its `read`
+ * export calls it. Server code calling `read` gets the server's value.
  */
-async function expectServerOnlyRead(code: string) {
+async function expectServerOnlyRead(code: string, fn: string) {
   const startCase = await newCase({ 'module.tsx': code })
   expectNotLoaded(await startCase.loads(), [serverOnly])
+  expect(
+    await clientValue(startCase, `[typeof module.read, typeof (${fn})]`),
+  ).toEqual(['function', 'function'])
   expect(await clientValue(startCase, 'module.read()')).toEqual(throwsError)
+  expect((await startCase.ssr()).read()).toBe('secret')
 }
 
 /**
@@ -378,17 +384,22 @@ export const fn = authed().handler(async () => db.x())`,
   // enough for a wrapper).
   // Source: fuzzing (builders passed through user helpers).
   test('a server fn whose builder passes through a helper function fails the client', async () => {
-    const startCase = await newCase({
-      'module.tsx': `${head}import { schema } from './schema'
+    const code = `${head}import { schema } from './schema'
 function applyStep<T>(builder: T) {
   return builder
 }
 export const fn = applyStep(
   createServerFn({ method: 'POST' }).validator(schema),
-).handler(async ({ data }) => data)`,
+).handler(async ({ data }) => data)`
+    const startCase = await newCase({
+      'module.tsx': code,
       'schema.ts': `export const schema = (data: string) => \`\${data}!\`\n`,
     })
-    expect(await compileError(startCase)).toBeInstanceOf(Error)
+    expectCompileError(await compileError(startCase), {
+      source: code,
+      at: `createServerFn({ method: 'POST' })`,
+      column: true,
+    })
   })
 
   // Bug: same family, for an isomorphic fn whose chain passes through a
@@ -438,6 +449,7 @@ export const getEnv = withBuilder(
   test.each([
     {
       name: 'a renamed import in a function body',
+      fn: 'module.getRead()',
       code: `import { createServerOnlyFn as serverOnly } from '@tanstack/react-start'
 import { db } from './db.server'
 export function getRead() { return serverOnly(() => db.secret()) }
@@ -445,6 +457,7 @@ export const read = () => getRead()()`,
     },
     {
       name: 'a renamed import in an object property',
+      fn: 'module.api.read',
       code: `import { createServerOnlyFn as serverOnly } from '@tanstack/react-start'
 import { db } from './db.server'
 export const api = { read: serverOnly(() => db.secret()) }
@@ -452,6 +465,7 @@ export const read = () => api.read()`,
     },
     {
       name: 'a local alias in a function body',
+      fn: 'module.getRead()',
       code: `import { createServerOnlyFn } from '@tanstack/react-start'
 import { db } from './db.server'
 const so = createServerOnlyFn
@@ -460,6 +474,7 @@ export const read = () => getRead()()`,
     },
     {
       name: 'a local alias in a function-local const',
+      fn: 'module.getRead()',
       code: `import { createServerOnlyFn } from '@tanstack/react-start'
 import { db } from './db.server'
 const so = createServerOnlyFn
@@ -468,8 +483,8 @@ export const read = () => getRead()()`,
     },
   ])(
     'client: a createServerOnlyFn called through $name is compiled',
-    async ({ code }) => {
-      await expectServerOnlyRead(code)
+    async ({ code, fn }) => {
+      await expectServerOnlyRead(code, fn)
     },
   )
 
@@ -969,6 +984,9 @@ export const fn = createServerFn().handler(createServerOnlyFn(async () => db.x()
         file: startCase.file(),
       })
       if (reported.length === 0) {
+        if (environment === 'client') {
+          expectNotLoaded(await startCase.loads(), [serverOnly])
+        }
         const call = environment === 'client' ? callFromClient : callOnServer
         expect(await call(startCase, 'module.fn')).toBe('from the server')
       }
