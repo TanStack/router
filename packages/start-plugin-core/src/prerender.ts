@@ -190,7 +190,10 @@ export async function prerender({
             routerBasePath,
           )
 
-          const html = await res.text()
+          // Read bytes: decoding to text would corrupt binary responses
+          // (images, PDFs, ...) before they are written to disk.
+          const body = new Uint8Array(await res.arrayBuffer())
+          const html = new TextDecoder().decode(body)
           const resolvedOutputDir = path.resolve(outputDir)
           const filepath = path.resolve(outputDir, filename.replace(/^\/+/, ''))
           const outputPrefix = resolvedOutputDir.endsWith(path.sep)
@@ -209,7 +212,7 @@ export async function prerender({
             recursive: true,
           })
 
-          await fsp.writeFile(filepath, html)
+          await fsp.writeFile(filepath, body)
 
           prerendered.add(page.path)
 
