@@ -197,6 +197,17 @@ describe('normalizeRspackClientBuild', () => {
           `export const render = () => globalThis.${module}()`,
         ]),
       ),
+    }).catch((error: unknown) => {
+      // A failed build names the rows whose module its errors name (the
+      // errors are the failed assertion's `actual`)
+      const text = `${String((error as Error)?.message ?? error)}\n${JSON.stringify((error as { actual?: unknown })?.actual ?? null)}`
+      const rows = queryRows.filter(({ module }) =>
+        text.includes(`${module}.js`),
+      )
+      throw new Error(
+        `the build of the query rows failed (${rows.map(({ module, query }) => `${module}: ${query}`).join(', ') || 'no row named'}): ${text}`,
+        { cause: error },
+      )
     }))
 
   test.each(queryRows)(
