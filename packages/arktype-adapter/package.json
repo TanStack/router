@@ -81,7 +81,7 @@
     "rimraf": "catalog:"
   },
   "peerDependencies": {
-    "arktype": ">=2.0.0-rc <3",
+    "arktype": ">=2.0.0-rc <4",
     "@tanstack/react-router": ">=1.43.2"
   }
 }
