@@ -282,13 +282,21 @@ const vitest = await startVitest('test', [], {
   watch: false,
   reporters: [],
 })
-const errors = vitest.state
-  .getFiles()
-  .flatMap((file) => file.tasks)
-  .flatMap((task) => task.result?.errors ?? [])
-  .map((error) => error.message)
+const messages = (result) => (result?.errors ?? []).map((error) => error.message)
+const report = {
+  files: vitest.state.getFiles().map((file) => ({
+    state: file.result?.state,
+    errors: messages(file.result),
+    tests: file.tasks.map((task) => ({
+      name: task.name,
+      state: task.result?.state,
+      errors: messages(task.result),
+    })),
+  })),
+  unhandled: vitest.state.getUnhandledErrors().map((error) => String(error)),
+}
 await vitest.close()
-process.stdout.write('\\n' + JSON.stringify(errors))
+process.stdout.write('\\n' + JSON.stringify(report))
 process.exit(0)
 `,
       {
@@ -297,7 +305,17 @@ process.exit(0)
         timeout: 60_000,
       },
     )
-    expect(JSON.parse(stdout.trim().split('\n').at(-1)!)).toEqual([])
+    // The child's file ran its one test, which passed
+    expect(JSON.parse(stdout.trim().split('\n').at(-1)!)).toEqual({
+      files: [
+        {
+          state: 'pass',
+          errors: [],
+          tests: [{ name: 'launch', state: 'pass', errors: [] }],
+        },
+      ],
+      unhandled: [],
+    })
   },
   timeout,
 )

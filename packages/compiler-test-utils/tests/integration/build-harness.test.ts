@@ -4,7 +4,7 @@
  * executes SSR output in Node and client output in a real browser, and
  * side-effect hints reach the bundler.
  */
-import { writeFile } from 'node:fs/promises'
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, onTestFinished, test } from 'vitest'
@@ -614,42 +614,112 @@ test.each(['webpack', 'rspack'] as const)(
 
 // An edit can land while a build runs that already read the file: that
 // build ends with the old text, and the one the edit causes comes after it.
-// Here every build takes 800 ms after reading its modules, and the first
-// build's end changes a file the entry imports, so the second build runs
-// when the harness writes the edit.
+// Build 2 starts in build 1's `done` hook (`Watching.invalidate()`), which
+// ends once build 2 has compiled v1: the harness writes v2 after build 1 is
+// reported. Build 2 is held, with the watching suspended so the edit cannot
+// restart it, until the watcher reports the edit (or 10 s pass, or the test
+// ends); it is reported with v1, then `resume()` starts the edit's build.
 test.each(['webpack', 'rspack'] as const)(
   '%s: rebuildAfter describes the rebuild of the edit when it lands during a build',
   async (bundler) => {
-    const slowBuilds = ({ root }: { root: string }) => ({
+    const overlap: Record<string, unknown> = {}
+    let compile!: () => void
+    const compiled = new Promise<void>((resolve) => (compile = resolve))
+    let release!: () => void
+    const released = new Promise<void>((resolve) => (release = resolve))
+    const bound = setTimeout(release, 10_000)
+    onTestFinished(() => {
+      clearTimeout(bound)
+      release()
+    })
+    const overlappingBuild = ({ root }: { root: string }) => ({
       apply(compiler: any) {
-        let touched = false
-        compiler.hooks.afterCompile.tapPromise(
-          'slow-builds',
-          () => new Promise((resolve) => setTimeout(resolve, 800)),
-        )
-        compiler.hooks.done.tapPromise('slow-builds', async () => {
-          if (!touched) {
-            touched = true
-            await writeFile(
-              path.join(root, 'touched.ts'),
-              `export const touched = 2\n`,
+        const versionIn = (code: string) => code.match(/["'](v\d)["']/)?.[1]
+        let started = 0
+        let reported = 0
+        compiler.hooks.watchRun.tap('overlap', () => {
+          started++
+          if (started === 2) {
+            overlap.startedOn = versionIn(
+              readFileSync(path.join(root, 'entry.ts'), 'utf8'),
             )
+          }
+        })
+        compiler.hooks.afterCompile.tapPromise('overlap', async () => {
+          if (started === 2 && reported === 1) {
+            compile()
+            await released
+          }
+        })
+        // The changes the watcher reports after its aggregation delay (what
+        // the next build takes as its modified files)
+        const { watchFileSystem } = compiler
+        const watch = watchFileSystem.watch.bind(watchFileSystem)
+        watchFileSystem.watch = (...args: Array<any>) => {
+          const onChanges = args.at(-2)
+          args[args.length - 2] = (...changes: Array<any>) => {
+            const changed: Set<string> | undefined = changes[3]
+            if (
+              started === 2 &&
+              [...(changed ?? [])].some((file) => file.endsWith('entry.ts'))
+            ) {
+              overlap.heldUntilEdit = true
+              release()
+            }
+            onChanges(...changes)
+          }
+          return watch(...args)
+        }
+        compiler.hooks.done.tapAsync(
+          'overlap',
+          ({ compilation }: any, callback: () => void) => {
+            reported++
+            if (reported === 1) {
+              compiler.watching.invalidate()
+              compiler.watching.suspend()
+              // Ends in a macrotask, as the bundler's own callbacks do: the
+              // watcher of build 1's files starts before the harness writes.
+              void compiled.then(() => setImmediate(callback))
+              return
+            }
+            if (reported === 2) {
+              overlap.reportedWith = versionIn(
+                compilation
+                  .getAssets()
+                  .map(({ name }: { name: string }) =>
+                    readFileSync(
+                      path.join(compilation.outputOptions.path, name),
+                      'utf8',
+                    ),
+                  )
+                  .join(),
+              )
+            }
+            callback()
+          },
+        )
+        compiler.hooks.afterDone.tap('overlap', () => {
+          if (reported === 2) {
+            // After the harness took the report: a harness that described
+            // build 2 has closed the watching, and no later build overwrites
+            // build 2's output.
+            setImmediate(() => compiler.watching?.resume())
           }
         })
       },
     })
     const app = await bundleApp({
       bundler,
-      files: {
-        'entry.ts': `import { touched } from './touched'\nexport const value = 'v1' + touched\n`,
-        'touched.ts': `export const touched = 1\n`,
-      },
-      plugins: { [bundler]: slowBuilds },
-      rebuildAfter: {
-        'entry.ts': `import { touched } from './touched'\nexport const value = 'v2' + touched\n`,
-      },
+      files: { 'entry.ts': `export const value = 'v1'\n` },
+      plugins: { [bundler]: overlappingBuild },
+      rebuildAfter: { 'entry.ts': `export const value = 'v2'\n` },
     })
-    expect((await app.run('return entry.value')).result).toBe('v22')
+    expect(overlap).toEqual({
+      startedOn: 'v1',
+      heldUntilEdit: true,
+      reportedWith: 'v1',
+    })
+    expect((await app.run('return entry.value')).result).toBe('v2')
   },
   timeout,
 )

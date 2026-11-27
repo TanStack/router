@@ -53,7 +53,9 @@ describe('expectDeterministic', () => {
   test('fails when one variant observes something else', async () => {
     await expect(
       expectDeterministic(reorderings(['b', 'a']), ({ items }) => items[0]),
-    ).rejects.toThrow()
+    ).rejects.toThrow(
+      "variant 1 vs variant 0: expected 'a' to deeply equal 'b'",
+    )
   })
 })
 
@@ -82,12 +84,14 @@ describe('expectRelocatable', () => {
       expectRelocatable(['/a'], observe, {
         check: (observation) => expect(observation.id).toBe('wrong'),
       }),
-    ).rejects.toThrow()
+    ).rejects.toThrow("expected '2' to be 'wrong'")
     await expect(
       expectRelocatable(['/a', '/b'], observe, {
         check: () => {},
         portable: (observation) => observation.file,
       }),
-    ).rejects.toThrow()
+    ).rejects.toThrow(
+      "/b vs /a: expected '/b/src/a.ts' to deeply equal '/a/src/a.ts'",
+    )
   })
 })
