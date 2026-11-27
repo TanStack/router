@@ -413,6 +413,8 @@ export const secret = () => 'MARK_SECRET'
       use: string
       others?: Array<string>
       type: Violation['type']
+      /** The specifier the callback gets, where the row checks it. */
+      specifier?: string
     }>([
       {
         name: 'a denied file',
@@ -445,10 +447,11 @@ export const read = () => getRequest()
         },
         use: 'src/entry.ts:2:27',
         type: 'specifier',
+        specifier: '@tanstack/react-start/server',
       },
     ])(
       'a callback that returns nothing does not allow $name: the build fails, and the callback gets a $type violation',
-      async ({ files, use, others = [], type }) => {
+      async ({ files, use, others = [], type, specifier }) => {
         const seen: Array<Violation> = []
         const error = await rejection(
           buildStart({
@@ -469,6 +472,11 @@ export const read = () => getRequest()
           { environment: 'client', use, also: ['src/entry.ts:1', ...others] },
         ])
         expect(distinct(seen.map((info) => info.type))).toEqual([type])
+        if (specifier !== undefined) {
+          expect(distinct(seen.map((info) => info.specifier))).toEqual([
+            specifier,
+          ])
+        }
       },
       timeout,
     )
@@ -533,36 +541,6 @@ export const read = () => getRequest()
             ({ text }) => text.includes('MARK_THROWN'),
           ),
         ).toBe(true)
-      },
-      timeout,
-    )
-
-    // Source: mutation testing (the `specifier` type of the table above).
-    test(
-      'the callback gets a specifier violation for an import of a denied specifier',
-      async () => {
-        const seen: Array<Violation> = []
-        await rejection(
-          buildStart({
-            bundler,
-            files: {
-              'src/entry.ts': `import { getRequest } from '@tanstack/react-start/server'
-export const read = () => getRequest()
-`,
-            },
-            entry: 'src/entry.ts',
-            start: {
-              importProtection: {
-                onViolation: (info) => {
-                  seen.push(info as Violation)
-                },
-              },
-            },
-          }),
-        )
-        expect(
-          distinct(seen.map((info) => `${info.type} ${info.specifier}`)),
-        ).toEqual(['specifier @tanstack/react-start/server'])
       },
       timeout,
     )
