@@ -19,6 +19,7 @@ import {
   queryDistinctModule,
   virtualFactories,
 } from '../compiler-inputs'
+import { untilInDom } from '../page-values'
 import type { Plugin } from 'vite'
 
 // Moved: the custom-id build test (formerly :223) is in
@@ -282,28 +283,16 @@ export function mount(element: HTMLElement) {
     expect(
       await inPage(
         served,
-        `const element = document.createElement('div')
+        `${untilInDom}
+const element = document.createElement('div')
 document.body.append(element)
 const { mount } = await load('mount.tsx')
 mount(element)
-const button = async () => {
-  for (let tries = 0; tries < 200; tries++) {
-    const found = element.querySelector('button')
-    if (found) return found
-    await new Promise((resolve) => setTimeout(resolve, 10))
-  }
-  throw new Error('the route component did not render')
-}
-;(await button()).click()
-for (let tries = 0; tries < 500; tries++) {
-  if (element.textContent) {
-    const results = JSON.parse(element.textContent)
-    element.remove()
-    return results
-  }
-  await new Promise((resolve) => setTimeout(resolve, 10))
-}
-throw new Error('the click gave no results: ' + element.innerHTML)`,
+const button = await untilInDom(element, () => element.querySelector('button') ?? undefined)
+button.click()
+const results = await untilInDom(element, () => button.textContent ? JSON.parse(button.textContent) : undefined)
+element.remove()
+return results`,
       ),
     ).toEqual({
       envOnClick: 'client',

@@ -21,6 +21,7 @@ import {
   serveCase,
   useStartHost,
 } from './regression-helpers'
+import { untilInDom } from './page-values'
 
 /** A JSX runtime package: React's, marking the elements it creates. */
 const runtime = (
@@ -232,22 +233,19 @@ export function Card() {
 const mountFile = `import { createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { Card } from './module'
+${untilInDom}
 export async function mount(text: string) {
   const container = document.createElement('div')
   document.body.append(container)
   const root = createRoot(container)
   root.render(createElement(Card))
   try {
-    for (let i = 0; i < 300; i++) {
-      const shown = [...container.querySelectorAll('*')].find(
+    const shown = await untilInDom(container, () =>
+      [...container.querySelectorAll('*')].find(
         (element) => element.textContent === text && element.children.length === 0,
-      )
-      if (shown) {
-        return shown.getAttribute('data-pragma')
-      }
-      await new Promise((resolve) => setTimeout(resolve, 10))
-    }
-    return 'not rendered: ' + container.innerHTML
+      ),
+    )
+    return shown.getAttribute('data-pragma')
   } finally {
     root.unmount()
     container.remove()

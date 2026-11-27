@@ -15,6 +15,35 @@ import { pagePrelude } from './start-host'
 export const shapeOf = `const shapeOf = (value) => JSON.parse(JSON.stringify(value, (key, inner) => typeof inner === 'function' ? '<function>' : inner) ?? 'null')`
 
 /**
+ * Page source of `untilInDom(container, read)`: resolves with what `read()`
+ * gives once it is not `undefined`, checked now and on every change of the
+ * DOM under `container` (a render, a state update after a server call);
+ * rejects with the container's HTML when nothing shows within 8 s (the page
+ * run's own bound is 10 s). Prepend it to a page script or a case module.
+ */
+export const untilInDom = `const untilInDom = (container, read) =>
+  new Promise((resolve, reject) => {
+    const done = (settle) => {
+      observer.disconnect()
+      clearTimeout(timer)
+      settle()
+    }
+    const check = () => {
+      const value = read()
+      if (value !== undefined) {
+        done(() => resolve(value))
+      }
+    }
+    const observer = new MutationObserver(check)
+    const timer = setTimeout(
+      () => done(() => reject(new Error('nothing showed: ' + container.innerHTML))),
+      8000,
+    )
+    observer.observe(container, { subtree: true, childList: true, characterData: true, attributes: true })
+    check()
+  })`
+
+/**
  * A page expression of what the client must get of the options of the
  * middleware `middleware` (a page expression): its `type`, and whether a
  * server implementation or a validator ships (`server`, `validator`: `true`
