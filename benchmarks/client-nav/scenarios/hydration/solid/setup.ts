@@ -4,11 +4,21 @@ import { fileURLToPath } from 'node:url'
 import { Script } from 'node:vm'
 import { JSDOM, VirtualConsole } from 'jsdom'
 import { clientUrl, hashLinkCount, ordinaryLinkCount } from './fixture'
+import type { DOMWindow } from 'jsdom'
 import type { FixtureArtifact } from './fixture'
 import type * as Client from './src/client'
 
 type ClientApp = typeof Client
 const turn = () => new Promise<void>((resolve) => setImmediate(resolve))
+// jsdom queues DOMContentLoaded and load as separate tasks after parsing.
+const documentLoaded = (window: DOMWindow) =>
+  new Promise<void>((resolve) => {
+    if (window.document.readyState === 'complete') {
+      resolve()
+      return
+    }
+    window.addEventListener('load', () => resolve(), { once: true })
+  })
 const maxSettleTurns = 100
 
 export function setup({ countUpdates = false } = {}) {
@@ -105,7 +115,7 @@ export function setup({ countUpdates = false } = {}) {
       // Retain every workload element, not only the parent and the anchors.
       const elements = Array.from(content.querySelectorAll('*'))
       const documentElement = doc.documentElement
-      await turn()
+      await documentLoaded(dom.window)
       assert.equal(doc.readyState, 'complete')
       assert.equal(app.ready(), false)
       assert.deepEqual(errors, [])

@@ -5,11 +5,21 @@ import { Script } from 'node:vm'
 import { JSDOM, VirtualConsole } from 'jsdom'
 import { clientUrl, hashLinkCount, ordinaryLinkCount } from './fixture'
 import { settleHydration } from './settle'
+import type { DOMWindow } from 'jsdom'
 import type { FixtureArtifact } from './fixture'
 import type * as Client from './src/client'
 
 type ClientApp = typeof Client
 const turn = () => new Promise<void>((resolve) => setImmediate(resolve))
+// jsdom queues DOMContentLoaded and load as separate tasks after parsing.
+const documentLoaded = (window: DOMWindow) =>
+  new Promise<void>((resolve) => {
+    if (window.document.readyState === 'complete') {
+      resolve()
+      return
+    }
+    window.addEventListener('load', () => resolve(), { once: true })
+  })
 
 // React's scheduler ends a time slice once performance.now() has advanced 5 ms.
 // Under CodSpeed's CPU simulation the wall clock advances much further per
@@ -104,7 +114,7 @@ export function setup({ countRenders = false } = {}) {
       const content = dom.window.document.getElementById('hydration-content')
       assert.ok(content)
       // Finish jsdom's initial document lifecycle before opening the measure.
-      await turn()
+      await documentLoaded(dom.window)
       assert.equal(dom.window.document.readyState, 'complete')
       assert.equal(app.ready(), false)
       return {
