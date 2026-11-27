@@ -59,7 +59,10 @@ const manifest = {
 }
 
 export async function getServerFnById(id, access) {
-  const serverFnInfo = manifest[id]
+  // Own entries only, so ids like 'constructor' stay unknown.
+  const serverFnInfo = Object.prototype.hasOwnProperty.call(manifest, id)
+    ? manifest[id]
+    : undefined
   if (!serverFnInfo) {
     throw new Error('Server function info not found for ' + id)
   }
