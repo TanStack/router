@@ -6,12 +6,45 @@ import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import ts from 'typescript'
 import { linkDirectory } from '@tanstack/compiler-test-utils/app-directory'
+import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 
 /** The packages this package's tests may use (the router packages, React). */
 const nodeModules = path.resolve(import.meta.dirname, '../node_modules')
 
 /** The program of the last check. */
 let previousProgram: ts.Program | undefined
+
+/**
+ * Parsed declarations outside the run directory (TypeScript's libraries and
+ * the packages', at their real paths): no test writes them, so every program
+ * shares them. The apps' own files, in the run directory, are read anew.
+ * (The programs have other root files, so `oldProgram` alone reuses none.)
+ */
+const sharedSourceFiles = new Map<string, ts.SourceFile | undefined>()
+
+function compilerHost(options: ts.CompilerOptions) {
+  const host = ts.createCompilerHost(options)
+  const getSourceFile = host.getSourceFile
+  const appFiles = runDirectory().replaceAll(path.sep, '/') + '/'
+  host.getSourceFile = (fileName, languageVersion, ...rest) => {
+    if (fileName.replaceAll(path.sep, '/').startsWith(appFiles)) {
+      return getSourceFile(fileName, languageVersion, ...rest)
+    }
+    const version =
+      typeof languageVersion === 'object'
+        ? `${languageVersion.languageVersion}:${languageVersion.impliedNodeFormat}`
+        : `${languageVersion}`
+    const key = `${version}:${fileName}`
+    if (!sharedSourceFiles.has(key)) {
+      sharedSourceFiles.set(
+        key,
+        getSourceFile(fileName, languageVersion, ...rest),
+      )
+    }
+    return sharedSourceFiles.get(key)
+  }
+  return host
+}
 
 /**
  * A strict program over `rootNames` and the modules they import, resolving
@@ -22,19 +55,21 @@ function createProgram(
   rootNames: Array<string>,
   lib = ['lib.es2022.d.ts', 'lib.dom.d.ts'],
 ) {
+  const options: ts.CompilerOptions = {
+    strict: true,
+    noEmit: true,
+    skipLibCheck: true,
+    jsx: ts.JsxEmit.ReactJSX,
+    module: ts.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.Bundler,
+    target: ts.ScriptTarget.ES2022,
+    lib,
+    types: [],
+  }
   const program = ts.createProgram({
     rootNames,
-    options: {
-      strict: true,
-      noEmit: true,
-      skipLibCheck: true,
-      jsx: ts.JsxEmit.ReactJSX,
-      module: ts.ModuleKind.ESNext,
-      moduleResolution: ts.ModuleResolutionKind.Bundler,
-      target: ts.ScriptTarget.ES2022,
-      lib,
-      types: [],
-    },
+    options,
+    host: compilerHost(options),
     // (the package type definitions of the previous check are reused)
     oldProgram: previousProgram,
   })
