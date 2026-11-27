@@ -423,20 +423,45 @@ export { label } from './client-only'
   test(
     'a temporary directory that does not exist: the watch build succeeds and warns, a save rebuilds both environments; with the directory made, the server follows the client',
     async () => {
-      const slowClient: Plugin = {
-        name: 'test:slow-client-watch-change',
-        async watchChange() {
-          if (this.environment.name === 'client') {
-            await new Promise((resolve) => setTimeout(resolve, 500))
-          }
-        },
+      const saved = path.join('src', 'routes', 'index.tsx')
+      /**
+       * Holds the client's report of the save until the server's build of
+       * it began (at most 10 s): the client builds the save after the
+       * server.
+       */
+      const slowClient = (): Plugin => {
+        let serverSaw = false
+        let serverBuilding!: () => void
+        const serverBuilds = new Promise<void>(
+          (resolve) => (serverBuilding = resolve),
+        )
+        return {
+          name: 'test:slow-client-watch-change',
+          buildStart() {
+            if (this.environment.name === 'ssr' && serverSaw) {
+              serverBuilding()
+            }
+          },
+          async watchChange(id) {
+            if (!id.endsWith(saved)) {
+              return
+            }
+            if (this.environment.name === 'ssr') {
+              serverSaw = true
+            } else if (this.environment.name === 'client') {
+              const timer = setTimeout(serverBuilding, 10_000)
+              await serverBuilds
+              clearTimeout(timer)
+            }
+          },
+        }
       }
       const save = () =>
         buildStart({
           bundler: 'vite',
           files: pageApp,
           entry: pageEntry,
-          viteConfig: { plugins: [slowClient] },
+          viteConfig: { plugins: [slowClient()] },
           watchEdits: { 'src/routes/index.tsx': index('MARK_EDIT') },
         })
       const missing = path.join(

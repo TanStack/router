@@ -160,18 +160,26 @@ describe(`Rspack ${rspack.rspackVersion}: rebuildModule calls of one tick`, () =
         graph,
         // a.js no longer imports h.js: h.js leaves the graph
         { swap: { 'a.js': 'export const a = 2\n' }, second: [] },
-        async (compilation, moduleOf, runs) => {
-          let built: Array<string> | null = null
-          for (const name of ['entry.js', 'a.js', 'h.js', 'k.js']) {
-            compilation.rebuildModule(moduleOf(name), () => {
-              if (name === 'entry.js') {
-                built = runs()
-              }
-            })
-          }
-          await new Promise((r) => setTimeout(r, 1000))
-          return built as Array<string> | null
-        },
+        (compilation, moduleOf, runs) =>
+          // (what had run when the entry's callback came, once every
+          // callback came, or by the deadline)
+          new Promise<Array<string> | null>((resolve) => {
+            const names = ['entry.js', 'a.js', 'h.js', 'k.js']
+            let built: Array<string> | null = null
+            let called = 0
+            const timer = setTimeout(() => resolve(built), 10_000)
+            for (const name of names) {
+              compilation.rebuildModule(moduleOf(name), () => {
+                if (name === 'entry.js') {
+                  built = runs()
+                }
+                if (++called === names.length) {
+                  clearTimeout(timer)
+                  resolve(built)
+                }
+              })
+            }
+          }),
       )
       expect(atEntry?.sort()).toEqual(['a.js', 'entry.js', 'k.js'])
     },
