@@ -8,6 +8,7 @@
   "tui": {
     "enabled": false
   },
+  "bust-cach": 1,
   "namedInputs": {
     "sharedGlobals": [
       "{workspaceRoot}/.npmrc",
