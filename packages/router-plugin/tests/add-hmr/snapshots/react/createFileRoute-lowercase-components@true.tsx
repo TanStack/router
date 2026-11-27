@@ -5,8 +5,7 @@ const $$splitErrorComponentImporter = () =>
 import { lazyRouteComponent } from '@tanstack/react-router'
 import { createFileRoute } from '@tanstack/react-router'
 const TSRSplitErrorComponent = (() => {
-  const hot = import.meta.hot
-  const hotData = hot ? (hot.data ??= {}) : undefined
+  const hotData = import.meta.hot ? (import.meta.hot.data ??= {}) : undefined
   return (
     hotData?.['tsr-split-component:errorComponent'] ??
     lazyRouteComponent($$splitErrorComponentImporter, 'errorComponent')
@@ -17,8 +16,7 @@ if (import.meta.hot) {
     TSRSplitErrorComponent
 }
 const TSRSplitComponent = (() => {
-  const hot = import.meta.hot
-  const hotData = hot ? (hot.data ??= {}) : undefined
+  const hotData = import.meta.hot ? (import.meta.hot.data ??= {}) : undefined
   return (
     hotData?.['tsr-split-component:component'] ??
     lazyRouteComponent($$splitComponentImporter, 'component')

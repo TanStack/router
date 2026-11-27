@@ -4,16 +4,18 @@ import { createReactStableHmrSplitRouteComponentsPlugin } from './react-stable-h
 import type { CodeSplitCompilerPlugin } from '../plugins'
 import type { Config } from '../../config'
 import type { HmrStyle } from '../../hmr'
+import type { UnpluginContextMeta } from 'unplugin'
 
 export function getFrameworkHmrCompilerPlugins(opts: {
   targetFramework: Config['target']
   hmrStyle?: HmrStyle
+  framework?: UnpluginContextMeta['framework']
 }): Array<CodeSplitCompilerPlugin> | undefined {
   switch (opts.targetFramework) {
     case 'react': {
       const hmrStyle = opts.hmrStyle ?? 'vite'
       return [
-        ...(hmrStyle === 'vite'
+        ...(hmrStyle === 'vite' && opts.framework !== 'bun'
           ? [createReactRefreshIgnoredRouteExportsPlugin()]
           : []),
         createReactRefreshRouteComponentsPlugin(),

@@ -62,6 +62,7 @@ export async function getRouteNodes(
 
   const routeNodes: Array<RouteNode> = []
   const allPhysicalDirectories: Array<string> = []
+  const allConfigFilePaths: Array<string> = []
 
   async function recurse(dir: string) {
     const fullDir = path.resolve(config.routesDirectory, dir)
@@ -98,7 +99,7 @@ export async function getRouteNodes(
     })
 
     if (virtualConfigFile !== undefined) {
-      const virtualRouteConfigExport = await loadConfigFile(
+      const { exports: virtualRouteConfigExport, cache } = await loadConfigFile(
         path.resolve(fullDir, virtualConfigFile.name),
       )
       let virtualRouteSubtreeConfig: VirtualRouteSubtreeConfig
@@ -107,22 +108,27 @@ export async function getRouteNodes(
       } else {
         virtualRouteSubtreeConfig = virtualRouteConfigExport.default
       }
+      allConfigFilePaths.push(...Object.keys(cache))
       const dummyRoot: VirtualRootRoute = {
         type: 'root',
         file: '',
         children: virtualRouteSubtreeConfig,
       }
-      const { routeNodes: virtualRouteNodes, physicalDirectories } =
-        await getRouteNodesVirtual(
-          {
-            ...config,
-            routesDirectory: fullDir,
-            virtualRouteConfig: dummyRoot,
-          },
-          root,
-          tokenRegexes,
-        )
+      const {
+        routeNodes: virtualRouteNodes,
+        physicalDirectories,
+        configFilePaths,
+      } = await getRouteNodesVirtual(
+        {
+          ...config,
+          routesDirectory: fullDir,
+          virtualRouteConfig: dummyRoot,
+        },
+        root,
+        tokenRegexes,
+      )
       allPhysicalDirectories.push(...physicalDirectories)
+      allConfigFilePaths.push(...(configFilePaths ?? []))
       virtualRouteNodes.forEach((node) => {
         const normalizedDir = dir === './' ? '' : dir
         const filePath = replaceBackslash(
@@ -379,6 +385,7 @@ export async function getRouteNodes(
     rootRouteNode,
     routeNodes,
     physicalDirectories: allPhysicalDirectories,
+    configFilePaths: allConfigFilePaths,
   }
 }
 

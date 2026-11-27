@@ -3,6 +3,8 @@
  * https://github.com/TanStack/router/pull/3355
  */
 
+import { readFile } from 'node:fs/promises'
+import { dirname, extname, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { decodeIdentifier, logDiff } from '@tanstack/router-utils'
 import { getConfig, splitGroupingsSchema } from './config'
@@ -17,6 +19,7 @@ import { getFrameworkHmrCompilerPlugins } from './code-splitter/plugins/framewor
 import {
   defaultCodeSplitGroupings,
   splitRouteIdentNodes,
+  tsrShared,
   tsrSplit,
 } from './constants'
 import { debug, normalizePath, routeFactoryCallCodeFilter } from './utils'
@@ -28,12 +31,68 @@ import type { Config } from './config'
 import type { HmrStyle } from './hmr'
 import type { RouterPluginContext } from './router-plugin-context'
 import type {
+  UnpluginContextMeta,
   UnpluginFactory,
+  UnpluginOptions,
   TransformResult as UnpluginTransformResult,
 } from 'unplugin'
 
 const CODE_SPLITTER_PLUGIN_NAME =
   'tanstack-router:code-splitter:compile-reference-file'
+
+// Query identities are separate Bun modules, backed by the original route source.
+function bunRouteModule(
+  parameter: typeof tsrSplit | typeof tsrShared,
+  transform: (code: string, id: string) => UnpluginTransformResult,
+): NonNullable<UnpluginOptions['bun']> {
+  const namespace = `tanstack-router-${parameter}`
+  return {
+    setup(build) {
+      build.onResolve({ filter: new RegExp(`[?&]${parameter}=`) }, (args) => {
+        const [filename, query] = args.path.split('?')
+        return {
+          path: `${normalizePath(resolve(args.resolveDir, filename!))}?${query}`,
+          namespace,
+        }
+      })
+      build.onLoad({ filter: /.*/, namespace }, async (args) => {
+        const [filename] = args.path.split('?')
+        const code = await readFile(filename!, 'utf8')
+        const result = transform(code, args.path)
+        const extension = extname(filename!)
+        let contents =
+          typeof result === 'string' ? result : (result?.code ?? code)
+        if (
+          build.config.sourcemap &&
+          build.config.sourcemap !== 'none' &&
+          result &&
+          typeof result !== 'string' &&
+          result.map
+        ) {
+          const map =
+            typeof result.map === 'string' ? JSON.parse(result.map) : result.map
+          // The query selects a module; mappings still refer to the physical file.
+          const sourceMap = { ...map, sources: [pathToFileURL(filename!).href] }
+          contents += `\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,${Buffer.from(JSON.stringify(sourceMap)).toString('base64')}`
+        }
+        return {
+          contents,
+          loader:
+            build.config.loader?.[extension] ??
+            (extension === '.tsx'
+              ? 'tsx'
+              : extension === '.jsx'
+                ? 'jsx'
+                : /\.[cm]?ts$/.test(filename!)
+                  ? 'ts'
+                  : 'js'),
+          resolveDir: dirname(filename!),
+          watchFiles: [filename!],
+        }
+      })
+    },
+  }
+}
 
 type TransformationPluginInfo = {
   pluginNames: Array<string>
@@ -82,6 +141,7 @@ export function createRouterCodeSplitterPlugin(
   options: Partial<Config | (() => Config)> | undefined = {},
   routerPluginContext: RouterPluginContext,
   hmrStyle: HmrStyle = 'vite',
+  framework?: UnpluginContextMeta['framework'],
 ): ReturnType<UnpluginFactory<Partial<Config | (() => Config)> | undefined>> {
   let ROOT: string = process.cwd()
   let userConfig: Config
@@ -103,6 +163,7 @@ export function createRouterCodeSplitterPlugin(
       ? (getFrameworkHmrCompilerPlugins({
           targetFramework: userConfig.target,
           hmrStyle,
+          framework,
         }) ?? [])
       : []
     virtualRouteCompilerPlugins = compilerPlugins.filter(
@@ -250,10 +311,51 @@ export function createRouterCodeSplitterPlugin(
     return result
   }
 
+  const handleCompilingSharedFile = (
+    code: string,
+    id: string,
+  ): UnpluginTransformResult => {
+    const url = pathToFileURL(id)
+    url.searchParams.delete('v')
+    const normalizedId = normalizePath(fileURLToPath(url))
+    const [baseId] = normalizedId.split('?')
+
+    if (!baseId) {
+      return null
+    }
+    const sharedBindings = sharedBindingsMap.get(baseId)
+    if (!sharedBindings || sharedBindings.size === 0) {
+      return null
+    }
+    if (debug) {
+      console.info('Compiling Shared Module: ', id)
+    }
+    const result = compileCodeSplitSharedRoute({
+      code,
+      sharedBindings,
+      filename: normalizedId,
+    })
+    if (debug) {
+      logDiff(code, result.code)
+      console.log('Output:\n', result.code + '\n\n')
+    }
+    return result
+  }
+
   return [
     {
       name: 'tanstack-router:code-splitter:compile-reference-file',
       enforce: 'pre',
+
+      bun: {
+        setup(build) {
+          isProduction = !(
+            'reactFastRefresh' in build.config && build.config.reactFastRefresh
+          )
+          initUserConfig()
+          sharedBindingsMap.clear()
+        },
+      },
 
       transform: {
         filter: {
@@ -343,6 +445,8 @@ export function createRouterCodeSplitterPlugin(
       name: 'tanstack-router:code-splitter:compile-virtual-file',
       enforce: 'pre',
 
+      bun: bunRouteModule(tsrSplit, handleCompilingVirtualFile),
+
       transform: {
         filter: {
           id: /tsr-split/,
@@ -368,36 +472,13 @@ export function createRouterCodeSplitterPlugin(
       name: 'tanstack-router:code-splitter:compile-shared-file',
       enforce: 'pre',
 
+      bun: bunRouteModule(tsrShared, handleCompilingSharedFile),
+
       transform: {
         filter: {
           id: /tsr-shared/,
         },
-        handler(code, id) {
-          const url = pathToFileURL(id)
-          url.searchParams.delete('v')
-          const normalizedId = normalizePath(fileURLToPath(url))
-          const [baseId] = normalizedId.split('?')
-
-          if (!baseId) return null
-
-          const sharedBindings = sharedBindingsMap.get(baseId)
-          if (!sharedBindings || sharedBindings.size === 0) return null
-
-          if (debug) console.info('Compiling Shared Module: ', id)
-
-          const result = compileCodeSplitSharedRoute({
-            code,
-            sharedBindings,
-            filename: normalizedId,
-          })
-
-          if (debug) {
-            logDiff(code, result.code)
-            console.log('Output:\n', result.code + '\n\n')
-          }
-
-          return result
-        },
+        handler: handleCompilingSharedFile,
       },
 
       vite: {
@@ -414,6 +495,11 @@ export function createRouterCodeSplitterPlugin(
 
 export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
   Partial<Config | (() => Config)> | undefined
-> = (options = {}) => {
-  return createRouterCodeSplitterPlugin(options, createRouterPluginContext())
+> = (options = {}, meta) => {
+  return createRouterCodeSplitterPlugin(
+    options,
+    createRouterPluginContext(),
+    'vite',
+    meta.framework,
+  )
 }
