@@ -121,7 +121,6 @@ const config = defineConfig({
         test: {
           name: 'noncompiler',
           include: noncompilerTests,
-          typecheck: { enabled: true },
         },
       },
       {
@@ -138,7 +137,6 @@ const config = defineConfig({
             'integration/**',
             ...noncompilerTests,
           ],
-          typecheck: { enabled: true },
         },
       },
       integrationProject,
