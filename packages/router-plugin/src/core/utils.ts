@@ -23,7 +23,7 @@ export const routeFactoryCallCodeFilter = [
 ]
 
 export function getObjectPropertyKeyName(
-  prop: t.ObjectProperty,
+  prop: t.ObjectProperty | t.ObjectMethod,
 ): string | undefined {
   if (prop.computed) {
     return undefined
