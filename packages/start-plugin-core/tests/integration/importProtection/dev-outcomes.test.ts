@@ -12,7 +12,7 @@ import {
   expectNoDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import {
@@ -366,14 +366,11 @@ export const page = () => secret()
  * mode, the dev default) and in mock-mode builds. `src/entry.ts` exports
  * `read()`, which returns what the app gets from its denied import, as an
  * array of values; each must be a safe mock (`a safe mock`) unless a row
- * expects a real value, and the app must load or build.
+ * expects a real value, and the app must load or build. Every twin is a
+ * directory of one app per channel (`outcomeOf`).
  * Source: review (missing coverage, computed keys).
  */
 describe('app-level twins of the mock pins', () => {
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-
   /** A dependency `name` exporting `query` and `epsilon`, denied by `client.specifiers`. */
   const deniedDependency = (name: string) => ({
     [`node_modules/${name}/package.json`]: JSON.stringify({
@@ -567,44 +564,142 @@ export const read = () => [Color.Red, Util.x]
     },
   }
 
-  for (const [name, twin] of Object.entries(twins)) {
-    const { files, importProtection = {}, expected = [mock] } = twin
-    test(`vite dev: ${name}`, async () => {
-      const server = await startBrowserProtectedDevServer(
-        files,
-        importProtection,
-      )
-      // The mock reports each use in the browser console.
-      vi.spyOn(console, 'error').mockImplementation(() => {})
-      const { result } = await runViteClient(
-        server,
-        '/src/entry.ts',
-        `${describeValuePrelude}
-return entry.read().map((value) => describeValue(value, 'MARK_SECRET'))`,
-      )
-      expect(result).toEqual(expected)
-    }, 30_000)
-    for (const bundler of startBundlers) {
-      test(`${bundler} build, mock mode: ${name}`, async () => {
+  /**
+   * Every twin in one app: twin `i` is `src/t<i>/` (its `src/` files moved
+   * there, `MARK_SECRET` in them made `MARK_SECRET_T<i>_`), the packages
+   * shared (`db-lib`'s secret `MARK_SECRET_DBLIB`); the entry gives each
+   * twin's `read` by name, and the denied specifiers of every twin are
+   * denied (only the twins naming one import it).
+   */
+  const names = Object.keys(twins)
+  const twinFiles = (i: number): Record<string, string> =>
+    Object.fromEntries(
+      Object.entries(twins[names[i]!]!.files).map(([file, text]) =>
+        file.startsWith('src/')
+          ? [
+              file.replace(/^src\//, `src/t${i}/`),
+              text.replaceAll('MARK_SECRET', `MARK_SECRET_T${i}_`),
+            ]
+          : [file, text.replaceAll('MARK_SECRET', 'MARK_SECRET_DBLIB')],
+      ),
+    )
+  const app: Record<string, string> = {
+    ...Object.assign({}, ...names.map((_, i) => twinFiles(i))),
+    'src/entry.ts': `${names.map((_, i) => `import * as t${i} from './t${i}/entry'`).join('\n')}
+export const reads: Record<string, () => Array<unknown>> = {
+${names.map((name, i) => `  ${JSON.stringify(name)}: t${i}.read,`).join('\n')}
+}
+`,
+  }
+  const twinOptions: ImportProtectionOptions = {
+    client: {
+      specifiers: [
+        ...new Set(
+          Object.values(twins).flatMap(
+            ({ importProtection }) =>
+              importProtection?.client?.specifiers ?? [],
+          ),
+        ),
+      ],
+    },
+  }
+  /** The script of every channel: what each twin's `read()` gives, described. */
+  const script = `${describeValuePrelude}
+return Object.fromEntries(
+  Object.entries(entry.reads).map(([name, read]) => {
+    try {
+      return [name, read().map((value) => describeValue(value, 'MARK_SECRET'))]
+    } catch (error) {
+      return [name, ['throws: ' + String(error)]]
+    }
+  }),
+)`
+  /** The secrets of twin `i` (none may reach a client bundle). */
+  const secretsOf = (i: number) => [
+    ...new Set(
+      Object.values(twinFiles(i)).flatMap(
+        (text) => text.match(/MARK_SECRET\w*/g) ?? [],
+      ),
+    ),
+  ]
+
+  type Channel = 'vite dev' | `${(typeof startBundlers)[number]} build`
+  const outcomes = new Map<
+    Channel,
+    Promise<{
+      read: Record<string, Array<string>>
+      hasRealCode: (i: number) => boolean
+    }>
+  >()
+  /** What each twin gives on `channel` (and whether its secrets shipped), the app served or built once. */
+  function outcomeOf(channel: Channel) {
+    let outcome = outcomes.get(channel)
+    if (!outcome) {
+      outcome = (async () => {
+        if (channel === 'vite dev') {
+          const server = await startBrowserProtectedDevServer(app, twinOptions)
+          // The mock reports each use in the browser console.
+          const silenced = vi
+            .spyOn(console, 'error')
+            .mockImplementation(() => {})
+          try {
+            const { result } = await runViteClient(
+              server,
+              '/src/entry.ts',
+              script,
+            )
+            return {
+              read: result as Record<string, Array<string>>,
+              hasRealCode: () => false,
+            }
+          } finally {
+            silenced.mockRestore()
+          }
+        }
         const { client } = await buildStart({
-          bundler,
-          files,
+          bundler: channel === 'vite build' ? 'vite' : 'rsbuild',
+          files: app,
           entry: 'src/entry.ts',
           start: {
             importProtection: {
-              ...importProtection,
+              ...twinOptions,
               behavior: 'mock',
               mockAccess: 'off',
             },
           },
         })
-        expect({
-          read: (
-            await client.run(`${describeValuePrelude}
-return entry.read().map((value) => describeValue(value, 'MARK_SECRET'))`)
-          ).result,
-          hasRealCode: client.where('MARK_SECRET') !== 'nowhere',
-        }).toEqual({ read: expected, hasRealCode: false })
+        const read = (await client.run(script)).result as Record<
+          string,
+          Array<string>
+        >
+        const shipped = new Set(
+          names.flatMap((_, i) =>
+            secretsOf(i).filter((secret) => client.where(secret) !== 'nowhere'),
+          ),
+        )
+        return {
+          read,
+          hasRealCode: (i) =>
+            secretsOf(i).some((secret) => shipped.has(secret)),
+        }
+      })()
+      outcomes.set(channel, outcome)
+    }
+    return outcome
+  }
+
+  for (const [i, name] of names.entries()) {
+    const { expected = [mock] } = twins[name]!
+    test(`vite dev: ${name}`, async () => {
+      expect((await outcomeOf('vite dev')).read[name]).toEqual(expected)
+    }, 30_000)
+    for (const bundler of startBundlers) {
+      test(`${bundler} build, mock mode: ${name}`, async () => {
+        const { read, hasRealCode } = await outcomeOf(`${bundler} build`)
+        expect({ read: read[name], hasRealCode: hasRealCode(i) }).toEqual({
+          read: expected,
+          hasRealCode: false,
+        })
       }, 60_000)
     }
   }
