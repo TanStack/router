@@ -9,7 +9,7 @@
  * route file added between them, each generate the tree of their own files,
  * whether the config file gives each build new plugin objects or a program
  * passes the same ones inline. A watch build follows route files created
- * while it watches. Vite 6 and 7 are aliased packages
+ * while it watches, and no longer once its watchers closed. Vite 6 and 7 are aliased packages
  * (`@tanstack/compiler-vite-versions`); the suite's own is Vite 8.
  */
 import { readFile, readdir, writeFile } from 'node:fs/promises'
@@ -249,14 +249,30 @@ describe.each(versions)('Vite $major', ({ major, load }) => {
 
   // (Vite's watcher reports the files of the
   // bundle only: the created route file never joined the tree, not even at
-  // a later rebuild)
+  // a later rebuild). The first row then closes the watchers: a route file
+  // created afterwards joins no tree.
   test.each([
-    { plugins: 'the config file', watch: 'the top level', inline: false },
-    { plugins: 'the config file', watch: 'each environment', inline: false },
-    { plugins: 'inline plugins', watch: 'the top level', inline: true },
+    {
+      plugins: 'the config file',
+      watch: 'the top level',
+      inline: false,
+      closing: ', and no longer once its watchers closed',
+    },
+    {
+      plugins: 'the config file',
+      watch: 'each environment',
+      inline: false,
+      closing: '',
+    },
+    {
+      plugins: 'inline plugins',
+      watch: 'the top level',
+      inline: true,
+      closing: '',
+    },
   ])(
-    'a watch build with $plugins, watching at $watch, follows a route file created while it watches',
-    async ({ watch, inline }) => {
+    'a watch build with $plugins, watching at $watch, follows a route file created while it watches$closing',
+    async ({ watch, inline, closing }) => {
       const { createBuilder } = await vite()
       const app = await routerApp(major)
       const config = app.buildConfig({
@@ -271,11 +287,12 @@ describe.each(versions)('Vite $major', ({ major, load }) => {
           environment.build!.watch = {}
         }
       }
-      const { ended } = await watchBuild(await createBuilder(config))
+      const { ended, close } = await watchBuild(await createBuilder(config))
       if (!inline) {
         expect(app.generations()).toBe(1)
       }
       const rebuilt = Promise.all([ended('client'), ended('ssr')])
+      const written = Date.now()
       await writeFile(
         path.join(app.root, 'routes/later.tsx'),
         `${head}export const Route = createFileRoute('/later')({ loader: () => 'MARK_LATER' })\n`,
@@ -285,6 +302,7 @@ describe.each(versions)('Vite $major', ({ major, load }) => {
         rebuilt,
         new Promise((resolve) => setTimeout(resolve, 20_000)),
       ])
+      const reaction = Date.now() - written
       expect(await treeRoutes(app.root)).toEqual(['/', '/later'])
       expect(await output(path.join(app.root, 'dist/client'))).toContain(
         'MARK_LATER',
@@ -292,40 +310,23 @@ describe.each(versions)('Vite $major', ({ major, load }) => {
       expect(await output(path.join(app.root, 'dist/ssr'))).toContain(
         'MARK_LATER',
       )
+      if (!closing) {
+        return
+      }
+      await close()
+      await writeFile(
+        path.join(app.root, 'routes/closed.tsx'),
+        route('/closed'),
+      )
+      // Nothing reacting cannot be awaited: watched at least three times as
+      // long as the open watchers took to rebuild the route above
+      await new Promise((resolve) =>
+        setTimeout(resolve, Math.max(1_000, 3 * reaction)),
+      )
+      expect(await treeRoutes(app.root)).toEqual(['/', '/later'])
     },
     60_000,
   )
-
-  test('a watch build whose watchers closed no longer generates the route tree', async () => {
-    const { createBuilder } = await vite()
-    const app = await routerApp(major)
-    const { ended, close } = await watchBuild(
-      await createBuilder(
-        app.buildConfig({
-          build: { watch: {}, rollupOptions: { external: [/^@tanstack\//] } },
-        }),
-      ),
-    )
-    // (a route file the open watchers build: their watching is live)
-    const rebuilt = Promise.all([ended('client'), ended('ssr')])
-    await writeFile(
-      path.join(app.root, 'routes/first.tsx'),
-      `${head}export const Route = createFileRoute('/first')({ loader: () => 'MARK_FIRST' })\n`,
-    )
-    await rebuilt
-    expect(await treeRoutes(app.root)).toEqual(['/', '/first'])
-    expect(await output(path.join(app.root, 'dist/client'))).toContain(
-      'MARK_FIRST',
-    )
-    expect(await output(path.join(app.root, 'dist/ssr'))).toContain(
-      'MARK_FIRST',
-    )
-    await close()
-    await writeFile(path.join(app.root, 'routes/later.tsx'), route('/later'))
-    // (a watcher still open reports the file well within this)
-    await new Promise((resolve) => setTimeout(resolve, 1_000))
-    expect(await treeRoutes(app.root)).toEqual(['/', '/first'])
-  }, 60_000)
 
   test('a dev server generates the route tree once', async () => {
     const { createServer } = await vite()
