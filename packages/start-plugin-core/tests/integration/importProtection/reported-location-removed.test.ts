@@ -152,7 +152,7 @@ export const readServer = createIsomorphicFn().server(() => widget())
    * which each case `name` is `src/<name>/a.ts` (the server entry
    * re-exports each as a namespace) and imports a client-only
    * `src/<name>/widget.client.ts` of its own, by case (`of`), and whole
-   * (`all`), and whether the build failed: one app per channel and group.
+   * (`all`: every callback, sorted, duplicates kept), and whether the build failed: one app per channel and group.
    */
   async function serverReportsOfCases(
     channel: ServerChannel,
@@ -208,17 +208,17 @@ export const readServer = createIsomorphicFn().server(() => widget())
         },
       )
     }
-    const reports = distinct(
-      reportedViolations(output).map(
-        ({ environment, importer }) => `${environment} ${importer}`,
-      ),
+    // (every callback, duplicates kept: what the whole app is checked on)
+    const raw = reportedViolations(output).map(
+      ({ environment, importer }) => `${environment} ${importer}`,
     )
+    const reports = distinct(raw)
     return {
       of: (name) =>
         reports.filter((report) =>
           report.split(' ')[1]!.startsWith(`src/${name}/a.ts`),
         ),
-      all: reports,
+      all: raw.sort(),
       failed,
       // (a compile error that is no report: of a case printed with another's)
       otherErrors: otherErrorsOf(
@@ -289,9 +289,15 @@ export const readServer = createIsomorphicFn().server(() => widget())
     async (channel) => {
       const { all, otherErrors } = await groupReports(channel, 'kept')
       expect(otherErrors).toEqual([])
+      // (the raw list: a duplicated callback fails)
       expect(
-        all.map((report) => locationParts(report.split(' ')[1]!).file).sort(),
-      ).toEqual(groups.kept.map((name) => `src/${name}/a.ts`).sort())
+        all
+          .map((report) => {
+            const [environment, importer] = report.split(' ')
+            return `${environment} ${locationParts(importer!).file}`
+          })
+          .sort(),
+      ).toEqual(groups.kept.map((name) => `server src/${name}/a.ts`).sort())
     },
     timeout,
   )

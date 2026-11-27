@@ -73,7 +73,8 @@ describe.each(startBundlers)('%s build', (bundler) => {
   )
 
   // (a build's failure is the whole app's: the refusing cases' app fails
-  // with exactly their importers)
+  // with exactly their client importers, each once, and nothing on the
+  // server: the complete list, duplicates kept)
   test(
     "the refusing cases' error-mode build fails with their importers, and no other",
     async () => {
@@ -82,7 +83,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
       ).toEqual(
         cases
           .flatMap(({ name, on }) =>
-            (on ?? []).map((file) => inCase(name, file)),
+            (on ?? []).map((file) => `client ${inCase(name, file)}`),
           )
           .sort(),
       )

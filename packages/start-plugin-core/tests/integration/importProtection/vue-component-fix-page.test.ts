@@ -266,6 +266,16 @@ describe.each(startBundlers)('%s build', (bundler) => {
     'the failed build reports both importers, and nothing else',
     async () => {
       const { error } = await both()
+      // (every callback, duplicates kept: `expectViolationsAt` compares the
+      // distinct ones)
+      expect(
+        reportedViolations(error)
+          .map(
+            ({ environment, importer }) =>
+              `${environment} ${locationParts(importer).file}`,
+          )
+          .sort(),
+      ).toEqual(['server src/Marked.vue', 'server src/Named.vue'])
       expectViolationsAt(error, [
         {
           environment: 'server',

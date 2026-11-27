@@ -138,9 +138,10 @@ export const inCase = (name: string, file: string) =>
  * `src/<case>/late.js`. Protection on in error mode, two apps (a build's
  * success or failure is the whole app's): the refused cases' (`failedAt`:
  * the case's own client violations, root-relative, position cut; null when
- * it has none; `refused`: every client violation of that app) and the
- * allowed cases' (`failedAt`: null when it builds, else every client
- * violation of the app). Protection on in mock mode (what ships with
+ * it has none; `refused`: every violation of that app, client and server,
+ * as `<environment> <importer>`, duplicates kept) and the allowed cases'
+ * (`failedAt`: null when it builds, else every violation of the app, as
+ * `refused` gives them). Protection on in mock mode (what ships with
  * protection on, and the case's own client reports) and off (what the
  * bundler itself keeps): one app of every case each.
  */
@@ -207,7 +208,11 @@ export async function outcomesOfCases(
         .map((v) => v.importer.replace(/:\d+(:\d+)?$/, '')),
     ),
   ]
-  /** The client violations an error-mode build of `of` failed with; null when it built. */
+  /**
+   * What an error-mode build of `of` failed with: its client importers
+   * (`client`) and every violation (`all`, `<environment> <importer>`,
+   * position cut, sorted, duplicates kept); null when it built.
+   */
   const errorBuild = (of: Array<number>) =>
     of.length === 0
       ? Promise.resolve(null)
@@ -217,14 +222,22 @@ export async function outcomesOfCases(
             if (!(error instanceof StartBuildError)) {
               throw error
             }
-            return clientImporters(error).sort()
+            return {
+              client: clientImporters(error).sort(),
+              all: reportedViolations(error)
+                .map(
+                  (v) =>
+                    `${v.environment} ${v.importer.replace(/:\d+(:\d+)?$/, '')}`,
+                )
+                .sort(),
+            }
           },
         )
   const all = cases.map((_, i) => i)
   const refusing = all.filter((i) => cases[i]!.on !== null)
   const allowed = all.filter((i) => cases[i]!.on === null)
-  const refused = (await errorBuild(refusing)) ?? []
-  const allowedFailure = await errorBuild(allowed)
+  const refusal = await errorBuild(refusing)
+  const allowedFailure = (await errorBuild(allowed))?.all ?? null
   const mocked = await build(all, { behavior: 'mock', mockAccess: 'off' })
   const mockReported = clientImporters(mocked)
   const off = await build(all, { enabled: false })
@@ -233,7 +246,7 @@ export async function outcomesOfCases(
     file.startsWith(`node_modules/dep-${caseDir(cases[i]!.name)}/`)
   return {
     of: (i) => {
-      const failedAt = refused.filter(own(i))
+      const failedAt = (refusal?.client ?? []).filter(own(i))
       return {
         failedAt:
           cases[i]!.on === null
@@ -248,6 +261,6 @@ export async function outcomesOfCases(
         offShipped: off.client.where(`MARK_DB_${i}_`) !== 'nowhere',
       }
     },
-    refused,
+    refused: refusal?.all ?? [],
   }
 }
