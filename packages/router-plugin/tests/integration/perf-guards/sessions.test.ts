@@ -48,24 +48,42 @@ describe.each(['webpack', 'rspack'] as const)('%s', (bundler) => {
         vi.unstubAllEnvs()
       })
       const builds = 3
+      const label = `router-plugin:${bundler}:session`
+      /** The sessions the stats knob reports alive while each build's compiler is: a positive control. */
+      const whileBuilding: Array<number> = []
       for (let n = 0; n < builds; n++) {
         const app = await build({
           bundler,
           env: 'client',
           files: routeApp(route, { env: 'client' }),
-          routerPlugins: separatePlugins[bundler],
+          routerPlugins: (config) => [
+            ...separatePlugins[bundler](config),
+            {
+              apply(compiler: {
+                hooks: { done: { tap: (name: string, fn: () => void) => void } }
+              }) {
+                compiler.hooks.done.tap('test:sessions', () => {
+                  whileBuilding.push(compilerStats()[label]?.instances ?? 0)
+                })
+              },
+            },
+          ],
         })
         expect(app.where('MARK_PAGE')).not.toBe('nowhere')
       }
+      // (a missing label must not read as released: the knob saw them live)
+      expect(whileBuilding, "live sessions at each build's end").toHaveLength(
+        builds,
+      )
+      expect(Math.min(...whileBuilding)).toBeGreaterThan(0)
       setFlagsFromString('--expose-gc')
       const gc = runInNewContext('gc') as () => void
       for (let round = 0; round < 5; round++) {
         await new Promise((resolve) => setTimeout(resolve, 10))
         gc()
       }
-      expect(
-        compilerStats()[`router-plugin:${bundler}:session`]?.instances ?? 0,
-      ).toBeLessThan(builds)
+      // (released sessions leave the registry: no label is none alive)
+      expect(compilerStats()[label]?.instances ?? 0).toBeLessThan(builds)
     },
     timeout,
   )
