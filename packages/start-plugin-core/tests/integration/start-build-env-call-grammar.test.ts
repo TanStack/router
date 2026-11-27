@@ -14,8 +14,13 @@ import type { ESTree } from 'vite'
 
 const timeout = 60_000
 
-/** The TypeScript wrappers a lowering erases, leaving their operand (a group stays). */
+/**
+ * The wrappers a lowering may erase, leaving their operand: TypeScript's,
+ * and a group (TypeScript's transpiler drops the parentheses around a
+ * wrapper it erases, esbuild reads `('use strict');` as a directive).
+ */
 const erasedWrappers = new Set([
+  'ParenthesizedExpression',
   'TSAsExpression',
   'TSSatisfiesExpression',
   'TSNonNullExpression',
@@ -25,8 +30,8 @@ const erasedWrappers = new Set([
 
 /**
  * The string statements of a module's or a function body's statement list
- * once TypeScript's wrappers are erased (`'use strict' as any;` is
- * `'use strict';`): directives, or strings the erasure makes ones. An
+ * once the wrappers above are erased (`('use strict' as any);` is
+ * `'use strict';`): directives, or strings a lowering makes ones. An
  * independent parse of a TypeScript module.
  */
 function directivesOnceErased(code: string): Array<string> {
@@ -361,7 +366,7 @@ export const value = 2
   )
 
   // the same string under TypeScript wrappers only (`as`, `satisfies`, `!`,
-  // `<T>`), inside the call or around it: once the lowering erases them the
+  // `<T>`), inside the call or around it, the call in a group or not: once the lowering erases them the
   // statement is the string alone, a directive (`'use strict'` is a syntax
   // error in a function with a default, rest or destructured parameter;
   // Rsbuild's SWC erases the wrappers after the compiler ran). Vite's Oxc
@@ -414,6 +419,14 @@ export function nonNullAround(x = 8) {
   createServerOnlyFn('use strict')!
   return x
 }
+export function grouped(x = 9) {
+  (createServerOnlyFn('use strict'))
+  return x
+}
+export function groupedAsserted(x = 10) {
+  (createServerOnlyFn('use strict' as any))
+  return x
+}
 `,
           'client.ts': `export * from './src/strict'\n`,
           'ssr.ts': `export * from './src/strict'\n`,
@@ -436,10 +449,10 @@ export function nonNullAround(x = 8) {
       expect(
         (
           await ssr.run(
-            `return [entry.asserted(), entry.satisfying(1, 2), entry.nonNull(), entry.angle(), entry.arrow(), entry.around(), entry.angleAround(), entry.nonNullAround()]`,
+            `return [entry.asserted(), entry.satisfying(1, 2), entry.nonNull(), entry.angle(), entry.arrow(), entry.around(), entry.angleAround(), entry.nonNullAround(), entry.grouped(), entry.groupedAsserted()]`,
           )
         ).result,
-      ).toEqual([1, 2, 3, 4, 5, 6, 7, 8])
+      ).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
       if (bundler === 'vite') {
         expect(compiled.map(directivesOnceErased)).toEqual([[]])
         const lowered = compiled.map(

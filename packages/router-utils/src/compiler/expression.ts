@@ -74,8 +74,8 @@ const D_LHS = 1 << 7
 /** The expression's first token is the first token of a statement, an `export default` or an arrow's body. */
 const D_EDGE = 1 << 8
 /**
- * All of a statement once TypeScript's wrappers around it are erased (`x`,
- * `x as T`, `<T>x`, `x!`), in a list with a directive prologue (a module, a
+ * All of a statement through the groups and TypeScript wrappers around it
+ * (`x`, `(x)`, `x as T`, `<T>x`, `x!`), in a list with a directive prologue (a module, a
  * function body): what precedes it may render as nothing (a removed import,
  * a declaration only erased code read, a type the lowering erases), and a
  * string statement first in the list is a directive. A group does not
@@ -180,6 +180,11 @@ export function destOf(
   }
   if (p !== null) {
     d |= useOf(p, n)
+    // (all of a statement once the lowering erases the wrappers around it,
+    // groups too: `<T>` stands before it, so the edge is no condition)
+    if (p.type === 'ExpressionStatement' && inDirectiveList(file, p)) {
+      d |= D_PROLOGUE
+    }
   }
   // what follows: through `!` only (a group stops a chain)
   n = node
@@ -201,17 +206,6 @@ export function destOf(
   }
   if (atEdge(file, node, parent)) {
     d |= D_EDGE
-  }
-  // (the statement it is all of once the lowering erases the wrappers
-  // around it: `<T>` stands before it, so the edge is no condition)
-  n = node
-  p = parent
-  while (p !== null && isErased(p) && p.expression === n) {
-    n = p
-    p = file.parentOf(p)
-  }
-  if (p?.type === 'ExpressionStatement' && inDirectiveList(file, p)) {
-    d |= D_PROLOGUE
   }
   // (a kept node may render as something looser than its source, a nested
   // call's implementation: only generated text that holds no `in` is spared)
@@ -313,30 +307,6 @@ function atEdge(file: File, node: Node, parent: Node): boolean {
     }
   }
   return false
-}
-
-/** A TypeScript wrapper a lowering erases, leaving its operand where it stood (a group stays). */
-function isErased(node: Node): node is Extract<
-  Node,
-  {
-    type:
-      | 'TSAsExpression'
-      | 'TSSatisfiesExpression'
-      | 'TSNonNullExpression'
-      | 'TSTypeAssertion'
-      | 'TSInstantiationExpression'
-  }
-> {
-  switch (node.type) {
-    case 'TSAsExpression':
-    case 'TSSatisfiesExpression':
-    case 'TSNonNullExpression':
-    case 'TSTypeAssertion':
-    case 'TSInstantiationExpression':
-      return true
-    default:
-      return false
-  }
 }
 
 /** Whether `statement` is in a list that starts with a directive prologue: a module or a function body. */
