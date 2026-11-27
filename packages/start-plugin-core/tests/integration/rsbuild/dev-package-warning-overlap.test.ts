@@ -76,13 +76,17 @@ describe('rsbuild dev: a package warning when the compilations overlap', () => {
    * after the save starts once the client's has ended (the client seals
    * first; `clientUses`: the client imports the shared module), and is held in a late asset hook; it writes `during` there and,
    * when that save is the client's too (`clientRebuilds`), stays held until a
-   * client compilation that started after it ended.
+   * client compilation that started after it ended. Also gives the warnings
+   * of the client's compilation of the save (`replaced` when the server's
+   * save replaces it), which seals first.
    */
   async function overlap(
     during: Record<string, string>,
     { clientUses = true, clientRebuilds = true } = {},
-  ): Promise<Array<number>> {
+  ): Promise<{ reports: Array<number>; clientFirst: number }> {
     const printed: Array<Array<Diagnostic>> = []
+    /** The warnings of the client's first compilation after the save. */
+    let clientFirst: Array<Diagnostic> | undefined
     const held = { armed: false, first: true, root: '' }
     /** Resolved by the client's next compilation end. */
     let clientDone = defer()
@@ -106,7 +110,14 @@ describe('rsbuild dev: a package warning when the compilations overlap', () => {
           if (environment.name === 'client') {
             config.plugins.push({
               apply(compiler: Rspack.Compiler) {
-                compiler.hooks.done.tap('test:overlap', () => {
+                compiler.hooks.done.tap('test:overlap', (stats) => {
+                  if (held.armed && clientFirst === undefined) {
+                    clientFirst = diagnosticsOf(
+                      stats.toJson({ all: false, warnings: true }).warnings ??
+                        [],
+                      'warning',
+                    )
+                  }
                   clientDone.resolve()
                 })
               },
@@ -185,20 +196,22 @@ export const Route = createRootRoute({ component: () => <Outlet /> })
     )
     // (the held compilation, the save it makes, and what follows)
     await server.settle({ accept: () => true })
-    return printed.slice(before).map(
-      (report) =>
-        findDiagnostics(report, {
-          severity: 'warning',
-          file: `${isoLib.directory}/a.js`,
-          root: server.root,
-        }).length,
-    )
+    const naming = (report: Array<Diagnostic>) =>
+      findDiagnostics(report, {
+        severity: 'warning',
+        file: `${isoLib.directory}/a.js`,
+        root: server.root,
+      }).length
+    return {
+      reports: printed.slice(before).map(naming),
+      clientFirst: naming(clientFirst ?? []),
+    }
   }
 
   test(
     'the client drops its import while the server is held: the first report has the warning, once',
     async () => {
-      const reports = await overlap({ 'src/client-uses.ts': none })
+      const { reports } = await overlap({ 'src/client-uses.ts': none })
       expect(reports[0]).toBe(1)
       expect(reports.reduce((a, b) => a + b, 0)).toBe(1)
     },
@@ -208,7 +221,7 @@ export const Route = createRootRoute({ component: () => <Outlet /> })
   test(
     'control, only the server imports the package: the first report has the warning, once',
     async () => {
-      const reports = await overlap(
+      const { reports } = await overlap(
         {},
         { clientUses: false, clientRebuilds: false },
       )
@@ -218,10 +231,15 @@ export const Route = createRootRoute({ component: () => <Outlet /> })
     timeout,
   )
 
+  // (the client's compilation of the first save, with the package, carried
+  // the warning: so there was one to drop)
   test(
     'control, both drop the package while the server is held: the report of the compilations without it has no warning',
     async () => {
-      const reports = await overlap({ 'src/shared.ts': sharedPlain })
+      const { reports, clientFirst } = await overlap({
+        'src/shared.ts': sharedPlain,
+      })
+      expect(clientFirst).toBe(1)
       expect(reports.at(-1)).toBe(0)
     },
     timeout,
