@@ -4,7 +4,7 @@
  * fails the build at the use. One test file per bundler
  * (`start-build-builder-shapes.test.ts`, `-rsbuild.test.ts`).
  */
-import { describe, expect, test } from 'vitest'
+import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   StartBuildError,
@@ -12,7 +12,7 @@ import {
   callByIdExports,
   callByIdPrelude,
 } from '../build-harness'
-import type { StartBundler } from '../build-harness'
+import type { StartBuild, StartBundler } from '../build-harness'
 import type { RsbuildConfig } from '@rsbuild/core'
 import type { InlineConfig } from 'vite'
 
@@ -1073,6 +1073,40 @@ export const v = (globalThis as any).use?.(pick())
   },
 )
 
+/**
+ * Whether a compiled row builds in one app with the others: its files are
+ * the app's own (under `src/`, no package) and it configures nothing.
+ */
+const sharesBuild = (row: Compiled) =>
+  !row.viteConfig &&
+  !row.rsbuildConfig &&
+  Object.keys(row.files).every((file) => file.startsWith('src/'))
+
+/** The server code of the `index`th row of a shared build (`MARK_SERVER_SECRET` in a row of its own). */
+const secretOf = (index: number) => `MARK_SERVER_SECRET_C${index}_`
+
+/**
+ * One app of `rows`: each row's files in a directory of its own
+ * (`src/c<index>/`), its server code marked `secretOf(index)`, and an entry
+ * that exports every row's entry (as `c<index>`), so the client keeps each
+ * row's exports as the row's own build does.
+ */
+function sharedApp(rows: ReadonlyArray<Compiled>) {
+  const files: Record<string, string> = {}
+  for (const [index, row] of rows.entries()) {
+    for (const [file, text] of Object.entries(row.files)) {
+      files[`src/c${index}/${file.slice('src/'.length)}`] = text.replaceAll(
+        'MARK_SERVER_SECRET',
+        secretOf(index),
+      )
+    }
+  }
+  files['src/entry.ts'] = rows
+    .map((_, index) => `export * as c${index} from './c${index}/entry'\n`)
+    .join('')
+  return files
+}
+
 export function builderShapesSuite(bundler: StartBundler) {
   describe(`${bundler} build`, () => {
     test(
@@ -1150,11 +1184,33 @@ export function builderShapesSuite(bundler: StartBundler) {
       timeout,
     )
 
-    test.each(
-      compiled.filter((row) => row.bundlers?.includes(bundler) ?? true),
-    )(
+    const rows = compiled.filter(
+      (row) => row.bundlers?.includes(bundler) ?? true,
+    )
+    const shared = rows.filter(sharesBuild)
+    /** The rows of `shared` in one build; none when it fails (each row then builds alone). */
+    let together: StartBuild | undefined
+    let dispose: (() => Promise<void>) | undefined
+    beforeAll(async () => {
+      together = await buildStart({
+        bundler,
+        files: sharedApp(shared),
+        entry: 'src/entry.ts',
+        registerCleanup: (cleanup) => {
+          dispose = cleanup
+        },
+      }).catch(() => undefined)
+    }, timeout)
+    afterAll(() => dispose?.())
+
+    test.each(rows)(
       '$name compiles',
       async (row) => {
+        const index = shared.indexOf(row)
+        if (index !== -1 && together) {
+          expect(together.client.where(secretOf(index))).toBe('nowhere')
+          return
+        }
         const build = await buildStart({
           bundler,
           files: row.files,
