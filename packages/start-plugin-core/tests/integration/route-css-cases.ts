@@ -263,14 +263,32 @@ export function routeCssSuite(
         return page
       }
 
+      /**
+       * The probe colors of every route at `/`, read in one page of it (the
+       * rows at `/` read the same document).
+       */
+      let homeColors: Promise<Record<string, string>> | undefined
+      const colorsAtHome = () =>
+        (homeColors ??= (async () => {
+          const page = await openHome()
+          try {
+            const colors: Record<string, string> = {}
+            for (const name of Object.keys(routes)) {
+              colors[name] = await probeColor(page, name)
+            }
+            return colors
+          } finally {
+            await page.close()
+          }
+        })())
+
       // SPEC J2.22: a route's CSS loads only when the route matches, whatever
       // it mounts.
       for (const name of Object.keys(routes)) {
         ;(failsOn[mode].includes(name) ? test.fails : test)(
           `the CSS of the /${name} route does not apply at /`,
           async () => {
-            const page = await openHome()
-            expect(await probeColor(page, name)).not.toBe(color)
+            expect((await colorsAtHome())[name]).not.toBe(color)
           },
           timeout,
         )
