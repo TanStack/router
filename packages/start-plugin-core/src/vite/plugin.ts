@@ -25,6 +25,7 @@ import { devServerPlugin } from './dev-server-plugin/plugin'
 import { previewServerPlugin } from './preview-server-plugin/plugin'
 import {
   createDevBaseRewritePlugin,
+  createDevClientDepScanPlugin,
   createDevClientEntryPlugin,
   createPostBuildPlugin,
 } from './plugins'
@@ -236,6 +237,9 @@ export function tanStackStartVite(
       framework: corePluginOpts.framework,
       environments,
       providerEnvName: serverFnProviderEnv,
+    }),
+    createDevClientDepScanPlugin({
+      providerEnvironmentName: serverFnProviderEnv,
     }),
     tanStackStartRouter(normalizedStartPluginOpts, getConfig, corePluginOpts),
     loadEnvPlugin(),

@@ -72,6 +72,39 @@ export function tanStackStartRouter(
   }
 
   let resolvedGeneratedRouteTreePath: string | null = null
+  async function loadPrunedClientRouteTree(id: string) {
+    if (
+      normalizePath(id.replace(/\?.*$/, '')) !== resolvedGeneratedRouteTreePath
+    ) {
+      return null
+    }
+    if (!generatorInstance) {
+      throw new Error('Generator instance not initialized')
+    }
+    const crawlingResult = await generatorInstance.getCrawlingResult()
+    if (!crawlingResult) {
+      throw new Error('Crawling result not available')
+    }
+    const prunedAcc = pruneServerOnlySubtrees(crawlingResult)
+    const acc = {
+      ...crawlingResult.acc,
+      ...prunedAcc,
+    }
+    const buildResult = generatorInstance.buildRouteTree({
+      ...crawlingResult,
+      acc,
+      config: {
+        // importRoutesUsingAbsolutePaths: true,
+        // addExtensions: true,
+        disableTypes: true,
+        enableRouteTreeFormatting: false,
+        routeTreeFileHeader: [],
+        routeTreeFileFooter: [],
+      },
+    })
+    return buildResult.routeTreeContent
+  }
+
   const clientTreePlugin: Plugin = {
     name: 'tanstack-start:route-tree-client-plugin',
     enforce: 'pre',
@@ -79,7 +112,7 @@ export function tanStackStartRouter(
     configureServer(server) {
       clientEnvironment = server.environments[VITE_ENVIRONMENT_NAMES.client]
     },
-    config() {
+    config(_viteConfig, { command }) {
       type LoadObjectHook = Extract<
         typeof clientTreePlugin.load,
         { filter?: unknown }
@@ -87,12 +120,50 @@ export function tanStackStartRouter(
       resolvedGeneratedRouteTreePath = normalizePath(
         getGeneratedRouteTreePath(),
       )
+      const routeTreeInclude = new RegExp(
+        `^${escapeRegExp(resolvedGeneratedRouteTreePath)}(?:\\?.*)?$`,
+      )
+      const depScanRouteTreeInclude = new RegExp(
+        `^${escapeRegExp(resolvedGeneratedRouteTreePath).replaceAll('/', '[\\\\/]')}(?:\\?.*)?$`,
+      )
       // The route tree module itself, by its exact id (a query aside)
       ;(clientTreePlugin.load as LoadObjectHook).filter = {
         id: {
-          include: new RegExp(
-            `^${escapeRegExp(resolvedGeneratedRouteTreePath)}(?:\\?.*)?$`,
-          ),
+          include: routeTreeInclude,
+        },
+      }
+
+      if (command !== 'serve') {
+        return
+      }
+
+      return {
+        environments: {
+          [VITE_ENVIRONMENT_NAMES.client]: {
+            optimizeDeps: {
+              rolldownOptions: {
+                plugins: [
+                  {
+                    name: 'tanstack-start:route-tree-client-dep-scan',
+                    load: {
+                      filter: {
+                        id: {
+                          include: depScanRouteTreeInclude,
+                        },
+                      },
+                      async handler(id) {
+                        const code = await loadPrunedClientRouteTree(id)
+                        if (code === null) {
+                          return null
+                        }
+                        return { code, moduleType: 'ts' }
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
         },
       }
     },
@@ -102,37 +173,11 @@ export function tanStackStartRouter(
         // this will be set in the config hook above since it relies on `config` hook being called first
       },
       async handler(id) {
-        if (
-          normalizePath(id.replace(/\?.*$/, '')) !==
-          resolvedGeneratedRouteTreePath
-        ) {
+        const code = await loadPrunedClientRouteTree(id)
+        if (code === null) {
           return null
         }
-        if (!generatorInstance) {
-          throw new Error('Generator instance not initialized')
-        }
-        const crawlingResult = await generatorInstance.getCrawlingResult()
-        if (!crawlingResult) {
-          throw new Error('Crawling result not available')
-        }
-        const prunedAcc = pruneServerOnlySubtrees(crawlingResult)
-        const acc = {
-          ...crawlingResult.acc,
-          ...prunedAcc,
-        }
-        const buildResult = generatorInstance.buildRouteTree({
-          ...crawlingResult,
-          acc,
-          config: {
-            // importRoutesUsingAbsolutePaths: true,
-            // addExtensions: true,
-            disableTypes: true,
-            enableRouteTreeFormatting: false,
-            routeTreeFileHeader: [],
-            routeTreeFileFooter: [],
-          },
-        })
-        return { code: buildResult.routeTreeContent, map: null }
+        return { code, map: null }
       },
     },
   }

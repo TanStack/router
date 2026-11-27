@@ -1,12 +1,17 @@
-import { normalizePath } from 'vite'
-import { DEV_CLIENT_ENTRY } from '../constants'
+import { createIdResolver, normalizePath } from 'vite'
+import { DEV_CLIENT_ENTRY, VITE_ENVIRONMENT_NAMES } from '../constants'
 import { createVirtualModule } from './createVirtualModule'
 import type {
   CompileStartFrameworkOptions,
   GetConfigFn,
   ResolvedStartConfig,
 } from '../types'
-import type { PluginOption, ViteBuilder } from 'vite'
+import type {
+  PluginOption,
+  ResolvedConfig,
+  ViteBuilder,
+  ViteDevServer,
+} from 'vite'
 
 export function createDevClientEntryPlugin(opts: {
   framework: CompileStartFrameworkOptions
@@ -132,6 +137,102 @@ export function createDevBaseRewritePlugin(opts: {
 
         next()
       })
+    },
+  }
+}
+
+function isBarePackageSpecifier(source: string): boolean {
+  if (
+    !source ||
+    source.startsWith('.') ||
+    source.startsWith('/') ||
+    source.startsWith('\\') ||
+    source.startsWith('\0')
+  ) {
+    return false
+  }
+  const slashIndex = source.indexOf('/')
+  const head = slashIndex === -1 ? source : source.slice(0, slashIndex)
+  return !head.includes(':')
+}
+
+export function createDevClientDepScanPlugin(opts: {
+  providerEnvironmentName: string
+}): PluginOption {
+  const serverEnvNames = Array.from(
+    new Set([opts.providerEnvironmentName, VITE_ENVIRONMENT_NAMES.server]),
+  )
+  let devServer: ViteDevServer | null = null
+  let resolvedConfig: ResolvedConfig | null = null
+  let serverIdResolver: ReturnType<typeof createIdResolver> | null = null
+
+  async function canResolveInServerEnvironment(
+    source: string,
+    importer: string,
+  ): Promise<boolean> {
+    if (!devServer || !resolvedConfig) {
+      return false
+    }
+    serverIdResolver ??= createIdResolver(resolvedConfig, { scan: true })
+    for (const envName of serverEnvNames) {
+      const serverEnv = devServer.environments[envName]
+      if (!serverEnv) {
+        continue
+      }
+      try {
+        const resolved = await serverIdResolver(serverEnv, source, importer)
+        if (resolved) {
+          return true
+        }
+      } catch {
+        // Try next server environment
+      }
+    }
+    return false
+  }
+
+  return {
+    name: 'tanstack-start-core:dev-client-dep-scan',
+    enforce: 'pre',
+    applyToEnvironment: (env) =>
+      env.name === VITE_ENVIRONMENT_NAMES.client &&
+      env.config.command === 'serve',
+    configResolved(viteConfig) {
+      resolvedConfig = viteConfig
+    },
+    configureServer(server) {
+      devServer = server
+    },
+    async resolveId(source, importer, options) {
+      if (
+        !(options as { scan?: boolean }).scan ||
+        !importer ||
+        !isBarePackageSpecifier(source)
+      ) {
+        return undefined
+      }
+
+      const resolveOptions: Parameters<typeof this.resolve>[2] = {
+        custom: options.custom,
+        isEntry: options.isEntry,
+        skipSelf: true,
+      }
+      if ('attributes' in options) {
+        const resolveOptionsWithAttributes =
+          resolveOptions as typeof resolveOptions & {
+            attributes?: unknown
+          }
+        resolveOptionsWithAttributes.attributes = options.attributes
+      }
+
+      try {
+        return await this.resolve(source, importer, resolveOptions)
+      } catch (error) {
+        if (await canResolveInServerEnvironment(source, importer)) {
+          return { id: source, external: true }
+        }
+        throw error
+      }
     },
   }
 }
