@@ -75,6 +75,9 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
       config.routeTreeFileHeader = ['// prepend1', '// prepend2']
       config.routeTreeFileFooter = ['// append1', '// append2']
       break
+    case 'isolated-declarations-root-components':
+      config.target = 'vue'
+      break
     case 'no-formatted-route-tree':
       config.enableRouteTreeFormatting = false
       break
@@ -388,6 +391,29 @@ describe('generator works', async () => {
         )
       }
 
+      await postprocess(folderName)
+    },
+  )
+
+  it.each([
+    'nested',
+    'lazy',
+    'lazy-only-layout-and-index',
+    'types-disabled',
+    'isolated-declarations-root-components',
+  ])(
+    'should wire-up the routes for a "%s" tree with isolatedDeclarations',
+    async (folderName) => {
+      const config = setupConfig(folderName, { isolatedDeclarations: true })
+      rewriteConfigByFolderName(folderName, config)
+      await preprocess(folderName)
+      await new Generator({ config, root: makeFolderDir(folderName) }).run()
+      const snapshotPath = config.disableTypes
+        ? 'routeTree.snapshot.js'
+        : 'routeTree.isolated.snapshot.ts'
+      await expect(await getRouteTreeFileText(config)).toMatchFileSnapshot(
+        join('generator', folderName, snapshotPath),
+      )
       await postprocess(folderName)
     },
   )
