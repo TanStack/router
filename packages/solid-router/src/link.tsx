@@ -104,8 +104,8 @@ function createLinkProps(
 
   // Everything the Link derives from its destination and the location, in
   // one computation: [element href, external href (null when blocked),
-  // active]. An unchanged result keeps its identity, so a navigation that
-  // leaves the Link as it was notifies nothing downstream.
+  // active, current page]. An unchanged result keeps its identity, so a
+  // navigation that leaves the Link as it was notifies nothing downstream.
   const getLinkState = (prev?: LinkState): LinkState => {
     const location = currentLocation()
     const to = options.to
@@ -113,7 +113,8 @@ function createLinkProps(
     const scheme = typeof to === 'string' && getUrlScheme(to)
     let href: string | undefined
     let external: string | null | undefined
-    let active = false
+    // 0 = inactive, 1 = fuzzy-active, 2 = exact current page.
+    let active = 0 as 0 | 1 | 2
     if (scheme) {
       if (router.protocolAllowlist.has(scheme)) {
         external = to
@@ -163,10 +164,12 @@ function createLinkProps(
           router.basepath,
         )
         const nextPath = removeTrailingSlash(next.pathname, router.basepath)
+        const exact = activeOptions?.exact
+        const pathExact = currentPath === nextPath
         // Both modes compare normalized paths; fuzzy matches need a segment boundary.
-        active =
-          (activeOptions?.exact
-            ? currentPath === nextPath
+        if (
+          (exact
+            ? pathExact
             : currentPath.startsWith(nextPath) &&
               (currentPath.length === nextPath.length ||
                 currentPath[nextPath.length] === '/')) &&
@@ -174,11 +177,15 @@ function createLinkProps(
             deepEqual(
               location.search,
               next.search,
-              !activeOptions?.exact,
+              !exact,
               activeOptions?.explicitUndefined,
             )) &&
           (!activeOptions?.includeHash ||
             (hasHydrated && !hasHydrated() ? '' : location.hash) === next.hash)
+        ) {
+          // Fuzzy ancestors stay visually active; only the exact path is current.
+          active = pathExact ? 2 : 1
+        }
       }
     }
     href = external === null ? undefined : external || href
@@ -217,7 +224,11 @@ function createLinkProps(
       options.style === undefined
     ) {
       return active
-        ? Object.assign(base, STATIC_DEFAULT_ACTIVE_ATTRIBUTES)
+        ? Object.assign(
+            base,
+            STATIC_DEFAULT_ACTIVE_ATTRIBUTES,
+            active > 1 && STATIC_ARIA_CURRENT,
+          )
         : base
     }
 
@@ -250,6 +261,7 @@ function createLinkProps(
       ...(style && hasKeys(style) && { style }),
       ...(className && { class: className }),
       ...(active && STATIC_ACTIVE_ATTRIBUTES),
+      ...(active > 1 && STATIC_ARIA_CURRENT),
     } as ResolvedLinkStateProps
   }
 
@@ -435,10 +447,11 @@ function createLinkProps(
 }
 
 // [element href, external href (null when blocked), active]
+// active: 0 = inactive, 1 = fuzzy-active, 2 = exact current page
 type LinkState = [
   href: string | undefined,
   external: string | null | undefined,
-  active: boolean,
+  active: 0 | 1 | 2,
 ]
 
 const isStore = (value: any): boolean => !!value?.[Solid.$PROXY]
@@ -501,7 +514,6 @@ const EMPTY_OBJECT = {}
 const STATIC_DEFAULT_ACTIVE_ATTRIBUTES = {
   class: 'active',
   'data-status': 'active',
-  'aria-current': 'page',
 }
 const STATIC_DISABLED_PROPS = {
   role: 'link' as const,
@@ -509,6 +521,8 @@ const STATIC_DISABLED_PROPS = {
 }
 const STATIC_ACTIVE_ATTRIBUTES = {
   'data-status': 'active',
+}
+const STATIC_ARIA_CURRENT = {
   'aria-current': 'page',
 }
 

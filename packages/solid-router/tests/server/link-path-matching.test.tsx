@@ -12,7 +12,7 @@ import { linkPathCases } from '../link-path-cases'
 for (const basepath of ['', '/app']) {
   test.each(linkPathCases)(
     `SSR pathname matching with basepath "${basepath}": $current -> $to, exact=$exact`,
-    ({ current, to, exact, active }) => {
+    ({ current, to, exact, active, currentPage }) => {
       const router = createRouter({
         routeTree: createRootRoute(),
         history: createMemoryHistory({ initialEntries: [basepath + current] }),
@@ -37,10 +37,15 @@ for (const basepath of ['', '/app']) {
       expect(html.match(/class="([^"]*)"/)?.[1]?.trim()).toBe(
         active ? 'active' : 'inactive',
       )
-      if (active) {
+      if (currentPage) {
         expect(html).toContain('aria-current="page"')
       } else {
         expect(html).not.toContain('aria-current')
+      }
+      if (active) {
+        expect(html).toContain('data-status="active"')
+      } else {
+        expect(html).not.toContain('data-status')
       }
     },
   )

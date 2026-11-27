@@ -230,7 +230,7 @@ function setup({
 
   const link = (id: string) => screen.getByTestId(id)
   const isActive = (id: string) =>
-    link(id).getAttribute('aria-current') === 'page'
+    link(id).getAttribute('data-status') === 'active'
   const href = (id: string) => link(id).getAttribute('href')
 
   async function start(options: any) {
