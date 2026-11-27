@@ -60,6 +60,7 @@ import { createServer, isRunnableDevEnvironment, mergeConfig } from 'vite'
 import { servedDirectories } from './app-directory'
 import { createApp, stripAnsi } from './build-harness'
 import { scopeMethods } from './console-hook'
+import { SettleTimeout } from './outcome'
 import { openDiagnosticChannel } from './diagnostic-channel'
 import { runAsDevCommand } from './dev-command'
 import { saveAppFile } from './save-file'
@@ -787,7 +788,7 @@ async function startServer(
     const deadline = Date.now() + eventTimeout
     while (!internals.initialBuildCompleted) {
       if (Date.now() > deadline) {
-        throw new Error(
+        throw new SettleTimeout(
           `Vite's full-bundle dev did not finish its initial build within ${eventTimeout} ms`,
         )
       }
@@ -840,7 +841,7 @@ async function startServer(
         throw new Error('the dev server was closed')
       }
       if (Date.now() > deadline) {
-        throw new Error(`${await describe()} within ${eventTimeout} ms`)
+        throw new SettleTimeout(`${await describe()} within ${eventTimeout} ms`)
       }
       let timer: ReturnType<typeof setTimeout> | undefined
       await Promise.race([
@@ -1064,7 +1065,7 @@ async function startServer(
         break
       }
       if (Date.now() > settleDeadline) {
-        throw new Error(
+        throw new SettleTimeout(
           `the app's files keep changing ${settleTimeout} ms after settle() began: ${[
             ...new Set(events.slice(before).map((event) => event.file)),
           ].join(', ')}`,
@@ -1141,7 +1142,7 @@ async function startServer(
       quiet = 0
       const left = deadline - Date.now()
       if (left <= 0) {
-        throw new Error(
+        throw new SettleTimeout(
           `the dev server still had ${pending.length} transforms in flight after ${eventTimeout} ms`,
         )
       }

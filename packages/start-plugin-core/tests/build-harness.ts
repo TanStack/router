@@ -77,6 +77,9 @@ import {
 } from '@tanstack/compiler-test-utils/build-harness'
 import {
   SettleTimeout,
+  settleTimeoutIn,
+} from '@tanstack/compiler-test-utils/outcome'
+import {
   rsbuildLogger,
   trackCompiles,
 } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
@@ -1193,15 +1196,15 @@ async function buildWithVite(
     }
   } catch (error) {
     // (a watch build that did not settle is no failed build)
-    if (error instanceof SettleTimeout) {
-      throw error
-    }
-    throw new BuildError(
-      'vite',
-      [...errors, error instanceof Error ? error.message : String(error)].map(
-        stripAnsi,
-      ),
-      warnings.client,
+    throw (
+      settleTimeoutIn(error) ??
+      new BuildError(
+        'vite',
+        [...errors, error instanceof Error ? error.message : String(error)].map(
+          stripAnsi,
+        ),
+        warnings.client,
+      )
     )
   } finally {
     process.chdir(cwd)
@@ -1681,15 +1684,15 @@ async function buildWithRsbuild(
     }
   } catch (error) {
     // (a watch build that did not settle is no failed build)
-    if (error instanceof SettleTimeout) {
-      throw error
-    }
-    throw new BuildError(
-      'rspack',
-      errors.length
-        ? errors
-        : [error instanceof Error ? error.message : String(error)],
-      warnings.client,
+    throw (
+      settleTimeoutIn(error) ??
+      new BuildError(
+        'rspack',
+        errors.length
+          ? errors
+          : [error instanceof Error ? error.message : String(error)],
+        warnings.client,
+      )
     )
   }
   if (errors.length) {

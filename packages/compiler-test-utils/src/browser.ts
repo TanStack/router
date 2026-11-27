@@ -21,6 +21,7 @@
  *   closes.
  */
 import { chromium } from '@playwright/test'
+import { SettleTimeout } from './outcome'
 import { onFileFinished } from './test-scope'
 import type {
   Browser,
@@ -260,7 +261,7 @@ export async function runInPage<T = unknown>(input: {
     page = await takeRunPage()
     page.on('pageerror', onError)
     page.on('console', onConsole)
-    await page.goto(input.pageUrl, { timeout })
+    await load(page, input.pageUrl, timeout)
     // A string, run as the page's own code: a function would be
     // serialised from this module as the test runner transformed it
     // (its `import()` rewritten for Node)
@@ -281,7 +282,7 @@ export async function runInPage<T = unknown>(input: {
         timer = setTimeout(
           () =>
             reject(
-              new Error(
+              new SettleTimeout(
                 `the import and script did not settle within ${timeout} ms`,
               ),
             ),
@@ -311,6 +312,22 @@ export async function runInPage<T = unknown>(input: {
       }
     }
     release()
+  }
+}
+
+/**
+ * Navigates `page` to `url`; a load that runs out of time (Playwright's
+ * `timeout`, its default without one) is a `SettleTimeout`.
+ */
+async function load(page: Page, url: string, timeout?: number) {
+  try {
+    await page.goto(url, { timeout })
+  } catch (error) {
+    throw error instanceof Error && error.name === 'TimeoutError'
+      ? new SettleTimeout(`the page did not load ${url}: ${error.message}`, {
+          cause: error,
+        })
+      : error
   }
 }
 
@@ -397,7 +414,7 @@ export async function openPage(
       }
     })
     await page.exposeFunction('__harnessInFlight', () => inFlight.size)
-    await page.goto(url)
+    await load(page, url)
   } catch (error) {
     await close().catch(() => {})
     throw error
@@ -437,7 +454,7 @@ export async function openPage(
           return
         }
         if (Date.now() > deadline) {
-          throw new Error(
+          throw new SettleTimeout(
             [
               `the page's ${selector} did not show ${String(expected)} within ${timeout} ms`,
               `it shows: ${JSON.stringify(current)}`,

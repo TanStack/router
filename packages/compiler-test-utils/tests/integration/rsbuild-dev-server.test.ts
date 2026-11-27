@@ -206,9 +206,10 @@ test('settle() rejects at its bound while a plugin writes a file the compiles re
     plugins: [generator(true)],
   })
   await server.write({ 'src/source.ts': `export const source = 'V2'\n` })
-  await expect(server.settle({ timeout: 3_000 })).rejects.toThrow(
-    /did not settle within 3000 ms/,
-  )
+  await expect(server.settle({ timeout: 3_000 })).rejects.toMatchObject({
+    name: 'SettleTimeout',
+    message: expect.stringMatching(/did not settle within 3000 ms/),
+  })
 }, 30_000)
 
 // A plugin may watch an original source itself and hand

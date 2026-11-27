@@ -29,6 +29,7 @@ import {
 } from './build-harness'
 import { openDiagnosticChannel } from './diagnostic-channel'
 import { withNodeEnv } from './node-env'
+import { settleTimeoutIn } from './outcome'
 import { createRsbuildDevServer, rsbuildLogger } from './rsbuild-dev-server'
 import type { PageRun } from './browser'
 import type { App, AppOptions, ParsedModules } from './build-harness'
@@ -78,7 +79,10 @@ export interface RsbuildHostBuild {
   parsedModules: Record<string, ParsedModules>
 }
 
-/** An Rsbuild build that failed: its error, with what it reported. */
+/**
+ * An Rsbuild build that failed: its error, with what it reported. A wait
+ * that ran out of time during the build is thrown as it is (`SettleTimeout`).
+ */
 export class RsbuildHostBuildError extends Error {
   constructor(
     readonly cause: unknown,
@@ -284,7 +288,10 @@ export async function createRsbuildPluginHost(
             }
           } catch (error) {
             channel.close()
-            throw new RsbuildHostBuildError(error, [...channel.diagnostics])
+            throw (
+              settleTimeoutIn(error) ??
+              new RsbuildHostBuildError(error, [...channel.diagnostics])
+            )
           } finally {
             await built?.close()
           }

@@ -9,6 +9,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, onTestFinished, test } from 'vitest'
 import {
+  BuildError,
   DanglingNameError,
   bundleApp as bundleAppIn,
   bundlers,
@@ -17,6 +18,7 @@ import {
   originalFrameOf,
 } from '../../src/build-harness'
 import { findDiagnostics } from '../../src/diagnostics'
+import { SettleTimeout } from '../../src/outcome'
 import type {
   BundleOptions,
   BundlerPlugins,
@@ -720,6 +722,63 @@ test.each(['webpack', 'rspack'] as const)(
       reportedWith: 'v1',
     })
     expect((await app.run('return entry.value')).result).toBe('v2')
+  },
+  timeout,
+)
+
+// A wait that ran out of time is not a failed build: a row expecting a
+// refusal cannot pass on it.
+test.each(bundlers)(
+  '%s: a wait that ran out of time inside a build is thrown as it is, not as a failed build',
+  async (bundler) => {
+    const waitRanOut = () => {
+      throw new SettleTimeout('a wait ran out of time')
+    }
+    // (a hook Rspack calls from JavaScript: of one it calls from native
+    // code, `make` for one, it passes on the error's message only)
+    const compilerPlugin = () => ({
+      apply: (compiler: any) =>
+        compiler.hooks.beforeCompile.tap('wait', waitRanOut),
+    })
+    const plugins: BundlerPlugins = {
+      vite: () => ({ name: 'wait', buildStart: waitRanOut }),
+      rspack: compilerPlugin,
+      webpack: compilerPlugin,
+      esbuild: () => ({
+        name: 'wait',
+        setup: (build: any) => build.onStart(waitRanOut),
+      }),
+    }
+    await expect(
+      bundleApp({
+        bundler,
+        files: { 'entry.ts': `export const value = 1\n` },
+        plugins: { [bundler]: plugins[bundler] },
+      }),
+    ).rejects.toBeInstanceOf(SettleTimeout)
+  },
+  timeout,
+)
+
+test.each(['webpack', 'rspack'] as const)(
+  '%s: rebuildAfter: an edit no build takes is a SettleTimeout; one that breaks the build, a BuildError of its file',
+  async (bundler) => {
+    const files = { 'entry.ts': `export const value = 'v1'\n` }
+    await expect(
+      bundleApp({
+        bundler,
+        files,
+        rebuildAfter: { 'notes.txt': 'not imported\n' },
+        rebuildTimeout: 1_000,
+      }),
+    ).rejects.toBeInstanceOf(SettleTimeout)
+    const broken = await bundleApp({
+      bundler,
+      files,
+      rebuildAfter: { 'entry.ts': `export const value = (\n` },
+    }).catch((error: unknown) => error)
+    expect(broken).toBeInstanceOf(BuildError)
+    expect((broken as BuildError).errors.join('\n')).toContain('entry.ts')
   },
   timeout,
 )

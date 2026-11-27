@@ -13,6 +13,7 @@ import { expect, onTestFinished, test, vi } from 'vitest'
 import { describeBuild } from '../../src/build-harness'
 import { problems } from '../../src/diagnostic-channel'
 import { expectDiagnostic } from '../../src/diagnostics'
+import { SettleTimeout } from '../../src/outcome'
 import {
   RsbuildHostBuildError,
   createRsbuildPluginHost,
@@ -304,6 +305,37 @@ test.each([
       times: 1,
     })
     expect(problems(diagnostics)).toHaveLength(1)
+  },
+  timeout,
+)
+
+test(
+  'a wait that ran out of time during a build is thrown as it is, not as a failed build',
+  async () => {
+    const host = await createRsbuildPluginHost({
+      dir: testsDir,
+      registerCleanup: onTestFinished,
+      files: { 'src/entry.ts': 'export const value = 1' },
+      serve: false,
+      plugins: [
+        {
+          name: 'wait',
+          setup(api) {
+            api.modifyRspackConfig((config) => {
+              config.plugins.push({
+                apply(compiler: Rspack.Compiler) {
+                  // (a hook Rspack calls from JavaScript, see build-harness.test.ts)
+                  compiler.hooks.beforeCompile.tap('wait', () => {
+                    throw new SettleTimeout('a wait ran out of time')
+                  })
+                },
+              })
+            })
+          },
+        },
+      ],
+    })
+    await expect(host.build()).rejects.toBeInstanceOf(SettleTimeout)
   },
   timeout,
 )

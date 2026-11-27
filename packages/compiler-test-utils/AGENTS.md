@@ -33,7 +33,8 @@ package. What the suite is and how to read it: [oracle/README.md](oracle/README.
 - `./browser`: Chromium pages; `runInPage` (bounded run pages, a fresh document per run), `openPage`.
 - `./hmr-sync` (`settlePage`): whether a page reloaded or updated in place, told by the page;
   `errorsOutsideReloads`: a page's errors but for a document's after Vite announced its reload.
-- `./outcome` (`waitForOutcome`): wait for an edit's outcome within one bound.
+- `./outcome` (`waitForOutcome`): wait for an edit's outcome within one bound. `SettleTimeout` is what every wait
+  throws at its bound; build-error wrappers let it through (`settleTimeoutIn`).
 - `./diagnostic-channel`, `./diagnostics` (`expectDiagnostic`, `expectNoDiagnostic`, `expectNoProblems`): every
   reporting channel merged; checks by severity, file and position. An absence check is `expectNoDiagnostic` (it also
   sees output of unknown owner), not `findDiagnostics(...)` equal to `[]`.

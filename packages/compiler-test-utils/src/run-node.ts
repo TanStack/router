@@ -11,6 +11,7 @@
  *   while the program's own thread is stuck in a synchronous loop.
  */
 import { execFile } from 'node:child_process'
+import { SettleTimeout } from './outcome'
 
 export interface RunNodeOptions {
   /** Node options placed before the program (e.g. `--enable-source-maps`). */
@@ -126,7 +127,7 @@ export function runNodeProgram(
           return
         }
         const timedOut = error.killed && error.signal === 'SIGKILL'
-        const failure = new Error(
+        const failure = new (timedOut ? SettleTimeout : Error)(
           timedOut
             ? `the program did not finish within ${timeout} ms (killed); ${progress()}`
             : error.message,

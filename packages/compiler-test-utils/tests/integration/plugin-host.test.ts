@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url'
 import { expect, onTestFinished, test, vi } from 'vitest'
 import { withBuildEnvironment } from '../../src/build-harness'
 import { expectDiagnostic } from '../../src/diagnostics'
+import { SettleTimeout } from '../../src/outcome'
 import { HostBuildError, createPluginHost } from '../../src/plugin-host'
 import type { Plugin } from 'vite'
 
@@ -258,6 +259,28 @@ test(
       root: app.root,
       position: { line: 1 },
     })
+  },
+  timeout,
+)
+
+test(
+  'a wait that ran out of time during a build is thrown as it is, not as a failed build',
+  async () => {
+    const app = await createPluginHost({
+      dir: testsDir,
+      registerCleanup: onTestFinished,
+      files,
+      plugins: [
+        {
+          name: 'wait',
+          buildStart() {
+            throw new SettleTimeout('a wait ran out of time')
+          },
+        },
+      ],
+      serve: false,
+    })
+    await expect(app.build()).rejects.toBeInstanceOf(SettleTimeout)
   },
   timeout,
 )

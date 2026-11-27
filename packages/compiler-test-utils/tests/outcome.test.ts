@@ -6,7 +6,7 @@
  * correct two-phase update 500 ms after the first applied update.
  */
 import { describe, expect, test } from 'vitest'
-import { waitForOutcome } from '../src/outcome'
+import { SettleTimeout, settleTimeoutIn, waitForOutcome } from '../src/outcome'
 
 const sleep = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms))
@@ -187,7 +187,7 @@ describe('waitForOutcome', () => {
 
   // An edit that ended without its outcome is a failed expectation (a known-
   // bug pin passes on it); a wait that could not tell is not.
-  test('an edit without its outcome fails as an assertion with what was expected and seen; the bound as an error', async () => {
+  test('an edit without its outcome fails as an assertion with what was expected and seen; the bound as a SettleTimeout', async () => {
     const failure = (wait: Parameters<typeof waitForOutcome>[0]) =>
       waitForOutcome(wait).then(
         () => undefined,
@@ -221,6 +221,15 @@ describe('waitForOutcome', () => {
         applied: () => false,
         describe: () => 'the page shows "v1"',
       }),
-    ).toMatchObject({ name: 'Error' })
+    ).toBeInstanceOf(SettleTimeout)
   })
+})
+
+test('settleTimeoutIn finds a SettleTimeout a wrapper carries, also through a cycle of causes', () => {
+  const timeout = new SettleTimeout('a wait ran out of time')
+  const cyclic = new Error('wrapper', { cause: new Error('inner') })
+  ;(cyclic.cause as Error).cause = cyclic
+  expect(settleTimeoutIn(cyclic)).toBeUndefined()
+  ;(cyclic.cause as Error & { errors?: unknown }).errors = [timeout]
+  expect(settleTimeoutIn({ error: cyclic })).toBe(timeout)
 })

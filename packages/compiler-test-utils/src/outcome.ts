@@ -10,10 +10,49 @@
  *
  * An edit that ends without its outcome (a problem, or the hosts quiet
  * without it: `failWhenQuietFor`) fails as an assertion, with what was
- * expected and what was seen; the overall timeout is a plain error (the
+ * expected and what was seen; the overall timeout is a `SettleTimeout` (the
  * wait could not tell).
  */
 import { AssertionError } from 'node:assert'
+
+/**
+ * A wait that ran out of time (for an edit's outcome, a build, a page, a
+ * program): not the outcome it waited for. Every wait of the harness throws
+ * it at its bound, and a host that turns build failures into its own error
+ * lets it through (`settleTimeoutIn`), so a row that expects a failure cannot
+ * pass on something that never settled.
+ */
+export class SettleTimeout extends Error {
+  override name = 'SettleTimeout'
+}
+
+/**
+ * The `SettleTimeout` that `error` is or carries, if any: as its `cause`, or
+ * as a bundler wraps a plugin's error (Rolldown's `errors`, webpack's
+ * `error`, esbuild's `errors[].detail`). Rspack passes on an error thrown in
+ * a hook it calls from native code (`make`, ...) as its message only: none
+ * is found there.
+ */
+export function settleTimeoutIn(
+  error: unknown,
+  seen = new Set<unknown>(),
+): SettleTimeout | undefined {
+  if (error instanceof SettleTimeout) {
+    return error
+  }
+  // (an error may be among its own causes)
+  seen.add(error)
+  const {
+    cause,
+    error: inner,
+    detail,
+    errors,
+  } = (error as Record<string, unknown> | null | undefined) ?? {}
+  return [cause, inner, detail, ...(Array.isArray(errors) ? errors : [])]
+    .filter((wrapped) => typeof wrapped === 'object' && !seen.has(wrapped))
+    .map((wrapped) => settleTimeoutIn(wrapped, seen))
+    .find((found) => found !== undefined)
+}
 
 export interface OutcomeWait {
   /** Whether the edit's outcome holds now (e.g. the page shows the edit). */
@@ -93,7 +132,7 @@ export async function waitForOutcome(wait: OutcomeWait): Promise<void> {
     (await settledWithin(wait.describe, describeBound))?.value ??
     `(the hosts' state could not be read within ${describeBound} ms)`
   const timedOut = async () =>
-    new Error(
+    new SettleTimeout(
       `the edit did not reach its outcome within ${wait.timeout} ms\n${await description()}`,
     )
   /** A check's answer, before the deadline. */

@@ -40,6 +40,7 @@ import {
 import { createDevServer } from './dev-server'
 import { withNodeEnv } from './node-env'
 import { openDiagnosticChannel } from './diagnostic-channel'
+import { settleTimeoutIn } from './outcome'
 import type { PageRun } from './browser'
 import type {
   App,
@@ -112,7 +113,11 @@ export interface HostBuild {
   describe: (environment: string) => Promise<BuildResult>
 }
 
-/** A build that failed: its error, with what it reported meanwhile. */
+/**
+ * A build that failed: its error, with what it reported meanwhile. A wait
+ * that ran out of time during the build is no failed build: its
+ * `SettleTimeout` (`./outcome`) is thrown as it is.
+ */
 export class HostBuildError extends Error {
   constructor(
     readonly cause: unknown,
@@ -403,7 +408,10 @@ export async function createPluginHost(
             await builder.buildApp()
           } catch (error) {
             channel.close()
-            throw new HostBuildError(error, [...channel.diagnostics])
+            throw (
+              settleTimeoutIn(error) ??
+              new HostBuildError(error, [...channel.diagnostics])
+            )
           }
           channel.close()
           const diagnostics = [...channel.diagnostics]

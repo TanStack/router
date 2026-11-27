@@ -30,6 +30,7 @@ import { createAppDirectory } from './app-directory'
 import { openDiagnosticChannel } from './diagnostic-channel'
 import { withNodeEnv } from './node-env'
 import { runDirectoryVariable } from './run-directory'
+import { SettleTimeout, settleTimeoutIn } from './outcome'
 import { runNodeProgram, runNodeStep } from './run-node'
 import { savingDirectory } from './save-file'
 import type { AddressInfo } from 'node:net'
@@ -174,6 +175,11 @@ export interface BundleTarget {
    */
   rebuildAfter?: Record<string, string>
   /**
+   * With `rebuildAfter`: how long to wait for the build of the edit, in
+   * milliseconds (default 30 000); a `SettleTimeout` (`./outcome`) after it.
+   */
+  rebuildTimeout?: number
+  /**
    * webpack and Rspack: adjusts the bundler's configuration the harness
    * built before the compiler is created (e.g. a persistent `cache`), as an
    * app's own configuration file would set it.
@@ -255,7 +261,9 @@ export class DanglingNameError extends Error {
 
 /**
  * A build failed; `errors` are the bundler's error messages, `warnings`
- * what it reported before (see `BuildResult.warnings`).
+ * what it reported before (see `BuildResult.warnings`). A wait that ran out
+ * of time is no failed build: its `SettleTimeout` (`./outcome`) is thrown as
+ * it is.
  */
 export class BuildError extends Error {
   constructor(
@@ -410,6 +418,7 @@ interface BundlerConfig {
   sourceRules: Array<Record<string, unknown>> | undefined
   conditions: Array<string>
   rebuildAfter: Record<string, string> | undefined
+  rebuildTimeout: number
   configure: ((options: Record<string, unknown>) => void) | undefined
   /** Production client builds: records `describeBuild`'s `parsedModules`. */
   parsedModules: ParsedModules | undefined
@@ -453,6 +462,7 @@ async function bundle(
     sourceRules: target.sourceRules,
     conditions: target.conditions ?? [],
     rebuildAfter: target.rebuildAfter,
+    rebuildTimeout: target.rebuildTimeout ?? 30_000,
     configure: target.configure,
     parsedModules:
       bundler !== 'esbuild' && env === 'client' && mode === 'production'
@@ -585,7 +595,10 @@ async function buildWithVite(
     })
   } catch (error) {
     await settled(hooks)
-    throw new BuildError('vite', [...errors, errorMessage(error)], warnings)
+    throw (
+      settleTimeoutIn(error) ??
+      new BuildError('vite', [...errors, errorMessage(error)], warnings)
+    )
   }
   await settled(hooks)
   // Errors logged by a build that did not fail are reports too
@@ -800,6 +813,7 @@ async function buildWithWebpackApi(
         ),
         config.root,
         config.rebuildAfter,
+        config.rebuildTimeout,
         warnings,
       )
     : await createCompiler(bundler, options, config.diagnosticChannel).then(
@@ -809,7 +823,8 @@ async function buildWithWebpackApi(
               compiler.close(() => {
                 if (error) {
                   reject(
-                    new BuildError(bundler, [errorMessage(error)], warnings),
+                    settleTimeoutIn(error) ??
+                      new BuildError(bundler, [errorMessage(error)], warnings),
                   )
                 } else {
                   resolve(result!.toJson(statsOptions))
@@ -851,13 +866,15 @@ async function createCompiler(
  * compiler reports after its builds started with every written file among
  * their changes (`compiler.modifiedFiles` at `watchRun`). A build that ran
  * while the files were written ends with what it read before (or is not
- * reported: an invalidated build starts again). Fails after 30 s without it.
+ * reported: an invalidated build starts again). A `SettleTimeout` after
+ * `timeout` ms without it.
  */
 async function watchAndRebuild(
   bundler: 'webpack' | 'rspack',
   compiler: WebpackCompiler,
   root: string,
   files: Record<string, string>,
+  timeout: number,
   warnings: Array<ChannelDiagnostic>,
 ): Promise<StatsJson> {
   type Build = { error: Error | null; json?: StatsJson }
@@ -878,11 +895,13 @@ async function watchAndRebuild(
     }
     wake()
   })
-  const deadline = Date.now() + 30_000
-  const until = async (done: () => boolean) => {
+  const deadline = Date.now() + timeout
+  const until = async (done: () => boolean, what: string) => {
     while (!done()) {
       if (Date.now() > deadline) {
-        throw new BuildError(bundler, ['timed out waiting for a build'], [])
+        throw new SettleTimeout(
+          `${bundler} watch build: ${what} within ${timeout} ms`,
+        )
       }
       await new Promise<void>((resolve) => {
         const timer = setTimeout(resolve, deadline - Date.now() + 1)
@@ -894,7 +913,7 @@ async function watchAndRebuild(
     }
   }
   try {
-    await until(() => reported)
+    await until(() => reported, 'no build ended')
     const written: Array<Array<string>> = []
     for (const [file, code] of Object.entries(files)) {
       const filePath = path.join(root, file)
@@ -902,12 +921,18 @@ async function watchAndRebuild(
       written.push([filePath, await realpath(filePath)])
     }
     unseen = written
-    await until(() => outcome !== undefined)
+    await until(
+      () => outcome !== undefined,
+      `no build took the edit of ${Object.keys(files).join(', ')}`,
+    )
   } finally {
     await new Promise<void>((resolve) => watching.close(() => resolve()))
   }
   if (outcome!.error) {
-    throw new BuildError(bundler, [errorMessage(outcome!.error)], warnings)
+    throw (
+      settleTimeoutIn(outcome!.error) ??
+      new BuildError(bundler, [errorMessage(outcome!.error)], warnings)
+    )
   }
   return outcome!.json!
 }
@@ -1007,10 +1032,13 @@ const require = __createRequire(import.meta.url)`,
     warnings.push(
       ...bundlerReports((failure.warnings ?? []).map(esbuildText), 'warning'),
     )
-    throw new BuildError(
-      'esbuild',
-      failure.errors?.map(esbuildText) ?? [errorMessage(error)],
-      warnings,
+    throw (
+      settleTimeoutIn(error) ??
+      new BuildError(
+        'esbuild',
+        failure.errors?.map(esbuildText) ?? [errorMessage(error)],
+        warnings,
+      )
     )
   }
   warnings.push(...bundlerReports(result.warnings.map(esbuildText), 'warning'))

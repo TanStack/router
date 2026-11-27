@@ -36,6 +36,7 @@ import { createApp } from './build-harness'
 import { scopeMethods } from './console-hook'
 import { openDiagnosticChannel } from './diagnostic-channel'
 import { runAsDevCommand } from './dev-command'
+import { SettleTimeout, settleTimeoutIn } from './outcome'
 import { saveAppFile } from './save-file'
 import type { App, AppOptions } from './build-harness'
 import type { ChannelDiagnostic, DiagnosticChannel } from './diagnostic-channel'
@@ -410,10 +411,11 @@ async function startServer(
             ended++
             // Nothing to record
             recordedAt = ended
-            gaveUp = new Error(
-              `Rsbuild failed to compile the app: ${cause.message}`,
-              { cause },
-            )
+            gaveUp =
+              settleTimeoutIn(cause) ??
+              new Error(`Rsbuild failed to compile the app: ${cause.message}`, {
+                cause,
+              })
             notify()
           })
           // Every compile, also one Rspack follows with another before
@@ -661,7 +663,7 @@ async function startServer(
         return
       }
       if (Date.now() > deadline) {
-        throw new Error(
+        throw new SettleTimeout(
           `Rsbuild did not settle within ${timeout} ms: ${reason}`,
         )
       }
@@ -775,16 +777,6 @@ export interface CompileTracker {
     timeout: number,
     accept?: (relative: string) => boolean,
   ) => Promise<void>
-}
-
-/**
- * A wait for the outcome of an edit or a build that ran out of time: not
- * the build's outcome. A host that turns build failures into its own error
- * lets this one through, so a row that expects a failed build cannot pass on
- * a build that never settled.
- */
-export class SettleTimeout extends Error {
-  override name = 'SettleTimeout'
 }
 
 /**
@@ -1029,10 +1021,11 @@ export function trackCompiles(): CompileTracker {
         })
         environmentCompiler.hooks.failed.tap(name, (cause) => {
           handingOn.delete(environmentCompiler)
-          const error = new Error(
-            `Rsbuild failed to compile the app: ${cause.message}`,
-            { cause },
-          )
+          const error =
+            settleTimeoutIn(cause) ??
+            new Error(`Rsbuild failed to compile the app: ${cause.message}`, {
+              cause,
+            })
           if (finished === 0) {
             failure = error
             for (const wait of firstWaits) {

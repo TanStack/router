@@ -20,6 +20,7 @@ import {
   runPageLimit,
 } from '../../src/browser'
 import { createDevServer } from '../../src/dev-server'
+import { SettleTimeout, settleTimeoutIn } from '../../src/outcome'
 import { createPluginHost } from '../../src/plugin-host'
 import { createRsbuildDevServer } from '../../src/rsbuild-dev-server'
 import { runNodeProgram } from '../../src/run-node'
@@ -202,6 +203,27 @@ test('a run whose script never settles fails within its bound, and the next run 
     (await runInPage({ pageUrl: 'about:blank', script: 'return 1 + 1' }))
       .result,
   ).toBe(2)
+})
+
+test('a run whose script never settles or whose page never loads carries a SettleTimeout', async () => {
+  const unsettled = await runInPage({
+    pageUrl: 'about:blank',
+    script: 'await new Promise(() => {})',
+    timeout: 300,
+  }).catch((error: unknown) => error)
+  expect(settleTimeoutIn(unsettled)).toBeInstanceOf(SettleTimeout)
+  const silent = createServer(() => {})
+  await new Promise<void>((resolve) => silent.listen(0, '127.0.0.1', resolve))
+  onTestFinished(() => {
+    silent.closeAllConnections()
+    return new Promise<void>((resolve) => silent.close(() => resolve()))
+  })
+  const port = (silent.address() as AddressInfo).port
+  const stalled = await runInPage({
+    pageUrl: `http://127.0.0.1:${port}/`,
+    timeout: 300,
+  }).catch((error: unknown) => error)
+  expect(settleTimeoutIn(stalled)).toBeInstanceOf(SettleTimeout)
 })
 
 test('waitForText ends at its own bound when the element never appears', async () => {

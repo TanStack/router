@@ -224,7 +224,12 @@ describe('dev server harness', () => {
       })
       await expect(
         server.edit({ 'leaf.ts': `export const leaf = 'v2'\n` }),
-      ).rejects.toThrow(/keep changing 1000 ms after[\s\S]*generated\.ts/)
+      ).rejects.toMatchObject({
+        name: 'SettleTimeout',
+        message: expect.stringMatching(
+          /keep changing 1000 ms after[\s\S]*generated\.ts/,
+        ),
+      })
     },
     timeout,
   )
