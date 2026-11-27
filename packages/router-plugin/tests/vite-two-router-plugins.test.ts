@@ -1,10 +1,10 @@
 /**
  * Two router plugin instances in one Vite app, each with its own routes
- * directory and generated route tree (TanStack/router#7174, #7313): each
- * instance compiles its own routes, route files and split chunks, and
- * leaves the other's as they are, in dev. A split id of a file of an
- * instance's routes directory that is no route gets that instance's empty
- * module (SPEC J2.13). Production builds, Vite and the webpack-family hosts:
+ * directory and generated route tree (TanStack/router#7174, #7313): a split
+ * id of a file of an instance's routes directory that is no route gets that
+ * instance's empty module (SPEC J2.13), and each instance splits its own
+ * tree in dev. Each tree edited in dev:
+ * integration/route-hmr-browser-shared-tree.test.ts; production builds:
  * integration/build-two-router-plugins.test.ts.
  */
 import path from 'node:path'
@@ -21,6 +21,7 @@ import {
 } from '../src/vite'
 import { head, rootRoute } from './build-harness'
 import type { PluginOption } from 'vite'
+import type { Config } from '../src/vite'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
@@ -70,54 +71,42 @@ async function devServer(root: string, plugins: Array<PluginOption>) {
   return server.environments.client
 }
 
-const splitIdOf = (reference: string) =>
-  /import\(\s*["']([^"']*\?tsr-split=[^"']*)["']/.exec(reference)?.[1]
-
-const hotAccepts = (code: string) =>
-  code.split('import.meta.hot.accept(').length - 1
-
-test('tanstackRouter() twice, dev: each tree serves its route file and split component', async () => {
-  const { root, options } = await twoTreeApp()
-  const client = await devServer(
-    root,
-    options.map((o) => tanstackRouter(o)),
-  )
-  for (const t of trees) {
-    const reference =
-      (await client.transformRequest(`/${t.dir}/index.tsx`))?.code ?? ''
-    expect(reference).not.toContain(t.mark)
-    expect(hotAccepts(reference)).toBe(1)
-    const splitId = splitIdOf(reference)
-    expect(splitId, reference).toBeDefined()
-    const split = (await client.transformRequest(splitId!))?.code ?? ''
-    expect(split).toContain(t.mark)
-  }
-})
-
 // main's "keeps multiple code-splitter instances isolated by explicit
-// context" (#7313), for route files and split ids
-test('generator and splitter per explicit context: each pair compiles its own routes only', async () => {
-  const { root, options } = await twoTreeApp()
-  const client = await devServer(
-    root,
-    options.flatMap((o) => {
+// context" (#7313) too. (Edits of each tree: the HMR rows of
+// integration/route-hmr-browser-shared-tree.test.ts.)
+test.each([
+  {
+    plugins: 'tanstackRouter() twice',
+    of: (options: Partial<Config>): Array<PluginOption> => [
+      tanstackRouter(options),
+    ],
+  },
+  {
+    plugins: 'a generator and splitter pair per explicit context',
+    of: (options: Partial<Config>): Array<PluginOption> => {
       const context = createRouterPluginContext()
       return [
-        tanstackRouterGenerator(o, context),
-        tanStackRouterCodeSplitter(o, context),
+        tanstackRouterGenerator(options, context),
+        tanStackRouterCodeSplitter(options, context),
       ]
-    }),
-  )
-  for (const t of trees) {
-    const reference =
-      (await client.transformRequest(`/${t.dir}/index.tsx`))?.code ?? ''
-    expect(hotAccepts(reference)).toBe(1)
-    const split =
-      (await client.transformRequest(splitIdOf(reference) ?? 'missing'))
-        ?.code ?? ''
-    expect(split).toContain(t.mark)
-  }
-})
+    },
+  },
+])(
+  '$plugins, dev: each tree serves its route module without its split component',
+  async ({ of }) => {
+    const { root, options } = await twoTreeApp()
+    const client = await devServer(
+      root,
+      options.flatMap((o) => of(o)),
+    )
+    for (const t of trees) {
+      const reference =
+        (await client.transformRequest(`/${t.dir}/index.tsx`))?.code ?? ''
+      expect(reference).toContain('createFileRoute')
+      expect(reference).not.toContain(t.mark)
+    }
+  },
+)
 
 test('one instance: a split id of a file of its routes directory that is no route serves an empty module', async () => {
   const { root, options } = await twoTreeApp({

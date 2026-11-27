@@ -109,15 +109,20 @@ export const widgetTree = {
   generatedRouteTree: 'widgetTree.gen.ts',
 }
 
-/** A route file at `/` whose loader names `version` (`name`: its component's). */
+/**
+ * A route file at `/` whose loader names `version` (`name`: its
+ * component's); with `counter`, each loader run counts in
+ * `globalThis[counter]`.
+ */
 export const loaderRoute = (
   target: TargetFramework,
   version: string,
   name = 'Page',
+  counter?: string,
 ) =>
   `import { createFileRoute } from '@tanstack/${target}-router'
 export const Route = createFileRoute('/')({
-  loader: () => '${version}',
+  loader: () => ${counter ? `{ ;(globalThis as any).${counter} = ((globalThis as any).${counter} ?? 0) + 1; return '${version}' }` : `'${version}'`},
   component: ${name},
 })
 function ${name}() {

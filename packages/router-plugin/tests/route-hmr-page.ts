@@ -46,7 +46,13 @@ import { trackRequests } from '@tanstack/compiler-test-utils/hmr-sync'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { tanstackRouter as tanstackRouterRspack } from '../src/rspack'
-import { getConfig, tanstackRouter } from '../src/vite'
+import { createRouterPluginContext } from '../src/context'
+import {
+  getConfig,
+  tanStackRouterCodeSplitter,
+  tanstackRouter,
+  tanstackRouterGenerator,
+} from '../src/vite'
 import { emittedKey, observeEmitted } from './route-app'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
@@ -189,6 +195,13 @@ export interface RouteHmrPageOptions {
     routesDirectory: string
     generatedRouteTree: string
   }>
+  /**
+   * Vite: each route tree's instance is the generator and the code splitter
+   * of a context of their own (`createRouterPluginContext()`, as an app
+   * pairing them by hand does, TanStack/router#7313), instead of
+   * `tanstackRouter()`. Default `false`.
+   */
+  explicitContext?: boolean
   /**
    * Registers the cleanup (closing the page and the dev server) to run when
    * the test ends. Default: vitest's `onTestFinished`; a concurrent test
@@ -580,7 +593,15 @@ async function viteServer(
             ? tanstackRouter()
             : options.pluginOptionsAsFunction
               ? tanstackRouter(() => getConfig(config, root))
-              : tanstackRouter(config),
+              : options.explicitContext
+                ? (() => {
+                    const context = createRouterPluginContext()
+                    return [
+                      tanstackRouterGenerator(config, context),
+                      tanStackRouterCodeSplitter(config, context),
+                    ]
+                  })()
+                : tanstackRouter(config),
           emitted,
         ),
       )
@@ -621,7 +642,11 @@ async function rsbuildServer(
   files: Record<string, string>,
   options: RouteHmrPageOptions,
 ): Promise<AppServer> {
-  if (options.pluginOptions === null || options.pluginOptionsAsFunction) {
+  if (
+    options.pluginOptions === null ||
+    options.pluginOptionsAsFunction ||
+    options.explicitContext
+  ) {
     throw new Error(
       'the Rsbuild page gives the router plugin its options as an object',
     )
