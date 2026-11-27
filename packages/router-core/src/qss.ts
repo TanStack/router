@@ -11,6 +11,9 @@
  * fit exactly our use-case (single value per key in encoding).
  */
 
+// Characters URLSearchParams serializes unchanged (application/x-www-form-urlencoded).
+const FORM_SAFE_RE = /^[A-Za-z0-9*\-._]*$/
+
 /**
  * Encodes an object into a query string.
  * @param obj - The object to encode into a query string.
@@ -26,16 +29,26 @@ export function encode(
   obj: Record<string, any>,
   stringify: (value: any) => string = String,
 ): string {
-  let result: URLSearchParams | undefined
+  let result = ''
+  let params: URLSearchParams | undefined
 
   for (const key in obj) {
     const val = obj[key]
     if (val !== undefined) {
-      ;(result ||= new URLSearchParams()).set(key, stringify(val))
+      const str = stringify(val)
+      // Typical pairs need no encoding and are joined without a serializer.
+      // From the first pair that does, URLSearchParams takes over: an encoded
+      // key always contains `%` or `+`, so it cannot collide with a plain one
+      // and appending the serializer output keeps `set` semantics exact.
+      if (!params && FORM_SAFE_RE.test(key) && FORM_SAFE_RE.test(str)) {
+        result += `${result ? '&' : ''}${key}=${str}`
+      } else {
+        ;(params ??= new URLSearchParams()).set(key, str)
+      }
     }
   }
 
-  return result ? result.toString() : ''
+  return params ? `${result && `${result}&`}${params}` : result
 }
 
 /**
