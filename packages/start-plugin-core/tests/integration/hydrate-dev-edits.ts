@@ -319,18 +319,25 @@ export async function editLoadedChild(
       last = next
     }
   }
-  /** Clicks child `name` until its section shows `expected`. */
-  const clickUntil = async (name: string, expected: string) => {
-    const deadline = Date.now() + 10_000
-    while (!(await section(name)).includes(expected)) {
-      if (Date.now() > deadline) {
-        throw new Error(
-          `${name} never showed ${expected}: ${await section(name)}`,
-        )
-      }
-      await page.locator(`[data-child=${name}]`).click()
-      await new Promise((resolve) => setTimeout(resolve, 100))
-    }
+  /**
+   * Opens child `name`: a hover asks its boundary to hydrate, and once the
+   * child is mounted (`mounted` children in `__effects`) one click counts
+   * once, so its section shows `expected`. (Replaying the click that
+   * hydrates a boundary is the deferred-hydration e2e's subject, not this
+   * scenario's.)
+   */
+  const open = async (name: string, mounted: number, expected: string) => {
+    const child = page.locator(`[data-child=${name}]`)
+    await child.hover()
+    await expect
+      .poll(() => page.evaluate(() => (globalThis as any).__effects ?? 0), {
+        timeout: 10_000,
+      })
+      .toBe(mounted)
+    await child.click()
+    await expect
+      .poll(() => section(name), { timeout: 10_000 })
+      .toContain(expected)
   }
   /** Waits until the section of `name` shows `expected`. */
   const shows = async (name: string, expected: string) => {
@@ -344,7 +351,7 @@ export async function editLoadedChild(
       await new Promise((resolve) => setTimeout(resolve, 50))
     }
   }
-  await clickUntil('a', 'a capture-v1 1')
+  await open('a', 1, 'a capture-v1 1')
   const opened = await step()
   expect(await downloaded('b')).toBe(false)
 
@@ -368,7 +375,7 @@ export async function editLoadedChild(
     ).toEqual([])
   }
 
-  await clickUntil('b', 'b capture-v2 1')
+  await open('b', 2, 'b capture-v2 1')
   const siblingOpened = await step()
   expect(await downloaded('b')).toBe(true)
   return { opened, childrenEdited, captureEdited, siblingOpened }

@@ -220,17 +220,7 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
         })
       }
       /** What a client call over HTTP gives, from a fresh page. */
-      const called = async () => {
-        const page = await openPage(server.url, {
-          registerCleanup: onTestFinished,
-        })
-        await page.waitForText('hydrated', {
-          selector: '[data-testid=hydrated]',
-        })
-        await page.page.locator('[data-testid=probe]').click()
-        await page.waitForText(/client=/, { selector: '[data-testid=probe]' })
-        return page.text('[data-testid=probe]')
-      }
+      const called = () => clientCall(server.url, 'probe')
 
       await rendered('a:P1/b/H1|K1')
       expect(await called()).toBe('client=a:P1/b/H1|K1')
@@ -254,29 +244,13 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
     "edits of a module only the lazy module's server fn imports and of its handler reach HTTP calls",
     async () => {
       const server = await servers[bundler]!()
-      /** What a client call over HTTP gives, from a fresh page of the route. */
-      const called = async () => {
-        const page = await openPage(`${server.url}stubbed`, {
-          registerCleanup: onTestFinished,
-        })
-        await page.waitForText('hydrated', {
-          selector: '[data-testid=hydrated]',
-        })
-        await page.page.locator('[data-testid=lazy-probe]').click()
-        await page.waitForText(/client=/, {
-          selector: '[data-testid=lazy-probe]',
-        })
-        return page.text('[data-testid=lazy-probe]')
-      }
-      /** The call's result, once it is `expected`. */
-      const reaches = async (expected: string) => {
-        let last = ''
-        await waitForOutcome({
-          applied: async () => (last = await called()) === expected,
-          timeout: 15_000,
-          describe: () => `the HTTP call: ${last}`,
-        })
-      }
+      /** The call's result from a fresh page of the route, once it is `expected`. */
+      const reaches = (expected: string) =>
+        expect
+          .poll(() => clientCall(`${server.url}stubbed`, 'lazy-probe'), {
+            timeout: 15_000,
+          })
+          .toBe(expected)
 
       await reaches('client=S1/H1')
       await server.edit({ 'src/lazy-schema.ts': lazySchema('S2') })
@@ -305,27 +279,10 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
         })
       }
       /** A client call over HTTP from a fresh page, once it gives `expected`. */
-      const reaches = async (expected: string) => {
-        let last = ''
-        await waitForOutcome({
-          applied: async () => {
-            const page = await openPage(url, {
-              registerCleanup: onTestFinished,
-            })
-            await page.waitForText('hydrated', {
-              selector: '[data-testid=hydrated]',
-            })
-            await page.page.locator('[data-testid=nested-probe]').click()
-            await page.waitForText(/client=/, {
-              selector: '[data-testid=nested-probe]',
-            })
-            last = await page.text('[data-testid=nested-probe]')
-            return last === expected
-          },
-          timeout: 15_000,
-          describe: () => `the HTTP call: ${last}`,
-        })
-      }
+      const reaches = (expected: string) =>
+        expect
+          .poll(() => clientCall(url, 'nested-probe'), { timeout: 15_000 })
+          .toBe(expected)
 
       await rendered('N:H1')
       await reaches('client=N:H1')
@@ -382,6 +339,36 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
 })
 
 /**
+ * Opens a fresh page of `url`, waits for hydration and clicks the button
+ * `testid` `clicks` times, each time until its text changes; gives the
+ * texts it showed, joined by a space. The page is closed before it returns.
+ */
+async function clientCall(url: string, testid: string, clicks = 1) {
+  const page = await openPage(url, { registerCleanup: onTestFinished })
+  try {
+    await page.waitForText('hydrated', {
+      selector: '[data-testid=hydrated]',
+    })
+    const selector = `[data-testid=${testid}]`
+    const results: Array<string> = []
+    let was = await page.text(selector)
+    for (let i = 0; i < clicks; i++) {
+      await page.page.locator(selector).click()
+      await page.page.waitForFunction(
+        ([selector, text]) =>
+          document.querySelector(selector!)?.textContent !== text,
+        [selector, was],
+      )
+      was = await page.text(selector)
+      results.push(was)
+    }
+    return results.join(' ')
+  } finally {
+    await page.close()
+  }
+}
+
+/**
  * Two client calls over HTTP from one fresh page of `path` (its button
  * `testid`), until `pattern` matches them with the counter `(n, n + 1)`:
  * one instance answers both.
@@ -392,34 +379,12 @@ async function reachesTwice(
   testid: string,
   pattern: RegExp,
 ) {
-  const calledTwice = async () => {
-    const page = await openPage(`${server.url}${path}`, {
-      registerCleanup: onTestFinished,
+  await expect
+    .poll(() => clientCall(`${server.url}${path}`, testid, 2), {
+      timeout: 15_000,
     })
-    await page.waitForText('hydrated', {
-      selector: '[data-testid=hydrated]',
-    })
-    const results: Array<string> = []
-    for (const before of ['idle', null]) {
-      const was = before ?? results[0]!
-      await page.page.locator(`[data-testid=${testid}]`).click()
-      await page.page.waitForFunction(
-        ([selector, text]) =>
-          document.querySelector(selector!)?.textContent !== text,
-        [`[data-testid=${testid}]`, was],
-      )
-      results.push(await page.text(`[data-testid=${testid}]`))
-    }
-    return results.join(' ')
-  }
-  let last = ''
-  await waitForOutcome({
-    applied: async () => {
-      last = await calledTwice()
-      const m = pattern.exec(last)
+    .toSatisfy((calls: string) => {
+      const m = pattern.exec(calls)
       return m !== null && Number(m[2]) === Number(m[1]) + 1
-    },
-    timeout: 15_000,
-    describe: () => `the HTTP calls: ${last}`,
-  })
+    })
 }

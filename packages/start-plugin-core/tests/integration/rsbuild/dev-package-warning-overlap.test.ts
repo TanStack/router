@@ -21,6 +21,32 @@ import type { RsbuildPlugin, Rspack } from '@rsbuild/core'
 
 const timeout = 120_000
 
+function defer() {
+  let resolve!: () => void
+  const promise = new Promise<void>((done) => {
+    resolve = done
+  })
+  return { promise, resolve }
+}
+
+/** `promise`, or a rejection naming `what` after 30 s. */
+async function within(promise: Promise<void>, what: string) {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`timed out waiting until ${what}`)),
+          30_000,
+        )
+      }),
+    ])
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 /** `iso-lib`, a package that uses Start and does not declare it. */
 const isoLib = installPackage('npm', {
   name: 'iso-lib',
@@ -44,13 +70,24 @@ describe('rsbuild dev: a package warning when the compilations overlap', () => {
   const uses = `import { tag } from './shared'\nconsole.log(tag)\n`
   const none = `console.log('none')\n`
 
-  /** What the held server compilation's save does, and the warnings of each report printed after the first save. */
+  /**
+   * What the held server compilation's save does, and the warnings of each
+   * report printed after the first save. The server's first compilation
+   * after the save starts once the client's has ended (the client seals
+   * first; `clientUses`: the client imports the shared module), and is held in a late asset hook; it writes `during` there and,
+   * when that save is the client's too (`clientRebuilds`), stays held until a
+   * client compilation that started after it ended.
+   */
   async function overlap(
     during: Record<string, string>,
-    clientUses = true,
+    { clientUses = true, clientRebuilds = true } = {},
   ): Promise<Array<number>> {
     const printed: Array<Array<Diagnostic>> = []
     const held = { armed: false, first: true, root: '' }
+    /** Resolved by the client's next compilation end. */
+    let clientDone = defer()
+    /** Resolved once the held server compilation is released. */
+    const released = defer()
     const probe: RsbuildPlugin = {
       name: 'test:overlap',
       setup(api) {
@@ -66,15 +103,29 @@ describe('rsbuild dev: a package warning when the compilations overlap', () => {
           )
         })
         api.modifyRspackConfig((config, { environment }) => {
+          if (environment.name === 'client') {
+            config.plugins.push({
+              apply(compiler: Rspack.Compiler) {
+                compiler.hooks.done.tap('test:overlap', () => {
+                  clientDone.resolve()
+                })
+              },
+            })
+            return
+          }
           if (environment.name !== 'ssr') {
             return
           }
           config.plugins.push({
             apply(compiler: Rspack.Compiler) {
-              // (the client seals first)
+              // (the client seals first; a client that does not import the
+              // shared module does not compile the save)
               compiler.hooks.make.tapPromise('test:overlap', async () => {
-                if (held.armed && held.first) {
-                  await new Promise((resolve) => setTimeout(resolve, 250))
+                if (held.armed && held.first && clientUses) {
+                  await within(
+                    clientDone.promise,
+                    'the client compiled the save',
+                  )
                 }
               })
               compiler.hooks.thisCompilation.tap(
@@ -85,12 +136,17 @@ describe('rsbuild dev: a package warning when the compilations overlap', () => {
                     async () => {
                       if (held.armed && held.first) {
                         held.first = false
+                        clientDone = defer()
                         for (const [file, text] of Object.entries(during)) {
                           fs.writeFileSync(path.join(held.root, file), text)
                         }
-                        await new Promise((resolve) =>
-                          setTimeout(resolve, 1250),
-                        )
+                        if (clientRebuilds) {
+                          await within(
+                            clientDone.promise,
+                            'the client compiled the save made while the server was held',
+                          )
+                        }
+                        released.resolve()
                       }
                     },
                   )
@@ -120,10 +176,14 @@ export const Route = createRootRoute({ component: () => <Outlet /> })
     await server.settle()
     held.root = server.root
     const before = printed.length
+    clientDone = defer()
     held.armed = true
     await server.write({ 'src/shared.ts': sharedPackage })
+    await within(
+      released.promise,
+      'the server compilation was held and released',
+    )
     // (the held compilation, the save it makes, and what follows)
-    await new Promise((resolve) => setTimeout(resolve, 2500))
     await server.settle({ accept: () => true })
     return printed.slice(before).map(
       (report) =>
@@ -148,7 +208,10 @@ export const Route = createRootRoute({ component: () => <Outlet /> })
   test(
     'control, only the server imports the package: the first report has the warning, once',
     async () => {
-      const reports = await overlap({}, false)
+      const reports = await overlap(
+        {},
+        { clientUses: false, clientRebuilds: false },
+      )
       expect(reports[0]).toBe(1)
       expect(reports.reduce((a, b) => a + b, 0)).toBe(1)
     },

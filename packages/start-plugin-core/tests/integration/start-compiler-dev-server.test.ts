@@ -898,9 +898,15 @@ export const label = () => 'MARK_CLIENT_LABEL'
    * Serves `src/a.tsx`, which calls `.handler()` on `base` from `src/b.ts`
    * (a plain object at first) with a handler reading the module `src/db.ts`
    * (no denied file: what the client gets of it is the compiler's doing),
-   * and edits `src/b.ts` so that `base` becomes a server fn builder.
+   * and edits `src/b.ts` so that `base` becomes a server fn builder. With
+   * `beforeEdit`, runs it on the server first (e.g. to have the SSR
+   * environment evaluate the importer before the edit).
    */
-  async function editFactoryIntoBuilder() {
+  async function editFactoryIntoBuilder(
+    beforeEdit?: (
+      server: Awaited<ReturnType<typeof startDevServer>>,
+    ) => Promise<void>,
+  ) {
     const server = await startDevServer({
       start: {},
       plugins: [react()],
@@ -920,6 +926,7 @@ export const fn = base.handler(async () => db.x())
     expect(
       containing(await server.clientBundle(), 'MARK_DB_SECRET'),
     ).not.toEqual([])
+    await beforeEdit?.(server)
     await server.edit({ 'src/b.ts': factory })
     return server
   }
@@ -937,14 +944,20 @@ export const fn = base.handler(async () => db.x())
   )
 
   // The one invalidation of the edit reaches every environment: the SSR
-  // environment (not bundled) serves the importer compiled against the new
-  // `base`, a server fn whose handler runs.
+  // environment (not bundled), which evaluated the importer before the edit
+  // (a plain function then, with no URL), serves the importer compiled
+  // against the new `base`, a server fn Start's server entry answers by its
+  // URL.
   test(
     'a module whose factory becomes a server fn builder: SSR runs the importer as a server fn',
     async () => {
-      const server = await editFactoryIntoBuilder()
+      const server = await editFactoryIntoBuilder(async (plainServer) => {
+        const { fn } = await plainServer.import('/src/a.tsx')
+        expect(fn.url).toBeUndefined()
+      })
       const { fn } = await server.import('/src/a.tsx')
       expect(await inDevRequest(server, () => fn())).toBe('MARK_DB_SECRET')
+      expect(await callServerFn(server, fn)).toBe('MARK_DB_SECRET')
     },
     timeout,
   )

@@ -7,6 +7,7 @@
  * H2-dev).
  */
 import { describe, expect, test } from 'vitest'
+import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 import { rsbuildEntries } from '../route-css-cases'
 
@@ -169,10 +170,13 @@ describe('rsbuild dev: a server function file that is still imported', () => {
         },
       })
       await server.settle()
-      await server
-        .edit({ 'src/fns.ts': `export const broken = (\n` })
-        .catch(() => undefined)
-      expect(server.errors.length).toBeGreaterThan(0)
+      const since = server.diagnostics.length
+      await server.edit({ 'src/fns.ts': `export const broken = (\n` })
+      expectDiagnostic(server.diagnostics.slice(since), {
+        severity: 'error',
+        file: 'src/fns.ts',
+        root: server.root,
+      })
     },
     timeout,
   )
