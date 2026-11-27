@@ -45,14 +45,15 @@ export function compileRouteModules(
     targetFramework?: 'react' | 'solid'
     /** Compile with route HMR and the framework's HMR compiler plugins. */
     hmr?: boolean
+    codeSplitGroupings?: CodeSplitGroupings
   } = {},
 ) {
   const {
     filename = 'route.tsx',
     targetFramework = 'react',
     hmr = false,
+    codeSplitGroupings: groupings = defaultCodeSplitGroupings,
   } = options
-  const groupings = defaultCodeSplitGroupings
   const compilerPlugins = hmr
     ? getFrameworkHmrCompilerPlugins({ targetFramework })
     : undefined
