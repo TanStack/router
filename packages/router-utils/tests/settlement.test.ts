@@ -298,20 +298,27 @@ describe('outputs of one text', () => {
   `)
 
   // Two outputs of one file in one environment, both requested and open at
-  // once: both are current. Source: the settlement design, §2.
+  // once (the chunk requested while the env module's host acts on its
+  // answer): both are current. Source: the settlement design, §2.
   it('sibling outputs of one text are all current', async () => {
     const host = memoryHost({ [ROUTE]: route })
     const split = [toySplitPlanner()]
-    const open = gate()
-    const answer = (id: string) =>
-      host.settle(id, split, async (s) => {
-        await open.opened
+    const read = gate()
+    const answer = (id: string) => {
+      const entered = gate()
+      const done = host.settle(id, split, async (s) => {
+        entered.open()
+        await read.opened
         return [s.kind, s.current()]
       })
+      return { entered: entered.opened, done }
+    }
     const env = answer(ROUTE)
+    await env.entered
     const chunk = answer(`${ROUTE}?tsr-split=component`)
-    open.open()
-    expect(await Promise.all([env, chunk])).toEqual([
+    await chunk.entered
+    read.open()
+    expect(await Promise.all([env.done, chunk.done])).toEqual([
       ['compiled', true],
       ['compiled', true],
     ])

@@ -113,11 +113,22 @@ describe('functions held, passed or called at load', () => {
   }
 
   // a custom region in an exported declaration's call argument (a server
-  // fn's handler) falls back for nothing
-  it.each([['a function passed to a call', '() => String(n)', false]])(
-    'reports no fallback for a custom region that is %s',
-    async (_, argument, reason) => {
-      const code = dedent(`
+  // fn's handler) moved to a lazy module falls back for nothing it reads;
+  // one that assigns the module's state falls back (the lazy module could
+  // only write its copy)
+  it.each([
+    [
+      'no fallback for a custom region that is a function passed to a call',
+      '() => String(n)',
+      false,
+    ],
+    [
+      'a fallback for a custom region that is a function passed to a call assigning module state',
+      '() => { n++ }',
+      true,
+    ],
+  ])('reports %s', async (_, argument, reason) => {
+    const code = dedent(`
         import { createFileRoute } from 'toy-router'
         import { f } from './lib'
         let n = 0
@@ -125,23 +136,50 @@ describe('functions held, passed or called at load', () => {
         export const job = f(${argument})
         export const Route = createFileRoute('/')({ component: () => null })
       `)
-      const region: Planner = {
-        name: 'toy-region',
-        tier: 1,
-        gate: () => true,
-        plan(ctx) {
-          const start = ctx.analysis.source.code.indexOf(argument)
-          const range = { start, end: start + argument.length }
-          ctx.region(range, 'custom')
-          ctx.setFacts('toy-region', {
-            fallback: ctx.fallbackAt(range) !== undefined,
-          })
-        },
-      }
-      const r = await compile(code, [toySplitPlanner(), region])
-      expect(r.main?.facts.planners['toy-region']).toEqual({
-        fallback: reason,
-      })
-    },
-  )
+    // (as Start's lazy handler module: the region claimed into a lazy
+    // output, left in place once it falls back)
+    const region: Planner = {
+      name: 'toy-region',
+      tier: 1,
+      gate: () => true,
+      plan(ctx) {
+        const start = ctx.analysis.source.code.indexOf(argument)
+        const range = { start, end: start + argument.length }
+        const fallback = ctx.fallbackAt(range, 'custom') !== undefined
+        ctx.setFacts('toy-region', { fallback })
+        if (fallback) {
+          return
+        }
+        const out = ctx.declareOutput({
+          kind: 'custom',
+          key: 'handler',
+          derived: { kind: 'handler', value: '' },
+        })
+        const id = ctx.region(range, 'custom')
+        const owner = ctx.rewrites.addGenerated({
+          body: [
+            { k: 'text', parts: ['export const handler = '] },
+            { k: 'region', id },
+            { k: 'text', parts: ['\n'] },
+          ],
+          declares: [],
+          effectful: false,
+          anchor: { k: 'end' },
+          home: out,
+          by: 'toy-region',
+        })
+        ctx.addRoot(out, { t: 'gen', id: owner })
+        ctx.rewrites.claim({
+          region: id,
+          owner,
+          placeholder: [{ k: 'text', parts: ['() => null'] }],
+          by: 'toy-region',
+        })
+      },
+    }
+    const r = await compile(code, [toySplitPlanner(), region])
+    expect(r.main?.facts.planners['toy-region']).toEqual({
+      fallback: reason,
+    })
+  })
 })

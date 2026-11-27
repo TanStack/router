@@ -139,11 +139,13 @@ describe('repeating an invalidation', () => {
       reads.splice(0).forEach((release) => release())
       await new Promise((r) => setTimeout(r, 1))
     }
-    await compiling
     const factsOf = (out: CompileOutput | null) => out?.facts.planners
-    expect(factsOf(await host.compile('/app/x.ts', planners()))).toEqual(
-      factsOf(await memoryHost(host.files).compile('/app/x.ts', planners())),
+    const cold = factsOf(
+      await memoryHost(host.files).compile('/app/x.ts', planners()),
     )
+    // the restarted compile answers the resolved import, and so does the next
+    expect(factsOf(await compiling)).toEqual(cold)
+    expect(factsOf(await host.compile('/app/x.ts', planners()))).toEqual(cold)
   })
 })
 
@@ -151,6 +153,8 @@ const SERVER_ONLY = dedent(`
   import { createServerOnlyFn } from 'toy-start'
   export const make = createServerOnlyFn(() => 1)
 `)
+/** `make` of `SERVER_ONLY`, as an export resolution reads it. */
+const SERVER_ONLY_MAKE = { t: 'envOnlyResult', kind: 'server' }
 
 describe('events that move the file set', () => {
   const IMPORTER = "import { make } from './a'\nexport const use = make\n"
@@ -220,11 +224,12 @@ describe('events that move the file set', () => {
         reads.splice(0).forEach((release) => release())
         await new Promise((r) => setTimeout(r, 1))
       }
-      await compiling
-      host.caches.stale.take(CLIENT.name)
-      expect(factsOf(await host.compile('/app/x.ts', planners()))).toEqual(
-        factsOf(await memoryHost(host.files).compile('/app/x.ts', planners())),
+      const cold = factsOf(
+        await memoryHost(host.files).compile('/app/x.ts', planners()),
       )
+      expect(factsOf(await compiling)).toEqual(cold)
+      host.caches.stale.take(CLIENT.name)
+      expect(factsOf(await host.compile('/app/x.ts', planners()))).toEqual(cold)
     },
   )
 })
@@ -1076,16 +1081,13 @@ describe('a virtual module that read as missing and then loads', () => {
       },
     })
     const host = new MemoryHost({ files, recognizer: RECOGNIZER, virtual })
-    await host.compile('/app/a.ts', [reader()])
+    expect(
+      (await host.compile('/app/a.ts', [reader()]))!.facts.planners,
+    ).toEqual({ toy: 'absent' })
     virtual['virtual:foo'] = SERVER_ONLY
     expireVirtual(host.caches, CLIENT.name)
     const out = await host.compile('/app/a.ts', [reader()])
-    const cold = await new MemoryHost({
-      files,
-      recognizer: RECOGNIZER,
-      virtual,
-    }).compile('/app/a.ts', [reader()])
-    expect(out!.facts.planners).toEqual(cold!.facts.planners)
+    expect(out!.facts.planners).toEqual({ toy: SERVER_ONLY_MAKE })
   })
 })
 
@@ -1285,10 +1287,8 @@ describe("a virtual module's marker read as missing, and the module loading", ()
   })
   const messages = (out: CompileOutput | null) =>
     out!.diagnostics.map((d) => d.message)
-  const cold = (virtual: Record<string, string>) =>
-    new MemoryHost({ files, recognizer: RECOGNIZER, virtual, markerSpecifiers })
-      .compile('/app/page.ts', [markerReader()])
-      .then(messages)
+  /** What a compile against the loaded module reports: its marker. */
+  const LOADED_MARKER = ['server-only']
 
   it('a watch rebuild (`expireVirtual`) compiles the importer against the loaded module', async () => {
     const virtual: Record<string, string> = {}
@@ -1305,7 +1305,7 @@ describe("a virtual module's marker read as missing, and the module loading", ()
     expireVirtual(host.caches, CLIENT.name)
     expect(
       messages(await host.compile('/app/page.ts', [markerReader()])),
-    ).toEqual(await cold(virtual))
+    ).toEqual(LOADED_MARKER)
   })
 
   // A load that throws is no evidence (a plugin whose `load` failed once,
@@ -1340,7 +1340,7 @@ describe("a virtual module's marker read as missing, and the module loading", ()
     expireVirtual(host.caches, CLIENT.name)
     expect(
       messages(await host.compile('/app/page.ts', [markerReader()])),
-    ).toEqual(await cold(loaded))
+    ).toEqual(LOADED_MARKER)
   })
 
   it('a load that threw is read again: the next request after a save sees the marker', async () => {
@@ -1373,7 +1373,7 @@ describe("a virtual module's marker read as missing, and the module loading", ()
     )
     expect(
       messages(await host.compile('/app/page.ts', [markerReader()])),
-    ).toEqual(await cold(loaded))
+    ).toEqual(LOADED_MARKER)
   })
 
   // A thrown load announced during the same compile (its host's update
@@ -1418,10 +1418,10 @@ describe("a virtual module's marker read as missing, and the module loading", ()
       host,
     )
     proceed.open()
-    expect(messages(await compiling)).toEqual(await cold(loaded))
+    expect(messages(await compiling)).toEqual(LOADED_MARKER)
     expect(
       messages(await host.compile('/app/page.ts', [markerReader()])),
-    ).toEqual(await cold(loaded))
+    ).toEqual(LOADED_MARKER)
   })
 
   it("its change event during the importer's compile reaches the importer", async () => {
@@ -1452,10 +1452,10 @@ describe("a virtual module's marker read as missing, and the module loading", ()
       host,
     )
     proceed.open()
-    expect(messages(await compiling)).toEqual(await cold(virtual))
+    expect(messages(await compiling)).toEqual(LOADED_MARKER)
     expect(
       messages(await host.compile('/app/page.ts', [markerReader()])),
-    ).toEqual(await cold(virtual))
+    ).toEqual(LOADED_MARKER)
   })
 })
 
@@ -1504,12 +1504,7 @@ describe("a virtual module's exports read when its load threw", () => {
       host,
     )
     const out = await host.compile('/app/a.ts', [reader()])
-    const cold = await new MemoryHost({
-      files,
-      recognizer: RECOGNIZER,
-      virtual: loaded,
-    }).compile('/app/a.ts', [reader()])
-    expect(out!.facts.planners).toEqual(cold!.facts.planners)
+    expect(out!.facts.planners).toEqual({ toy: SERVER_ONLY_MAKE })
   })
 })
 
@@ -1565,7 +1560,7 @@ describe('one specifier from two importers in one attempt', () => {
       [toySummaryPlanner()],
     )
     const facts = out!.facts.planners['toy-summary'] as Record<string, unknown>
-    expect(facts['./lib']).toEqual({ t: 'envOnlyResult', kind: 'server' })
+    expect(facts['./lib']).toEqual(SERVER_ONLY_MAKE)
     expect(facts['./x']).not.toEqual(facts['./lib'])
   })
 })
