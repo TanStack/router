@@ -13,6 +13,7 @@ import { startDevServer } from '../../dev-server'
 import { startProtectedDevServer } from '../../importProtection/start-apps'
 import {
   clientPage,
+  runInClient,
   startRsbuildDevServer,
   startRsbuildStartDevServer,
   throwUncaught,
@@ -23,6 +24,22 @@ import type { Plugin } from 'vite'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 
 export { runInClient, runRsbuildClient } from '../../rsbuild-dev-server'
+
+/**
+ * What `script` returns in the page of an Rsbuild dev server
+ * (`runInClient`); fails when it throws, so that a broken reader is never
+ * read as a value without the secret.
+ */
+export async function clientResult(
+  server: Parameters<typeof runInClient>[0],
+  script: string,
+): Promise<unknown> {
+  const run = await runInClient(server, script)
+  if ('error' in run) {
+    throw new Error(`The page's script failed: ${run.error}`)
+  }
+  return run.result
+}
 
 /** Mounted before Start's SSR fallback, using Vite's actual HTML pipeline. */
 export const clientFixturePlugin: Plugin = {

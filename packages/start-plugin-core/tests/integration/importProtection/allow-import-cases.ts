@@ -184,6 +184,7 @@ export function describeAllowImport(bundler: StartBundler) {
       expect(seen!.importer).toMatch(/\/src\/entry\.ts$/)
       expect(seen!.resolved).toMatch(/\/src\/target\.server\.ts$/)
       expect(Object.keys(seen!)).not.toContain('trace')
+      expect(Object.keys(seen!)).not.toContain('snippet')
     },
     timeout,
   )

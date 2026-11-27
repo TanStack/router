@@ -21,7 +21,7 @@ import {
   violationRecorder,
 } from '../../importProtection/start-apps'
 import {
-  runInClient,
+  clientResult,
   runViteClient,
   startBrowserStartDevServer as startDevServer,
   startBrowserRsbuildStartDevServer as startRsbuildStartDevServer,
@@ -271,6 +271,16 @@ describe.each<[StartBundler, Array<[string, string, Files]>]>([
   )
 })
 
+/**
+ * Who a dev server reports: the importer of a static import; for a pattern
+ * import, which has no report of its own (SPEC J6.7), the denied file it
+ * reaches, served as its mock.
+ */
+const devReported = (entry: string, files: Files) =>
+  entry.startsWith('import * as module from')
+    ? ['src/entry.ts']
+    : Object.keys(files)
+
 describe('vite dev', () => {
   test.each([...bothHosts, ...viteOnly])(
     '%s is mocked and reported',
@@ -287,8 +297,12 @@ describe('vite dev', () => {
         readTexts,
       )
       await server.idle()
-      expect(String(result)).not.toContain(CANARY)
-      expect(clientViolations(recorder)).toBeGreaterThan(0)
+      // (the reader read something: a value, a URL's content)
+      expect(result).toMatch(/./)
+      expect(result).not.toContain(CANARY)
+      expect(importersIn({ root: server.root, ...recorder }, 'client')).toEqual(
+        devReported(entry, files),
+      )
     },
     timeout,
   )
@@ -368,12 +382,14 @@ describe('rsbuild dev', () => {
         start: { importProtection: recorder.importProtection },
       })
       const { result } = await captureConsole(() =>
-        runInClient(server, readTexts),
+        clientResult(server, readTexts),
       )
-      expect(String((result as { result: unknown }).result)).not.toContain(
-        CANARY,
+      // (the reader read something: a value, a URL's content)
+      expect(result).toMatch(/./)
+      expect(result).not.toContain(CANARY)
+      expect(importersIn({ root: server.root, ...recorder }, 'client')).toEqual(
+        devReported(entry, files),
       )
-      expect(clientViolations(recorder)).toBeGreaterThan(0)
     },
     timeout,
   )

@@ -95,7 +95,9 @@ console.log(db())
         },
       })
       // (the importer fails to build: the page throws the denial)
-      await runRsbuildClient(server).catch(() => [])
+      await expect(runRsbuildClient(server)).rejects.toThrow(
+        '[import-protection] Import denied',
+      )
       const reported = { file: 'src/entry.ts', root: server.root }
       expectDiagnostic(server.diagnostics, {
         ...reported,

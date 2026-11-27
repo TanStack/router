@@ -26,6 +26,7 @@ import {
   reportedViolations,
   starReexportApps,
 } from '../../importProtection/start-apps'
+import { importersIn } from './hosts'
 import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 
 const timeout = 60_000
@@ -447,6 +448,7 @@ return entry.read().map((value) => describeValue(value, 'MARK_SECRET'))`)
     files,
     importProtection,
   }: (typeof starReexportApps)[number]) {
+    let failure: StartBuildError | undefined
     const built = await buildStart({
       bundler,
       files,
@@ -460,11 +462,15 @@ return entry.read().map((value) => describeValue(value, 'MARK_SECRET'))`)
       },
     }).catch((error: unknown) => {
       if (error instanceof StartBuildError) {
+        failure = error
         return 'the build fails' as const
       }
       throw error
     })
+    // (the build fails on the import protection's report of the module
+    // with the `export *`, not on any other error)
     if (built === 'the build fails') {
+      expect(importersIn(failure!, 'client')).toEqual(['src/b.ts'])
       return
     }
     expect({

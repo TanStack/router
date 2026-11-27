@@ -12,7 +12,7 @@ import { describe, expect, test } from 'vitest'
 import { buildStart } from '../../build-harness'
 import { rejection, violationRecorder } from '../../importProtection/start-apps'
 import {
-  runInClient,
+  clientResult,
   runViteClient,
   startBrowserStartDevServer as startDevServer,
   startBrowserRsbuildStartDevServer as startRsbuildStartDevServer,
@@ -143,7 +143,9 @@ describe('vite', () => {
         readTexts,
       )
       await server.idle()
-      expect(String(result)).not.toContain(CANARY)
+      // (the reader read something: a value, a URL's content)
+      expect(result).toMatch(/./)
+      expect(result).not.toContain(CANARY)
       expect(clientViolations(recorder)).toBeGreaterThan(0)
     },
     timeout,
@@ -171,11 +173,11 @@ describe('rsbuild', () => {
         start: { importProtection: recorder.importProtection },
       })
       const { result } = await captureConsole(() =>
-        runInClient(server, readTexts),
+        clientResult(server, readTexts),
       )
-      expect(String((result as { result: unknown }).result)).not.toContain(
-        CANARY,
-      )
+      // (the reader read something: a value, a URL's content)
+      expect(result).toMatch(/./)
+      expect(result).not.toContain(CANARY)
       expect(clientViolations(recorder)).toBeGreaterThan(0)
     },
     timeout,

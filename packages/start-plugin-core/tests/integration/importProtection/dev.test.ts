@@ -2407,14 +2407,18 @@ export const Page = () => <div>{String(1)}</div>
         importProtection,
       )
       await server.load('/src/entry.ts', { environment })
-      // (SSR: the entry's import of the marked module is reported as well)
       const inA = loggedViolations(server).filter((violation) =>
         violation.includes(' src/a.tsx'),
       )
-      expect(marker ? distinct([...inA, expected]) : inA).toEqual([
-        originalLocation(expected, 1),
-      ])
-      expect(loggedViolations(server)).not.toEqual([])
+      if (marker) {
+        // (or at the importer's import of the marked module, SPEC J6.5:
+        // the only report on this head)
+        expect(distinct(loggedViolations(server))).toEqual([
+          originalLocation(expected, 1, { others: ['src/entry.ts:1'] }),
+        ])
+        return
+      }
+      expect(inA).toEqual([originalLocation(expected, 1)])
     },
     timeout,
   )
