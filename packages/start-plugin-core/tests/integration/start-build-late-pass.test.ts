@@ -125,16 +125,21 @@ describe.each(startBundlers)('%s build', (bundler) => {
     expect((await build.ssr.run(`return entry.serverOnly()`)).result).toBe(
       'MARK_MDX_SERVER_ONLY',
     )
+    // the client's export is a function, whose call throws the refusal the
+    // docs quote (environment-functions.md)
     expect(
       (
-        await build.client.run(`try {
+        await build.client.run(`if (typeof entry.serverOnly !== 'function') {
+  return typeof entry.serverOnly
+}
+try {
   entry.serverOnly()
   return 'ran'
-} catch {
-  return 'refused'
+} catch (error) {
+  return error instanceof Error ? error.message : String(error)
 }`)
       ).result,
-    ).toBe('refused')
+    ).toBe('createServerOnlyFn() functions can only be called on the server!')
   })
 
   test.each([
