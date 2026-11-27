@@ -339,9 +339,264 @@ describe('frame-decoder', () => {
     },
   )
 
-  // Promises and streams that Seroval created from earlier records cannot be
-  // settled by the client after a transport failure without a Seroval API for
-  // aborting a cross-JSON deserialization session.
+  it.each([
+    ['after it yields a value', true],
+    ['before it yields a value', false],
+  ])(
+    'rejects a framed async iterable aborted %s',
+    async (_name, yieldFirst) => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const controller = new AbortController()
+      const aborted = new DOMException('aborted', 'AbortError')
+      let bodyController!: ReadableStreamDefaultController<Uint8Array>
+      const body = new ReadableStream<Uint8Array>({
+        start(value) {
+          bodyController = value
+        },
+      })
+      const gate = createControlledPromise<void>()
+      async function* numbers() {
+        if (yieldFirst) {
+          yield 1
+        }
+        await gate
+        yield 2
+      }
+      const dispose = toCrossJSONStream(numbers(), {
+        refs: new Map(),
+        onParse(value) {
+          bodyController.enqueue(encodeJSONFrame(JSON.stringify(value)))
+        },
+      })
+
+      try {
+        const iterable = (await runWithStartContext(
+          { startOptions: undefined } as any,
+          async () =>
+            serverFnFetcher(
+              'http://localhost/_serverFn/test',
+              [{ method: 'POST', signal: controller.signal }],
+              (_url, init) => {
+                init.signal?.addEventListener(
+                  'abort',
+                  () => bodyController.error(init.signal!.reason),
+                  { once: true },
+                )
+                return Promise.resolve(
+                  new Response(body, {
+                    headers: {
+                      'content-type': TSS_CONTENT_TYPE_FRAMED_VERSIONED,
+                      [X_TSS_SERIALIZED]: 'true',
+                    },
+                  }),
+                )
+              },
+            ),
+        )) as AsyncIterable<number>
+
+        const iterator = iterable[Symbol.asyncIterator]()
+        if (yieldFirst) {
+          await expect(iterator.next()).resolves.toEqual({
+            value: 1,
+            done: false,
+          })
+        }
+
+        const pending = iterator.next()
+        controller.abort(aborted)
+
+        await expect(pending).rejects.toBe(aborted)
+        await vi.waitFor(() => expect(log).toHaveBeenCalledOnce())
+        expect(log.mock.calls[0]![1]).toBe(aborted)
+        await vi.waitFor(() => expect(body.locked).toBe(false))
+      } finally {
+        gate.resolve()
+        dispose()
+        log.mockRestore()
+      }
+    },
+  )
+
+  it('rejects a framed async iterable after an invalid patch', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    let bodyController!: ReadableStreamDefaultController<Uint8Array>
+    const body = new ReadableStream<Uint8Array>({
+      start(value) {
+        bodyController = value
+      },
+    })
+    const gate = createControlledPromise<void>()
+    async function* numbers() {
+      yield 1
+      await gate
+      yield 2
+    }
+    const dispose = toCrossJSONStream(numbers(), {
+      refs: new Map(),
+      onParse(value) {
+        bodyController.enqueue(encodeJSONFrame(JSON.stringify(value)))
+      },
+    })
+
+    try {
+      const iterable = (await runWithStartContext(
+        { startOptions: undefined } as any,
+        async () =>
+          serverFnFetcher(
+            'http://localhost/_serverFn/test',
+            [{ method: 'POST' }],
+            () =>
+              new Response(body, {
+                headers: {
+                  'content-type': TSS_CONTENT_TYPE_FRAMED_VERSIONED,
+                  [X_TSS_SERIALIZED]: 'true',
+                },
+              }),
+          ),
+      )) as AsyncIterable<number>
+
+      const iterator = iterable[Symbol.asyncIterator]()
+      await expect(iterator.next()).resolves.toEqual({ value: 1, done: false })
+
+      const next = iterator.next()
+      bodyController.enqueue(encodeJSONFrame('{'))
+
+      await expect(next).rejects.toBeInstanceOf(SyntaxError)
+      await vi.waitFor(() => expect(log).toHaveBeenCalledOnce())
+      expect(log.mock.calls[0]![1]).toBeInstanceOf(SyntaxError)
+    } finally {
+      gate.resolve()
+      dispose()
+      log.mockRestore()
+    }
+  })
+
+  it('leaves a completed framed async iterable alone when the response is aborted', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const controller = new AbortController()
+    const aborted = new DOMException('aborted', 'AbortError')
+    let bodyController!: ReadableStreamDefaultController<Uint8Array>
+    const body = new ReadableStream<Uint8Array>({
+      start(value) {
+        bodyController = value
+      },
+    })
+    async function* numbers() {
+      yield 1
+      yield 2
+    }
+    const dispose = toCrossJSONStream(numbers(), {
+      refs: new Map(),
+      onParse(value) {
+        bodyController.enqueue(encodeJSONFrame(JSON.stringify(value)))
+      },
+    })
+
+    try {
+      const iterable = (await runWithStartContext(
+        { startOptions: undefined } as any,
+        async () =>
+          serverFnFetcher(
+            'http://localhost/_serverFn/test',
+            [{ method: 'POST', signal: controller.signal }],
+            (_url, init) => {
+              init.signal?.addEventListener(
+                'abort',
+                () => bodyController.error(init.signal!.reason),
+                { once: true },
+              )
+              return Promise.resolve(
+                new Response(body, {
+                  headers: {
+                    'content-type': TSS_CONTENT_TYPE_FRAMED_VERSIONED,
+                    [X_TSS_SERIALIZED]: 'true',
+                  },
+                }),
+              )
+            },
+          ),
+      )) as AsyncIterable<number>
+
+      const received: Array<number> = []
+      for await (const value of iterable) {
+        received.push(value)
+      }
+      expect(received).toEqual([1, 2])
+
+      controller.abort(aborted)
+      await vi.waitFor(() => expect(log).toHaveBeenCalledOnce())
+
+      const replayed: Array<number> = []
+      for await (const value of iterable) {
+        replayed.push(value)
+      }
+      expect(replayed).toEqual([1, 2])
+    } finally {
+      dispose()
+      log.mockRestore()
+    }
+  })
+
+  it('completes a framed async iterable when the response ends', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    let bodyController!: ReadableStreamDefaultController<Uint8Array>
+    const body = new ReadableStream<Uint8Array>({
+      start(value) {
+        bodyController = value
+      },
+    })
+    async function* numbers() {
+      yield 1
+      yield 2
+    }
+    let closed = false
+    const dispose = toCrossJSONStream(numbers(), {
+      refs: new Map(),
+      onParse(value) {
+        bodyController.enqueue(encodeJSONFrame(JSON.stringify(value)))
+      },
+      onDone() {
+        if (!closed) {
+          closed = true
+          bodyController.close()
+        }
+      },
+    })
+
+    try {
+      const iterable = (await runWithStartContext(
+        { startOptions: undefined } as any,
+        async () =>
+          serverFnFetcher(
+            'http://localhost/_serverFn/test',
+            [{ method: 'POST' }],
+            () =>
+              new Response(body, {
+                headers: {
+                  'content-type': TSS_CONTENT_TYPE_FRAMED_VERSIONED,
+                  [X_TSS_SERIALIZED]: 'true',
+                },
+              }),
+          ),
+      )) as AsyncIterable<number>
+
+      const received: Array<number> = []
+      for await (const value of iterable) {
+        received.push(value)
+      }
+
+      expect(received).toEqual([1, 2])
+      expect(log).not.toHaveBeenCalled()
+      await vi.waitFor(() => expect(body.locked).toBe(false))
+    } finally {
+      dispose()
+      log.mockRestore()
+    }
+  })
+
+  // Promises that Seroval created from earlier records cannot be settled by the
+  // client after a transport failure without a Seroval API for aborting a
+  // cross-JSON deserialization session.
   it.todo('rejects pending framed promises after a transport failure')
 
   it('cancels the response when the initial framed deserialization fails', async () => {
