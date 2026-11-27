@@ -4,18 +4,20 @@
  * of the denied import that leaks into the environment, in the user's
  * source. Read from what a real app reports with Start's default rules: the
  * Vite dev server's warnings (mock mode), and the errors of an Rsbuild dev
- * server and of Vite and Rsbuild builds (error mode). The Vite and Rsbuild
- * adapters look for the use in a different order (Vite: compiled code first,
- * Rsbuild: original source first), so each case runs on both. The chain
- * and the code frame of a report: reported-location-trace.test.ts.
+ * server and of Vite and Rsbuild builds (error mode), each case a module of
+ * one app per channel. Each adapter finds the use through its own source
+ * maps and compiled code, so each case runs on every channel. The chain and
+ * the code frame of a report: reported-location-trace.test.ts.
  */
 import { describe, expect, test } from 'vitest'
 import { locationParts } from '../../importProtection/start-apps'
 import {
   at,
+  caseFile,
   channels,
   expectRelevantLocation,
   reportedLocations,
+  reportedLocationsOfCases,
   timeout,
 } from './reported-location-app'
 import type { Channel } from './reported-location-app'
@@ -190,7 +192,31 @@ const cases: Record<string, LocationCase> = {
 
 /** The rows of `cases` on `channels`. */
 const rows = (names: Array<string>, on: Array<Channel>) =>
-  names.flatMap((name) => on.map((channel) => ({ ...cases[name]!, channel })))
+  names.flatMap((name) =>
+    on.map((channel) => ({ ...cases[name]!, key: name, channel })),
+  )
+
+/**
+ * What each channel reports for every case, in one app per channel
+ * (`reportedLocationsOfCases`), read by the first row that needs it.
+ */
+const reportsOn = new Map<
+  Channel,
+  ReturnType<typeof reportedLocationsOfCases>
+>()
+const reportsOf = (channel: Channel) => {
+  let reports = reportsOn.get(channel)
+  if (!reports) {
+    reports = reportedLocationsOfCases(
+      channel,
+      Object.fromEntries(
+        Object.entries(cases).map(([name, { code }]) => [name, code]),
+      ),
+    )
+    reportsOn.set(channel, reports)
+  }
+  return reports
+}
 
 describe('the reported location of a violation is the leaking use or the import', () => {
   // Source (lookAlike, isomorphicClient): moved from
@@ -205,8 +231,22 @@ describe('the reported location of a violation is the leaking use or the import'
     ...rows(['memberProperty'], channels),
   ])(
     '$channel: $name',
-    async ({ channel, code, expected }) => {
-      expectRelevantLocation(await reportedLocations(channel, code), expected)
+    async ({ channel, key, expected }) => {
+      expectRelevantLocation(
+        (await reportsOf(channel)).of(key),
+        // (each case is `src/<key>/a.tsx` of the shared app)
+        expected.map((place) => place.replace('src/a.tsx', caseFile(key))),
+      )
+    },
+    timeout,
+  )
+
+  test.each(channels)(
+    '%s: every case is reported, and nothing else fails',
+    async (channel) => {
+      const { files, otherErrors } = await reportsOf(channel)
+      expect(files).toEqual(Object.keys(cases).map(caseFile).sort())
+      expect(otherErrors).toEqual([])
     },
     timeout,
   )

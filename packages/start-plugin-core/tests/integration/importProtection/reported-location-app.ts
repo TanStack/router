@@ -18,12 +18,14 @@ import {
   distinct,
   isAt,
   locationIn,
+  locationParts,
   reportedViolations,
   startProtectedDevServer,
   violationRecorder,
 } from '../../importProtection/start-apps'
 import type { Recorded } from '../../importProtection/start-apps'
 import type { StartBuildError } from '../../build-harness'
+import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 
 export const timeout = 60_000
 
@@ -32,6 +34,61 @@ export type Channel =
   | 'rsbuild dev'
   | 'vite build'
   | 'rsbuild build'
+
+const secretServerModule = `export const eq = () => 1
+export const secret = () => 'secret'
+export default function Secret() {
+  return 'secret'
+}
+`
+
+/**
+ * What `channel` reports for the app `files` (entry `src/entry.ts`): what
+ * `onViolation` received, and the errors of a dev server's channels (none
+ * for a build: a build that fails for another reason fails the call).
+ */
+async function reportsOf(
+  channel: Channel,
+  files: Record<string, string>,
+  { sourcemap = false }: { sourcemap?: boolean },
+): Promise<{ output: Recorded; diagnostics: Array<Diagnostic> }> {
+  if (channel === 'vite dev') {
+    const server = await startProtectedDevServer(files)
+    await server.load('/src/entry.ts')
+    return { output: server, diagnostics: [] }
+  }
+  if (channel === 'rsbuild dev') {
+    const recorder = violationRecorder({ behavior: 'error' })
+    const server = await startRsbuildDevServer({
+      files,
+      importProtection: recorder.importProtection,
+      // Rsbuild's default source maps in development
+      config: { output: { sourceMap: { js: 'cheap-module-source-map' } } },
+    })
+    return {
+      output: { root: server.root, violations: recorder.violations },
+      diagnostics: server.diagnostics,
+    }
+  }
+  const bundler = channel === 'vite build' ? 'vite' : 'rsbuild'
+  // (a build without any violation succeeds)
+  const output = await buildStart({
+    bundler,
+    files,
+    entry: 'src/entry.ts',
+    sourcemap,
+  }).then(
+    (build) => build,
+    (error: StartBuildError) => {
+      // (a build that fails for another reason fails the test)
+      if (reportedViolations(error).length === 0) {
+        throw error
+      }
+      return error
+    },
+  )
+  return { output, diagnostics: [] }
+}
 
 /**
  * The importer locations reported for an app whose `src/a.tsx` is `code`
@@ -43,53 +100,68 @@ export async function reportedLocations(
   channel: Channel,
   code: string,
   /** Builds: emit source maps (Rsbuild's `output.sourceMap.js`, Vite's `build.sourcemap`). */
-  { sourcemap = false }: { sourcemap?: boolean } = {},
+  options: { sourcemap?: boolean } = {},
 ): Promise<Array<string>> {
-  const files = {
-    'src/secret.server.ts': `export const eq = () => 1
-export const secret = () => 'secret'
-export default function Secret() {
-  return 'secret'
-}
-`,
-    'src/a.tsx': code,
-    'src/entry.ts': `export * from './a'\n`,
-  }
-  let output: Recorded
-  if (channel === 'vite dev') {
-    const server = await startProtectedDevServer(files)
-    await server.load('/src/entry.ts')
-    output = server
-  } else if (channel === 'rsbuild dev') {
-    const recorder = violationRecorder({ behavior: 'error' })
-    const server = await startRsbuildDevServer({
-      files,
-      importProtection: recorder.importProtection,
-      // Rsbuild's default source maps in development
-      config: { output: { sourceMap: { js: 'cheap-module-source-map' } } },
-    })
-    output = { root: server.root, violations: recorder.violations }
-    expectNoOtherErrors({ ...output, diagnostics: server.diagnostics })
-  } else {
-    const bundler = channel === 'vite build' ? 'vite' : 'rsbuild'
-    // (a build without any violation succeeds)
-    output = await buildStart({
-      bundler,
-      files,
-      entry: 'src/entry.ts',
-      sourcemap,
-    }).then(
-      (build) => build,
-      (error: StartBuildError) => {
-        // (a build that fails for another reason fails the test)
-        if (reportedViolations(error).length === 0) {
-          throw error
-        }
-        return error
-      },
-    )
-  }
+  const { output, diagnostics } = await reportsOf(
+    channel,
+    {
+      'src/secret.server.ts': secretServerModule,
+      'src/a.tsx': code,
+      'src/entry.ts': `export * from './a'\n`,
+    },
+    options,
+  )
+  expectNoOtherErrors({ ...output, diagnostics })
   return distinct(reportedViolations(output).map((report) => report.importer))
+}
+
+/** The file of a case of `reportedLocationsOfCases`: `src/<name>/a.tsx`. */
+export const caseFile = (name: string) => `src/${name}/a.tsx`
+
+/**
+ * `reportedLocations` of several cases in one app per channel: each case
+ * `name` is `src/<name>/a.tsx` (`caseFile`) next to a denied
+ * `src/<name>/secret.server.ts` of its own, and the entry re-exports each
+ * as a namespace. The importer locations reported, by case (a case that
+ * fails to compile for another reason has none); the other errors of a dev
+ * server's channels (`otherErrors`, `expectNoOtherErrors`); and every file a
+ * report names (`files`).
+ */
+export async function reportedLocationsOfCases(
+  channel: Channel,
+  codes: Record<string, string>,
+): Promise<{
+  of: (name: string) => Array<string>
+  otherErrors: Array<string>
+  files: Array<string>
+}> {
+  const names = Object.keys(codes)
+  const { output, diagnostics } = await reportsOf(
+    channel,
+    {
+      ...Object.fromEntries(
+        names.flatMap((name) => [
+          [caseFile(name), codes[name]!],
+          [`src/${name}/secret.server.ts`, secretServerModule],
+        ]),
+      ),
+      'src/entry.ts': names
+        .map((name) => `export * as ${name} from './${name}/a'\n`)
+        .join(''),
+    },
+    {},
+  )
+  const importers = distinct(
+    reportedViolations(output).map((report) => report.importer),
+  )
+  const fileOf = (importer: string) =>
+    locationParts(importer.replace(/^[a-z]+:\/+/, '')).file
+  return {
+    of: (name) =>
+      importers.filter((importer) => fileOf(importer) === caseFile(name)),
+    otherErrors: otherErrorsOf({ ...output, diagnostics }),
+    files: distinct(importers.map(fileOf)).sort(),
+  }
 }
 
 /**
@@ -103,16 +175,26 @@ export function expectNoOtherErrors(
     diagnostics: Array<{ severity: string; text: string }>
   },
 ) {
+  expect(otherErrorsOf(output)).toEqual([])
+}
+
+/** The texts of the errors `expectNoOtherErrors` fails on. */
+function otherErrorsOf(
+  output: Recorded & {
+    diagnostics: Array<{ severity: string; text: string }>
+  },
+): Array<string> {
   const reported = distinct(
     reportedViolations(output).map(({ importer }) => appFileOf(importer)),
   )
-  const others = findDiagnostics(output.diagnostics, {
-    severity: 'error',
-  }).filter(
-    ({ text }) =>
-      !reported.some((file) => mentionsFile(text, file, { root: output.root })),
-  )
-  expect(others.map(({ text }) => text)).toEqual([])
+  return findDiagnostics(output.diagnostics, { severity: 'error' })
+    .filter(
+      ({ text }) =>
+        !reported.some((file) =>
+          mentionsFile(text, file, { root: output.root }),
+        ),
+    )
+    .map(({ text }) => text)
 }
 
 /** Every channel. */
