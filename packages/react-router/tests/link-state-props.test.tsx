@@ -560,3 +560,39 @@ test.each([
     }
   },
 )
+
+test.each([false, true])(
+  "Link children win over state props' children (server: %s)",
+  (server) => {
+    const root = createRootRoute()
+    const router = createRouter({
+      routeTree: root.addChildren([
+        createRoute({ getParentRoute: () => root, path: '/target' }),
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/target'] }),
+      isServer: server,
+    })
+    // Only object literals get excess property checks.
+    const activeProps = { className: 'active', children: 'Active state' }
+    const inactiveProps = { className: 'inactive', children: 'Inactive state' }
+    const tree = (
+      <RouterContextProvider router={router}>
+        <Link to="/target" activeProps={activeProps}>
+          Label
+        </Link>
+        <Link to="/other" inactiveProps={inactiveProps}>
+          Other
+        </Link>
+      </RouterContextProvider>
+    )
+    const container = document.createElement('div')
+    if (server) {
+      container.innerHTML = renderToString(tree)
+    } else {
+      container.append(render(tree).container)
+    }
+    expect(
+      Array.from(container.querySelectorAll('a'), (a) => a.textContent),
+    ).toEqual(['Label', 'Other'])
+  },
+)

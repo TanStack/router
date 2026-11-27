@@ -188,3 +188,43 @@ test.each(['onClick', 'onFocus', 'onMouseEnter', 'onTouchStart'] as const)(
     }
   },
 )
+
+test.each([false, 'render', 'viewport', 'intent'] as const)(
+  'calls element focus, hover and touch handlers with preload=%s',
+  (mode) => {
+    const router = createRouter({
+      routeTree: createRootRoute(),
+      history: createMemoryHistory(),
+      isServer: false,
+    })
+    const preload = vi
+      .spyOn(router, 'preloadRoute')
+      .mockResolvedValue(undefined)
+    const handlers = {
+      onFocus: vi.fn(),
+      onBlur: vi.fn(),
+      onMouseEnter: vi.fn(),
+      onMouseLeave: vi.fn(),
+      onTouchStart: vi.fn(),
+    }
+    const view = render(
+      <RouterContextProvider router={router}>
+        <Link to="/target" preload={mode} preloadDelay={0} {...handlers}>
+          Target
+        </Link>
+      </RouterContextProvider>,
+    )
+    preload.mockClear()
+    const anchor = view.getByText('Target')
+    fireEvent.focus(anchor)
+    fireEvent.blur(anchor)
+    fireEvent.mouseEnter(anchor)
+    fireEvent.mouseLeave(anchor)
+    fireEvent.touchStart(anchor)
+    for (const handler of Object.values(handlers)) {
+      expect(handler).toHaveBeenCalledOnce()
+    }
+    // Focus, hover and touch each preload an intent link.
+    expect(preload).toHaveBeenCalledTimes(mode === 'intent' ? 3 : 0)
+  },
+)

@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { jsx } from 'react/jsx-runtime'
 import {
   deepEqual,
   functionalUpdate,
@@ -359,16 +360,15 @@ export function useLinkProps<
     userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
   // `preloadRoute` builds the location itself and only reads the options, so
-  // `dest` goes through as-is.
+  // `dest` goes through as-is. Intent events and viewport entries call this;
+  // only an entry that leaves the viewport cancels instead.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const enqueuePreload = React.useCallback(
     (e?: React.MouseEvent | React.FocusEvent | IntersectionObserverEntry) => {
-      const isIntersecting = (e as IntersectionObserverEntry | undefined)
-        ?.isIntersecting
-      if (!(isIntersecting ?? preload === 'intent')) {
-        if (isIntersecting === false) {
-          cancelPreload(innerRef)
-        }
+      if (
+        (e as IntersectionObserverEntry | undefined)?.isIntersecting === false
+      ) {
+        cancelPreload(innerRef)
         return
       }
 
@@ -382,7 +382,7 @@ export function useLinkProps<
         preloadLink(router, dest)
       }, preloadDelay)
     },
-    [router, dest, innerRef, preload, preloadDelay],
+    [router, dest, innerRef, preloadDelay],
   )
 
   // Preload side effects: `render` preloads once per link, `viewport` watches
@@ -456,24 +456,19 @@ export function useLinkProps<
     }
   }
 
-  const handleTouchStart = () => {
-    if (preload === 'intent') {
-      preloadLink(router, dest)
-    }
-  }
-
-  const handleLeave = () => {
-    if (preload === 'intent') {
-      cancelPreload(innerRef)
-    }
-  }
-
   props.onClick = composeHandlers(onClick, handleClick)
-  props.onBlur = composeHandlers(onBlur, handleLeave)
-  props.onFocus = composeHandlers(onFocus, enqueuePreload)
-  props.onMouseEnter = composeHandlers(onMouseEnter, enqueuePreload)
-  props.onMouseLeave = composeHandlers(onMouseLeave, handleLeave)
-  props.onTouchStart = composeHandlers(onTouchStart, handleTouchStart)
+  // Only intent preloading listens to focus, hover and touch. Other modes
+  // leave the element's own handlers as given.
+  if (preload === 'intent') {
+    const handleLeave = () => cancelPreload(innerRef)
+    props.onBlur = composeHandlers(onBlur, handleLeave)
+    props.onFocus = composeHandlers(onFocus, enqueuePreload)
+    props.onMouseEnter = composeHandlers(onMouseEnter, enqueuePreload)
+    props.onMouseLeave = composeHandlers(onMouseLeave, handleLeave)
+    props.onTouchStart = composeHandlers(onTouchStart, () =>
+      preloadLink(router, dest),
+    )
+  }
   return applyLinkState(props, options, isActive, href, linkDisabled, host)
 }
 
@@ -849,14 +844,17 @@ export const Link: LinkComponent<'a'> = React.memo(
     const host = props._asChild || 'a'
     const linkProps = useLinkProps(props as any, ref, host)
 
-    const children =
+    // The Link's own children win over state-prop children.
+    ;(linkProps as any).children =
       typeof props.children === 'function'
         ? props.children({
             isActive: (linkProps as any)['data-status'] === 'active',
           })
         : props.children
 
-    return React.createElement(host, linkProps, children)
+    // `linkProps` is a fresh object without `key`, so React 19's `jsx` uses
+    // it as the element's props instead of copying it.
+    return jsx(host, linkProps)
   }),
   areLinkPropsEqual,
 ) as any
