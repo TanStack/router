@@ -7,13 +7,19 @@
 import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { createServer, createServerModuleRunner, parseSync } from 'vite'
+import {
+  createLogger,
+  createServer,
+  createServerModuleRunner,
+  parseSync,
+} from 'vite'
 import { linkDirectory } from '@tanstack/compiler-test-utils/app-directory'
 import { runAsDevCommand } from '@tanstack/compiler-test-utils/dev-command'
 import { openDiagnosticChannel } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
+import { onFileFinished } from '@tanstack/compiler-test-utils/test-scope'
 import { inputsOf, recordInputs } from './consumer-inputs'
-import type { PluginOption } from 'vite'
+import type { PluginOption, ViteDevServer, Logger as ViteLogger } from 'vite'
 import type { createClientConsumer as CreateClientConsumer } from './consumer-client'
 
 const nodeModules = path.resolve(import.meta.dirname, '../node_modules')
@@ -49,6 +55,176 @@ export const render = (Component, props = {}) => renderToStringAsync(() => creat
   return `export * as runtime from '@tanstack/${framework}-router'\n${render}`
 }
 
+/** What one load records of the app it loads (the consumer's view). */
+interface Load {
+  posixRoot: string
+  inputOf: (id: string) => string | undefined
+  requested: Set<string>
+  printedRequests: Map<string, Set<string>>
+  imports: Array<{ file: string; specifier: string; importer: string }>
+}
+
+/**
+ * The Vite server of a framework shared by the loads of one test file (one
+ * per framework: its plugins differ). Its transforms of the router packages
+ * and the framework (Solid's go through Babel) are kept; each load forgets
+ * its app's modules first and evaluates them in a runner of its own, so no
+ * load sees what an earlier one evaluated.
+ */
+interface Host {
+  server: ViteDevServer
+  /** The loads running now: the observer plugin records into each one whose app holds the file. */
+  loads: Set<Load>
+  /** Where Vite's logger writes: the channel of the load running now. */
+  logger: { target: ViteLogger | undefined }
+}
+
+const hosts = new Map<string, Promise<Host>>()
+
+/** The fixture-owned requests and imports a load observes (public Vite hooks). */
+function observerPlugin(loads: Set<Load>): PluginOption {
+  const loadsOf = (file: string) =>
+    [...loads].filter((load) => file.startsWith(load.posixRoot + '/'))
+  return {
+    name: 'generator-consumer:fixture-requests',
+    enforce: 'pre',
+    async resolveId(specifier, importer) {
+      if (
+        !importer ||
+        (!specifier.startsWith('.') && !path.isAbsolute(specifier))
+      ) {
+        return
+      }
+      const resolved = await this.resolve(specifier, importer, {
+        skipSelf: true,
+      })
+      if (resolved) {
+        const from = importer.split('?')[0]!
+        for (const load of loadsOf(from)) {
+          const file = load.inputOf(resolved.id)
+          if (file && load.printedRequests.get(from)?.has(specifier)) {
+            load.imports.push({ file, specifier, importer: from })
+          }
+        }
+      }
+      return resolved
+    },
+    transform(code, id) {
+      const file = id.split('?')[0]!
+      for (const load of loadsOf(file)) {
+        const input = load.inputOf(id)
+        if (input) {
+          load.requested.add(input)
+        } else if (
+          !file.includes('/node_modules/') &&
+          /\.[cm]?[jt]sx?$/.test(file)
+        ) {
+          // Distinguish source imports from Vite's subsequent canonical-id
+          // requests. Oxc decodes literals; Vite still resolves every edge.
+          const specifiers = new Set<string>()
+          const visit = (node: any): void => {
+            if (!node || typeof node !== 'object') {
+              return
+            }
+            if (
+              [
+                'ImportDeclaration',
+                'ExportNamedDeclaration',
+                'ExportAllDeclaration',
+                'ImportExpression',
+              ].includes(node.type) &&
+              typeof node.source?.value === 'string'
+            ) {
+              specifiers.add(node.source.value)
+            }
+            for (const child of Object.values(node)) {
+              if (Array.isArray(child)) {
+                child.forEach(visit)
+              } else if (child && typeof child === 'object') {
+                visit(child)
+              }
+            }
+          }
+          visit(parseSync(file, code).program)
+          load.printedRequests.set(file, specifiers)
+        }
+      }
+    },
+  }
+}
+
+/** The framework's shared host of the test file running now. */
+function hostOf(framework: string): Promise<Host> {
+  let host = hosts.get(framework)
+  if (!host) {
+    host = createHost(framework)
+    hosts.set(framework, host)
+    onFileFinished(async () => {
+      hosts.delete(framework)
+      const { server } = await host!
+      await server.close()
+    })
+  }
+  return host
+}
+
+async function createHost(framework: string): Promise<Host> {
+  const loads = new Set<Load>()
+  const logger: Host['logger'] = { target: undefined }
+  const plugins: Array<PluginOption> = [observerPlugin(loads)]
+  if (framework === 'vue') {
+    const { default: vue } = await import('@vitejs/plugin-vue')
+    plugins.push(vue())
+  }
+  if (framework === 'solid') {
+    const { default: solid } = await import('vite-plugin-solid')
+    plugins.push(solid({ ssr: true }))
+  }
+  const silent = createLogger('silent')
+  const target = () => logger.target ?? silent
+  const customLogger: ViteLogger = {
+    info: (message, options) => target().info(message, options),
+    warn: (message, options) => target().warn(message, options),
+    warnOnce: (message, options) => target().warnOnce(message, options),
+    error: (message, options) => target().error(message, options),
+    clearScreen: (type) => target().clearScreen(type),
+    hasErrorLogged: (error) => target().hasErrorLogged(error),
+    get hasWarned() {
+      return target().hasWarned
+    },
+    set hasWarned(value) {
+      target().hasWarned = value
+    },
+  }
+  // (Vite resolves the externals of SSR from its root: the packages every
+  // app links)
+  const root = await mkdtemp(path.join(runDirectory(), 'tsr-consumer-'))
+  await linkDirectory(nodeModules, path.join(root, 'node_modules'))
+  const server = await runAsDevCommand(async () =>
+    createServer({
+      root,
+      configFile: false,
+      // (its own: Vite's default, the `node_modules/.vite` of a root without
+      // a package.json, is this package's)
+      cacheDir: path.join(root, '.vite'),
+      envDir: false,
+      appType: 'custom',
+      customLogger,
+      clearScreen: false,
+      plugins,
+      server: { middlewareMode: true, hmr: false, watch: null, ws: false },
+      optimizeDeps: { noDiscovery: true, include: [] },
+      ssr: framework === 'solid' ? {} : { external: true },
+    }),
+  )
+  const close = server.close.bind(server)
+  server.close = async () => {
+    await close()
+    await rm(root, { recursive: true, force: true })
+  }
+  return { server, loads, logger }
+}
+
 async function withModule<T>(
   file: string,
   use: (loaded: {
@@ -82,116 +258,41 @@ async function withModule<T>(
   const inputByPosix = new Map(
     Object.keys(files).map((file) => [posix(file), file] as const),
   )
-  const inputOf = (id: string) => inputByPosix.get(id.split('?')[0]!)
-  const posixRoot = posix(root)
-  const requested = new Set<string>()
-  const printedRequests = new Map<string, Set<string>>()
-  const imports: Array<{ file: string; specifier: string; importer: string }> =
-    []
-  const plugins: Array<PluginOption> = [
-    {
-      name: 'generator-consumer:fixture-requests',
-      enforce: 'pre',
-      async resolveId(specifier, importer) {
-        if (
-          !importer ||
-          (!specifier.startsWith('.') && !path.isAbsolute(specifier))
-        ) {
-          return
-        }
-        const resolved = await this.resolve(specifier, importer, {
-          skipSelf: true,
-        })
-        if (resolved) {
-          const file = inputOf(resolved.id)
-          const from = importer.split('?')[0]!
-          if (file && printedRequests.get(from)?.has(specifier)) {
-            imports.push({ file, specifier, importer: from })
-          }
-        }
-        return resolved
-      },
-      transform(code, id) {
-        const input = inputOf(id)
-        const file = id.split('?')[0]!
-        if (input) {
-          requested.add(input)
-        } else if (
-          file.startsWith(posixRoot + '/') &&
-          !file.includes('/node_modules/') &&
-          /\.[cm]?[jt]sx?$/.test(file)
-        ) {
-          // Distinguish source imports from Vite's subsequent canonical-id
-          // requests. Oxc decodes literals; Vite still resolves every edge.
-          const specifiers = new Set<string>()
-          const visit = (node: any): void => {
-            if (!node || typeof node !== 'object') {
-              return
-            }
-            if (
-              [
-                'ImportDeclaration',
-                'ExportNamedDeclaration',
-                'ExportAllDeclaration',
-                'ImportExpression',
-              ].includes(node.type) &&
-              typeof node.source?.value === 'string'
-            ) {
-              specifiers.add(node.source.value)
-            }
-            for (const child of Object.values(node)) {
-              if (Array.isArray(child)) {
-                child.forEach(visit)
-              } else if (child && typeof child === 'object') {
-                visit(child)
-              }
-            }
-          }
-          visit(parseSync(file, code).program)
-          printedRequests.set(file, specifiers)
-        }
-      },
-    },
-  ]
-  if (framework === 'vue') {
-    const { default: vue } = await import('@vitejs/plugin-vue')
-    plugins.push(vue())
+  const load: Load = {
+    posixRoot: posix(root),
+    inputOf: (id) => inputByPosix.get(id.split('?')[0]!),
+    requested: new Set(),
+    printedRequests: new Map(),
+    imports: [],
   }
-  if (framework === 'solid') {
-    const { default: solid } = await import('vite-plugin-solid')
-    plugins.push(solid({ ssr: true }))
+  const host = await hostOf(framework)
+  if ([...host.loads].some(({ posixRoot }) => posixRoot === load.posixRoot)) {
+    throw new Error(`${root} is being loaded already`)
+  }
+  // (the process takes up the dev servers' environment again, as at their
+  // start)
+  runAsDevCommand()
+  // The app's files as they are now: an earlier load of the same app (a
+  // tree generated again, an edited route file) left its transforms
+  const environment = host.server.environments.ssr
+  for (const module of environment.moduleGraph.idToModuleMap.values()) {
+    if (module.file && posix(module.file).startsWith(load.posixRoot + '/')) {
+      environment.moduleGraph.invalidateModule(module)
+    }
   }
   const entry = path.join(path.dirname(file), `.consumer-${randomUUID()}.ts`)
   await writeFile(entry, consumerSource(framework))
   const channel = openDiagnosticChannel()
-  const server = await runAsDevCommand(async () =>
-    createServer({
-      root,
-      configFile: false,
-      // The app's own: Vite's default, the `node_modules/.vite` of an app
-      // without a package.json, is this package's (the app links its
-      // `node_modules`)
-      cacheDir: path.join(root, '.vite'),
-      envDir: false,
-      appType: 'custom',
-      customLogger: channel.viteLogger(),
-      clearScreen: false,
-      plugins,
-      server: { middlewareMode: true, hmr: false, watch: null, ws: false },
-      optimizeDeps: { noDiscovery: true, include: [] },
-      ssr: framework === 'solid' ? {} : { external: true },
-    }),
-  )
-  const runner = createServerModuleRunner(server.environments.ssr, {
-    hmr: false,
-  })
+  host.loads.add(load)
+  host.logger.target = channel.viteLogger()
+  const runner = createServerModuleRunner(environment, { hmr: false })
   try {
     const consumer = await runner.import(entry)
     const exports = await runner.import(realFile)
     const sources = new Map<string, Record<string, any>>()
     // Import only fixture files the app already requested. This cannot eagerly
     // pull in a lazy source, and a generated facade can never own its identity.
-    for (const source of [...requested]) {
+    for (const source of [...load.requested]) {
       sources.set(source, await runner.import(source))
     }
     return await use({
@@ -199,14 +300,15 @@ async function withModule<T>(
       runtime: consumer.runtime,
       framework,
       sources,
-      imports,
-      loadedFiles: () => [...requested].sort(),
+      imports: load.imports,
+      loadedFiles: () => [...load.requested].sort(),
       import: (source) => runner.import(source),
       render: consumer.render,
     })
   } finally {
+    host.loads.delete(load)
+    host.logger.target = undefined
     await runner.close()
-    await server.close()
     channel.close()
     await rm(entry, { force: true })
   }
