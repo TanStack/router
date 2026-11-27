@@ -41,24 +41,6 @@ interface Refused extends Compiled {
 }
 
 const compiled: Array<Compiled> = [
-  // The export's summary describes the value it starts with: a builder the
-  // module then replaces by a builder of the same kind (accepted in its own
-  // module, R92) is followed in another module.
-  // Source: confirmation of the dependency summaries' review fixes
-  // (2026-11-27, Fable): a rule making a reassigned export unknown shipped
-  // this handler to the client without a message.
-  {
-    name: 'a `let` builder export reassigned the same kind',
-    files: {
-      'src/base.ts': `import { createServerFn } from '@tanstack/react-start'
-export let base = createServerFn({ method: 'POST' })
-base = base.middleware([])
-`,
-      'src/entry.ts': `import { base } from './base'
-export const fn = base.handler(async () => 'MARK_SERVER_SECRET')
-`,
-    },
-  },
   {
     name: '`export * as` of a project module',
     files: {
@@ -1164,6 +1146,41 @@ export function builderShapesSuite(bundler: StartBundler) {
           `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
         )
         expect(result).toBe('MARK_SERVER_MW,yes')
+      },
+      timeout,
+    )
+
+    // The export's summary describes the value it starts with: a builder the
+    // module then replaces by a builder of the same kind (accepted in its own
+    // module, R92) is followed in another module, whose handler is off the
+    // client and answers on the server.
+    // Source: confirmation of the dependency summaries' review fixes
+    // (2026-11-27, Fable, Astra): a rule making a reassigned export unknown
+    // shipped this handler to the client without a message.
+    test(
+      'a `let` builder export reassigned the same kind: the handler is off the client and runs on the server',
+      async () => {
+        const build = await buildStart({
+          bundler,
+          files: {
+            'src/base.ts': `import { createServerFn } from '@tanstack/react-start'
+export let base = createServerFn({ method: 'POST' })
+base = base.middleware([])
+`,
+            'src/fns.ts': `import { base } from './base'
+export const fn = base.handler(async () => 'MARK_SERVER_SECRET')
+`,
+            'src/entry.ts': `export { fn } from './fns'\n`,
+            'src/ssr-entry.ts': `export { fn } from './fns'\n${callByIdExports}`,
+          },
+          entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+        })
+        expect(build.client.where('MARK_SERVER_SECRET')).toBe('nowhere')
+        const url = (await build.client.run(`return entry.fn.url`)).result
+        const { result } = await build.ssr.run(
+          `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}), undefined, 'POST')`,
+        )
+        expect(result).toBe('MARK_SERVER_SECRET')
       },
       timeout,
     )

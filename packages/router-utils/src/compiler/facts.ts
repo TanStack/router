@@ -513,12 +513,11 @@ export class RawFactsCache {
     const entry = e
     const holder: { p: Promise<RawFacts> | null } = { p: null }
     holder.p = (async () => {
-      // (a read that throws leaves no rejected read behind: the next ask
-      // reads again)
-      let reading: Promise<Text> | null = null
+      // (a read that throws leaves no pending read behind: the next ask
+      // reads again, `textOf`)
       try {
         const prior = entry.facts
-        reading = this.textOf(entry, canonicalId, env)
+        const reading = this.textOf(entry, canonicalId, env)
         const text = await this.readSaved(canonicalId, env, prior, reading)
         const built = this.build(canonicalId, text ?? null)
         // A file that stops parsing (saved mid-edit) keeps the last facts it
@@ -560,9 +559,6 @@ export class RawFactsCache {
       } finally {
         if (entry.pending === holder.p) {
           entry.pending = null
-          if (entry.reading === reading) {
-            entry.reading = null
-          }
         }
       }
     })()
@@ -582,12 +578,27 @@ export class RawFactsCache {
   }
 
   /** The entry's next text: its read in flight or carried, else a new read. */
+  /**
+   * The entry's read, shared by its readers (`get`, `marker`): a read that
+   * throws is dropped as it settles, so no reader keeps it and the next ask
+   * reads the module again.
+   */
   private textOf(
     entry: FactsEntry,
     canonicalId: string,
     env: string,
   ): Promise<Text> {
-    return (entry.reading ??= this.read(canonicalId, env))
+    if (entry.reading) {
+      return entry.reading
+    }
+    const reading = this.read(canonicalId, env)
+    entry.reading = reading
+    reading.catch(() => {
+      if (entry.reading === reading) {
+        entry.reading = null
+      }
+    })
+    return reading
   }
 
   /**
