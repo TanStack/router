@@ -10,7 +10,7 @@ import {
   captureConsole,
   expectNoDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { afterEach, describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { violationRecorder } from '../../importProtection/start-apps'
 import {
   runInClient,
@@ -22,10 +22,6 @@ import { importersIn } from './hosts'
 
 const timeout = 60_000
 const compileTimeout = timeout
-
-afterEach(() => {
-  delete (globalThis as Record<string, unknown>).factoryLoaded
-})
 
 const serverFn = (
   name: string,

@@ -20,7 +20,7 @@ import {
   diagnosticPosition,
   expectDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { afterEach, describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { StartBuildError, buildStart } from '../../build-harness'
 import {
   runInClient,
@@ -46,10 +46,6 @@ import {
 } from './served-verdict-app'
 import { settledAcrossTurn } from './hosts'
 import type { Plugin } from 'vite'
-
-afterEach(() => {
-  delete (globalThis as Record<string, unknown>).uses
-})
 
 /**
  * `src/mid.ts` (checked) re-exports `src/generated/reg.ts` (exempt), which

@@ -13,7 +13,7 @@ import {
   captureConsole,
   expectNoDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { afterAll, afterEach, describe, expect, test } from 'vitest'
+import { afterAll, describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import {
@@ -31,11 +31,6 @@ import type { StartBuild } from '../../build-harness'
 
 const timeout = 60_000
 const compileTimeout = timeout
-
-afterEach(() => {
-  delete (globalThis as Record<string, unknown>).typesLoaded
-  delete (globalThis as Record<string, unknown>).mixedLoaded
-})
 
 /** Each type-only form, by the module that uses it. */
 const typeOnlyForms = {
@@ -321,10 +316,6 @@ const allTypeExpected = {
 const loadedScript = `return { entry: globalThis.entryLoaded ?? null, types: globalThis.typesLoaded ?? null }`
 
 describe('an all-type re-export', () => {
-  afterEach(() => {
-    delete (globalThis as Record<string, unknown>).entryLoaded
-  })
-
   test(
     'vite dev: reports nothing and loads nothing of the denied file',
     async () => {

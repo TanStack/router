@@ -9,7 +9,7 @@
  * entry `src/server.ts`. Rsbuild dev, and the `Promise<false>` row on Vite
  * dev (its sync twin is pinned in dev.test.ts).
  */
-import { afterAll, afterEach, describe, expect, test } from 'vitest'
+import { afterAll, describe, expect, test } from 'vitest'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import { violationRecorder } from '../../importProtection/start-apps'
 import {
@@ -182,11 +182,6 @@ describe('rsbuild dev', () => {
 })
 
 describe('vite dev: allowImport returning Promise<true>', () => {
-  afterEach(() => {
-    delete (globalThis as Record<string, unknown>).loaded
-    delete (globalThis as Record<string, unknown>).uses
-  })
-
   /**
    * `src/app/allowed-async.ts` uses the denied file; Start's router entry
    * reaches it (as a router reaches its routes), and `allowImport` allows it

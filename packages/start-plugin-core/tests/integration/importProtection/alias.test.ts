@@ -21,7 +21,7 @@ import {
   captureConsole,
   expectNoDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { afterEach, describe, expect, onTestFinished, test } from 'vitest'
+import { describe, expect, onTestFinished, test } from 'vitest'
 import { buildStart, startRuntimeLinks } from '../../build-harness'
 import { startPlugin, startPluginFiles } from '../../dev-server'
 import { probeMockPrelude, safeMock } from '../../importProtection/mock-helpers'
@@ -50,10 +50,6 @@ const testsDir = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '../..',
 )
-
-afterEach(() => {
-  delete (globalThis as Record<string, unknown>).secretLoaded
-})
 
 const widget = `import { secret } from '~/secret.server'
 export const widget = () => secret()

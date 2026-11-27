@@ -21,7 +21,7 @@ import {
   diagnosticPosition,
   expectDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { afterEach, describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { StartBuildError, buildStart } from '../../build-harness'
 import { violationRecorder } from '../../importProtection/start-apps'
 import {
@@ -46,10 +46,6 @@ import {
 import { importersIn, settledAcrossTurn } from './hosts'
 import type { StartBuild } from '../../build-harness'
 import type { Plugin } from 'vite'
-
-afterEach(() => {
-  delete (globalThis as Record<string, unknown>).uses
-})
 
 /** The webpackContext/glob call a pattern importer's position is at. */
 const patternCall = (bundler: 'vite' | 'rsbuild') =>

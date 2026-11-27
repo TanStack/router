@@ -22,7 +22,7 @@ import {
   captureConsole,
   mentionsFile,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { afterEach, describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { buildStart } from '../../build-harness'
 import {
   startProtectedDevServer,
@@ -40,11 +40,6 @@ import type { ImportProtectionOptions } from '../../importProtection/public-type
 
 const timeout = 60_000
 const compileTimeout = timeout
-
-afterEach(() => {
-  delete (globalThis as Record<string, unknown>).loaded
-  delete (globalThis as Record<string, unknown>).uses
-})
 
 /** The exempt directories: `exclude` matches one, `ignoreImporters` the other. */
 const exemptDirs = { exclude: 'excluded', ignoreImporters: 'ignored' } as const

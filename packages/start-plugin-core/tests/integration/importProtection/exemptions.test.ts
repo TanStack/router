@@ -40,14 +40,6 @@ const read = (use) => {
 
 afterEach(() => {
   vi.restoreAllMocks()
-  for (const loaded of [
-    'secretLoaded',
-    'vendorLoaded',
-    'widgetLoaded',
-    'packageLoaded',
-  ]) {
-    delete (globalThis as Record<string, unknown>)[loaded]
-  }
 })
 
 /**

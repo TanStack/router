@@ -11,7 +11,7 @@
  * fail; `allowImport` gives the real module.
  */
 import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
-import { afterEach, describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import {
   rejection,
@@ -29,11 +29,6 @@ import type { Recorded } from '../../importProtection/start-apps'
 
 const timeout = 60_000
 const compileTimeout = timeout
-
-afterEach(() => {
-  delete (globalThis as Record<string, unknown>).loaded
-  delete (globalThis as Record<string, unknown>).uses
-})
 
 /** A denied module that records that it ran, then gives `value`. */
 const recording = (name: string, value: string) =>
