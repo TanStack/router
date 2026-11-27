@@ -15,7 +15,16 @@ export function memoryExecArgv() {
   // and depends on per-process feedback state.
   // Limit variation from GC scheduling and bytecode reclamation; keep a
   // fixed initial old-generation budget.
+  //
+  // Node 26's scavenger posts its job to a platform worker before the main
+  // thread scans roots, so two scavengers race even with CodSpeed's
+  // --single-threaded-gc. Their worklist segments and pretenuring maps are
+  // malloc'd, so every young GC in the measured window adds run-dependent
+  // allocations. Minor mark-sweep runs on the main thread under
+  // --single-threaded-gc. The page pool is released by a wall-clock timer task.
   return [
+    '--minor-ms',
+    '--no-memory-pool',
     '--no-maglev',
     '--no-flush-bytecode',
     '--no-minor-gc-task',
