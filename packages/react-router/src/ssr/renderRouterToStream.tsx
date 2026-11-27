@@ -39,35 +39,10 @@ export const renderRouterToStream = async ({
     }
 
   try {
-    if (typeof ReactDOMServer.renderToReadableStream === 'function') {
-      const stream = await ReactDOMServer.renderToReadableStream(children, {
-        signal,
-        nonce: router.options.ssr?.nonce,
-        progressiveChunkSize: Number.POSITIVE_INFINITY,
-        onError: onError('renderToReadableStream'),
-      })
-      // The transform owns the reader and bounds bot readiness by its lifetime.
-      const rendererAbort = bot ? new AbortController() : undefined
-      const responseStream = transformReadableStreamWithRouter(router, stream, {
-        rendererSafePoint: 'script-close',
-        signal,
-        onAbort: (reason) => {
-          rendererTeardown = true
-          rendererAbort?.abort(reason)
-        },
-      })
-      if (rendererAbort) {
-        await waitForRequest(stream.allReady, rendererAbort.signal)
-      }
-      return createSsrStreamResponse(
-        router,
-        new Response(responseStream, {
-          status: getSsrStatus(router),
-          headers: responseHeaders,
-        }),
-      )
-    }
-
+    // Check renderToPipeableStream first: it only exists in Node-compatible
+    // builds. Since React 19.2 the Node build also exports
+    // renderToReadableStream, so checking readable first silently switches
+    // Node apps to Web Streams on upgrade.
     if (typeof ReactDOMServer.renderToPipeableStream === 'function') {
       const reactAppPassthrough = new PassThrough()
       let pipeable:
@@ -126,8 +101,37 @@ export const renderRouterToStream = async ({
       }
     }
 
+    if (typeof ReactDOMServer.renderToReadableStream === 'function') {
+      const stream = await ReactDOMServer.renderToReadableStream(children, {
+        signal,
+        nonce: router.options.ssr?.nonce,
+        progressiveChunkSize: Number.POSITIVE_INFINITY,
+        onError: onError('renderToReadableStream'),
+      })
+      // The transform owns the reader and bounds bot readiness by its lifetime.
+      const rendererAbort = bot ? new AbortController() : undefined
+      const responseStream = transformReadableStreamWithRouter(router, stream, {
+        rendererSafePoint: 'script-close',
+        signal,
+        onAbort: (reason) => {
+          rendererTeardown = true
+          rendererAbort?.abort(reason)
+        },
+      })
+      if (rendererAbort) {
+        await waitForRequest(stream.allReady, rendererAbort.signal)
+      }
+      return createSsrStreamResponse(
+        router,
+        new Response(responseStream, {
+          status: getSsrStatus(router),
+          headers: responseHeaders,
+        }),
+      )
+    }
+
     throw new Error(
-      'No renderToReadableStream or renderToPipeableStream found in react-dom/server. Ensure you are using a version of react-dom that supports streaming.',
+      'No renderToPipeableStream or renderToReadableStream found in react-dom/server. Ensure you are using a version of react-dom that supports streaming.',
     )
   } catch (error) {
     router.serverSsr?.cleanup()

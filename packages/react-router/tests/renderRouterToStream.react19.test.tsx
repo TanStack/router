@@ -13,10 +13,14 @@ import type { AnyRouter } from '@tanstack/router-core'
 
 /**
  * Load the adapter against the real React 19 renderer. Node's `react-dom`
- * exports both entry points; hiding `renderToReadableStream` exercises the
- * pipeable path that every Node user on React < 19.2 runs.
+ * exports both entry points since React 19.2; hiding
+ * `renderToReadableStream` exercises the pipeable path that every Node user
+ * on React < 19.2 runs, and hiding `renderToPipeableStream` exercises the
+ * readable fallback used where only Web Streams exist.
  */
-async function loadRenderRouterToStream(path: 'readable' | 'pipeable') {
+async function loadRenderRouterToStream(
+  path: 'readable' | 'pipeable' | 'readable-only',
+) {
   vi.resetModules()
   if (path === 'pipeable') {
     vi.doMock('react-dom/server', async (importOriginal) => {
@@ -27,17 +31,34 @@ async function loadRenderRouterToStream(path: 'readable' | 'pipeable') {
         default: { ...actual.default, renderToReadableStream: undefined },
       }
     })
+  } else if (path === 'readable-only') {
+    vi.doMock('react-dom/server', async (importOriginal) => {
+      // The runtime module is CommonJS, so its interop `default` is the namespace.
+      const actual = await importOriginal<{ default: typeof ReactDOMServer }>()
+      return {
+        ...actual,
+        default: { ...actual.default, renderToPipeableStream: undefined },
+      }
+    })
   } else {
     vi.doUnmock('react-dom/server')
   }
   const reactDomServer = (await import('react-dom/server')).default
-  const renderToPipeableStream = vi.spyOn(
-    reactDomServer,
-    'renderToPipeableStream',
-  )
+  const renderToPipeableStream =
+    typeof reactDomServer.renderToPipeableStream === 'function'
+      ? vi.spyOn(reactDomServer, 'renderToPipeableStream')
+      : undefined
+  const renderToReadableStream =
+    typeof reactDomServer.renderToReadableStream === 'function'
+      ? vi.spyOn(reactDomServer, 'renderToReadableStream')
+      : undefined
   const { renderRouterToStream } =
     await import('../src/ssr/renderRouterToStream')
-  return { renderRouterToStream, renderToPipeableStream }
+  return {
+    renderRouterToStream,
+    renderToPipeableStream,
+    renderToReadableStream,
+  }
 }
 
 const activeRouters: Array<AnyRouter> = []
@@ -124,8 +145,11 @@ describe.each(['readable', 'pipeable'] as const)(
   'renderRouterToStream - real React 19 renderer (%s)',
   (path) => {
     test('emits router data after a real Suspense patch while React is still rendering', async () => {
-      const { renderRouterToStream, renderToPipeableStream } =
-        await loadRenderRouterToStream(path)
+      const {
+        renderRouterToStream,
+        renderToPipeableStream,
+        renderToReadableStream,
+      } = await loadRenderRouterToStream(path)
       let resolveRouterData!: (value: string) => void
       const routerData = new Promise<string>((resolve) => {
         resolveRouterData = resolve
@@ -213,9 +237,12 @@ describe.each(['readable', 'pipeable'] as const)(
         expect(state.html).toContain('second-resolved')
         expect(state.html.endsWith('</body></html>')).toBe(true)
         expect(router.serverSsr).toBeUndefined()
-        expect(renderToPipeableStream).toHaveBeenCalledTimes(
-          path === 'pipeable' ? 1 : 0,
-        )
+        // On Node, renderToPipeableStream is used whenever it exists, even
+        // when renderToReadableStream is also available (React 19.2+).
+        expect(renderToPipeableStream).toHaveBeenCalledTimes(1)
+        if (renderToReadableStream) {
+          expect(renderToReadableStream).toHaveBeenCalledTimes(0)
+        }
       } finally {
         first.resolve()
         second.resolve()
@@ -225,3 +252,73 @@ describe.each(['readable', 'pipeable'] as const)(
     })
   },
 )
+
+describe('renderRouterToStream - stream API selection', () => {
+  test('uses renderToPipeableStream when both streaming APIs are available', async () => {
+    const {
+      renderRouterToStream,
+      renderToPipeableStream,
+      renderToReadableStream,
+    } = await loadRenderRouterToStream('readable')
+    const router = await buildRouter({ routerData: Promise.resolve('') })
+    const requestController = new AbortController()
+
+    const { response } = await renderRouterToStream({
+      request: new Request('http://localhost/', {
+        signal: requestController.signal,
+      }),
+      router,
+      responseHeaders: new Headers(),
+      children: (
+        <html>
+          <body>
+            <RouterContextProvider router={router}>
+              <div>hello</div>
+            </RouterContextProvider>
+          </body>
+        </html>
+      ),
+    })
+
+    try {
+      const html = await response.text()
+      expect(html).toContain('hello')
+      expect(renderToPipeableStream).toHaveBeenCalledTimes(1)
+      expect(renderToReadableStream).toHaveBeenCalledTimes(0)
+    } finally {
+      requestController.abort(new Error('test-complete'))
+    }
+  })
+
+  test('falls back to renderToReadableStream when renderToPipeableStream is unavailable', async () => {
+    const { renderRouterToStream, renderToReadableStream } =
+      await loadRenderRouterToStream('readable-only')
+    const router = await buildRouter({ routerData: Promise.resolve('') })
+    const requestController = new AbortController()
+
+    const { response } = await renderRouterToStream({
+      request: new Request('http://localhost/', {
+        signal: requestController.signal,
+      }),
+      router,
+      responseHeaders: new Headers(),
+      children: (
+        <html>
+          <body>
+            <RouterContextProvider router={router}>
+              <div>hello</div>
+            </RouterContextProvider>
+          </body>
+        </html>
+      ),
+    })
+
+    try {
+      const html = await response.text()
+      expect(html).toContain('hello')
+      expect(renderToReadableStream).toHaveBeenCalledTimes(1)
+    } finally {
+      requestController.abort(new Error('test-complete'))
+    }
+  })
+})
