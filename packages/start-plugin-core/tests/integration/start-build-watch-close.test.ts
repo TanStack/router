@@ -50,15 +50,17 @@ test(
       await Promise.all(watchers.map((watcher) => watcher.close()))
     }
     // (the harness then finds no outputs: no environment finished a build)
-    await buildStart({
-      files: {
-        'client-entry.ts': `export const marker = 'MARK_CLIENT'\n`,
-        'ssr-entry.ts': `export const marker = 'MARK_SSR'\n`,
-      },
-      entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
-      viteConfig: { build: { watch: {} } },
-      viteBuild: closeDuringFirstBuild,
-    }).catch(() => undefined)
+    await expect(
+      buildStart({
+        files: {
+          'client-entry.ts': `export const marker = 'MARK_CLIENT'\n`,
+          'ssr-entry.ts': `export const marker = 'MARK_SSR'\n`,
+        },
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+        viteConfig: { build: { watch: {} } },
+        viteBuild: closeDuringFirstBuild,
+      }),
+    ).rejects.toThrow('expected client and SSR outputs, got none')
     expect(outcome).toBe('ended')
     expect(builds.filter(([name]) => name !== 'client')).toEqual([])
   },

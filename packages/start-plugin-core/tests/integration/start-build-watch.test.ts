@@ -18,8 +18,13 @@ import path from 'node:path'
 import mdx from '@mdx-js/rollup'
 import { describe, expect, test } from 'vitest'
 import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
-import { mentionsFile } from '@tanstack/compiler-test-utils/diagnostics'
 import {
+  expectDiagnostic,
+  expectNoDiagnostic,
+  mentionsFile,
+} from '@tanstack/compiler-test-utils/diagnostics'
+import {
+  StartBuildError,
   buildStart,
   callByIdExports,
   callByIdPrelude,
@@ -63,14 +68,7 @@ describe.each(startBundlers)('%s build --watch', (bundler) => {
 `,
         },
       })
-      // (the first build's only errors are the client module's: no
-      // build-order error of the server)
-      expect(
-        firstBuild.filter(
-          ({ severity, text }) =>
-            severity === 'error' && !mentionsFile(text, 'client-only.ts'),
-        ),
-      ).toEqual([])
+      expectNoDiagnostic(firstBuild, { severity: 'error' })
       expect((await client.run(`return entry.greeting`)).result).toBe(
         'MARK_AFTER',
       )
@@ -259,14 +257,7 @@ export const read = () => secret()
         start: { importProtection: { allowImport: () => true } },
         watchEdits: { 'src/lib.server.ts': denied('MARK_AFTER') },
       })
-      // (the first build's only errors are the client module's: no
-      // build-order error of the server)
-      expect(
-        firstBuild.filter(
-          ({ severity, text }) =>
-            severity === 'error' && !mentionsFile(text, 'client-only.ts'),
-        ),
-      ).toEqual([])
+      expectNoDiagnostic(firstBuild, { severity: 'error' })
       expect((await client.run(`return entry.read()`)).result).toBe(
         'MARK_AFTER',
       )
@@ -335,7 +326,7 @@ export const read = () => secret()
   test(
     'a rebuild after a failed one shows the fix',
     async () => {
-      const { client, ssr } = await buildStart({
+      const { client, ssr, root, steps } = await buildStart({
         bundler,
         files,
         entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
@@ -348,6 +339,12 @@ export const read = () => secret()
             },
           },
         ],
+      })
+      // (the first save's rebuild failed on the edited module)
+      expectDiagnostic(steps[0], {
+        severity: 'error',
+        file: 'greeting.ts',
+        root,
       })
       expect((await client.run(`return entry.greeting`)).result).toBe(
         'MARK_AFTER',
@@ -362,24 +359,59 @@ export const read = () => secret()
   )
 
   // Source: review round 3 (R3-G5-4: the Rsbuild host reported the
-  // allocator's error once per watch session).
+  // allocator's error once per watch session). The refusal names the id
+  // (a valid one rebuilds: the next test).
   test(
     'an invalid custom server fn id fails the rebuild too',
     async () => {
-      const result = await buildStart({
+      const error = await buildStart({
         bundler,
         files,
         entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
-        start: { serverFns: { generateFunctionId: () => 'a/b' } },
+        start: { serverFns: { generateFunctionId: () => 'MARK_BAD/ID' } },
         watchEdits: {
           'greeting.ts': `export const greeting = 'MARK_AFTER'
 `,
         },
       }).then(
-        () => null,
-        (error: unknown) => error,
+        () => expect.fail('the rebuild succeeded'),
+        (e: unknown) => e,
       )
-      expect(result, 'the rebuild fails').toBeInstanceOf(Error)
+      if (!(error instanceof StartBuildError)) {
+        throw error
+      }
+      // (the rebuild's own diagnostics)
+      expect(
+        error.diagnostics.some(
+          ({ severity, text }) =>
+            severity === 'error' && text.includes('MARK_BAD/ID'),
+        ),
+        'the rebuild reports the id',
+      ).toBe(true)
+    },
+    timeout,
+  )
+
+  test(
+    'a valid custom server fn id rebuilds, and the client calls the server fn by it',
+    async () => {
+      const { client, ssr, firstBuild } = await buildStart({
+        bundler,
+        files,
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+        start: { serverFns: { generateFunctionId: () => 'MARK_GOOD_ID' } },
+        watchEdits: {
+          'greeting.ts': `export const greeting = 'MARK_AFTER'
+`,
+        },
+      })
+      expectNoDiagnostic(firstBuild, { severity: 'error' })
+      const url = (await client.run(`return entry.greet.url`)).result
+      expect(url).toContain('MARK_GOOD_ID')
+      const { result } = await ssr.run(
+        `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+      )
+      expect(result).toBe('MARK_AFTER')
     },
     timeout,
   )

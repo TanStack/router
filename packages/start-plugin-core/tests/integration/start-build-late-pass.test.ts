@@ -50,10 +50,10 @@ export const optional = base.handler?.(async () => 'MARK_MDX_OPTIONAL')
 export const serverOnly = only(() => 'MARK_MDX_SERVER_ONLY')
 `,
   'src/entry.ts': `export { fn } from './page.mdx'
-export { finished } from './finish.mdx'
+export { finished, optional, serverOnly } from './finish.mdx'
 `,
   'src/ssr-entry.ts': `export { fn } from './page.mdx'
-export { finished } from './finish.mdx'
+export { finished, optional, serverOnly } from './finish.mdx'
 ${callByIdExports}`,
 }
 
@@ -100,15 +100,41 @@ describe.each(startBundlers)('%s build', (bundler) => {
     expect(result).toBe('MARK_MDX_HANDLER')
   })
 
-  test('a module finishing an imported builder keeps its handler on the server too', async () => {
-    expect(build.client.where('MARK_MDX_FINISHED')).toBe('nowhere')
-    expect(build.client.where('MARK_MDX_OPTIONAL')).toBe('nowhere')
+  test.each([
+    { name: 'finishing', exported: 'finished', mark: 'MARK_MDX_FINISHED' },
+    {
+      name: 'finishing in an optional call',
+      exported: 'optional',
+      mark: 'MARK_MDX_OPTIONAL',
+    },
+  ])(
+    'a module $name an imported builder keeps its handler on the server too',
+    async ({ exported, mark }) => {
+      expect(build.client.where(mark)).toBe('nowhere')
+      const url = (await build.client.run(`return entry.${exported}.url`))
+        .result
+      const { result } = await build.ssr.run(
+        `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+      )
+      expect(result).toBe(mark)
+    },
+  )
+
+  test('a module passing a function to an imported server-only factory runs it on the server only', async () => {
     expect(build.client.where('MARK_MDX_SERVER_ONLY')).toBe('nowhere')
-    const url = (await build.client.run(`return entry.finished.url`)).result
-    const { result } = await build.ssr.run(
-      `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+    expect((await build.ssr.run(`return entry.serverOnly()`)).result).toBe(
+      'MARK_MDX_SERVER_ONLY',
     )
-    expect(result).toBe('MARK_MDX_FINISHED')
+    expect(
+      (
+        await build.client.run(`try {
+  entry.serverOnly()
+  return 'ran'
+} catch {
+  return 'refused'
+}`)
+      ).result,
+    ).toBe('refused')
   })
 
   test.each([

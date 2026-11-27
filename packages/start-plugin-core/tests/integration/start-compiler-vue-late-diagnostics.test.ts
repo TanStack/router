@@ -10,7 +10,7 @@
  * not the generated object, whose position is past the block (or past the
  * file). An escape the author wrote keeps its own report.
  */
-import { afterAll, describe, expect, test } from 'vitest'
+import { afterAll, describe, test } from 'vitest'
 import {
   compileError,
   createStartHost,
@@ -107,6 +107,9 @@ const own = { base }
 console.log(own)`,
       'ts',
     )
-    expect(await refusalOf(source)).toBeInstanceOf(Error)
+    expectCompileError(await refusalOf(source), {
+      source,
+      at: 'const own = { base }',
+    })
   })
 })

@@ -12,7 +12,11 @@ import {
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterAll, describe, expect, test } from 'vitest'
 import { StartBuildError, buildStart } from '../build-harness'
-import { compileError, createStartHost } from '../regression-helpers'
+import {
+  compileError,
+  createStartHost,
+  expectCompileError,
+} from '../regression-helpers'
 import type { StartHost } from '../regression-helpers'
 
 const hosts: Array<StartHost> = []
@@ -233,10 +237,12 @@ describe('vite dev', () => {
   ])(
     'a template attaching a handler to a builder a $name block hands it is refused',
     async ({ lang }) => {
-      const startCase = await sfcCase(templateHandler(lang))
-      expect(
-        await compileError(startCase, 'client', 'Page.vue'),
-      ).toBeInstanceOf(Error)
+      const source = templateHandler(lang)
+      const startCase = await sfcCase(source)
+      expectCompileError(await compileError(startCase, 'client', 'Page.vue'), {
+        source,
+        at: `import { base } from './b'`,
+      })
     },
   )
 

@@ -8,7 +8,7 @@
  * review-hotspot3-impl-gemini.md finding 1.
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart } from '../../build-harness'
+import { StartBuildError, buildStart } from '../../build-harness'
 import { appManifest } from '../../package-layouts'
 import { rsbuildRscLinks } from '../../start-plugins'
 import { rsbuildEntries } from '../route-css-cases'
@@ -84,7 +84,7 @@ describe('rsbuild build --watch: an invalid custom server function id, a rebuild
           })
         },
       }
-      await buildStart({
+      const build = buildStart({
         bundler: 'rsbuild',
         start: {
           serverFns: { generateFunctionId: () => 'MARK_BAD/ID' },
@@ -106,7 +106,9 @@ export const serverOnly = createServerFn().handler(async () => 'MARK_FN')
           { edits: { 'src/tick.ts': `export const tick = 'MARK_TICK_1'\n` } },
           { edits: { 'src/tick.ts': `export const tick = 'MARK_TICK_2'\n` } },
         ],
-      }).catch(() => undefined)
+      })
+      // (the last rebuild fails on the id too)
+      await expect(build).rejects.toBeInstanceOf(StartBuildError)
       const counts = errors.map(
         (report) => report.filter((m) => m.includes('MARK_BAD/ID')).length,
       )

@@ -94,7 +94,7 @@ export const label = secret
     async () => {
       const builds = watchedBuilds()
       let served!: Awaited<ReturnType<typeof builds.served>>
-      await buildStart({
+      const build = buildStart({
         bundler: 'vite',
         files: app,
         entry,
@@ -113,8 +113,11 @@ export const label = secret
             },
           },
         ],
-        // (the harness reads a client output, and none is written)
-      }).catch(() => undefined)
+      })
+      // (the harness reads a client output, and none is written)
+      await expect(build).rejects.toThrow(
+        'expected client and SSR outputs, got ssr',
+      )
       const { status, rendered, named } = served
       expect({ status, rendered, named }).toEqual({
         status: 200,

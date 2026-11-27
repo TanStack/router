@@ -357,7 +357,8 @@ export interface StartBuildOptions {
    * that began after the edit bundles (a file no build held, e.g. a route
    * file created: the route tree imports it). A list of steps
    * applies each in turn and describes the rebuilds of the last one: an
-   * earlier step's builds may fail.
+   * earlier step's builds may fail (what they reported is
+   * `StartBuild.steps`), and one that does not settle rejects.
    */
   watchEdits?: Record<string, string | null> | ReadonlyArray<WatchStep>
   /**
@@ -438,6 +439,12 @@ export interface StartBuild {
    * rebuild's). Empty for other builds.
    */
   firstBuild: Array<ChannelDiagnostic>
+  /**
+   * A watch mode build of several steps (`watchEdits`): what the rebuilds
+   * of each step but the last reported, on every channel, their errors
+   * included (the last step's is `diagnostics`). Empty for other builds.
+   */
+  steps: Array<Array<ChannelDiagnostic>>
   /**
    * Everything the build reported, on every channel, in order (SPEC §5.7):
    * the bundler's warnings of both environments, Vite's logger, `console.*`
@@ -706,6 +713,7 @@ async function buildAt(
   const consoleMessages: Array<ChannelDiagnostic> = []
   let diagnostics: Array<ChannelDiagnostic> = []
   let firstBuild: Array<ChannelDiagnostic> = []
+  let steps: Array<Array<ChannelDiagnostic>> = []
   /** One build, recording what it reports on every channel. */
   const build = async () => {
     warnings.client.length = 0
@@ -752,8 +760,12 @@ async function buildAt(
       throw error
     } finally {
       diagnostics = described()
-      const from = channel && describedFrom.get(channel)
-      firstBuild = from ? channel!.since(0).slice(0, from) : []
+      const marks = (channel && stepMarks.get(channel)) ?? []
+      const all = marks.length > 0 ? channel!.since(0) : []
+      firstBuild = all.slice(0, marks[0] ?? 0)
+      steps = marks
+        .slice(0, -1)
+        .map((from, index) => all.slice(from, marks[index + 1]))
     }
   }
   let outputs: Outputs | undefined
@@ -799,6 +811,7 @@ async function buildAt(
     root: app.root,
     diagnostics,
     firstBuild,
+    steps,
     violations: [...target.violations],
     rebuild: async (edits = {}) => {
       for (const [file, content] of Object.entries(edits)) {
@@ -852,6 +865,12 @@ type Channel = DiagnosticChannel
  * build describes the rebuild its edits cause, not the first build.
  */
 const describedFrom = new WeakMap<Channel, number>()
+
+/**
+ * Where in its channel each step of a watch mode build's edits starts
+ * (`StartBuild.steps`; the first build is what comes before).
+ */
+const stepMarks = new WeakMap<Channel, Array<number>>()
 
 interface BuildTarget {
   root: string
@@ -1109,8 +1128,11 @@ async function buildWithVite(
           channel.report(stripAnsi(error.message), 'error', 'bundler')
         }
         const steps = watchSteps(target.watchEdits)
+        const marks: Array<number> = []
+        stepMarks.set(channel, marks)
         for (const [index, step] of steps.entries()) {
           await step.when?.()
+          marks.push(channel.mark())
           if (index === steps.length - 1) {
             // what the last step's rebuilds report
             errors.length = 0
@@ -1122,12 +1144,17 @@ async function buildWithVite(
           await watch.write(target.root, step.edits)
           const next = steps[index + 1]
           if (!next) {
-            await watch.settle(watchTimeout, step.rebuilds)
+            const error = await watch.settle(watchTimeout, step.rebuilds)
+            if (error) {
+              throw error
+            }
           } else if (!next.when) {
-            // (an earlier step's builds may fail)
-            await watch
-              .settle(watchTimeout, step.rebuilds)
-              .catch(() => undefined)
+            // (an earlier step's builds may fail: what they report is the
+            // step's, `StartBuild.steps`)
+            const error = await watch.settle(watchTimeout, step.rebuilds)
+            if (error) {
+              channel.report(stripAnsi(error.message), 'error', 'bundler')
+            }
           }
         }
       } finally {
@@ -1333,12 +1360,15 @@ function trackViteWatch() {
       writtenAt = performance.now()
     },
     /**
-     * Waits until the edits written since the last settle are settled
-     * (rejects with an error of a build that read one), and the
-     * environments `rebuilds` names were rebuilt after the others' builds
-     * (`WatchStep.rebuilds`).
+     * Waits until the edits written since the last settle are settled, and
+     * the environments `rebuilds` names were rebuilt after the others'
+     * builds (`WatchStep.rebuilds`): the error of a build that read one, if
+     * any (rejects when they do not settle within `timeout`).
      */
-    settle: async (timeout: number, rebuilds: ReadonlyArray<string> = []) => {
+    settle: async (
+      timeout: number,
+      rebuilds: ReadonlyArray<string> = [],
+    ): Promise<Error | undefined> => {
       const files = [...edited.keys()].map((file) => path.basename(file))
       const rebuilt = (name: string) => {
         const state = builds(name)
@@ -1378,9 +1408,7 @@ function trackViteWatch() {
       const [error] = failures((state) => readers.has(state))
       edited = new Map()
       readers.clear()
-      if (error) {
-        throw error
-      }
+      return error
     },
     close: async () => {
       await Promise.all(watchers.map((watcher) => watcher.close()))
@@ -1550,10 +1578,13 @@ async function buildWithRsbuild(
       try {
         await compiles.first(watchTimeout)
         const steps = watchSteps(target.watchEdits)
+        const marks: Array<number> = []
+        stepMarks.set(channel, marks)
         for (const [index, step] of steps.entries()) {
           if (step.when) {
             throw new Error('watchEdits: `when` is for Vite builds')
           }
+          marks.push(channel.mark())
           if (index === steps.length - 1) {
             // what the last step's rebuilds report
             errors.length = 0
@@ -1562,11 +1593,9 @@ async function buildWithRsbuild(
             describedFrom.set(channel, channel.mark())
             target.violations.length = 0
           }
-          const edit = compiles.edit(target.root, step.edits, watchTimeout)
-          // (an earlier step's builds may fail)
-          await (index === steps.length - 1
-            ? edit
-            : edit.catch(() => undefined))
+          // (an earlier step's compiles may fail: their errors are on the
+          // channel, the step's in `StartBuild.steps`)
+          await compiles.edit(target.root, step.edits, watchTimeout)
         }
       } finally {
         await watching.close()

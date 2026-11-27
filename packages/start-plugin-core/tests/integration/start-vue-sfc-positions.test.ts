@@ -341,6 +341,7 @@ const shown = ref(secret)
         const built = await build(
           bundler,
           Object.fromEntries(fixes.map((fix, i) => [`Fix${i}`, fix.sfc])),
+          sourcemap,
         )
         for (const { mark } of fixes) {
           expect(built.client.where(mark), mark).toBe('nowhere')

@@ -294,7 +294,10 @@ describe('Vite dev', () => {
   test(
     'solid: Start listed after vite-plugin-solid is refused',
     async () => {
-      await expect(devServer('solid', true)).rejects.toThrow()
+      // (the refusal names the plugin listed out of order)
+      await expect(devServer('solid', true)).rejects.toThrow(
+        'vite-plugin-solid',
+      )
     },
     timeout,
   )
@@ -334,9 +337,10 @@ describe('Vite build', () => {
   test(
     'solid: Start listed after vite-plugin-solid is refused',
     async () => {
+      // (the refusal names the plugin listed out of order)
       await expect(
         buildHost('solid', true).then((host) => host.build()),
-      ).rejects.toThrow()
+      ).rejects.toThrow('vite-plugin-solid')
     },
     timeout,
   )
