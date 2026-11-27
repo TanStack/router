@@ -856,6 +856,35 @@ export class StartBuildError extends BuildError {
   }
 }
 
+/**
+ * The failure of a build several rows share, the files of each row under
+ * a path of its own (`path`, relative to the app, e.g. its directory with
+ * a trailing `/`): an error naming the rows whose path the failure names,
+ * the failure its cause.
+ */
+export function sharedBuildFailure(
+  error: unknown,
+  rows: ReadonlyArray<{ path: string; name: string }>,
+): Error {
+  const text = [
+    error instanceof Error ? error.message : String(error),
+    ...(error instanceof StartBuildError
+      ? error.diagnostics.map(({ text }) => text)
+      : []),
+  ]
+    .join('\n')
+    .replaceAll('\\', '/')
+  const named = rows.filter(({ path }) => text.includes(path))
+  return new Error(
+    `the build the rows share failed, naming ${
+      named.length > 0
+        ? named.map(({ name }) => JSON.stringify(name)).join(', ')
+        : 'none of their paths'
+    }:\n${error instanceof Error ? error.message : String(error)}`,
+    { cause: error },
+  )
+}
+
 type Env = 'client' | 'ssr'
 
 type Channel = DiagnosticChannel

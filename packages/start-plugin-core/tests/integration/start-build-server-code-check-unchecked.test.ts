@@ -11,8 +11,8 @@
  * loads: this file runs in a process of its own (project
  * `integration-alone`) and turns it off before anything loads.
  */
-import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest'
-import { buildStart, startBundlers } from '../build-harness'
+import { afterAll, describe, expect, test, vi } from 'vitest'
+import { buildStart, sharedBuildFailure, startBundlers } from '../build-harness'
 import type { StartBuild } from '../build-harness'
 
 vi.hoisted(() => {
@@ -121,9 +121,14 @@ export const Route = createFileRoute('/')({
 
 /** The rows: each a route module, whose text marks its server code `SECRET` and its loader's client code `LOADER`. */
 const rows = [
-  ...KINDS.map((kind) => ({ input: kind as object, route: routeModule(kind) })),
+  ...KINDS.map((kind) => ({
+    input: kind as object,
+    name: kind.kind,
+    route: routeModule(kind),
+  })),
   ...ROUTE_OPTIONS.map((option) => ({
     input: option as object,
+    name: `the \`${option.key}\` option`,
     route: routeWithOption(option.option),
   })),
 ]
@@ -174,13 +179,12 @@ export const getRouter = () => createRouter({ routeTree })
 
   /**
    * Every row in one app, each its route `/r<index>` with markers of its
-   * own (`markersOf`); none when the build fails (each row then builds
-   * alone, its route at `/`).
+   * own (`markersOf`); its failure fails each row, naming the rows it names.
    */
-  let together: StartBuild | undefined
+  let together: Promise<StartBuild> | undefined
   let dispose: (() => Promise<void>) | undefined
-  beforeAll(async () => {
-    together = await build(
+  const sharedBuild = () =>
+    (together ??= build(
       Object.fromEntries(
         rows.map(({ route }, index) => {
           const { secret, loader } = markersOf(index)
@@ -196,19 +200,22 @@ export const getRouter = () => createRouter({ routeTree })
       (cleanup) => {
         dispose = cleanup
       },
-    ).catch(() => undefined)
-  }, timeout)
+    ).catch((error: unknown) => {
+      throw sharedBuildFailure(
+        error,
+        rows.map(({ name }, index) => ({
+          path: `src/routes/r${index}.tsx`,
+          name,
+        })),
+      )
+    }))
   afterAll(() => dispose?.())
 
-  /** The row's build and markers: the shared build's, or a build of the row alone. */
-  const builtRow = async (index: number) =>
-    together
-      ? { built: together, ...markersOf(index) }
-      : {
-          built: await build({ index: rows[index]!.route }),
-          secret: SECRET,
-          loader: LOADER,
-        }
+  /** The row's build and markers in the shared build. */
+  const builtRow = async (index: number) => ({
+    built: await sharedBuild(),
+    ...markersOf(index),
+  })
 
   /** The client build holds none of the secret, the SSR build does, and no error is reported. */
   const expectServerOnly = ({

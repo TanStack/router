@@ -4,13 +4,14 @@
  * fails the build at the use. One test file per bundler
  * (`start-build-builder-shapes.test.ts`, `-rsbuild.test.ts`).
  */
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { afterAll, describe, expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   StartBuildError,
   buildStart,
   callByIdExports,
   callByIdPrelude,
+  sharedBuildFailure,
 } from '../build-harness'
 import type { StartBuild, StartBundler } from '../build-harness'
 import type { RsbuildConfig } from '@rsbuild/core'
@@ -1188,27 +1189,32 @@ export function builderShapesSuite(bundler: StartBundler) {
       (row) => row.bundlers?.includes(bundler) ?? true,
     )
     const shared = rows.filter(sharesBuild)
-    /** The rows of `shared` in one build; none when it fails (each row then builds alone). */
-    let together: StartBuild | undefined
+    /** The rows of `shared` in one build (its failure fails each of them, naming the rows it names). */
+    let together: Promise<StartBuild> | undefined
     let dispose: (() => Promise<void>) | undefined
-    beforeAll(async () => {
-      together = await buildStart({
+    const sharedBuild = () =>
+      (together ??= buildStart({
         bundler,
         files: sharedApp(shared),
         entry: 'src/entry.ts',
         registerCleanup: (cleanup) => {
           dispose = cleanup
         },
-      }).catch(() => undefined)
-    }, timeout)
+      }).catch((error: unknown) => {
+        throw sharedBuildFailure(
+          error,
+          shared.map(({ name }, index) => ({ path: `src/c${index}/`, name })),
+        )
+      }))
     afterAll(() => dispose?.())
 
     test.each(rows)(
       '$name compiles',
       async (row) => {
         const index = shared.indexOf(row)
-        if (index !== -1 && together) {
-          expect(together.client.where(secretOf(index))).toBe('nowhere')
+        if (index !== -1) {
+          const build = await sharedBuild()
+          expect(build.client.where(secretOf(index))).toBe('nowhere')
           return
         }
         const build = await buildStart({
