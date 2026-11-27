@@ -148,12 +148,17 @@ export const Route = createFileRoute<'/'>('/')({ component: Page })
   // (SPEC J2.8). Source: review of #8504.
   // Impact: the route's components load with the entry chunk, silently.
   test('route options returned by a call are split or reported', async () => {
-    const route = await loadRoute(`${head}function Page() {
+    // A server of its own: the compiler warns once per file and run, and the
+    // control above loads the same file
+    const route = await loadRoute(
+      `${head}function Page() {
   return <p>page</p>
 }
 const makeOptions = () => ({ component: Page })
 export const Route = createFileRoute('/')(makeOptions())
-`)
+`,
+      { fresh: true },
+    )
     expect(await route.run(`return render('component')`)).toBe('<p>page</p>')
     expect({
       split: await route.isLazy('component'),

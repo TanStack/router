@@ -178,6 +178,7 @@ describe('exported option values', () => {
   ])(
     'keeps %s in the route module, the one instance importers get, and warns once',
     async (decl) => {
+      // A server of its own: the compiler warns once per file and run
       const route = await loadRoute(
         `${head}${decl}
 export const Route = createFileRoute('/')({
@@ -185,6 +186,7 @@ export const Route = createFileRoute('/')({
   errorComponent: () => <p>error</p>,
 })
 `,
+        { fresh: true },
       )
       await expectValidModules(route)
       expect(await route.isLazy('component')).toBe(false)
