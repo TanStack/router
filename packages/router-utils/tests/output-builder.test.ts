@@ -1,4 +1,8 @@
-import { TraceMap, originalPositionFor } from '@jridgewell/trace-mapping'
+import {
+  TraceMap,
+  decodedMappings,
+  originalPositionFor,
+} from '@jridgewell/trace-mapping'
 import { describe, expect, it } from 'vitest'
 import { OutputBuilder, SourceText } from '../src/compiler'
 
@@ -277,7 +281,19 @@ describe('OutputBuilder', () => {
     const b = new OutputBuilder(new SourceText(code), '/app/m.ts')
     b.copy(0, code.length)
     b.text('export { a }\n')
-    expect(b.finish().map!.mappings).toBe('AAAA,MAAM,EAAE,EAAE;;')
+    // (generated column, source line, source column: the copied tokens of
+    // line 1; the generated line 2 has no segment)
+    const lines = decodedMappings(new TraceMap(b.finish().map as never))
+    expect(lines.map((l) => l.map(([c, , sl, sc]) => [c, sl, sc]))).toEqual([
+      [
+        [0, 0, 0],
+        [6, 0, 6],
+        [8, 0, 8],
+        [10, 0, 10],
+      ],
+      [],
+      [],
+    ])
   })
 
   // `lines: 'lf'` (the webpack-family hosts): a CR is no line terminator,

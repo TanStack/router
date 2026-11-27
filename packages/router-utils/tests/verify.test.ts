@@ -4,7 +4,7 @@
 // it, and expects the compile to fail; a sound plan of the same module
 // compiles.
 import { describe, expect, it } from 'vitest'
-import { sameFileSpecifier } from '../src/compiler/identity'
+import { sameFileSpecifier } from '../src/compiler'
 import { MemoryHost, dedent, envInfo, toySplitPlanner } from './helpers'
 import type { OutputId, PlanContext, Planner } from '../src/compiler'
 

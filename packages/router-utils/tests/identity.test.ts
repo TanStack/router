@@ -6,12 +6,12 @@ import {
   isAssetId,
   isSplitGroupValue,
   langFromId,
+  pathOfId,
   resolveSameFileSpecifier,
   revision,
   sameFileSpecifier,
   webpackResourceId,
 } from '../src/compiler'
-import { pathOfId } from '../src/compiler/identity'
 
 describe('identity', () => {
   it('canonicalises only owned keys and keeps foreign queries verbatim', () => {

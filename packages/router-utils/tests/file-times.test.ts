@@ -34,5 +34,6 @@ it('truncating an empty file moves its modification time, or the clock is whole 
   writeFileSync(file, '')
   const after = await fileModifiedAt(file)
   expect(before).not.toBeNull()
+  expect(after).not.toBeNull()
   expect(after !== before || before! % 1000 === 0).toBe(true)
 })
