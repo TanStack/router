@@ -78,7 +78,11 @@ const D_EDGE = 1 << 8
  * `x as T`, `<T>x`, `x!`), in a list with a directive prologue (a module, a
  * function body): what precedes it may render as nothing (a removed import,
  * a declaration only erased code read, a type the lowering erases), and a
- * string statement first in the list is a directive.
+ * string statement first in the list is a directive. A group does not
+ * protect it: TypeScript's transpiler drops the parentheses around a
+ * wrapper it erases, and esbuild reads `('s');` as a directive. It renders
+ * as `(void x)`, which no lowering or minifier makes a string alone
+ * (`statementPrefix`).
  */
 const D_PROLOGUE = 1 << 9
 /** In a classic `for` initialiser, outside any block: an `in` would start a `for…in`. */
@@ -476,6 +480,21 @@ function decoratorName(node: Node): boolean {
 // ---- the three questions --------------------------------------------------
 
 /**
+ * What a statement's whole expression is written behind: all of a
+ * statement a directive prologue may hold (`D_PROLOGUE`) renders as `(void
+ * x)`, so it is no directive whatever renders; nothing reads its value.
+ * Not `(0, x)`: Rspack 2.3's SWC minifier reduces `0, 's';` to `'s';`, a
+ * directive. An operand below `void`'s precedence is grouped (`void () =>
+ * {}` does not parse, `void a ? b : c` runs `c`). Null: not such a statement.
+ */
+export function statementPrefix(dest: Dest, shape: Shape): string | null {
+  if (!(dest & D_PROLOGUE)) {
+    return null
+  }
+  return (shape & LEVEL_MASK) === SHAPE_TIGHT ? '(void ' : '(void ('
+}
+
+/**
  * V: whether the expression renders as `(0, x)`, which yields a value: no
  * receiver, an indirect `eval`, a read that throws for an unresolvable name,
  * nothing to delete. A moved expression is the occurrence it was.
@@ -544,13 +563,9 @@ export function needsGroup(
     : GROUP_NONE
 }
 
-/**
- * Whether G's edge rules are asked (`edgeOpens`): the destination is a
- * statement's, an `export default`'s or an arrow body's first token, or all
- * of a statement of a module or a function body once erased.
- */
+/** Whether G's edge rule is asked (`edgeOpens`): the destination is a statement's, an `export default`'s or an arrow body's first token. */
 export function atStatementEdge(dest: Dest): boolean {
-  return (dest & (D_EDGE | D_PROLOGUE)) !== 0
+  return (dest & D_EDGE) !== 0
 }
 
 /** Whether L is asked at the boundary's edges (a recipe's position is delimited by the recipe). */
@@ -567,75 +582,11 @@ export function withRef(shape: Shape, ref: Shape): Shape {
 }
 
 /**
- * G's edge rules on `text`, what a boundary rendered at `dest`'s edge:
- * written as a statement it would open a block or a declaration (G7), or,
- * a string alone in a module or a function body once TypeScript's wrappers
- * are erased, be a directive once what precedes it renders as nothing (G8).
+ * G's edge rule on `text`, what a boundary rendered at a statement's edge:
+ * written as a statement it would open a block or a declaration (G7).
  */
-export function edgeOpens(dest: Dest, text: string): boolean {
-  return (
-    ((dest & D_EDGE) !== 0 &&
-      opensNonExpressionStatement(text, nextToken(text, 0))) ||
-    ((dest & D_PROLOGUE) !== 0 && stringOnceErased(text))
-  )
-}
-
-/** A string literal. */
-const STRING = /"(?:[^"\\\n\r]|\\[\s\S])*"|'(?:[^'\\\n\r]|\\[\s\S])*'/y
-/** The keyword of a wrapper whose type follows. */
-const TYPE_AFTER = /(?:as|satisfies)(?![\w$\u0080-\uffff])/y
-
-/**
- * Whether `text`, one expression, is a string literal alone once
- * TypeScript's wrappers are erased: `'s'`, `'s' as T`, `'s' satisfies T`,
- * `'s'!`, `<T>'s'`, and chains of these. A type after `as` or `satisfies`
- * is taken to run to the end, as it does on a wrapper of the string:
- * `'s' as T || x` is grouped too, which changes nothing but its bytes.
- */
-function stringOnceErased(text: string): boolean {
-  let i = nextToken(text, 0)
-  while (text.charCodeAt(i) === 60 /* < */) {
-    i = nextToken(text, typeArgumentsEnd(text, i))
-  }
-  STRING.lastIndex = i
-  if (!STRING.test(text)) {
-    return false
-  }
-  for (i = nextToken(text, STRING.lastIndex); i < text.length; ) {
-    if (text[i] === '!' && text[i + 1] !== '=') {
-      i = nextToken(text, i + 1)
-      continue
-    }
-    TYPE_AFTER.lastIndex = i
-    return TYPE_AFTER.test(text)
-  }
-  return true
-}
-
-/**
- * The offset after the `>` closing the `<` at `start` (a type assertion's
- * type), or the text's length: brackets of other kinds may nest, an arrow
- * type's `=>` closes nothing, strings are skipped.
- */
-function typeArgumentsEnd(text: string, start: number): number {
-  let depth = 0
-  for (let i = start; i < text.length; i++) {
-    const c = text[i]!
-    if (c === '<') {
-      depth++
-    } else if (c === '>' && text[i - 1] !== '=') {
-      if (--depth === 0) {
-        return i + 1
-      }
-    } else if (c === '"' || c === "'" || c === '`') {
-      const close = text.indexOf(c, i + 1)
-      if (close === -1) {
-        return text.length
-      }
-      i = close
-    }
-  }
-  return text.length
+export function edgeOpens(text: string): boolean {
+  return opensNonExpressionStatement(text, nextToken(text, 0))
 }
 
 /**

@@ -5,6 +5,7 @@
  * source's values are the expectation. Split from
  * start-build-top-level-env-calls.test.ts (per-file budget).
  */
+import ts from 'typescript'
 import { parseSync } from 'vite'
 import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../build-harness'
@@ -365,10 +366,13 @@ export const value = 2
   // error in a function with a default, rest or destructured parameter;
   // Rsbuild's SWC erases the wrappers after the compiler ran). Vite's Oxc
   // parenthesises such a string itself, so on Vite the compiler's own output
-  // is checked too, as the next `pre` plugin receives it. Source: Astra
-  // re-check of the splicing implementation (§2)
+  // is checked too, as the next `pre` plugin receives it, and as TypeScript's
+  // transpiler lowers it: it drops the parentheses around a wrapper it
+  // erases (`('use strict' as any)` is `'use strict'`). Source: Astra
+  // re-check of the splicing implementation (§2), Astra pile-of-cases
+  // audit (item 6)
   test(
-    'a string kept under TypeScript wrappers as a statement of a function or a module: no directive once they are erased',
+    'a string kept under TypeScript wrappers as a statement of a function or a module: no directive once they are erased, by the host or by TypeScript',
     async () => {
       const compiled: Array<string> = []
       const { ssr } = await buildStart({
@@ -438,6 +442,16 @@ export function nonNullAround(x = 8) {
       ).toEqual([1, 2, 3, 4, 5, 6, 7, 8])
       if (bundler === 'vite') {
         expect(compiled.map(directivesOnceErased)).toEqual([[]])
+        const lowered = compiled.map(
+          (code) =>
+            ts.transpileModule(code, {
+              compilerOptions: {
+                target: ts.ScriptTarget.ESNext,
+                module: ts.ModuleKind.ESNext,
+              },
+            }).outputText,
+        )
+        expect(lowered.map(directivesOnceErased)).toEqual([[]])
       }
     },
     timeout,

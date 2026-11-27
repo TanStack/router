@@ -39,6 +39,7 @@ import {
   edgeOpens,
   needsGroup,
   needsValue,
+  statementPrefix,
   tokensMeet,
   withRef,
 } from './expression'
@@ -1261,14 +1262,18 @@ class Renderer {
     const from = open.at + 1
     let prefix = ''
     let suffix = ''
-    if (needsValue(dest, role, shape)) {
+    const whole = statementPrefix(dest, shape)
+    if (whole !== null) {
+      prefix = whole
+      suffix = whole === '(void (' ? '))' : ')'
+    } else if (needsValue(dest, role, shape)) {
       prefix = '(0, '
       suffix = ')'
     } else {
       const group = needsGroup(
         dest,
         shape,
-        atStatementEdge(dest) && edgeOpens(dest, out.renderedText(from)),
+        atStatementEdge(dest) && edgeOpens(out.renderedText(from)),
       )
       if (group === GROUP_PARENS) {
         prefix = '('
@@ -1349,9 +1354,9 @@ class Renderer {
     if (suffix !== '') {
       out.push({ k: 'text', text: suffix })
     }
-    // (only `(0, …)` makes a value of a reference: a group keeps what it
-    // holds, `(obj.m)()` calls with `this`)
-    return prefix === '(0, '
+    // (only `(0, …)` and `(void …)` make no reference of one: a group keeps
+    // what it holds, `(obj.m)()` calls with `this`)
+    return prefix === '(0, ' || prefix.startsWith('(void ')
       ? SHAPE_GROUPED
       : prefix !== ''
         ? withRef(SHAPE_GROUPED, shape)
