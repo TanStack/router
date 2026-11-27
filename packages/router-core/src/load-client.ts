@@ -1467,9 +1467,14 @@ async function executeClientLane(
  * Waits for `pendingMs`, then presents the complete lane. Rendering applies the
  * selected boundary cutoff while retaining every match's structural state.
  * A replacement load for the same match keeps the timer; choosing a different
- * match resets it. `pendingMinMs` starts after the fallback renders.
+ * match resets it. `pendingMinMs` starts after the fallback renders, or at
+ * `presentedSince` for a fallback that is already on screen.
  */
-function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
+function offerPending(
+  router: CoordinatorRouter,
+  tx: LoadTransaction,
+  presentedSince?: number,
+): void {
   if (router._tx !== tx) {
     return
   }
@@ -1513,11 +1518,14 @@ function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
     }
     if (!session) {
       // Hydration and redirects can preserve pending presentation without a session.
-      // Do not delay it again; conservatively start pendingMinMs from now.
+      // Do not delay it again; start pendingMinMs at `presentedSince`, or
+      // conservatively from now.
       router._pending = session = [
         tx,
         match.id,
-        presentedPending ? Date.now() + min : tx[4 /* startedAt */] + delay,
+        presentedPending
+          ? (presentedSince ?? Date.now()) + min
+          : tx[4 /* startedAt */] + delay,
         undefined,
         presentedPending || undefined,
         component,
@@ -2068,7 +2076,17 @@ export async function loadClientRoute(
       matches[0]?.status !== 'success' &&
       !matches.some((match) => match._notFound))
   ) {
-    offerPending(router, tx)
+    // Server-rendered pending UI has been on screen since about the first
+    // contentful paint, so its minimum does not restart once the client JS has
+    // loaded. Without a paint entry, count from now.
+    const paint =
+      resolvedPrefix &&
+      performance.getEntriesByName('first-contentful-paint')[0]
+    offerPending(
+      router,
+      tx,
+      paint ? Date.now() - performance.now() + paint.startTime : undefined,
+    )
   }
   // Let explicit synchronous loads publish ready pending work before paint.
   settle?.(run())
