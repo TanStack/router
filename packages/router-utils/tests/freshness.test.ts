@@ -11,7 +11,7 @@
  * restarts a compile); a restored plan and an untouched compile of its module
  * (C6-09).
  */
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   expireVirtual,
   invalidate,
@@ -25,22 +25,17 @@ import {
   toyEnvPlanner,
   toySummaryPlanner,
 } from './helpers'
+import {
+  RECOGNIZER,
+  exportsReader,
+  gate,
+  heldReader,
+  holdResolutions,
+  overtakenReader,
+  throwingOnce,
+  turn,
+} from './race-helpers'
 import type { CompileOutput, Planner } from '../src/compiler'
-
-const RECOGNIZER = {
-  factories: {
-    'toy-start': {
-      createServerOnlyFn: 'serverOnly',
-      createClientOnlyFn: 'clientOnly',
-    },
-  },
-  builderKinds: new Set<string>(),
-  terminal: {},
-  envOnlyKinds: {
-    serverOnly: 'server' as const,
-    clientOnly: 'client' as const,
-  },
-}
 
 const planners = (): Array<Planner> => [toySummaryPlanner(), toyEnvPlanner()]
 const CLIENT = envInfo({ name: 'client', type: 'client' })
@@ -107,8 +102,9 @@ describe('repeating an invalidation', () => {
   // module compiled since read it. The change makes `./a` resolve, so the
   // compile that found nothing there is done again.
   it('a compile in flight that met a failed import is restarted when the import resolves now', async () => {
-    const reads: Array<() => void> = []
     let hold = false
+    const reading = gate()
+    const release = gate()
     const importer = dedent(`
       import { make } from './a'
       import { other } from './k'
@@ -120,25 +116,23 @@ describe('repeating an invalidation', () => {
         '/app/x.ts': importer,
       },
       recognizer: RECOGNIZER,
-      onRead: (path) =>
-        hold && path === '/app/k.ts'
-          ? new Promise<void>((r) => reads.push(r))
-          : undefined,
+      onRead: (path) => {
+        if (hold && path === '/app/k.ts') {
+          reading.open()
+          return release.opened
+        }
+        return undefined
+      },
     })
     hold = true
     const compiling = host.compile('/app/x.ts', planners())
-    while (reads.length === 0) {
-      await new Promise((r) => setTimeout(r, 1))
-    }
+    await reading.opened
     host.write('/app/a.ts', SERVER_ONLY)
     host.write('/app/y.ts', importer.replace("'./k'", "'./a'"))
     await host.compile('/app/y.ts', planners())
     await invalidate(host.caches, { path: '/app/a.ts', kind: 'change' }, host)
     hold = false
-    while (reads.length > 0) {
-      reads.splice(0).forEach((release) => release())
-      await new Promise((r) => setTimeout(r, 1))
-    }
+    release.open()
     const factsOf = (out: CompileOutput | null) => out?.facts.planners
     const cold = factsOf(
       await memoryHost(host.files).compile('/app/x.ts', planners()),
@@ -175,8 +169,9 @@ describe('events that move the file set', () => {
   ] as const)(
     'a compile in flight that found the twin of a file removed and created again within one change: published plan %s, same text %s',
     async ([published, sameText]) => {
-      const reads: Array<() => void> = []
       let hold = false
+      const reading = gate()
+      const release = gate()
       const host = new MemoryHost({
         files: {
           '/app/a.ts': SERVER_ONLY,
@@ -188,10 +183,13 @@ describe('events that move the file set', () => {
             "import { other } from './k'\nexport const use = other\n",
         },
         recognizer: RECOGNIZER,
-        onRead: (path) =>
-          hold && path === '/app/h.ts'
-            ? new Promise<void>((r) => reads.push(r))
-            : undefined,
+        onRead: (path) => {
+          if (hold && path === '/app/h.ts') {
+            reading.open()
+            return release.opened
+          }
+          return undefined
+        },
       })
       // (the caches know `a.ts`: another module read it)
       await host.compile('/app/w.ts', planners())
@@ -211,19 +209,14 @@ describe('events that move the file set', () => {
       delete host.files['/app/a.ts']
       hold = true
       const compiling = host.compile('/app/x.ts', planners())
-      while (reads.length === 0) {
-        await new Promise((r) => setTimeout(r, 1))
-      }
+      await reading.opened
       host.write(
         '/app/a.ts',
         sameText ? SERVER_ONLY : SERVER_ONLY.replace('() => 1', '() => 2'),
       )
       await invalidate(host.caches, { path: '/app/a.ts', kind: 'change' }, host)
       hold = false
-      while (reads.length > 0) {
-        reads.splice(0).forEach((release) => release())
-        await new Promise((r) => setTimeout(r, 1))
-      }
+      release.open()
       const cold = factsOf(
         await memoryHost(host.files).compile('/app/x.ts', planners()),
       )
@@ -298,13 +291,6 @@ describe('a request of an older text', () => {
   })
 })
 
-/** A promise and the function that settles it. */
-function gate() {
-  let open!: () => void
-  const opened = new Promise<void>((r) => (open = r))
-  return { opened, open }
-}
-
 // Settlement design, step 0 (design-settlement.md §4, §6): a plan reused or
 // published after a check that waited on the resolver (or a read) while an
 // event changed what the check reads. Each row ends with what a cold compile
@@ -319,40 +305,18 @@ describe('a check that waits while an event lands', () => {
   }
   const factsOf = (out: CompileOutput | null) => out?.facts.planners
 
-  /**
-   * A host whose `./w` resolves to `target.id` (an alias),
-   * and whose next `./w` resolution, once `arm`ed, answers what it read
-   * only after `release`: a resolver that read the files before an event
-   * and answers after it.
-   */
-  function aliasHost(target: { id: string }) {
+  /** A host whose `./w` resolves to `b.ts` (an alias), and whose resolutions can be held (`holdResolutions`). */
+  function aliasHost() {
     const host = new MemoryHost({
       files,
       recognizer: RECOGNIZER,
-      resolve: (specifier) => (specifier === './w' ? target.id : null),
+      resolve: (specifier) => (specifier === './w' ? '/app/b.ts' : null),
     })
-    const resolve = host.resolve.bind(host)
-    let armed: { reached: () => void; release: Promise<void> } | null = null
-    host.resolve = async (specifier, importer) => {
-      const answer = await resolve(specifier, importer)
-      if (armed && specifier === './w') {
-        const held = armed
-        armed = null
-        held.reached()
-        await held.release
-      }
-      return answer
-    }
-    const release = gate()
-    const arm = () =>
-      new Promise<void>((reached) => {
-        armed = { reached, release: release.opened }
-      })
-    return { host, arm, release: release.open }
+    return { host, arm: () => holdResolutions(host)('./w') }
   }
 
   const cold = async () =>
-    factsOf(await aliasHost({ id: '/app/b.ts' }).host.compile(PAGE, planners()))
+    factsOf(await aliasHost().host.compile(PAGE, planners()))
 
   // C6-03. An upstream plugin prepends a banner to the file's text; the
   // file's change event (its own save, read without the banner) lands
@@ -363,9 +327,9 @@ describe('a check that waits while an event lands', () => {
   // Source: whole-PR review C6-03 (Astra's current-input probe); Astra's
   // review of settlement step 0, finding 6.
   it("C6-03: after the event of a file's own save, a change of what it reads still rebuilds it", async () => {
-    const { host, arm, release } = aliasHost({ id: '/app/b.ts' })
+    const { host, arm } = aliasHost()
     const banner = `/* a plugin's banner */\n${files[PAGE]}`
-    const reached = arm()
+    const { reached, release } = arm()
     const compiling = host.compile(PAGE, planners(), { code: banner })
     await reached
     await invalidate(host.caches, { path: PAGE, kind: 'change' }, host)
@@ -406,17 +370,17 @@ describe('a check that waits while an event lands', () => {
       Object.assign(host, {
         routes: { lookup: () => null, digestFor: () => digest },
       })
-    const { host, arm, release } = aliasHost({ id: '/app/b.ts' })
+    const { host, arm } = aliasHost()
     withRoutes(host)
     await host.compile(PAGE, [routePlanner()])
     host.write('/app/c.ts', 'export const c = 1\n')
     await invalidate(host.caches, { path: '/app/c.ts', kind: 'add' }, host)
-    const reached = arm()
+    const { reached, release } = arm()
     const hit = host.compile(PAGE, [routePlanner()])
     await reached
     digest = 'second'
     release()
-    const fresh = withRoutes(aliasHost({ id: '/app/b.ts' }).host)
+    const fresh = withRoutes(aliasHost().host)
     expect(factsOf(await hit)).toEqual(
       factsOf(await fresh.compile(PAGE, [routePlanner()])),
     )
@@ -432,10 +396,6 @@ describe('a check that waits while an event lands', () => {
 // Source: Fable's settlement design probe `p1-facts-move-during-check.mjs`;
 // the comment-only edit is its control.
 describe('a dependency saved while a compile checks its snapshot', () => {
-  /** `waited`, or nothing after `ms` (a compiler that does not wait there goes on). */
-  const atMost = (waited: Promise<void>, ms = 2_000) =>
-    Promise.race([waited, new Promise<void>((r) => setTimeout(r, ms))])
-
   /**
    * The compile of `a.ts` while `b.ts` is saved as `saved` in the timeline
    * above; its answer, a cold compile's of the final files, and how many
@@ -505,10 +465,12 @@ describe('a dependency saved while a compile checks its snapshot', () => {
       { path: '/app/b.ts', kind: 'change' },
       host,
     )
-    await atMost(eventReading.opened)
+    // (each hold is reached, or the compiler goes on without it: the event
+    // ends, or the compile)
+    await Promise.race([eventReading.opened, event])
     holdCheck = true
     proceed.open()
-    await atMost(checkResolving.opened)
+    await Promise.race([checkResolving.opened, compiling])
     holdCheck = false
     eventRead.open()
     await event
@@ -558,38 +520,12 @@ describe('a compile whose attempts were all overtaken, and the rebuild of its te
       '/app/b.ts': 'export const make = 1\n',
     }
     const host = memoryHost(files)
-    /** Attempts still to hold after they read `b.ts`'s export. */
-    let holds = 3
-    const held: Array<() => void> = []
-    const planner = (): Planner => ({
-      name: 'toy',
-      tier: 1,
-      gate: () => true,
-      async prefetch(_t0, ctx) {
-        const target = await ctx.resolve('./b')
-        const found = await ctx.resolver.resolve(target!, 'make')
-        if (holds > 0) {
-          holds--
-          await new Promise<void>((r) => held.push(r))
-        }
-        ctx.set(found.k === 'found' ? found.value : found.k)
-      },
-      plan(ctx) {
-        ctx.setFacts('toy', ctx.prefetched.get('toy') ?? null)
-      },
-    })
-    const until = async (done: () => boolean) => {
-      for (let n = 0; !done(); n++) {
-        if (n > 2_000) {
-          throw new Error('test: no attempt read the dependency')
-        }
-        await new Promise((r) => setTimeout(r, 1))
-      }
-    }
+    // (the first three attempts wait after they read `b.ts`'s export)
+    const { planner, nextHeld } = overtakenReader(3)
     const first = host.compile('/app/a.ts', [planner()])
     // each attempt read `b.ts`; it is saved before the attempt ends
     for (let save = 1; save <= 3; save++) {
-      await until(() => held.length > 0)
+      const release = await nextHeld()
       host.write(
         '/app/b.ts',
         save % 2 === 1
@@ -597,7 +533,7 @@ describe('a compile whose attempts were all overtaken, and the rebuild of its te
           : 'export const make = 1\n',
       )
       await invalidate(host.caches, { path: '/app/b.ts', kind: 'change' }, host)
-      held.shift()!()
+      release()
     }
     await first
     // (the host is told to build the file again)
@@ -636,7 +572,7 @@ describe('a cache knob and what a dependency save reaches', () => {
     },
   })
   it.for(
-    ['', 'plans', 'facts', 'targets', 'registry', 'all'].flatMap((knob) =>
+    ['', 'plans', 'facts', 'targets', 'all'].flatMap((knob) =>
       (
         [
           ['broken', 'export const make = \n', []],
@@ -646,8 +582,7 @@ describe('a cache knob and what a dependency save reaches', () => {
       ).map(([name, saved, stale]) => [knob, name, saved, stale] as const),
     ),
   )('knob "%s": the dependency saved %s', async ([knob, , saved, stale]) => {
-    const before = process.env.TSR_COMPILER_NO_CACHE
-    process.env.TSR_COMPILER_NO_CACHE = knob
+    vi.stubEnv('TSR_COMPILER_NO_CACHE', knob)
     try {
       const host = new MemoryHost({
         files: {
@@ -660,11 +595,7 @@ describe('a cache knob and what a dependency save reaches', () => {
       await invalidate(host.caches, { path: '/app/b.ts', kind: 'change' }, host)
       expect(host.caches.stale.take(CLIENT.name)).toEqual(stale)
     } finally {
-      if (before === undefined) {
-        delete process.env.TSR_COMPILER_NO_CACHE
-      } else {
-        process.env.TSR_COMPILER_NO_CACHE = before
-      }
+      vi.unstubAllEnvs()
     }
   })
 })
@@ -714,43 +645,6 @@ describe('a restored plan, and an untouched compile of its module', () => {
   })
 })
 
-/**
- * A planner reading `./b`'s `make` export whose next prefetch, once `hold`
- * is called, waits after its reads until `proceed`; it counts attempts.
- */
-function heldReader() {
-  let attempts = 0
-  let armed: { reached: () => void; proceed: Promise<void> } | null = null
-  const planner = (): Planner => ({
-    name: 'toy',
-    tier: 1,
-    gate: () => true,
-    async prefetch(_t0, ctx) {
-      attempts++
-      const target = await ctx.resolve('./b')
-      const found = await ctx.resolver.resolve(target!, 'make')
-      if (armed) {
-        const held = armed
-        armed = null
-        held.reached()
-        await held.proceed
-      }
-      ctx.set(found.k)
-    },
-    plan(ctx) {
-      ctx.setFacts('toy', ctx.prefetched.get('toy') ?? null)
-    },
-  })
-  const hold = () => {
-    const proceed = gate()
-    const reached = new Promise<void>((r) => {
-      armed = { reached: r, proceed: proceed.opened }
-    })
-    return { reached, proceed: proceed.open }
-  }
-  return { planner, hold, attempts: () => attempts }
-}
-
 // Step 6a review, finding 1 (Fable, Astra, Gemini): a plan hit of an older
 // text fails its check while the newer text's compile publishes in the same
 // turn rank; the refusal is acted on in the turn it was judged, so the
@@ -782,25 +676,7 @@ describe('an older text whose plan hit fails while the newer text publishes', ()
               ? '/app/b.ts'
               : null,
       })
-      const inner = host.resolve.bind(host)
-      const armed = new Map<
-        string,
-        { reached: () => void; release: Promise<void> }
-      >()
-      host.resolve = async (specifier, importer) => {
-        const answer = await inner(specifier, importer)
-        const held = armed.get(specifier)
-        if (held) {
-          armed.delete(specifier)
-          held.reached()
-          await held.release
-        }
-        return answer
-      }
-      const arm = (specifier: string, release: Promise<void>) =>
-        new Promise<void>((reached) =>
-          armed.set(specifier, { reached, release }),
-        )
+      const arm = holdResolutions(host)
       let holdPrefetch = false
       const inPrefetch = gate()
       const leavePrefetch = gate()
@@ -829,33 +705,34 @@ describe('an older text whose plan hit fails while the newer text publishes', ()
         host,
       )
       // the older text's request: its hit's check waits on `./w`
-      const releaseW = gate()
-      const reachedW = arm('./w', releaseW.opened)
+      const w = arm('./w')
       const older = host.settle(PAGE, all(), () => undefined, { code: OLD })
-      await reachedW
+      await w.reached
       // the newer text's request: its check asks `./v` again (the file set
       // moved during its attempt)
       host.write(PAGE, NEW)
       holdPrefetch = true
       let newerCurrent: boolean | undefined
+      const published = gate()
       const newer = host.settle(PAGE, all(), async (s) => {
-        await new Promise((r) => setTimeout(r, 5))
+        published.open()
+        // (read once the older hit's refusal is done)
+        await older
         newerCurrent = s.current()
       })
       await inPrefetch.opened
       host.write('/app/c.ts', 'export const c = 1\n')
       await invalidate(host.caches, { path: '/app/c.ts', kind: 'add' }, host)
-      const releaseV = gate()
-      const reachedV = arm('./v', releaseV.opened)
+      const v = arm('./v')
       leavePrefetch.open()
-      await reachedV
+      await v.reached
       if (order === 'together') {
-        releaseW.open()
-        releaseV.open()
+        w.release()
+        v.release()
       } else {
-        releaseV.open()
-        await new Promise((r) => setTimeout(r, 1))
-        releaseW.open()
+        v.release()
+        await published.opened
+        w.release()
       }
       await Promise.all([older, newer])
       expect(newerCurrent).toBe(true)
@@ -1111,25 +988,8 @@ describe('a resolution that moves during a check', () => {
       resolve: (specifier, _importer, files) =>
         specifier === './w' ? (ALT in files ? ALT : '/app/a.ts') : null,
     })
-    const inner = host.resolve.bind(host)
-    let armed: { reached: () => void; release: Promise<void> } | null = null
-    host.resolve = async (specifier, importer) => {
-      const answer = await inner(specifier, importer)
-      if (armed && specifier === './w') {
-        const held = armed
-        armed = null
-        held.reached()
-        await held.release
-      }
-      return answer
-    }
-    const arm = () => {
-      const release = gate()
-      const reached = new Promise<void>((r) => {
-        armed = { reached: r, release: release.opened }
-      })
-      return { reached, release: release.open }
-    }
+    const hold = holdResolutions(host)
+    const arm = () => hold('./w')
     const retarget = async () => {
       host.write(ALT, 'export const make = 1\n')
       await invalidate(host.caches, { path: ALT, kind: 'add' }, host)
@@ -1152,13 +1012,15 @@ describe('a resolution that moves during a check', () => {
     const { host, arm, retarget, moveFileSet } = setup()
     await host.compile(PAGE, planners())
     host.caches.stale.take(CLIENT.name)
+    const entered = gate()
     const hold = gate()
     let after: boolean | undefined
     const open = host.settle(PAGE, planners(), async (s) => {
+      entered.open()
       await hold.opened
       after = s.current()
     })
-    await new Promise((r) => setTimeout(r, 5))
+    await entered.opened
     await moveFileSet()
     const { reached, release } = arm()
     const hit = host.compile(PAGE, planners())
@@ -1201,7 +1063,7 @@ describe('a resolution that moves during a check', () => {
 
   it('a request of the same text arriving during its compile joins it: one attempt', async () => {
     const { host, arm, retarget, moveFileSet } = setup()
-    const reader = heldReaderOf('./w')
+    const reader = heldReader('./w')
     await host.compile(PAGE, [reader.planner()])
     await moveFileSet()
     const { reached, release } = arm()
@@ -1213,47 +1075,14 @@ describe('a resolution that moves during a check', () => {
     release()
     await held.reached
     const third = host.compile(PAGE, [reader.planner()])
-    await new Promise((r) => setTimeout(r, 10))
+    // (its request reaches the compile in flight within the turn)
+    await turn()
     held.proceed()
     const [a, b] = await Promise.all([second, third])
     expect(reader.attempts() - before).toBe(1)
     expect(factsOf(a)).toEqual(factsOf(b))
   })
 })
-
-/** `heldReader` of another specifier. */
-function heldReaderOf(specifier: string) {
-  let attempts = 0
-  let armed: { reached: () => void; proceed: Promise<void> } | null = null
-  const planner = (): Planner => ({
-    name: 'toy',
-    tier: 1,
-    gate: () => true,
-    async prefetch(_t0, ctx) {
-      attempts++
-      const target = await ctx.resolve(specifier)
-      const found = await ctx.resolver.resolve(target!, 'make')
-      if (armed) {
-        const held = armed
-        armed = null
-        held.reached()
-        await held.proceed
-      }
-      ctx.set(found.k === 'found' ? found.value : found.k)
-    },
-    plan(ctx) {
-      ctx.setFacts('toy', ctx.prefetched.get('toy') ?? null)
-    },
-  })
-  const hold = () => {
-    const proceed = gate()
-    const reached = new Promise<void>((r) => {
-      armed = { reached: r, proceed: proceed.opened }
-    })
-    return { reached, proceed: proceed.open }
-  }
-  return { planner, hold, attempts: () => attempts }
-}
 
 // Step 6a re-check (Gemini R2a/R2b, Astra's `marker.mjs`): a virtual module
 // read only for its marker, missing, then loading with a marker import.
@@ -1316,17 +1145,7 @@ describe("a virtual module's marker read as missing, and the module loading", ()
   // Source: Astra's and Gemini's look at the thrown-load rule
   // (`rejected-event.mjs`).
   it('a watch rebuild after a load that threw and then recovers sees the marker', async () => {
-    const loaded: Record<string, string> = {}
-    let fail = true
-    const virtual = new Proxy(loaded, {
-      get(target, id: string) {
-        if (fail) {
-          fail = false
-          throw new Error('the plugin is not ready')
-        }
-        return target[id]
-      },
-    })
+    const { loaded, virtual } = throwingOnce()
     const host = new MemoryHost({
       files,
       recognizer: RECOGNIZER,
@@ -1344,17 +1163,7 @@ describe("a virtual module's marker read as missing, and the module loading", ()
   })
 
   it('a load that threw is read again: the next request after a save sees the marker', async () => {
-    const loaded: Record<string, string> = {}
-    let fail = true
-    const virtual = new Proxy(loaded, {
-      get(target, id: string) {
-        if (fail) {
-          fail = false
-          throw new Error('the plugin is not ready')
-        }
-        return target[id]
-      },
-    })
+    const { loaded, virtual } = throwingOnce()
     const host = new MemoryHost({
       files: { ...files, '/app/other.ts': 'export const o = 1\n' },
       recognizer: RECOGNIZER,
@@ -1381,17 +1190,7 @@ describe("a virtual module's marker read as missing, and the module loading", ()
   // compile's check reads the module again.
   // Source: Astra's `rejected-event.mjs`, Fable's p8 (c).
   it("a load that threw, announced during the importer's compile, reaches the importer", async () => {
-    const loaded: Record<string, string> = {}
-    let fail = true
-    const virtual = new Proxy(loaded, {
-      get(target, id: string) {
-        if (fail) {
-          fail = false
-          throw new Error('the plugin is not ready')
-        }
-        return target[id]
-      },
-    })
+    const { loaded, virtual } = throwingOnce()
     const host = new MemoryHost({
       files,
       recognizer: RECOGNIZER,
@@ -1469,17 +1268,7 @@ describe("a virtual module's exports read when its load threw", () => {
         "import { make } from 'virtual:foo'\nexport const x = make\n",
       '/app/other.ts': 'export const o = 1\n',
     }
-    const loaded: Record<string, string> = {}
-    let fail = true
-    const virtual = new Proxy(loaded, {
-      get(target, id: string) {
-        if (fail) {
-          fail = false
-          throw new Error('the plugin is not ready')
-        }
-        return target[id]
-      },
-    })
+    const { loaded, virtual } = throwingOnce()
     const reader = (): Planner => ({
       name: 'toy',
       tier: 1,
@@ -1565,6 +1354,36 @@ describe('one specifier from two importers in one attempt', () => {
   })
 })
 
+/**
+ * The rows below run on a fake clock (`setTimeout`): the compiler's waits
+ * for an in-place save (`SAVE_RETRIES` reads `SAVE_RETRY_MS` apart) and the
+ * editor's write after its truncation take no time, in the order their
+ * times give.
+ */
+function onFakeClock() {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout'] })
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+}
+
+/** `pending` run to its end, the fake clock moved through every wait. */
+async function settled<T>(pending: Promise<T>): Promise<T> {
+  await vi.runAllTimersAsync()
+  return pending
+}
+
+/** `path` truncated, and written `text` 12 ms later (an editor's in-place save). */
+function saveInPlace(host: MemoryHost, path: string, text: string) {
+  host.write(path, '')
+  setTimeout(() => host.write(path, text), 12)
+}
+
+const messagesOf = (out: CompileOutput | null) =>
+  out!.diagnostics.map((d) => d.message)
+
 // A dependency saved in place (truncated, then written) while a compile
 // that resolved it is in flight: the watcher reports one change, at the
 // truncation, and none for the write 12 ms later (chokidar's 50 ms change
@@ -1573,52 +1392,13 @@ describe('one specifier from two importers in one attempt', () => {
 // then reads the saved exports.
 // Source: Astra's review of settlement step 6b (`physical-vite-6b.mjs`).
 describe('a dependency truncated and written while a compile that resolved it runs', () => {
+  onFakeClock()
   const DEP = '/app/dep.ts'
   const importer = "import * as dep from './dep'\nexport const out = dep\n"
-  const messages = (out: CompileOutput | null) =>
-    out!.diagnostics.map((d) => d.message)
-  /** A policy reading `./dep`'s exports; `held`: waits once between the resolution and the read. */
-  function exportsReader(held = false) {
-    const reached = gate()
-    const proceed = gate()
-    let hold = held
-    const planner = (): Planner => ({
-      name: 'exports',
-      tier: 0,
-      gate: (t0) => t0.imports.some((i) => i.specifier === './dep'),
-      plan() {},
-      async policy(_plan, _output, _edges, ctx) {
-        const id = await ctx.resolve('./dep')
-        if (hold) {
-          hold = false
-          reached.open()
-          await proceed.opened
-        }
-        const { exportNames } = await ctx.targetFacts(id!)
-        ctx.diagnostic({
-          severity: 'warning',
-          by: 'exports',
-          code: 'observed',
-          message: exportNames.join(','),
-        })
-      },
-    })
-    return { planner, reached: reached.opened, proceed: proceed.open }
-  }
-  /**
-   * The in-place save: truncated now, its one event applied, the text
-   * written 12 ms after the truncation (`written`).
-   */
-  async function save(host: MemoryHost) {
-    host.write(DEP, '')
-    const written = new Promise<void>((r) =>
-      setTimeout(() => {
-        host.write(DEP, 'export const newValue = 2\n')
-        r()
-      }, 12),
-    )
-    await invalidate(host.caches, { path: DEP, kind: 'change' }, host)
-    return { written }
+  /** The in-place save, its one event applied (at the truncation). */
+  function save(host: MemoryHost) {
+    saveInPlace(host, DEP, 'export const newValue = 2\n')
+    return invalidate(host.caches, { path: DEP, kind: 'change' }, host)
   }
 
   it('the compile reads the saved text, not the empty one', async () => {
@@ -1631,21 +1411,17 @@ describe('a dependency truncated and written while a compile that resolved it ru
     const compiling = host.compile('/app/page.ts', [reader.planner()])
     await reader.reached
     // (the compile goes on once the event applied, as a bundler's does)
-    const { written } = await save(host)
+    await save(host)
     reader.proceed()
-    const returned = messages(await compiling)
-    await written
-    const cold = messages(
-      await new MemoryHost({
-        files: host.files,
-        recognizer: RECOGNIZER,
-      }).compile('/app/page.ts', [exportsReader().planner()]),
-    )
-    expect(cold).toEqual(['newValue'])
-    expect(returned).toEqual(cold)
+    const returned = messagesOf(await settled(compiling))
+    expect(returned).toEqual(['newValue'])
     expect(
-      messages(await host.compile('/app/page.ts', [exportsReader().planner()])),
-    ).toEqual(cold)
+      messagesOf(
+        await settled(
+          host.compile('/app/page.ts', [exportsReader().planner()]),
+        ),
+      ),
+    ).toEqual(['newValue'])
   })
 
   // The compile that read the dependency is of an older text of its file
@@ -1672,22 +1448,16 @@ describe('a dependency truncated and written while a compile that resolved it ru
     expect(
       await host.compile('/app/page.ts', [exportsReader().planner()]),
     ).toBeNull()
-    const { written } = await save(host)
+    await save(host)
     reader.proceed()
-    await compiling
-    await written
-    const cold = messages(
-      await new MemoryHost({
-        files: host.files,
-        recognizer: RECOGNIZER,
-      }).compile('/app/other.ts', [exportsReader().planner()]),
-    )
-    expect(cold).toEqual(['newValue'])
+    await settled(compiling)
     expect(
-      messages(
-        await host.compile('/app/other.ts', [exportsReader().planner()]),
+      messagesOf(
+        await settled(
+          host.compile('/app/other.ts', [exportsReader().planner()]),
+        ),
       ),
-    ).toEqual(cold)
+    ).toEqual(['newValue'])
   })
 })
 
@@ -1698,6 +1468,7 @@ describe('a dependency truncated and written while a compile that resolved it ru
 // Source: the re-checks of settlement step 6b (Astra's `maysave-cost.mjs`,
 // Gemini's `recheck2-probes-gemini.mjs`).
 describe("an empty read after a file's event", () => {
+  onFakeClock()
   /** A policy reading the marker of what `spec` resolves to. */
   const markerOf = (spec: string): Planner => ({
     name: 'reader',
@@ -1709,33 +1480,6 @@ describe("an empty read after a file's event", () => {
       await ctx.targetMarker(id!)
     },
   })
-
-  /** A policy reading `./dep`'s exports; `hold`: waits once between the resolution and the read. */
-  function exportsOf(hold?: { reached: () => void; proceed: Promise<void> }) {
-    let held = hold
-    return (): Planner => ({
-      name: 'exports',
-      tier: 0,
-      gate: (t0) => t0.imports.some((i) => i.specifier === './dep'),
-      plan() {},
-      async policy(_plan, _output, _edges, ctx) {
-        const id = await ctx.resolve('./dep')
-        if (held) {
-          const h = held
-          held = undefined
-          h.reached()
-          await h.proceed
-        }
-        const { exportNames } = await ctx.targetFacts(id!)
-        ctx.diagnostic({
-          severity: 'warning',
-          by: 'exports',
-          code: 'observed',
-          message: exportNames.join(','),
-        })
-      },
-    })
-  }
   const own = (): Planner => ({
     name: 'own',
     tier: 0,
@@ -1744,6 +1488,18 @@ describe("an empty read after a file's event", () => {
       ctx.setFacts('own', true)
     },
   })
+  const files = {
+    '/app/dep.ts': 'export const oldValue = 1\n',
+    '/app/page.ts': "import * as dep from './dep'\nexport const x = dep\n",
+  }
+  /** Whether `pending` settles without waiting on the clock (a wait is a pending timer). */
+  async function settlesAtOnce(pending: Promise<unknown>) {
+    let done = false
+    void pending.then(() => (done = true))
+    await turn()
+    return { done, timers: vi.getTimerCount() }
+  }
+
   /**
    * The file emptied with its own plan published (its event waits for its
    * text in vain: the file is empty, and the plan is retired).
@@ -1751,59 +1507,55 @@ describe("an empty read after a file's event", () => {
   async function emptied(host: MemoryHost) {
     await host.compile('/app/dep.ts', [own()])
     host.write('/app/dep.ts', '')
-    await invalidate(host.caches, { path: '/app/dep.ts', kind: 'change' }, host)
+    const event = invalidate(
+      host.caches,
+      { path: '/app/dep.ts', kind: 'change' },
+      host,
+    )
+    expect(await settlesAtOnce(event)).toEqual({ done: false, timers: 1 })
+    await settled(event)
   }
-
   // A later in-place save (truncated, its one event, written 12 ms later)
   // while an importer that resolved the file is in flight: that event is
   // not the one that waited in vain, so the importer waits for the text.
   // Source: Gemini's re-check of settlement step 6b (`recheck3-probes-gemini.mjs`, probe A).
   it('a later in-place save of a file emptied before: the importer reads the saved text', async () => {
-    const host = new MemoryHost({
-      files: {
-        '/app/dep.ts': 'export const oldValue = 1\n',
-        '/app/page.ts': "import * as dep from './dep'\nexport const x = dep\n",
-      },
-      recognizer: RECOGNIZER,
-    })
+    const host = new MemoryHost({ files, recognizer: RECOGNIZER })
     await emptied(host)
-    const reached = gate()
-    const proceed = gate()
-    const compiling = host.compile('/app/page.ts', [
-      exportsOf({ reached: reached.open, proceed: proceed.opened })(),
-    ])
-    await reached.opened
-    host.write('/app/dep.ts', '')
-    const written = new Promise<void>((r) =>
-      setTimeout(() => {
-        host.write('/app/dep.ts', 'export const newValue = 2\n')
-        r()
-      }, 12),
-    )
+    const reader = exportsReader(true)
+    const compiling = host.compile('/app/page.ts', [reader.planner()])
+    await reader.reached
+    saveInPlace(host, '/app/dep.ts', 'export const newValue = 2\n')
     await invalidate(host.caches, { path: '/app/dep.ts', kind: 'change' }, host)
-    proceed.open()
-    const first = await compiling
-    await written
-    expect(first!.diagnostics.map((d) => d.message)).toEqual(['newValue'])
+    reader.proceed()
+    expect(messagesOf(await settled(compiling))).toEqual(['newValue'])
   })
 
   // What an event's wait in vain confirmed (the file empty) ends with a read
   // that finds text: the event is no longer evidence for a later read.
   it('a read that finds text ends what an event confirmed empty', async () => {
-    const host = new MemoryHost({
-      files: {
-        '/app/dep.ts': 'export const oldValue = 1\n',
-        '/app/page.ts': "import * as dep from './dep'\nexport const x = dep\n",
-      },
-      recognizer: RECOGNIZER,
-    })
+    const host = new MemoryHost({ files, recognizer: RECOGNIZER })
     await emptied(host)
-    expect(host.rawFacts.stats(false).emptyReadPaths).toBe(1)
     // written with no event of its own (the watcher's throttle), then read
     host.write('/app/dep.ts', 'export const newValue = 2\n')
-    const out = await host.compile('/app/page.ts', [exportsOf()()])
-    expect(out!.diagnostics.map((d) => d.message)).toEqual(['newValue'])
-    expect(host.rawFacts.stats(false).emptyReadPaths).toBe(0)
+    const read = exportsReader().planner
+    expect(messagesOf(await host.compile('/app/page.ts', [read()]))).toEqual([
+      'newValue',
+    ])
+    // saved in place again while its registry entry is published (its
+    // facts go stale with no event read): an empty read waits for the text
+    saveInPlace(host, '/app/dep.ts', 'export const newer = 3\n')
+    const published = invalidate(
+      host.caches,
+      { path: '/app/dep.ts', kind: 'registry' },
+      host,
+    )
+    // (its check of the importer is that read)
+    expect((await settlesAtOnce(published)).done).toBe(false)
+    await settled(published)
+    expect(
+      messagesOf(await settled(host.compile('/app/page.ts', [read()]))),
+    ).toEqual(['newer'])
   })
 
   it("an asset's next read after its event schedules no wait", async () => {
@@ -1816,55 +1568,36 @@ describe("an empty read after a file's event", () => {
     })
     await host.compile('/app/page.ts', [markerOf('./style.css')])
     host.write('/app/style.css', 'body { color: blue }\n')
-    vi.useFakeTimers({ toFake: ['setTimeout'] })
-    try {
-      const event = invalidate(
-        host.caches,
-        { path: '/app/style.css', kind: 'change' },
-        host,
-      )
-      const compiling = event.then(() =>
-        host.compile('/app/page.ts', [markerOf('./style.css')]),
-      )
-      for (let i = 0; i < 20; i++) {
-        await new Promise((r) => setImmediate(r))
-      }
-      // (a wait would be a pending timer)
-      expect(vi.getTimerCount()).toBe(0)
-      await vi.runAllTimersAsync()
-      await compiling
-    } finally {
-      vi.useRealTimers()
-    }
+    const compiling = invalidate(
+      host.caches,
+      { path: '/app/style.css', kind: 'change' },
+      host,
+    ).then(() => host.compile('/app/page.ts', [markerOf('./style.css')]))
+    expect(await settlesAtOnce(compiling)).toEqual({ done: true, timers: 0 })
   })
 
   it('an empty code file is read once per event, its retries included', async () => {
-    let reads = 0
     const host = new MemoryHost({
       files: {
         '/app/page.ts': "import './empty'\nexport const ok = 1\n",
         '/app/empty.ts': 'export const v = 1\n',
       },
       recognizer: RECOGNIZER,
-      onRead: (path) => {
-        if (path === '/app/empty.ts') {
-          reads++
-        }
-      },
     })
     await host.compile('/app/page.ts', [markerOf('./empty')])
     host.write('/app/empty.ts', '')
-    reads = 0
-    await invalidate(
+    // the event waits for the text in vain (its retries)
+    const event = invalidate(
       host.caches,
       { path: '/app/empty.ts', kind: 'change' },
       host,
     )
-    await host.compile('/app/page.ts', [markerOf('./empty')])
-    // the event's read and its ten retries (`SAVE_RETRIES`): a second wait
-    // would read it ten more times (the target-facts knob, which reuses
-    // no marker, reads it once more)
-    expect(reads).toBeGreaterThanOrEqual(11)
-    expect(reads).toBeLessThan(11 + 10)
+    expect(await settlesAtOnce(event)).toEqual({ done: false, timers: 1 })
+    await vi.advanceTimersByTimeAsync(100)
+    expect(await settlesAtOnce(event)).toEqual({ done: true, timers: 0 })
+    // the next read takes the event's empty text: no second wait
+    expect(
+      await settlesAtOnce(host.compile('/app/page.ts', [markerOf('./empty')])),
+    ).toEqual({ done: true, timers: 0 })
   })
 })

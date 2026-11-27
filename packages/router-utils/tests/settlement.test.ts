@@ -20,31 +20,10 @@ import {
   toySplitPlanner,
   toySummaryPlanner,
 } from './helpers'
+import { RECOGNIZER, gate, overtakenReader } from './race-helpers'
 import type { Planner, Settlement } from '../src/compiler'
 
-const RECOGNIZER = {
-  factories: {
-    'toy-start': {
-      createServerOnlyFn: 'serverOnly',
-      createClientOnlyFn: 'clientOnly',
-    },
-  },
-  builderKinds: new Set<string>(),
-  terminal: {},
-  envOnlyKinds: {
-    serverOnly: 'server' as const,
-    clientOnly: 'client' as const,
-  },
-}
-
 const planners = (): Array<Planner> => [toySummaryPlanner(), toyEnvPlanner()]
-
-/** A promise and the function that settles it. */
-function gate() {
-  let open!: () => void
-  const opened = new Promise<void>((r) => (open = r))
-  return { opened, open }
-}
 
 /**
  * Settles `id` and holds the request open: `settled` resolves with the
@@ -368,35 +347,12 @@ describe('outputs of one text', () => {
 // the rule gave.
 // Source: Fable's and Gemini's reviews of settlement step 1, question 3.
 describe('an answer every attempt of which was overtaken', () => {
-  /** Reads `./b`'s `make`; holds the first `holds` attempts after the read. */
-  function holdingPlanner(state: {
-    holds: number
-    held: Array<() => void>
-  }): Planner {
-    return {
-      name: 'toy-dep',
-      tier: 1,
-      gate: () => true,
-      async prefetch(_t0, ctx) {
-        const target = await ctx.resolve('./b')
-        const found = target ? await ctx.resolver.resolve(target, 'make') : null
-        if (state.holds > 0) {
-          state.holds--
-          await new Promise<void>((r) => state.held.push(r))
-        }
-        ctx.set(found?.k === 'found' ? JSON.stringify(found.value) : 'none')
-      },
-      plan(ctx) {
-        ctx.setFacts('toy-dep', ctx.prefetched.get('toy-dep') ?? null)
-      },
-    }
-  }
-
   it.fails(
     'is not current once the rebuild of its text publishes',
     async () => {
-      const state = { holds: 3, held: [] as Array<() => void> }
-      const own = () => [holdingPlanner(state)]
+      // (the first three attempts wait after they read `b.ts`'s export)
+      const { planner, nextHeld } = overtakenReader(3)
+      const own = () => [planner()]
       const host = memoryHost({
         '/app/a.ts': A,
         '/app/b.ts': 'export const make = 1\n',
@@ -409,12 +365,7 @@ describe('an answer every attempt of which was overtaken', () => {
         return s.current()
       })
       for (let save = 1; save <= 3; save++) {
-        for (let n = 0; state.held.length === 0; n++) {
-          if (n > 2_000) {
-            throw new Error('test: no attempt read the dependency')
-          }
-          await new Promise((r) => setTimeout(r, 1))
-        }
+        const release = await nextHeld()
         host.write(
           '/app/b.ts',
           save % 2 === 1
@@ -426,20 +377,21 @@ describe('an answer every attempt of which was overtaken', () => {
           { path: '/app/b.ts', kind: 'change' },
           host,
         )
-        state.held.shift()!()
+        release()
       }
       await taken.opened
-      // (exhausted: the host is told to build the file again, and does)
+      // (exhausted: the host is told to build the file again, and does; the
+      // rebuild is current, or the pin's setup failed)
       const stale = host.caches.stale.take('client')
       if (stale.join() !== '/app/a.ts') {
         throw new Error(`test: the attempts were not exhausted: ${stale}`)
       }
       const rebuilt = await host.settle('/app/a.ts', own(), (s) => s.current())
+      if (!rebuilt) {
+        throw new Error('test: the rebuild of the text is not current')
+      }
       closing.open()
-      expect({ rebuilt, first: await first }).toEqual({
-        rebuilt: true,
-        first: false,
-      })
+      expect(await first).toBe(false)
     },
   )
 })
