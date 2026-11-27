@@ -12,7 +12,7 @@ import {
   expectNoDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { describe, expect, test, vi } from 'vitest'
+import { afterAll, describe, expect, test, vi } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import {
@@ -29,8 +29,8 @@ import { originalLocation } from '../../importProtection/original-location'
 import {
   runRsbuildClient,
   runViteClient,
-  startBrowserProtectedDevServer,
   startBrowserRsbuildDevServer,
+  startBrowserStartDevServer,
 } from './client-pages'
 import type { RsbuildConfig } from '@rsbuild/core'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'
@@ -367,7 +367,8 @@ export const page = () => secret()
  * `read()`, which returns what the app gets from its denied import, as an
  * array of values; each must be a safe mock (`a safe mock`) unless a row
  * expects a real value, and the app must load or build. Every twin is a
- * directory of one app per channel (`outcomeOf`).
+ * directory of one app per channel (`hostOf`), each row run in a page of
+ * its own.
  * Source: review (missing coverage, computed keys).
  */
 describe('app-level twins of the mock pins', () => {
@@ -565,32 +566,40 @@ export const read = () => [Color.Red, Util.x]
   }
 
   /**
-   * Every twin in one app: twin `i` is `src/t<i>/` (its `src/` files moved
-   * there, `MARK_SECRET` in them made `MARK_SECRET_T<i>_`), the packages
-   * shared (`db-lib`'s secret `MARK_SECRET_DBLIB`); the entry gives each
-   * twin's `read` by name, and the denied specifiers of every twin are
-   * denied (only the twins naming one import it).
+   * Every twin in one app per channel: a twin is `src/<its name as a
+   * slug>/` (its `src/` files moved there, so that an error of the shared
+   * app names the twin; `MARK_SECRET` in them made `MARK_SECRET_T<i>_`),
+   * the packages shared (`db-lib`'s secret `MARK_SECRET_DBLIB`); the entry
+   * gives each twin's `read` by name, and the denied specifiers of every
+   * twin are denied (only the twins naming one import it). Each row runs its
+   * own twin in a page of its own.
    */
   const names = Object.keys(twins)
+  const dirOf = (name: string) =>
+    name
+      .replace(/[^a-z0-9]+/gi, '-')
+      .replace(/^-|-$/g, '')
+      .toLowerCase()
   const twinFiles = (i: number): Record<string, string> =>
     Object.fromEntries(
       Object.entries(twins[names[i]!]!.files).map(([file, text]) =>
         file.startsWith('src/')
           ? [
-              file.replace(/^src\//, `src/t${i}/`),
+              file.replace(/^src\//, `src/${dirOf(names[i]!)}/`),
               text.replaceAll('MARK_SECRET', `MARK_SECRET_T${i}_`),
             ]
           : [file, text.replaceAll('MARK_SECRET', 'MARK_SECRET_DBLIB')],
       ),
     )
-  const app: Record<string, string> = {
-    ...Object.assign({}, ...names.map((_, i) => twinFiles(i))),
-    'src/entry.ts': `${names.map((_, i) => `import * as t${i} from './t${i}/entry'`).join('\n')}
+  /** The app of the twins `on`. */
+  const appOf = (on: Array<string>): Record<string, string> => ({
+    ...Object.assign({}, ...on.map((name) => twinFiles(names.indexOf(name)))),
+    'src/entry.ts': `${on.map((name, i) => `import * as t${i} from './${dirOf(name)}/entry'`).join('\n')}
 export const reads: Record<string, () => Array<unknown>> = {
-${names.map((name, i) => `  ${JSON.stringify(name)}: t${i}.read,`).join('\n')}
+${on.map((name, i) => `  ${JSON.stringify(name)}: t${i}.read,`).join('\n')}
 }
 `,
-  }
+  })
   const twinOptions: ImportProtectionOptions = {
     client: {
       specifiers: [
@@ -603,17 +612,13 @@ ${names.map((name, i) => `  ${JSON.stringify(name)}: t${i}.read,`).join('\n')}
       ],
     },
   }
-  /** The script of every channel: what each twin's `read()` gives, described. */
-  const script = `${describeValuePrelude}
-return Object.fromEntries(
-  Object.entries(entry.reads).map(([name, read]) => {
-    try {
-      return [name, read().map((value) => describeValue(value, 'MARK_SECRET'))]
-    } catch (error) {
-      return [name, ['throws: ' + String(error)]]
-    }
-  }),
-)`
+  /** The script of a row: what its twin's `read()` gives, described. */
+  const scriptOf = (name: string) => `${describeValuePrelude}
+try {
+  return entry.reads[${JSON.stringify(name)}]().map((value) => describeValue(value, 'MARK_SECRET'))
+} catch (error) {
+  return ['throws: ' + String(error)]
+}`
   /** The secrets of twin `i` (none may reach a client bundle). */
   const secretsOf = (i: number) => [
     ...new Set(
@@ -623,42 +628,60 @@ return Object.fromEntries(
     ),
   ]
 
+  // (the shared server and builds are removed after the last row)
+  const cleanups: Array<() => Promise<void>> = []
+  afterAll(async () => {
+    for (const cleanup of cleanups.reverse()) {
+      await cleanup()
+    }
+  })
+  const registerCleanup = (cleanup: () => Promise<void>) => {
+    cleanups.push(cleanup)
+  }
+
   type Channel = 'vite dev' | `${(typeof startBundlers)[number]} build`
-  const outcomes = new Map<
+  const hosts = new Map<
     Channel,
     Promise<{
-      read: Record<string, Array<string>>
+      run: (name: string) => Promise<unknown>
       hasRealCode: (i: number) => boolean
     }>
   >()
-  /** What each twin gives on `channel` (and whether its secrets shipped), the app served or built once. */
-  function outcomeOf(channel: Channel) {
-    let outcome = outcomes.get(channel)
-    if (!outcome) {
-      outcome = (async () => {
+  /** The app served or built once per channel: a row's run of its twin, and whether a twin's secrets shipped. */
+  function hostOf(channel: Channel) {
+    let host = hosts.get(channel)
+    if (!host) {
+      host = (async () => {
         if (channel === 'vite dev') {
-          const server = await startBrowserProtectedDevServer(app, twinOptions)
-          // The mock reports each use in the browser console.
-          const silenced = vi
-            .spyOn(console, 'error')
-            .mockImplementation(() => {})
-          try {
-            const { result } = await runViteClient(
-              server,
-              '/src/entry.ts',
-              script,
-            )
-            return {
-              read: result as Record<string, Array<string>>,
-              hasRealCode: () => false,
-            }
-          } finally {
-            silenced.mockRestore()
+          // (the options `startProtectedDevServer` gives Start)
+          const server = await startBrowserStartDevServer({
+            files: appOf(names),
+            start: {
+              importProtection: twinOptions,
+              router: { entry: 'entry.ts' },
+            },
+            registerCleanup,
+          })
+          return {
+            run: async (name: string) => {
+              // The mock reports each use in the browser console.
+              const silenced = vi
+                .spyOn(console, 'error')
+                .mockImplementation(() => {})
+              try {
+                return (
+                  await runViteClient(server, '/src/entry.ts', scriptOf(name))
+                ).result
+              } finally {
+                silenced.mockRestore()
+              }
+            },
+            hasRealCode: () => false,
           }
         }
         const { client } = await buildStart({
           bundler: channel === 'vite build' ? 'vite' : 'rsbuild',
-          files: app,
+          files: appOf(names),
           entry: 'src/entry.ts',
           start: {
             importProtection: {
@@ -667,36 +690,34 @@ return Object.fromEntries(
               mockAccess: 'off',
             },
           },
+          registerCleanup,
         })
-        const read = (await client.run(script)).result as Record<
-          string,
-          Array<string>
-        >
         const shipped = new Set(
           names.flatMap((_, i) =>
             secretsOf(i).filter((secret) => client.where(secret) !== 'nowhere'),
           ),
         )
         return {
-          read,
-          hasRealCode: (i) =>
+          run: async (name: string) =>
+            (await client.run(scriptOf(name))).result,
+          hasRealCode: (i: number) =>
             secretsOf(i).some((secret) => shipped.has(secret)),
         }
       })()
-      outcomes.set(channel, outcome)
+      hosts.set(channel, host)
     }
-    return outcome
+    return host
   }
 
   for (const [i, name] of names.entries()) {
     const { expected = [mock] } = twins[name]!
     test(`vite dev: ${name}`, async () => {
-      expect((await outcomeOf('vite dev')).read[name]).toEqual(expected)
+      expect(await (await hostOf('vite dev')).run(name)).toEqual(expected)
     }, 30_000)
     for (const bundler of startBundlers) {
       test(`${bundler} build, mock mode: ${name}`, async () => {
-        const { read, hasRealCode } = await outcomeOf(`${bundler} build`)
-        expect({ read: read[name], hasRealCode: hasRealCode(i) }).toEqual({
+        const { run, hasRealCode } = await hostOf(`${bundler} build`)
+        expect({ read: await run(name), hasRealCode: hasRealCode(i) }).toEqual({
           read: expected,
           hasRealCode: false,
         })

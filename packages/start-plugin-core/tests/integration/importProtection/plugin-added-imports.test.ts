@@ -54,9 +54,9 @@ describe.each(startBundlers)('%s build', (bundler) => {
   let outcomes: ReturnType<typeof outcomesOfCases> | undefined
   test.each(cases.map((c, i) => ({ ...c, i })))(
     '$name: protection on and off',
-    async ({ i, on, off }) => {
+    async ({ i, name, on, off }) => {
       const outcome = (await (outcomes ??= outcomesOfCases(bundler, cases)))(i)
-      const expectedOn = on?.map((file) => inCase(i, file)) ?? null
+      const expectedOn = on?.map((file) => inCase(name, file)) ?? null
       expect({
         on: { failedAt: outcome.failedAt, shipped: outcome.mocked.shipped },
         mockReported: outcome.mocked.reported,

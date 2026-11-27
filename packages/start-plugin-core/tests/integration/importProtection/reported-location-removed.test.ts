@@ -51,8 +51,19 @@ export const fn = myServerFn.handler(async () => secret())
 `,
   }
 
-  /** What each channel reports for every use, in one app per channel. */
-  const names = Object.keys(safeUses)
+  /**
+   * What each channel reports for every use, in one app per channel; a use
+   * is the case `src/<its name, camel-cased>/a.tsx`, so that an error of the
+   * shared app names it.
+   */
+  const caseOf = (name: string) =>
+    name
+      .split(/[^a-z0-9]+/i)
+      .filter(Boolean)
+      .map((word, i) =>
+        i === 0 ? word : word[0]!.toUpperCase() + word.slice(1),
+      )
+      .join('')
   const reportsOn = new Map<
     Channel,
     ReturnType<typeof reportedLocationsOfCases>
@@ -63,7 +74,7 @@ export const fn = myServerFn.handler(async () => secret())
       reports = reportedLocationsOfCases(
         channel,
         Object.fromEntries(
-          Object.values(safeUses).map((code, i) => [`c${i}`, code]),
+          Object.entries(safeUses).map(([name, code]) => [caseOf(name), code]),
         ),
       )
       reportsOn.set(channel, reports)
@@ -79,7 +90,7 @@ export const fn = myServerFn.handler(async () => secret())
     '$channel: $name',
     async ({ channel, name }) => {
       const reports = await reportsOf(channel)
-      expect(reports.of(`c${names.indexOf(name)}`)).toEqual([])
+      expect(reports.of(caseOf(name))).toEqual([])
       expect(reports.otherErrors).toEqual([])
     },
     timeout,

@@ -116,18 +116,25 @@ export async function outcome(
   }
 }
 
-/** The paths of case `i` of `outcomesOfCases`: `src/` under `src/c<i>/`, the package `dep` as `dep<i>`. */
-export const inCase = (i: number, file: string) =>
+/** The directory of the case `name` of `outcomesOfCases` (its name as a slug: an error of the shared app names it). */
+const caseDir = (name: string) =>
+  name
+    .replace(/[^a-z0-9]+/gi, '-')
+    .replace(/^-|-$/g, '')
+    .toLowerCase()
+
+/** The paths of the case `name` of `outcomesOfCases`: `src/` under `src/<case>/`, the package `dep` as `dep-<case>`. */
+export const inCase = (name: string, file: string) =>
   file
-    .replace(/^src\//, `src/c${i}/`)
-    .replace(/^node_modules\/dep\//, `node_modules/dep${i}/`)
+    .replace(/^src\//, `src/${caseDir(name)}/`)
+    .replace(/^node_modules\/dep\//, `node_modules/dep-${caseDir(name)}/`)
 
 /**
  * `outcome` of each of `cases` (none `verbatim`) from one app per protection
- * state: case `i` in `src/c<i>/` with its package as `dep<i>` and its
- * initializer `MARK_DB_<i>_` (`inCase`), the entry re-exporting each case's
- * entry as a namespace, each case's `late` code added to its own
- * `src/c<i>/late.js`. Three builds: protection on in error mode (`failedAt`:
+ * state: a case in `src/<case>/` with its package as `dep-<case>`
+ * (`inCase`) and its initializer `MARK_DB_<i>_`, the entry re-exporting each
+ * case's entry as a namespace, each case's `late` code added to its own
+ * `src/<case>/late.js`. Three builds: protection on in error mode (`failedAt`:
  * the case's own client violations, root-relative, position cut; null when
  * it has none), on in mock mode (what ships with protection on, and the
  * case's own client reports) and off (what the bundler itself keeps).
@@ -144,7 +151,7 @@ export async function outcomesOfCases(
 > {
   const files: Record<string, string> = {
     'src/entry.ts': cases
-      .map((_, i) => `export * as c${i} from './c${i}/entry'\n`)
+      .map((c, i) => `export * as c${i} from './${caseDir(c.name)}/entry'\n`)
       .join(''),
   }
   for (const [i, c] of cases.entries()) {
@@ -152,15 +159,15 @@ export async function outcomesOfCases(
       throw new Error(`${c.name}: a verbatim case needs an app of its own`)
     }
     for (const [file, text] of Object.entries(c.files)) {
-      files[inCase(i, file)] = text
+      files[inCase(c.name, file)] = text
         .replaceAll('MARK_DB', `MARK_DB_${i}_`)
-        .replace(/(['"])dep\1/g, `$1dep${i}$1`)
+        .replace(/(['"])dep\1/g, `$1dep-${caseDir(c.name)}$1`)
     }
   }
   const late = lateImport(
     Object.fromEntries(
-      cases.flatMap((c, i) =>
-        c.late === undefined ? [] : [[`c${i}`, c.late]],
+      cases.flatMap((c) =>
+        c.late === undefined ? [] : [[caseDir(c.name), c.late]],
       ),
     ),
   )
@@ -193,7 +200,8 @@ export async function outcomesOfCases(
   const mockReported = clientImporters(mocked)
   const off = await build({ enabled: false })
   const own = (i: number) => (file: string) =>
-    file.startsWith(`src/c${i}/`) || file.startsWith(`node_modules/dep${i}/`)
+    file.startsWith(`src/${caseDir(cases[i]!.name)}/`) ||
+    file.startsWith(`node_modules/dep-${caseDir(cases[i]!.name)}/`)
   return (i) => {
     const failedAt = [...new Set(failed.filter(own(i)))]
     return {

@@ -100,54 +100,84 @@ export const buildApp = (
  */
 export const canaryOf = (index: number) => `${CANARY}_${index}_`
 
-/** The directory of form `index` of `formsApp`. */
-export const formDir = (index: number) => `src/f${index}`
+/**
+ * The directory of the form `name` in `formsApp`: `src/<name as a slug>/`,
+ * so that an error of the shared build names the form.
+ */
+export const formDir = (name: string) =>
+  `src/${name
+    .replace(/[^a-z0-9]+/gi, '-')
+    .replace(/^-|-$/g, '')
+    .toLowerCase()}`
 
 /**
  * One app of several forms (`[name, entry, files]`, as `app` takes them):
- * form `i` is `src/f<i>/` (`formDir`), its entry `src/f<i>/entry.ts` and its
- * files there, with the canary `canaryOf(i)`; its reader is
- * `globalThis.texts<i>`. The app's entry imports every form's entry.
+ * form `i` is `formDir(name)`, its entry `entry.ts` and its files there,
+ * with the canary `canaryOf(i)`; its reader is `globalThis.texts<i>`. The
+ * app's entry imports every form's entry.
  */
 export function formsApp(forms: Array<[string, string, Files]>) {
   const files: Files = {}
-  forms.forEach(([, entry, own], i) => {
+  const dirs = new Set<string>()
+  forms.forEach(([name, entry, own], i) => {
+    const dir = formDir(name)
+    if (dirs.has(dir)) {
+      throw new Error(`Two forms are named ${dir}`)
+    }
+    dirs.add(dir)
     for (const [file, text] of Object.entries(own)) {
-      files[file.replace(/^src\//, `${formDir(i)}/`)] = text.replaceAll(
+      files[file.replace(/^src\//, `${dir}/`)] = text.replaceAll(
         CANARY,
         canaryOf(i),
       )
     }
-    files[`${formDir(i)}/entry.ts`] = entry.replace(
+    files[`${dir}/entry.ts`] = entry.replace(
       '(globalThis as any).texts =',
       `(globalThis as any).texts${i} =`,
     )
   })
-  return app(forms.map((_, i) => `import './f${i}/entry'\n`).join(''), files)
+  return app(
+    forms
+      .map(
+        ([name]) => `import './${formDir(name).slice('src/'.length)}/entry'\n`,
+      )
+      .join(''),
+    files,
+  )
 }
 
 /**
- * `readTexts` of each of `count` forms of `formsApp`: by form, its reading,
- * or `{ error }` when its reader throws.
+ * `readTexts` of form `index` of `formsApp` (`texts<index>`); `count`:
+ * of each of the first `count` forms instead, by form, a form's reading or
+ * `{ error }` when its reader throws.
  */
-export const readFormTexts = (count: number) => `const all = []
-for (let i = 0; i < ${count}; i++) {
-  try {
-    const out = []
-    for (const value of await globalThis['texts' + i]()) {
-      out.push(value)
-      if (value.startsWith('data:')) {
-        out.push(atob(value.split(',')[1]))
-      } else if (value.startsWith('/') || value.startsWith('http')) {
-        out.push(await (await fetch(value)).text())
-      }
+export const readFormTexts = (
+  forms: { index: number } | { count: number },
+) => `const read = async (i) => {
+  const out = []
+  for (const value of await globalThis['texts' + i]()) {
+    out.push(value)
+    if (value.startsWith('data:')) {
+      out.push(atob(value.split(',')[1]))
+    } else if (value.startsWith('/') || value.startsWith('http')) {
+      out.push(await (await fetch(value)).text())
     }
-    all.push(out.join('\\n'))
+  }
+  return out.join('\\n')
+}
+${
+  'index' in forms
+    ? `return await read(${forms.index})`
+    : `const all = []
+for (let i = 0; i < ${forms.count}; i++) {
+  try {
+    all.push(await read(i))
   } catch (error) {
     all.push({ error: String(error?.message ?? error) })
   }
 }
 return all`
+}`
 
 /** The page's texts, and for each a URL's content (`?url`) or a `data:` URL's. */
 export const readTexts = `const out = []
