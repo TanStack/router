@@ -1267,3 +1267,16 @@ test.describe('server function returns 405 when method is not allowed', () => {
     await runMethodNotAllowedTest(page, 'post', 'POST')
   })
 })
+
+test('server function called only by another server function resolves', async ({
+  page,
+}) => {
+  await page.goto('/server-only-fn')
+  await page.waitForLoadState('networkidle')
+
+  await page.getByTestId('test-server-only-fn-btn').click()
+
+  await expect(page.getByTestId('server-only-fn-result')).toHaveText(
+    await page.getByTestId('expected-server-only-fn-result').innerText(),
+  )
+})
