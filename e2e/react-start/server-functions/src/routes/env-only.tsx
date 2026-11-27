@@ -4,37 +4,57 @@ import {
   createServerFn,
   createServerOnlyFn,
 } from '@tanstack/react-start'
+import * as Start from '@tanstack/react-start'
 import { useState } from 'react'
 
 const serverEcho = createServerOnlyFn((input: string) => 'server got: ' + input)
 const clientEcho = createClientOnlyFn((input: string) => 'client got: ' + input)
 
-const testOnServer = createServerFn().handler(() => {
-  const serverOnServer = serverEcho('hello')
-  let clientOnServer: string
-  try {
-    clientOnServer = clientEcho('hello')
-  } catch (e) {
-    clientOnServer =
-      'clientEcho threw an error: ' +
-      (e instanceof Error ? e.message : String(e))
-  }
-  return { serverOnServer, clientOnServer }
-})
+const namespaceServerEcho = Start.createServerOnlyFn(
+  (input: string) => 'server got: ' + input + ' (NAMESPACE_SERVER_ONLY_BODY)',
+)
+const namespaceClientEcho = Start.createClientOnlyFn(
+  (input: string) => 'client got: ' + input + ' (NAMESPACE_CLIENT_ONLY_BODY)',
+)
+
+const testOnServer = createServerFn()
+  .inputValidator((namespace: boolean) => namespace)
+  .handler(({ data: namespace }) => {
+    const serverOnServer = (namespace ? namespaceServerEcho : serverEcho)(
+      'hello',
+    )
+    let clientOnServer: string
+    try {
+      clientOnServer = (namespace ? namespaceClientEcho : clientEcho)('hello')
+    } catch (e) {
+      clientOnServer =
+        'clientEcho threw an error: ' +
+        (e instanceof Error ? e.message : String(e))
+    }
+    return { serverOnServer, clientOnServer }
+  })
 
 export const Route = createFileRoute('/env-only')({
+  validateSearch: (search): { namespace?: boolean } => ({
+    namespace: search.namespace === true,
+  }),
   component: RouteComponent,
 })
 
 function RouteComponent() {
+  const namespace = Route.useSearch().namespace ?? false
   const [results, setResults] = useState<Partial<Record<string, string>>>()
 
   async function handleClick() {
-    const { serverOnServer, clientOnServer } = await testOnServer()
-    const clientOnClient = clientEcho('hello')
+    const { serverOnServer, clientOnServer } = await testOnServer({
+      data: namespace,
+    })
+    const clientOnClient = (namespace ? namespaceClientEcho : clientEcho)(
+      'hello',
+    )
     let serverOnClient: string
     try {
-      serverOnClient = serverEcho('hello')
+      serverOnClient = (namespace ? namespaceServerEcho : serverEcho)('hello')
     } catch (e) {
       serverOnClient =
         'serverEcho threw an error: ' +
