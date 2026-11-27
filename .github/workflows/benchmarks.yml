@@ -88,6 +88,14 @@ jobs:
       - name: Setup Tools
         uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
 
+      # Every bench file gets a fresh Vitest worker, which recompiles jsdom,
+      # Vitest and their dependencies. Under valgrind that dominates worker
+      # startup. Node's compile cache lets later workers reuse the V8 code cache.
+      # The cache lives only for this job and is never restored from another run,
+      # so results cannot depend on cache state left by earlier runs.
+      - name: Enable Node compile cache
+        run: echo "NODE_COMPILE_CACHE=$RUNNER_TEMP/node-compile-cache" >> "$GITHUB_ENV"
+
       # Run the build outside of the CodSpeed action to avoid being slowed by intrumentation overhead.
       # (and then run the task itself with --excludeTaskDependencies)
       - name: Prepare ${{ matrix.benchmark }}:${{ matrix.framework }} benchmark
@@ -105,3 +113,9 @@ jobs:
             pnpm nx run
             @benchmarks/${{ matrix.benchmark }}:test:perf:${{ matrix.framework }}
             --excludeTaskDependencies
+
+      - name: Report Node compile cache usage
+        run: |
+          for dir in "$NODE_COMPILE_CACHE"/*/; do
+            echo "$(basename "$dir"): $(du -sh "$dir" | cut -f1), $(find "$dir" -type f | wc -l) files"
+          done
