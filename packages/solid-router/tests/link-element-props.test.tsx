@@ -335,6 +335,64 @@ test('a user ref receives the anchor once', async () => {
   expect(ref).toHaveBeenCalledOnce()
 })
 
+test('a disabled Link keeps a role set by the caller', async () => {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  try {
+    renderLinks(() => (
+      <>
+        <Link to="/target" disabled role="menuitem" data-testid="element-role">
+          Element role
+        </Link>
+        <Link
+          to="/"
+          disabled
+          activeProps={{ role: 'menuitemradio' }}
+          data-testid="state-role"
+        >
+          State role
+        </Link>
+        <Link
+          to="javascript:alert(1)"
+          role="menuitem"
+          data-testid="blocked-role"
+        >
+          Blocked role
+        </Link>
+        <Link to="/target" disabled data-testid="no-role">
+          No role
+        </Link>
+      </>
+    ))
+    expect(await screen.findByTestId('element-role')).toHaveAttribute(
+      'role',
+      'menuitem',
+    )
+    expect(screen.getByTestId('state-role')).toHaveAttribute(
+      'role',
+      'menuitemradio',
+    )
+    expect(screen.getByTestId('blocked-role')).toHaveAttribute(
+      'role',
+      'menuitem',
+    )
+    expect(screen.getByTestId('no-role')).toHaveAttribute('role', 'link')
+    for (const testId of [
+      'element-role',
+      'state-role',
+      'blocked-role',
+      'no-role',
+    ]) {
+      expect(screen.getByTestId(testId)).not.toHaveAttribute('href')
+      expect(screen.getByTestId(testId)).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      )
+    }
+  } finally {
+    warn.mockRestore()
+  }
+})
+
 test('a disabled Link renders no href and does not navigate', async () => {
   const onClick = vi.fn()
   const [disabled, setDisabled] = Solid.createSignal(true)
