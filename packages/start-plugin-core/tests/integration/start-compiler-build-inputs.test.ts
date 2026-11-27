@@ -484,7 +484,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
   )
 })
 
-// The dev edits of ../start-compiler-cases.test.ts ("dev edits"), in
+// The dev edits of ./start-compiler-dev-edits.test.ts, in
 // `rsbuild build --watch` (SPEC J4.5, G13): the first build fills the
 // build's resolution caches, then one module a factory comes from is
 // edited, which the module using the factory does not import directly.

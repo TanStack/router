@@ -299,6 +299,27 @@ describe('re-export chain resolution', () => {
     expect(await inPage(served, 'return module.deepFn()')).toBe('deep-client')
   })
 
+  /**
+   * `'settled'` once `work` resolves or rejects, `'still compiling'` if it
+   * has not after 2 s.
+   */
+  async function settlesWithin(work: Promise<unknown>) {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    try {
+      return await Promise.race([
+        work.then(
+          () => 'settled',
+          () => 'settled',
+        ),
+        new Promise((resolve) => {
+          timer = setTimeout(resolve, 2_000, 'still compiling')
+        }),
+      ])
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+
   test.each(reexportCycles)(
     'handles circular import chain: $name',
     async ({ files }) => {
@@ -311,20 +332,15 @@ describe('re-export chain resolution', () => {
         ...files,
         'module.tsx': cycleModule,
       })
-      const settled = await Promise.race([
-        startCase.served('module.tsx', 'ssr').then(
-          () => 'settled',
-          () => 'settled',
-        ),
-        new Promise((resolve) => setTimeout(resolve, 2_000, 'still compiling')),
-      ])
-      expect(settled).toBe('settled')
+      expect(await settlesWithin(startCase.served('module.tsx', 'ssr'))).toBe(
+        'settled',
+      )
     },
   )
 
   // The dev-edit concepts of this suite (an edited module a re-export
   // chain ends in recompiles its importers) are pinned through real dev
-  // edits in start-compiler-cases.test.ts "dev edits".
+  // edits in integration/start-compiler-dev-edits.test.ts.
 
   // A binding whose initializer reads itself (code saved mid-edit): serving
   // the module settles, with a result or an error, instead of looping.
@@ -334,14 +350,7 @@ export const fn: any = fn.handler(async () => 'x')
 export const real = createServerFn().handler(async () => 'y')`,
   ])('compiling a self-referencing binding settles: %#', async (code) => {
     const startCase = await (await host()).case({ 'module.tsx': code })
-    const settled = await Promise.race([
-      startCase.served().then(
-        () => 'settled',
-        () => 'settled',
-      ),
-      new Promise((resolve) => setTimeout(resolve, 2_000, 'still compiling')),
-    ])
-    expect(settled).toBe('settled')
+    expect(await settlesWithin(startCase.served())).toBe('settled')
   })
 })
 
