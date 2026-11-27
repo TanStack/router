@@ -15,9 +15,9 @@ The important point is that server-function discovery is a side effect of compil
 ## Main Files
 
 - `plugin.ts` wires the Rsbuild plugin phases, virtual modules, RSC hooks, compiler ordering, and resolver rebuild hooks.
-- `start-compiler-host.ts` registers the Start compiler transforms, captures server-function metadata, writes metadata to Rspack `buildInfo`, and replays cached metadata.
-- `start-compiler-metadata.ts` defines the string keys and types used by the metadata loader.
-- `start-compiler-metadata-loader.ts` is the real Rspack loader that writes server-function metadata to the current module's `buildInfo`.
+- `start-compiler-host.ts` creates the compiler in Rspack `apply`, registers the loader, captures server-function metadata, and replays cached metadata.
+- `start-compiler-metadata.ts` defines the persisted server-function metadata field and type.
+- `start-compiler-loader.ts` handles virtual modules, filtering, compilation, source maps, and writes metadata directly to the current module's `buildInfo`.
 - `virtual-modules.ts` owns the resolver virtual module and writes updated virtual module content per Rsbuild environment.
 - `../start-compiler/handleCreateServerFn.ts` discovers server functions while compiling caller modules.
 - `../start-compiler/server-fn-resolver-module.ts` generates the resolver module from the current server-function registry.
@@ -34,21 +34,21 @@ The shared registry is `serverFnsById`. It is passed to `virtual-modules.ts`, wh
 
 ## Cold Transform Path
 
-`registerStartCompilerTransforms()` registers an `api.transform({ order: 'pre' })` transform for each Start compiler environment.
+`registerStartCompilerTransforms()` registers a real pre loader through `modifyBundlerChain` for each Start compiler environment.
 
 When a matching module is compiled normally:
 
-1. Rsbuild runs the Start transform in the pre-loader phase.
+1. Rspack runs the Start compiler loader in the pre-loader phase.
 2. The transform checks compiler virtual modules first.
 3. It runs cheap code filters to skip files that cannot contain Start compiler patterns.
-4. It lazily creates one `StartCompiler` per environment.
+4. It uses the environment's `StartCompiler`, created in the Rspack plugin's `apply`.
 5. It detects which compiler features are present in the current code.
 6. It serializes access to the per-environment `StartCompiler` through `runCompilerTask()`.
 7. It calls `compiler.compile({ id, code, detectedKinds })`.
 8. During compile, `handleCreateServerFn()` reports discovered server functions through `onServerFnsById`.
-9. The transform stores the discovered server functions for this module in the environment's pending metadata map.
+9. The loader writes the discovered server functions directly to `this._module.buildInfo[SERVER_FN_BUILD_INFO_FIELD]` and returns code with composed source maps.
 
-The module ID used for transform metadata is `ctx.resource`. The metadata loader later reads `this.resource`. Using the same Rspack resource string keeps the handoff stable across resource queries.
+The compiler receives the full `this.resource`, including queries. Compilation and metadata writes happen in the same loader invocation, with no pending metadata map.
 
 ## Server-Function Discovery
 
@@ -70,39 +70,37 @@ The compiler sometimes needs to read or resolve imported modules while compiling
 
 `start-compiler-host.ts` uses two native Rsbuild/Rspack surfaces for this:
 
-- `ctx.resolve()` from the active Rsbuild transform context resolves module IDs.
+- `ctx.resolve()` from the active Rspack loader context resolves module IDs.
 - `compiler.inputFileSystem` reads source through Rspack's input filesystem.
 
-An `AsyncLocalStorage` value binds `loadModule` and `resolveId` back to the active transform context. That lets the compiler add dependencies to the current Rspack module without reaching into Rspack private resolver internals.
+An `AsyncLocalStorage` value binds `loadModule` and `resolveId` back to the active loader context. That lets the compiler add dependencies to the current Rspack module without reaching into Rspack private resolver internals.
 
 ## Why A Real Loader Is Used
 
 Rsbuild `api.transform()` is implemented as a loader, but its callback only exposes the transform context. It does not expose the current `NormalModule` or `module.buildInfo`.
 
-Rspack persists custom `module.buildInfo` fields. To write metadata there, Start installs a small real loader after the transform:
+Rspack persists custom `module.buildInfo` fields. Start replaces `api.transform()` and the separate metadata loader with one pre loader:
 
-1. `start-compiler-host.ts` adds a rule with `enforce: 'post'` for Start transformable modules.
-2. The rule points to the emitted `start-compiler-metadata-loader.js` file.
-3. The loader receives the environment's pending metadata map through loader options.
-4. A public `NormalModule.getCompilationHooks(compilation).loader` hook adds a setter to the loader context.
-5. The loader reads metadata for `this.resource` and calls the setter.
-6. The setter writes to `module.buildInfo['tanstack.start.serverFns']`.
+1. `start-compiler-host.ts` registers the rule in `modifyBundlerChain`, preserving pre-transform ordering.
+2. The rule points to the emitted `start-compiler-loader.js` file.
+3. The loader checks virtual modules, filters code, detects kinds and invokes the host's queued compile callback.
+4. The loader writes metadata directly to `this._module.buildInfo['tanstack.start.serverFns']`, then returns code and the composed source map.
 
 Only string-keyed, JSON-serializable `buildInfo` fields are used. Rspack persists those fields with the module cache. Symbol keys and private cache internals are intentionally avoided.
 
 ## Cache-Enabled And Cache-Disabled Behavior
 
-The metadata loader is installed regardless of `performance.buildCache`.
+The compiler loader is installed regardless of `performance.buildCache`.
 
-When persistent cache is enabled, Rspack may later restore a module without rerunning the Start transform or the metadata loader. The `buildInfo` payload is then replayed from the cached module.
+When persistent cache is enabled, Rspack may later restore a module without rerunning the compiler loader. The `buildInfo` payload is then replayed from the cached module.
 
-When persistent cache is disabled, the same loader path still runs during normal compilation and writes in-memory `buildInfo`. Keeping one path avoids conditional behavior and keeps cold, watch, cache-disabled, and cache-enabled builds aligned. The overhead is one small post loader for modules that already match the Start transform test.
+When persistent cache is disabled, the same loader path still runs during normal compilation and writes in-memory `buildInfo`. Keeping one path avoids conditional behavior and keeps cold, watch, cache-disabled, and cache-enabled builds aligned.
 
 The cache-specific part is not the loader itself. The cache-specific part is that Rspack can persist and later restore the `buildInfo` field.
 
 ## Stale Metadata Clearing
 
-If a module previously contained server functions and then no longer produces metadata, the metadata loader writes an empty payload:
+If a module previously contained server functions and then no longer produces metadata, the compiler loader writes an empty payload:
 
 ```ts
 { version: 1, serverFnsById: {} }
@@ -125,8 +123,6 @@ At that point Rspack has built or restored the module graph for the environment,
 7. Notifies virtual modules that resolver content may have changed.
 
 The shared registry is rebuilt from snapshots instead of being append-only. This is what lets deleted or renamed server functions disappear after watch rebuilds or warm-cache restores.
-
-The pending transform-to-loader metadata maps are cleared on each Rspack `compile` hook. That prevents metadata discovered in an earlier compilation from being written to a later module when the transform no longer runs or no longer discovers server functions.
 
 ## Why Snapshots Are Per Environment
 
@@ -171,29 +167,27 @@ RSC builds intentionally do not add these dependencies. Rspack's native RSC coor
 
 The implementation uses Rsbuild/Rspack integration points instead of cache internals:
 
-- Rsbuild `api.transform()` for source transforms.
-- Rsbuild transform `ctx.resolve()` for module resolution.
+- Rsbuild `modifyBundlerChain()` to register the compiler pre loader.
+- Rspack loader `ctx.resolve()` for module resolution.
 - Rspack `compiler.inputFileSystem` for source reads.
 - Rspack loaders for access to the loader pipeline.
-- Rspack `NormalModule.getCompilationHooks(compilation).loader` to extend loader context.
 - Rspack `module.buildInfo` for module-scoped persisted metadata.
 - Rspack `compiler.hooks.finishMake` for module graph replay and resolver rebuild ordering.
 - Rspack `compilation.rebuildModule()` through the local `rebuildModulesContaining()` helper.
 - Rspack `MultiCompiler.setDependencies()` for non-RSC compiler ordering.
 - Rspack `experiments.VirtualModulesPlugin` for virtual module content.
 
-The implementation avoids private persistent-cache files, direct cache mutation, direct `_module` access from loaders, global handoff state, and disabling module caching with `this.cacheable(false)`.
+The implementation avoids private persistent-cache files, direct cache mutation, global handoff state, and disabling module caching with `this.cacheable(false)`.
 
 ## When A New Server Function Is Compiled
 
 For a new server function in a normal cold compile:
 
-1. Rsbuild sends the source module through the Start pre transform.
+1. Rsbuild sends the source module through the Start compiler pre loader.
 2. `StartCompiler.compile()` rewrites the caller module and discovers the server function.
 3. `onServerFnsById` merges the function into `serverFnsById` and the active module metadata object.
-4. The transform stores `{ version: 1, serverFnsById: discoveredServerFnsById }` in the environment metadata map under the module resource.
-5. The post metadata loader runs for the same resource.
-6. The loader writes that payload into `module.buildInfo['tanstack.start.serverFns']`.
-7. Rspack owns the module from there. If persistent cache is enabled, Rspack persists the module and its string-keyed `buildInfo` with its normal cache machinery.
-8. At `finishMake -20`, Start reads current module `buildInfo` and rebuilds the environment snapshot.
-9. At `finishMake -10`, Start rewrites and rebuilds the resolver virtual module so runtime lookups can find the new function.
+4. The compile callback returns code, a source map, and the discovered server functions to the loader.
+5. The loader writes that payload into `module.buildInfo['tanstack.start.serverFns']` and returns code with composed source maps.
+6. Rspack owns the module from there. If persistent cache is enabled, Rspack persists the module and its string-keyed `buildInfo` with its normal cache machinery.
+7. At `finishMake -20`, Start reads current module `buildInfo` and rebuilds the environment snapshot.
+8. At `finishMake -10`, Start rewrites and rebuilds the resolver virtual module so runtime lookups can find the new function.

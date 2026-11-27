@@ -194,8 +194,8 @@ function normalizeErrorOverlayText(value: string): string {
     .replaceAll(fixtureRoot, '<fixture-root>')
     .replaceAll(workspaceRoot, '<workspace-root>')
     .replace(
-      /from [^)]+@rsbuild\/core\/dist\/transformLoader\.mjs/g,
-      'from <rsbuild-transform-loader>',
+      /from [^)]+(?:@rsbuild\/core\/dist\/transformLoader\.mjs|start-plugin-core\/dist\/esm\/rsbuild\/start-compiler-loader\.js)/g,
+      'from <start-compiler-loader>',
     )
     .replaceAll('\u00d7', 'x')
     .replaceAll('\u2570\u2500\u25b6', '->')
@@ -378,7 +378,7 @@ test('shows a module syntax error through the error overlay', async ({
           "title": "Build failed",
           "description": "SyntaxError: Unexpected token (16:22)",
           "runtime": "client",
-          "sourceFrame": "File: ./src/routes/index.tsx:1:1\\nx Module build failed (from <rsbuild-transform-loader>):\\n->   x SyntaxError: Unexpected token (16:22)",
+          "sourceFrame": "File: ./src/routes/index.tsx:1:1\\nx Module build failed (from <start-compiler-loader>):\\n->   x SyntaxError: Unexpected token (16:22)",
           "importTrace": [
             "../../../packages/react-start/dist/plugin/default-entry/client.tsx",
             "../../../packages/react-start/dist/esm/client.js",
@@ -391,7 +391,7 @@ test('shows a module syntax error through the error overlay', async ({
           "title": "Build failed",
           "description": "SyntaxError: Unexpected token (16:22)",
           "runtime": "server",
-          "sourceFrame": "File: ./src/routes/index.tsx:1:1\\nx Module build failed (from <rsbuild-transform-loader>):\\n->   x SyntaxError: Unexpected token (16:22)",
+          "sourceFrame": "File: ./src/routes/index.tsx:1:1\\nx Module build failed (from <start-compiler-loader>):\\n->   x SyntaxError: Unexpected token (16:22)",
           "importTrace": [
             "../../../packages/react-start/dist/plugin/default-entry/server.ts",
             "../../../packages/react-start/dist/esm/server.js",
