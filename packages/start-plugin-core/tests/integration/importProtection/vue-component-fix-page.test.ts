@@ -12,24 +12,28 @@
  *   another SFC imports by hand, reported at that importer (Rsbuild named
  *   the marked SFC itself; both said another plugin added the import).
  * Production builds on Vite and Rsbuild with import protection on, served
- * as each bundler's preview serves them, in a browser.
+ * as each bundler's preview serves them, in a browser; both cases are
+ * routes of one app, built failing once and fixed once.
  * Source: Astra review of #8817, import protection B2 and B4.
  */
+import path from 'node:path'
 import vue from '@vitejs/plugin-vue'
 import { pluginVue } from '@rsbuild/plugin-vue'
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { afterAll, describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { diagnosticPosition } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../../build-harness'
 import { createStartHost } from '../../start-host'
 import {
   expectViolationsAt,
+  locationParts,
   rejection,
 } from '../../importProtection/start-apps'
-import type { StartBundler } from '../../build-harness'
+import type { StartBuildError, StartBundler } from '../../build-harness'
 
 const timeout = 90_000
 
+/** The two cases' pages: a route each (`/named`, `/marked`). */
 const app = {
   'src/routes/__root.tsx': `import { defineComponent, h } from 'vue'
 import { Body, HeadContent, Html, Outlet, Scripts, createRootRoute } from '@tanstack/vue-router'
@@ -40,9 +44,13 @@ export const Route = createRootRoute({
   }),
 })
 `,
-  'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/vue-router'
-import Page from '../Page.vue'
-export const Route = createFileRoute('/')({ component: Page })
+  'src/routes/named.tsx': `import { createFileRoute } from '@tanstack/vue-router'
+import Page from '../Named.vue'
+export const Route = createFileRoute('/named')({ component: Page })
+`,
+  'src/routes/marked.tsx': `import { createFileRoute } from '@tanstack/vue-router'
+import Page from '../Marked.vue'
+export const Route = createFileRoute('/marked')({ component: Page })
 `,
 }
 
@@ -62,23 +70,60 @@ const bundlerConfig = (bundler: StartBundler) =>
     ? { viteConfig: { plugins: [vue()] } }
     : { rsbuildConfig: { plugins: [pluginVue()] } }
 
-/** The fix the report of a failed build gives: its declaration, and the component's name. */
-function printedFix(error: { diagnostics: Array<{ text: string }> }) {
+/**
+ * A named export of a `*.client.*` module whose default export is another
+ * component (the fix loaded the default), used by `src/Named.vue`.
+ */
+const ui = `import { defineComponent, h } from 'vue'
+export const Chart = defineComponent({ setup: () => () => h('b', { id: 'chart' }, 'VISIBLE CHART') })
+export default defineComponent({ setup: () => () => h('i', { id: 'other' }, 'DIFFERENT WIDGET') })
+`
+const named = `<script setup>
+import { Chart } from './ui.client'
+</script>
+<template><main><Chart /></main></template>
+`
+
+/** An SFC marked client-only that `src/Marked.vue` imports by hand. */
+const chart = `<script setup>
+// a chart that draws in the browser
+import '@tanstack/vue-start/client-only'
+</script>
+<template><b id="chart">VISIBLE CHART</b></template>
+`
+const marked = `<script setup>
+import Chart from './Chart.vue'
+</script>
+<template><main><Chart /></main></template>
+`
+
+/**
+ * The fix a report of the failed build gives for the import of `specifier`
+ * (a build may print both cases' reports in one error): its declaration, and
+ * the component's name.
+ */
+function printedFix(
+  error: { diagnostics: Array<{ text: string }> },
+  specifier: string,
+) {
   const found = error.diagnostics
-    .map(({ text }) =>
-      /const (\w+) = (defineAsyncComponent\(createClientOnlyFn\(.*?\)\)) in the script/.exec(
-        text,
+    .flatMap(({ text }) => [
+      ...text.matchAll(
+        /const (\w+) = (defineAsyncComponent\(createClientOnlyFn\(.*?\)\)) in the script/g,
       ),
-    )
-    .find((m) => m !== null)
-  expect(found, 'a report with the defineAsyncComponent fix').toBeTruthy()
+    ])
+    .find((m) => m[2]!.includes(`import('${specifier}')`))
+  expect(
+    found,
+    `a report with the defineAsyncComponent fix of ${specifier}`,
+  ).toBeTruthy()
   return {
     name: found![1]!,
     declaration: found![0].replace(/ in the script$/, ''),
   }
 }
 
-/** `Page.vue` with the fix applied as the report gives it. */
+/** A page with the fix applied as the report gives it. */
 const fixedPage = ({ name, declaration }: ReturnType<typeof printedFix>) =>
   `<script setup>
 import { defineAsyncComponent } from 'vue'
@@ -89,12 +134,12 @@ ${declaration}
 <template><main><ClientOnly><${name} /></ClientOnly></main></template>
 `
 
-/** Builds `files` (with the fix) for production, and opens its page `/`. */
-async function openFixedApp(
+/** Builds `files` (with the fixes) for production; the URL its preview serves. */
+async function previewFixedApp(
   bundler: StartBundler,
   files: Record<string, string>,
+  registerCleanup: (cleanup: () => Promise<void>) => void,
 ) {
-  let url: string
   if (bundler === 'vite') {
     const host = await createStartHost({
       framework: 'vue',
@@ -102,56 +147,81 @@ async function openFixedApp(
       files: { ...app, ...files },
       start: { importProtection: { enabled: true } },
     })
-    onTestFinished(() => host.close())
-    url = (await host.preview()).url
-  } else {
-    const build = await buildStart({
-      bundler,
-      framework: 'vue',
-      files: { ...rsbuildEntries, ...app, ...files },
-      ...bundlerConfig(bundler),
-    })
-    expect(build.violations).toEqual([])
-    url = (await build.preview()).url
+    registerCleanup(() => host.close())
+    return (await host.preview()).url
   }
-  return openPage(new URL('/', url).href, { registerCleanup: onTestFinished })
+  const build = await buildStart({
+    bundler,
+    framework: 'vue',
+    files: { ...rsbuildEntries, ...app, ...files },
+    registerCleanup,
+    ...bundlerConfig(bundler),
+  })
+  expect(build.violations).toEqual([])
+  return (await build.preview(registerCleanup)).url
 }
 
-const buildFailure = (bundler: StartBundler, files: Record<string, string>) =>
-  rejection(
-    buildStart({
-      bundler,
-      framework: 'vue',
-      files: { ...rsbuildEntries, ...app, ...files },
-      ...bundlerConfig(bundler),
-    }),
-  )
-
 describe.each(startBundlers)('%s build', (bundler) => {
+  const cleanups: Array<() => Promise<void>> = []
+  afterAll(async () => {
+    for (const cleanup of cleanups.reverse()) {
+      await cleanup()
+    }
+  })
+  // both cases in one app: the failed build, then the build with both
+  // printed fixes applied (shared by the two rows, removed after the file)
+  let built: Promise<{ error: StartBuildError; url: string }> | undefined
+  const both = () =>
+    (built ??= (async () => {
+      const error = await rejection(
+        buildStart({
+          bundler,
+          framework: 'vue',
+          files: {
+            ...rsbuildEntries,
+            ...app,
+            'src/ui.client.ts': ui,
+            'src/Named.vue': named,
+            'src/Chart.vue': chart,
+            'src/Marked.vue': marked,
+          },
+          ...bundlerConfig(bundler),
+        }),
+      )
+      const url = await previewFixedApp(
+        bundler,
+        {
+          'src/ui.client.ts': ui,
+          'src/Named.vue': fixedPage(printedFix(error, './ui.client')),
+          'src/Chart.vue': chart,
+          'src/Marked.vue': fixedPage(printedFix(error, './Chart.vue')),
+        },
+        (cleanup) => {
+          cleanups.push(cleanup)
+        },
+      )
+      return { error, url }
+    })())
+  /** The violations of the failed build whose importer is `file`. */
+  const reportsOf = (error: StartBuildError, file: string) => ({
+    root: error.root,
+    diagnostics: error.diagnostics,
+    violations: error.violations.filter(
+      (v) => locationParts(path.relative(error.root, v.importer)).file === file,
+    ),
+  })
+  const open = async (url: string, route: string) =>
+    openPage(new URL(route, url).href, { registerCleanup: onTestFinished })
+
   test(
     "the fix of a named import of a *.client.* component hydrates that component, not the module's default",
     async () => {
-      const ui = `import { defineComponent, h } from 'vue'
-export const Chart = defineComponent({ setup: () => () => h('b', { id: 'chart' }, 'VISIBLE CHART') })
-export default defineComponent({ setup: () => () => h('i', { id: 'other' }, 'DIFFERENT WIDGET') })
-`
-      const page = `<script setup>
-import { Chart } from './ui.client'
-</script>
-<template><main><Chart /></main></template>
-`
-      const error = await buildFailure(bundler, {
-        'src/ui.client.ts': ui,
-        'src/Page.vue': page,
-      })
-      const { line, column } = diagnosticPosition(page, "'./ui.client'")
-      expectViolationsAt(error, [
-        { environment: 'server', use: `src/Page.vue:${line}:${column}` },
+      const { error, url } = await both()
+      const { line, column } = diagnosticPosition(named, "'./ui.client'")
+      expectViolationsAt(reportsOf(error, 'src/Named.vue'), [
+        { environment: 'server', use: `src/Named.vue:${line}:${column}` },
       ])
-      const browser = await openFixedApp(bundler, {
-        'src/ui.client.ts': ui,
-        'src/Page.vue': fixedPage(printedFix(error)),
-      })
+      const browser = await open(url, '/named')
       await browser.waitForText('VISIBLE CHART', { selector: '#chart' })
       expect(await browser.text('main')).not.toContain('DIFFERENT WIDGET')
     },
@@ -161,30 +231,13 @@ import { Chart } from './ui.client'
   test(
     'a client-only SFC imported by hand is reported at its importer, and the fix hydrates it',
     async () => {
-      const chart = `<script setup>
-// a chart that draws in the browser
-import '@tanstack/vue-start/client-only'
-</script>
-<template><b id="chart">VISIBLE CHART</b></template>
-`
-      const page = `<script setup>
-import Chart from './Chart.vue'
-</script>
-<template><main><Chart /></main></template>
-`
-      const error = await buildFailure(bundler, {
-        'src/Chart.vue': chart,
-        'src/Page.vue': page,
-      })
+      const { error, url } = await both()
       // (located at the import that names the marked file)
-      const { line, column } = diagnosticPosition(page, "'./Chart.vue'")
-      expectViolationsAt(error, [
-        { environment: 'server', use: `src/Page.vue:${line}:${column}` },
+      const { line, column } = diagnosticPosition(marked, "'./Chart.vue'")
+      expectViolationsAt(reportsOf(error, 'src/Marked.vue'), [
+        { environment: 'server', use: `src/Marked.vue:${line}:${column}` },
       ])
-      const browser = await openFixedApp(bundler, {
-        'src/Chart.vue': chart,
-        'src/Page.vue': fixedPage(printedFix(error)),
-      })
+      const browser = await open(url, '/marked')
       await browser.waitForText('VISIBLE CHART', { selector: '#chart' })
     },
     timeout,
