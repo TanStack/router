@@ -458,9 +458,6 @@ describe('rsbuild dev', () => {
       const server = await startRsbuildStartDevServer({
         ...clientPage,
         framework: 'vue',
-        registerCleanup: (cleanup) => {
-          afterAll(cleanup)
-        },
         config: { plugins: [pluginVue()] },
         files: {
           'src/routes/__root.tsx': root,

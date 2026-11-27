@@ -163,12 +163,16 @@ export { createClientRpc } from '@tanstack/vue-start/client-rpc'
 
 describe.each(vueOptions)('rsbuild dev, $name', ({ inlineMatchResource }) => {
   let server: RsbuildDevServer
+  // (registered here: a hook called from inside `beforeAll` never runs,
+  // and the server would stay open for the rest of the worker)
+  let close: (() => Promise<void>) | undefined
+  afterAll(() => close?.())
   beforeAll(async () => {
     server = await startRsbuildStartDevServer({
       ...clientPage,
       framework: 'vue',
       registerCleanup: (cleanup) => {
-        afterAll(cleanup)
+        close = cleanup
       },
       config: { plugins: [vuePlugin(inlineMatchResource)] },
       files: {
