@@ -115,3 +115,94 @@ export async function outcome(
     }
   }
 }
+
+/** The paths of case `i` of `outcomesOfCases`: `src/` under `src/c<i>/`, the package `dep` as `dep<i>`. */
+export const inCase = (i: number, file: string) =>
+  file
+    .replace(/^src\//, `src/c${i}/`)
+    .replace(/^node_modules\/dep\//, `node_modules/dep${i}/`)
+
+/**
+ * `outcome` of each of `cases` (none `verbatim`) from one app per protection
+ * state: case `i` in `src/c<i>/` with its package as `dep<i>` and its
+ * initializer `MARK_DB_<i>_` (`inCase`), the entry re-exporting each case's
+ * entry as a namespace, each case's `late` code added to its own
+ * `src/c<i>/late.js`. Three builds: protection on in error mode (`failedAt`:
+ * the case's own client violations, root-relative, position cut; null when
+ * it has none), on in mock mode (what ships with protection on, and the
+ * case's own client reports) and off (what the bundler itself keeps).
+ */
+export async function outcomesOfCases(
+  bundler: StartBundler,
+  cases: Array<KeptCase>,
+): Promise<
+  (i: number) => {
+    failedAt: Array<string> | null
+    mocked: { reported: Array<string>; shipped: boolean }
+    offShipped: boolean
+  }
+> {
+  const files: Record<string, string> = {
+    'src/entry.ts': cases
+      .map((_, i) => `export * as c${i} from './c${i}/entry'\n`)
+      .join(''),
+  }
+  for (const [i, c] of cases.entries()) {
+    if (c.verbatim) {
+      throw new Error(`${c.name}: a verbatim case needs an app of its own`)
+    }
+    for (const [file, text] of Object.entries(c.files)) {
+      files[inCase(i, file)] = text
+        .replaceAll('MARK_DB', `MARK_DB_${i}_`)
+        .replace(/(['"])dep\1/g, `$1dep${i}$1`)
+    }
+  }
+  const late = lateImport(
+    Object.fromEntries(
+      cases.flatMap((c, i) =>
+        c.late === undefined ? [] : [[`c${i}`, c.late]],
+      ),
+    ),
+  )
+  const build = (importProtection: Record<string, unknown>) =>
+    buildStart({
+      bundler,
+      files,
+      entry: 'src/entry.ts',
+      start: { importProtection },
+      ...(bundler === 'vite'
+        ? { viteConfig: late.viteConfig }
+        : { rsbuildConfig: late.rsbuildConfig }),
+    })
+  const clientImporters = (
+    violations: Parameters<typeof reportedViolations>[0],
+  ) =>
+    reportedViolations(violations)
+      .filter((v) => v.environment === 'client')
+      .map((v) => v.importer.replace(/:\d+(:\d+)?$/, ''))
+  const failed = await build({ behavior: 'error' }).then(
+    () => [] as Array<string>,
+    (error: unknown) => {
+      if (!(error instanceof StartBuildError)) {
+        throw error
+      }
+      return clientImporters(error)
+    },
+  )
+  const mocked = await build({ behavior: 'mock', mockAccess: 'off' })
+  const mockReported = clientImporters(mocked)
+  const off = await build({ enabled: false })
+  const own = (i: number) => (file: string) =>
+    file.startsWith(`src/c${i}/`) || file.startsWith(`node_modules/dep${i}/`)
+  return (i) => {
+    const failedAt = [...new Set(failed.filter(own(i)))]
+    return {
+      failedAt: failedAt.length > 0 ? failedAt : null,
+      mocked: {
+        reported: [...new Set(mockReported.filter(own(i)))],
+        shipped: mocked.client.where(`MARK_DB_${i}_`) !== 'nowhere',
+      },
+      offShipped: off.client.where(`MARK_DB_${i}_`) !== 'nowhere',
+    }
+  }
+}

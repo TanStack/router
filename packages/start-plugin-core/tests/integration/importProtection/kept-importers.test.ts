@@ -10,11 +10,18 @@
  * drops in a used module of a `sideEffects: false` package; an unused
  * import in a package module that runs is a violation (its mock runs, as
  * the file does with protection off). Each case built with protection on
- * and off, Vite and Rsbuild.
+ * and off, Vite and Rsbuild, every case a directory of one app per
+ * protection state (`outcomesOfCases`).
  */
 import { describe, expect, test } from 'vitest'
 import { startBundlers } from '../../build-harness'
-import { dep, marked, outcome, timeout } from './kept-importer-cases'
+import {
+  dep,
+  inCase,
+  marked,
+  outcomesOfCases,
+  timeout,
+} from './kept-importer-cases'
 import type { KeptCase } from './kept-importer-cases'
 
 const cases: Array<KeptCase & { on: Array<string> | null; off: boolean }> = [
@@ -103,15 +110,21 @@ const cases: Array<KeptCase & { on: Array<string> | null; off: boolean }> = [
 ]
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  test.each(cases)(
+  // (every case in one app per protection state: `outcomesOfCases`)
+  let outcomes: ReturnType<typeof outcomesOfCases> | undefined
+  test.each(cases.map((c, i) => ({ ...c, i })))(
     '$name: protection on and off',
-    async (c) => {
+    async ({ i, on, off }) => {
+      const outcome = (await (outcomes ??= outcomesOfCases(bundler, cases)))(i)
+      const expectedOn = on?.map((file) => inCase(i, file)) ?? null
       expect({
-        on: await outcome(bundler, c, true),
-        off: await outcome(bundler, c, false),
+        on: { failedAt: outcome.failedAt, shipped: outcome.mocked.shipped },
+        mockReported: outcome.mocked.reported,
+        off: { shipped: outcome.offShipped },
       }).toEqual({
-        on: { failedAt: c.on, shipped: false },
-        off: { failedAt: null, shipped: c.off },
+        on: { failedAt: expectedOn, shipped: false },
+        mockReported: expectedOn ?? [],
+        off: { shipped: off },
       })
     },
     timeout,
