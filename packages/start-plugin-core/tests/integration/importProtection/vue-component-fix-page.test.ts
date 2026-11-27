@@ -16,7 +16,6 @@
  * routes of one app, built failing once and fixed once.
  * Source: Astra review of #8817, import protection B2 and B4.
  */
-import path from 'node:path'
 import vue from '@vitejs/plugin-vue'
 import { pluginVue } from '@rsbuild/plugin-vue'
 import { afterAll, describe, expect, onTestFinished, test } from 'vitest'
@@ -28,6 +27,7 @@ import {
   expectViolationsAt,
   locationParts,
   rejection,
+  reportedViolations,
 } from '../../importProtection/start-apps'
 import type { StartBuildError, StartBundler } from '../../build-harness'
 
@@ -202,14 +202,20 @@ describe.each(startBundlers)('%s build', (bundler) => {
       )
       return { error, url }
     })())
-  /** The violations of the failed build whose importer is `file`. */
-  const reportsOf = (error: StartBuildError, file: string) => ({
-    root: error.root,
-    diagnostics: error.diagnostics,
-    violations: error.violations.filter(
-      (v) => locationParts(path.relative(error.root, v.importer)).file === file,
-    ),
-  })
+  /**
+   * The violations of the failed build whose importer is `file`
+   * (`reportedViolations`: root-relative, `/`-separated, one per violation).
+   */
+  const reportsOf = (error: StartBuildError, file: string) => {
+    const importers = reportedViolations(error).map(
+      ({ importer }) => locationParts(importer).file,
+    )
+    return {
+      root: error.root,
+      diagnostics: error.diagnostics,
+      violations: error.violations.filter((_, i) => importers[i] === file),
+    }
+  }
   /** `file:line:column` of `needle` (the import's specifier) in `source`. */
   const importAt = (file: string, source: string, needle: string) => {
     const { line, column } = diagnosticPosition(source, needle)
