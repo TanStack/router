@@ -1944,3 +1944,38 @@ test('when creating a route with escaped path param', () => {
 
   expectTypeOf(prefixSuffixRoute.useParams<typeof router>()).toEqualTypeOf<{}>()
 })
+
+test('route children are typed as the array stored at runtime', () => {
+  const rootRoute = createRootRoute()
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+  })
+
+  const aboutRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'about',
+  })
+
+  // An object of children (what the generated route tree passes to
+  // `_addFileChildren`) is stored as an array of its values.
+  const objectTree = rootRoute.addChildren({ indexRoute, aboutRoute })
+
+  expectTypeOf(objectTree.children).toEqualTypeOf<
+    Array<typeof indexRoute | typeof aboutRoute> | undefined
+  >()
+
+  const fileTree = rootRoute._addFileChildren({ indexRoute, aboutRoute })
+
+  expectTypeOf(fileTree.children).toEqualTypeOf<
+    Array<typeof indexRoute | typeof aboutRoute> | undefined
+  >()
+
+  // An array of children keeps its tuple type.
+  const arrayTree = rootRoute.addChildren([indexRoute, aboutRoute])
+
+  expectTypeOf(arrayTree.children).toEqualTypeOf<
+    readonly [typeof indexRoute, typeof aboutRoute] | undefined
+  >()
+})
