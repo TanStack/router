@@ -481,9 +481,6 @@ async function open(
       if (/\.hot-update\.js$/.test(response.url())) {
         const text = await response.text().catch(() => '')
         hot.push({ modules: hotModules(text), bytes: text.length })
-        if (process.env.KEPT_DUMP) {
-          require('node:fs').writeFileSync(`/tmp/ob-hot-${Date.now()}.js`, text)
-        }
       }
     })
   }

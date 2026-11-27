@@ -48,10 +48,13 @@ interface Watcher {
 /**
  * Builds every environment of `builder` in watch mode (closed when the test
  * finishes, or by `close`); `ended(env)` resolves at the next build of `env`
- * that ends.
+ * that ends, and rejects when that build fails (as the first builds do).
  */
 async function watchBuild(builder: ViteModule.ViteBuilder) {
-  const waiting = new Map<string, Array<() => void>>()
+  const waiting = new Map<
+    string,
+    Array<{ resolve: () => void; reject: (error: Error) => void }>
+  >()
   const watchers: Array<Watcher> = []
   const close = async () => {
     await Promise.all(watchers.map((watcher) => watcher.close()))
@@ -65,15 +68,23 @@ async function watchBuild(builder: ViteModule.ViteBuilder) {
     watchers.push(watcher)
     watcher.on('event', (event) => {
       if (event.code === 'END' || event.code === 'ERROR') {
-        for (const resolve of waiting.get(name)?.splice(0) ?? []) {
-          resolve()
+        for (const { resolve, reject } of waiting.get(name)?.splice(0) ?? []) {
+          if (event.code === 'END') {
+            resolve()
+          } else {
+            reject(
+              new Error(`the ${name} watch build failed`, {
+                cause: event.error,
+              }),
+            )
+          }
         }
       }
     })
   }
   const ended = (name: string) =>
-    new Promise<void>((resolve) => {
-      waiting.set(name, [...(waiting.get(name) ?? []), resolve])
+    new Promise<void>((resolve, reject) => {
+      waiting.set(name, [...(waiting.get(name) ?? []), { resolve, reject }])
     })
   for (const [name, environment] of Object.entries(builder.environments)) {
     const first = ended(name)
@@ -288,18 +299,32 @@ describe.each(versions)('Vite $major', ({ major, load }) => {
   test('a watch build whose watchers closed no longer generates the route tree', async () => {
     const { createBuilder } = await vite()
     const app = await routerApp(major)
-    const { close } = await watchBuild(
+    const { ended, close } = await watchBuild(
       await createBuilder(
         app.buildConfig({
           build: { watch: {}, rollupOptions: { external: [/^@tanstack\//] } },
         }),
       ),
     )
+    // (a route file the open watchers build: their watching is live)
+    const rebuilt = Promise.all([ended('client'), ended('ssr')])
+    await writeFile(
+      path.join(app.root, 'routes/first.tsx'),
+      `${head}export const Route = createFileRoute('/first')({ loader: () => 'MARK_FIRST' })\n`,
+    )
+    await rebuilt
+    expect(await treeRoutes(app.root)).toEqual(['/', '/first'])
+    expect(await output(path.join(app.root, 'dist/client'))).toContain(
+      'MARK_FIRST',
+    )
+    expect(await output(path.join(app.root, 'dist/ssr'))).toContain(
+      'MARK_FIRST',
+    )
     await close()
     await writeFile(path.join(app.root, 'routes/later.tsx'), route('/later'))
     // (a watcher still open reports the file well within this)
     await new Promise((resolve) => setTimeout(resolve, 1_000))
-    expect(await treeRoutes(app.root)).toEqual(['/'])
+    expect(await treeRoutes(app.root)).toEqual(['/', '/first'])
   }, 60_000)
 
   test('a dev server generates the route tree once', async () => {

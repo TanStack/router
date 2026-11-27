@@ -2,15 +2,15 @@
  * Two router plugin instances in one Vite app, each with its own routes
  * directory and generated route tree (TanStack/router#7174, #7313): each
  * instance compiles its own routes, route files and split chunks, and
- * leaves the other's as they are, in dev and in a production build. A split
- * id of a file of an instance's routes directory that is no route gets that
- * instance's empty module (SPEC J2.13). The webpack-family hosts:
+ * leaves the other's as they are, in dev. A split id of a file of an
+ * instance's routes directory that is no route gets that instance's empty
+ * module (SPEC J2.13). Production builds, Vite and the webpack-family hosts:
  * integration/build-two-router-plugins.test.ts.
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, test } from 'vitest'
-import { build, createServer } from 'vite'
+import { createServer } from 'vite'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
 import { onTestFinished } from '@tanstack/compiler-test-utils/test-scope'
 import { createRouterPluginContext } from '../src/context'
@@ -20,7 +20,7 @@ import {
   tanstackRouterGenerator,
 } from '../src/vite'
 import { head, rootRoute } from './build-harness'
-import type { PluginOption, Rollup } from 'vite'
+import type { PluginOption } from 'vite'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
@@ -91,22 +91,6 @@ test('tanstackRouter() twice, dev: each tree serves its route file and split com
     expect(splitId, reference).toBeDefined()
     const split = (await client.transformRequest(splitId!))?.code ?? ''
     expect(split).toContain(t.mark)
-  }
-})
-
-test('tanstackRouter() twice, build: each tree bundles its split component', async () => {
-  const { root, options } = await twoTreeApp()
-  const output = (await build({
-    root,
-    configFile: false,
-    logLevel: 'silent',
-    plugins: options.map((o) => tanstackRouter(o)),
-    build: { write: false, minify: false },
-  })) as Rollup.RolldownOutput
-  const chunks = output.output.filter((each) => each.type === 'chunk')
-  for (const t of trees) {
-    const holding = chunks.filter((each) => each.code.includes(t.mark))
-    expect(holding.map((each) => each.isEntry)).toEqual([false])
   }
 })
 

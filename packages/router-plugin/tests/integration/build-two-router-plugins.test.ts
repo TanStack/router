@@ -1,9 +1,10 @@
 /**
- * Two `tanstackRouter()` instances in one webpack, Rspack or Rsbuild build,
- * each with its own routes directory and generated route tree
+ * Two `tanstackRouter()` instances in one Vite, webpack, Rspack or Rsbuild
+ * build, each with its own routes directory and generated route tree
  * (TanStack/router#7174, #7313): each tree's component is split into a lazy
- * chunk (the webpack-family loader runs both instances on every module, and
- * each leaves the other's routes as they are). Vite:
+ * chunk, which the entry reaches only through a dynamic import (the
+ * webpack-family loader runs both instances on every module, and each
+ * leaves the other's routes as they are). Vite dev:
  * vite-two-router-plugins.test.ts.
  */
 import path from 'node:path'
@@ -43,7 +44,7 @@ function expectBothSplit(app: BuildResult) {
   expect(app.where('MARK_WIDGET')).toBe('lazy')
 }
 
-describe.each(['webpack', 'rspack'] as const)('%s', (bundler) => {
+describe.each(['vite', 'webpack', 'rspack'] as const)('%s', (bundler) => {
   test(
     'each instance splits its own tree',
     async () => {

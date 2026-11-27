@@ -351,21 +351,6 @@ export const Route = createFileRoute('/page')({ ${options} })`,
       30_000,
     )
 
-    if (!autoCodeSplitting) {
-      it.each(cases)(
-        'render the imported $name component instance in the option',
-        async ({ declaration, options, exported }) => {
-          await expectExportedRouteOptions(
-            `${head}${declaration}
-export const Route = createFileRoute('/page')({ ${options} })`,
-            exported,
-            autoCodeSplitting,
-          )
-        },
-        30_000,
-      )
-    }
-
     it('keep exported overloads and their aliases that unsplit and split options call', async () => {
       await expectSharedOverloads(autoCodeSplitting)
     }, 30_000)

@@ -202,11 +202,8 @@ describe('app paths', () => {
   // split component (`splitIdNames`), whatever the compiler names them.
   test('an app in a directory whose name contains what split module ids contain builds and preloads a split component', async () => {
     const names = await splitIdNames(route)
-    if (names.length === 0) {
-      // Nothing to probe: the pin passes, so vitest reports it (an
-      // expected failure must not come from the probe itself)
-      return
-    }
+    // (the route's component is split: its modules have ids to probe)
+    expect(names).not.toEqual([])
     for (const name of names) {
       expect(
         await buildAndRun(route, script, {
