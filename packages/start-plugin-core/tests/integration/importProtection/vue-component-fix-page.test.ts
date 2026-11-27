@@ -89,7 +89,7 @@ const chart = `<script setup>
 // a chart that draws in the browser
 import '@tanstack/vue-start/client-only'
 </script>
-<template><b id="chart">VISIBLE CHART</b></template>
+<template><b id="marked-chart">MARKED CHART</b></template>
 `
 const marked = `<script setup>
 import Chart from './Chart.vue'
@@ -210,6 +210,11 @@ describe.each(startBundlers)('%s build', (bundler) => {
       (v) => locationParts(path.relative(error.root, v.importer)).file === file,
     ),
   })
+  /** `file:line:column` of `needle` (the import's specifier) in `source`. */
+  const importAt = (file: string, source: string, needle: string) => {
+    const { line, column } = diagnosticPosition(source, needle)
+    return `${file}:${line}:${column}`
+  }
   const open = async (url: string, route: string) =>
     openPage(new URL(route, url).href, { registerCleanup: onTestFinished })
 
@@ -217,13 +222,16 @@ describe.each(startBundlers)('%s build', (bundler) => {
     "the fix of a named import of a *.client.* component hydrates that component, not the module's default",
     async () => {
       const { error, url } = await both()
-      const { line, column } = diagnosticPosition(named, "'./ui.client'")
       expectViolationsAt(reportsOf(error, 'src/Named.vue'), [
-        { environment: 'server', use: `src/Named.vue:${line}:${column}` },
+        {
+          environment: 'server',
+          use: importAt('src/Named.vue', named, "'./ui.client'"),
+        },
       ])
       const browser = await open(url, '/named')
       await browser.waitForText('VISIBLE CHART', { selector: '#chart' })
       expect(await browser.text('main')).not.toContain('DIFFERENT WIDGET')
+      expect(await browser.text('main')).not.toContain('MARKED CHART')
     },
     timeout,
   )
@@ -233,12 +241,35 @@ describe.each(startBundlers)('%s build', (bundler) => {
     async () => {
       const { error, url } = await both()
       // (located at the import that names the marked file)
-      const { line, column } = diagnosticPosition(marked, "'./Chart.vue'")
       expectViolationsAt(reportsOf(error, 'src/Marked.vue'), [
-        { environment: 'server', use: `src/Marked.vue:${line}:${column}` },
+        {
+          environment: 'server',
+          use: importAt('src/Marked.vue', marked, "'./Chart.vue'"),
+        },
       ])
       const browser = await open(url, '/marked')
-      await browser.waitForText('VISIBLE CHART', { selector: '#chart' })
+      await browser.waitForText('MARKED CHART', { selector: '#marked-chart' })
+      expect(await browser.text('main')).not.toContain('VISIBLE CHART')
+    },
+    timeout,
+  )
+
+  // (an absence is a property of the whole build: the rows above read
+  // their own importer's report)
+  test(
+    'the failed build reports both importers, and nothing else',
+    async () => {
+      const { error } = await both()
+      expectViolationsAt(error, [
+        {
+          environment: 'server',
+          use: importAt('src/Named.vue', named, "'./ui.client'"),
+        },
+        {
+          environment: 'server',
+          use: importAt('src/Marked.vue', marked, "'./Chart.vue'"),
+        },
+      ])
     },
     timeout,
   )
