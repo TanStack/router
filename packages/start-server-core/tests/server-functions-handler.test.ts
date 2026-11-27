@@ -552,3 +552,47 @@ test('rejects excess RawStreams before starting their readers', async () => {
     consoleError.mockRestore()
   }
 })
+
+test.each([
+  {
+    name: 'a GET payload that is not JSON',
+    request: new Request(
+      `http://localhost/_serverFn/test?payload=${encodeURIComponent('{garbage')}`,
+      { headers: { 'x-tsr-serverFn': 'true' } },
+    ),
+  },
+  {
+    name: 'a POST body that is not JSON',
+    request: new Request('http://localhost/_serverFn/test', {
+      method: 'POST',
+      headers: {
+        'x-tsr-serverFn': 'true',
+        'content-type': 'application/json',
+      },
+      body: '{garbage',
+    }),
+  },
+  {
+    name: 'a POST body that is not a Seroval payload',
+    request: new Request('http://localhost/_serverFn/test', {
+      method: 'POST',
+      headers: {
+        'x-tsr-serverFn': 'true',
+        'content-type': 'application/json',
+      },
+      body: '{"t":1,"s":"x"}',
+    }),
+  },
+])('responds to $name with a 400', async ({ request }) => {
+  const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+  try {
+    const response = await callServerAction({ request, serverFnId: 'test' })
+
+    expect(response.status).toBe(400)
+    expect(response.headers.get(X_TSS_SERIALIZED)).toBe('true')
+    expect(mocks.action).not.toHaveBeenCalled()
+    expect(consoleError).not.toHaveBeenCalled()
+  } finally {
+    consoleError.mockRestore()
+  }
+})

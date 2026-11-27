@@ -171,6 +171,23 @@ export async function createServerFnErrorResponse(
   return errorResponse
 }
 
+// A payload the client protocol would never send is a bad request, so it is
+// answered with a 400 instead of being reported as a server failure.
+function createInvalidPayloadError(cause: unknown) {
+  return Object.assign(
+    new Error('Invalid server function payload', { cause }),
+    { status: 400, statusText: 'Bad Request' },
+  )
+}
+
+function parsePayloadParam(payloadParam: string) {
+  try {
+    return JSON.parse(payloadParam)
+  } catch (error) {
+    throw createInvalidPayloadError(error)
+  }
+}
+
 // The action merges the client context with the trusted server context
 // (__executeServer), so the client context is passed through unmerged.
 export const handleServerAction = async ({
@@ -258,14 +275,22 @@ export const handleServerAction = async ({
         if (payloadParam && payloadParam.length > MAX_PAYLOAD_SIZE) {
           throw new Error('Payload too large')
         }
-        json = payloadParam ? JSON.parse(payloadParam) : undefined
+        json = payloadParam ? parsePayloadParam(payloadParam) : undefined
       } else if (contentType?.includes('application/json')) {
-        json = await request.json()
+        json = await request.json().catch((error: unknown) => {
+          throw error instanceof SyntaxError
+            ? createInvalidPayloadError(error)
+            : error
+        })
       }
-      const payload: any =
-        json === undefined
-          ? undefined
-          : fromJSON(json, { plugins: getRequestSerovalPlugins() })
+      let payload: any
+      if (json !== undefined) {
+        try {
+          payload = fromJSON(json, { plugins: getRequestSerovalPlugins() })
+        } catch (error) {
+          throw createInvalidPayloadError(error)
+        }
+      }
       // Pass only the fields a client sends, so a crafted `error` or
       // `result` key cannot decide the outcome of the call.
       res = await action({
