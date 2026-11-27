@@ -107,8 +107,10 @@ interface Entries {
   pluginAdapters: PluginAdaptersEntry
 }
 
-// Share initialization, then reuse the loaded entries without a promise wait.
-let cachedEntries: Entries | Promise<Entries> | undefined
+// Cache only resolved entries. Storing the in-flight promise would hang later
+// Cloudflare Worker requests if the request that started the load ended first
+// (`handle_cross_request_promise_resolution`).
+let cachedEntries: Entries | undefined
 let hasWarnedMissingCsrfMiddleware = false
 const defaultCsrfMiddleware = createCsrfMiddleware({
   filter: (ctx) => ctx.handlerType === 'serverFn',
@@ -142,13 +144,10 @@ async function loadEntries(): Promise<Entries> {
 }
 
 function getEntries() {
-  if (!cachedEntries) {
-    cachedEntries = loadEntries().then((entries) => {
-      cachedEntries = entries
-      return entries
-    })
+  if (cachedEntries) {
+    return cachedEntries
   }
-  return cachedEntries
+  return loadEntries().then((entries) => (cachedEntries ??= entries))
 }
 
 function hasCsrfMiddleware(
