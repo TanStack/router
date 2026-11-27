@@ -3,7 +3,7 @@ import {
   createMemoryHistory,
   normalizeProtocolRelative,
 } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute } from '../src'
+import { BaseRootRoute, BaseRoute, getRouteSegments } from '../src'
 import { compileDecodeCharMap, interpolatePath } from '../src/path'
 import { parseSegments } from '../src/new-process-route-tree'
 import { decodePath } from '../src/utils'
@@ -165,7 +165,8 @@ describe.each(scenarios)('$name', ({ inputs, register = true }) => {
       decodePath(
         interpolatePath(
           path,
-          route?._interpolation ?? parseSegments(false, { fullPath: path }, 0),
+          (route && getRouteSegments(route)) ??
+            parseSegments(false, { fullPath: path }, 0),
           params,
           router.pathParamsDecoder,
         ),
@@ -199,7 +200,7 @@ describe.each(scenarios)('$name', ({ inputs, register = true }) => {
   const preparedInputs = inputs.map((input) => ({
     ...input,
     segments: register
-      ? routes.get(input.path)?._interpolation
+      ? getRouteSegments(routes.get(input.path)!)
       : parseSegments(false, { fullPath: input.path }, 0),
   }))
 

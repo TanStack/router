@@ -1,8 +1,9 @@
 import { invariant } from './invariant'
-import { trimPathRight } from './path'
+import { getRouteSegments, trimPathRight } from './path'
 import { createSieveCache } from './sieve-cache'
 import { last } from './utils'
 import type { SieveCache } from './sieve-cache'
+import type { AnyRoute } from './route'
 import type { InterpolationSegment, RouteInterpolation } from './path'
 
 export const SEGMENT_TYPE_PATHNAME = 0
@@ -92,12 +93,6 @@ export function parseSegment(
   return part
 }
 
-type ParsedRoute<T extends RouteLike> = [
-  node: AnySegmentNode<T>,
-  cursor: number,
-  segments: RouteInterpolation | undefined,
-]
-
 /** Compile a template, optionally attaching its new segments to the matching trie. */
 export function parseSegments<TRouteLike extends RouteLike>(
   defaultCaseSensitive: boolean,
@@ -111,7 +106,9 @@ export function parseSegments<TRouteLike extends RouteLike>(
   node: AnySegmentNode<TRouteLike>,
   dynamicListsToSort?: Array<Array<DynamicSegmentNode<TRouteLike>>>,
   parentInterpolation?: RouteInterpolation,
-): ParsedRoute<TRouteLike>
+  /** Defer consuming child segments until their parent frontier is matched. */
+  lazy?: boolean,
+): void
 export function parseSegments<TRouteLike extends RouteLike>(
   defaultCaseSensitive: boolean,
   route: TRouteLike,
@@ -120,7 +117,8 @@ export function parseSegments<TRouteLike extends RouteLike>(
   /** Each dynamic sibling list is recorded once, when it first needs sorting. */
   dynamicListsToSort?: Array<Array<DynamicSegmentNode<TRouteLike>>>,
   parentInterpolation?: RouteInterpolation,
-): RouteInterpolation | ParsedRoute<TRouteLike> {
+  lazy = false,
+): RouteInterpolation | void {
   let cursor = start
   const path = route.fullPath ?? route.from
   const options = route.options
@@ -130,7 +128,7 @@ export function parseSegments<TRouteLike extends RouteLike>(
   const parseParams = options?.params?.parse ?? options?.parseParams
   let interpolation: Array<InterpolationSegment> | undefined
   let literalStart = parentInterpolation ? start - 1 : 0
-  if (!node || path.includes('$')) {
+  if (!lazy && (!node || path.includes('$'))) {
     interpolation = parentInterpolation?.slice() ?? []
     const tail = last(interpolation)
     if (
@@ -250,13 +248,20 @@ export function parseSegments<TRouteLike extends RouteLike>(
       }
     }
     node = nextNode
+    if (lazy && cursor < length) {
+      ;(node.pending ??= []).push({ route, start: cursor })
+      return
+    }
   }
 
   if (interpolation && literalStart < literalEnd) {
     interpolation.push(path.slice(literalStart, literalEnd))
   }
   // Discard push()'s spare capacity before retaining this array on both owners.
-  const segmentData = interpolation?.slice()
+  // Only registered routes use deferred compilation; masks keep local data.
+  const segmentData = lazy
+    ? getRouteSegments(route as AnyRoute)
+    : interpolation?.slice()
   if (!node) {
     return segmentData!
   }
@@ -291,7 +296,28 @@ export function parseSegments<TRouteLike extends RouteLike>(
       node.route = route
     }
   }
-  return [node, cursor, segmentData]
+  if (route.children) {
+    for (const child of route.children) {
+      if (lazy && cursor < (child.fullPath ?? child.from).length) {
+        ;(node.pending ??= []).push({
+          route: child as TRouteLike,
+          start: cursor,
+        })
+      } else {
+        // Finish pathless/index routes now so parser gates, aliases, and
+        // sibling ordering are settled before this frontier is matched.
+        parseSegments(
+          defaultCaseSensitive,
+          child as TRouteLike,
+          cursor,
+          node,
+          dynamicListsToSort,
+          segmentData,
+          lazy,
+        )
+      }
+    }
+  }
 }
 
 function sortDynamic(
@@ -372,6 +398,7 @@ function createSegmentNode<T extends RouteLike>(
     caseSensitive,
     prefix,
     suffix,
+    pending: null,
   }
 }
 
@@ -397,6 +424,8 @@ type AnySegmentNode<T extends RouteLike> =
   | DynamicSegmentNode<T>
 
 type SegmentNode<T extends RouteLike> = {
+  /** Uncompiled route suffixes, in route declaration order. */
+  pending: Array<{ route: T; start: number }> | null
   kind: ExtendedSegmentKind
   prefix?: string
   suffix?: string
@@ -486,28 +515,8 @@ export function processRouteMasks<
 ) {
   const segmentTree = createSegmentNode<TRouteLike>()
   const dynamicListsToSort: Array<Array<DynamicSegmentNode<TRouteLike>>> = []
-  function visit(
-    route: TRouteLike,
-    start: number,
-    parentNode: AnySegmentNode<TRouteLike>,
-    parentInterpolation?: RouteInterpolation,
-  ) {
-    const [node, cursor, segments] = parseSegments(
-      false,
-      route,
-      start,
-      parentNode,
-      dynamicListsToSort,
-      parentInterpolation,
-    )
-    if (route.children) {
-      for (const child of route.children) {
-        visit(child as TRouteLike, cursor, node, segments)
-      }
-    }
-  }
   for (const route of routeList) {
-    visit(route, 1, segmentTree)
+    parseSegments(false, route, 1, segmentTree, dynamicListsToSort)
   }
   for (const nodes of dynamicListsToSort) {
     nodes.sort(sortDynamic)
@@ -613,8 +622,8 @@ export interface ProcessRouteTreeResult<
 }
 
 /**
- * Processes a route tree into a segment trie for efficient path matching.
- * Also builds lookup maps for routes by ID and by trimmed full path.
+ * Initializes routes and lookup maps. Matching expands the segment trie on
+ * demand from the fixed route definitions registered here.
  */
 export function processRouteTree<
   TRouteLike extends Extract<RouteLike, { fullPath: string }> & {
@@ -628,16 +637,10 @@ export function processRouteTree<
   caseSensitive: boolean = false,
 ): ProcessRouteTreeResult<TRouteLike> {
   const segmentTree = createSegmentNode<TRouteLike>()
-  const dynamicListsToSort: Array<Array<DynamicSegmentNode<TRouteLike>>> = []
   const routesById = {} as Record<string, TRouteLike>
   const routesByPath = {} as Record<string, TRouteLike>
   let index = 0
-  function visit(
-    route: TRouteLike,
-    start: number,
-    parentNode: AnySegmentNode<TRouteLike>,
-    parentInterpolation?: RouteInterpolation,
-  ) {
+  function visit(route: TRouteLike) {
     route.init(index)
 
     if (route.id in routesById) {
@@ -659,25 +662,17 @@ export function processRouteTree<
     }
     index++
 
-    const [node, cursor, segments] = parseSegments(
-      caseSensitive,
-      route,
-      start,
-      parentNode,
-      dynamicListsToSort,
-      parentInterpolation,
-    )
-    route._interpolation = segments
+    route._interpolation = undefined
     if (route.children) {
       for (const child of route.children) {
-        visit(child as TRouteLike, cursor, node, segments)
+        visit(child as TRouteLike)
       }
     }
   }
-  visit(routeTree, 1, segmentTree)
-  for (const nodes of dynamicListsToSort) {
-    nodes.sort(sortDynamic)
-  }
+  visit(routeTree)
+  // The root stores the default used when compiling deferred segments.
+  segmentTree.caseSensitive = caseSensitive
+  segmentTree.pending = [{ route: routeTree, start: 1 }]
   const processedTree: ProcessedTree<TRouteLike, any, any> = {
     segmentTree,
     singleCache: createSieveCache<string, AnySegmentNode<any>>(1000),
@@ -689,6 +684,30 @@ export function processRouteTree<
     processedTree,
     routesById,
     routesByPath,
+  }
+}
+
+/** Materialize only the immediate segment frontier before considering matches. */
+function expandNode<T extends RouteLike>(
+  node: AnySegmentNode<T>,
+  caseSensitive: boolean,
+) {
+  const lists: Array<Array<DynamicSegmentNode<T>>> = []
+  // Zero-consumption routes can append work to this same frontier.
+  for (const entry of node.pending!) {
+    parseSegments(
+      caseSensitive,
+      entry.route,
+      entry.start,
+      node,
+      lists,
+      undefined,
+      true,
+    )
+  }
+  node.pending = null
+  for (const siblings of lists) {
+    siblings.sort(sortDynamic)
   }
 }
 
@@ -856,6 +875,10 @@ function getNodeMatch<T extends RouteLike>(
   segmentTree: AnySegmentNode<T>,
   fuzzy: boolean,
 ) {
+  const caseSensitive = segmentTree.caseSensitive ?? false
+  if (segmentTree.pending) {
+    expandNode(segmentTree, caseSensitive)
+  }
   // quick check for root index
   // this is an optimization, algorithm should work correctly without this block
   if (path === '/' && segmentTree.index)
@@ -895,6 +918,9 @@ function getNodeMatch<T extends RouteLike>(
     const frame = stack.pop()!
     const { node, index, skipped, statics, dynamics, optionals } = frame
     let { extract, rawParams } = frame
+    if (node.pending) {
+      expandNode(node, caseSensitive)
+    }
 
     // Wildcard candidates are pushed speculatively as fallbacks in case a
     // higher-priority wildcard later fails params.parse. If a better wildcard

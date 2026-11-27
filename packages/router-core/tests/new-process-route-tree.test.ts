@@ -179,9 +179,6 @@ describe('findRouteMatch', () => {
           ],
         }
         const { processedTree } = processRouteTree(routeTree)
-        const branch = processedTree.segmentTree.staticInsensitive?.get('a')
-
-        expect(branch?.[siblingKind]).toHaveLength(2)
         expect(findRouteMatch('/a/prewinsuf', processedTree)?.route.id).toBe(
           `high-${siblingKind}`,
         )
@@ -193,14 +190,11 @@ describe('findRouteMatch', () => {
       }
     })
 
-    it('reuses optional nodes with the same shape when they have no parser', () => {
+    it('preserves names for same-shaped optional routes', () => {
       const tree = makeTree([
         '/a/{-$first}/first-child',
         '/a/{-$second}/second-child',
       ])
-      const branch = tree.segmentTree.staticInsensitive?.get('a')
-
-      expect(branch?.optional).toHaveLength(1)
       expect(findRouteMatch('/a/value/first-child', tree)?.route.id).toBe(
         '/a/{-$first}/first-child',
       )
@@ -211,9 +205,6 @@ describe('findRouteMatch', () => {
 
     it('keeps same-shaped wildcard aliases as separate match candidates', () => {
       const tree = makeTree(['/a/$', '/a/{$}'])
-      const branch = tree.segmentTree.staticInsensitive?.get('a')
-
-      expect(branch?.wildcard).toHaveLength(2)
       expect(findRouteMatch('/a/value', tree)?.route.id).toBe('/a/$')
     })
 
@@ -478,7 +469,7 @@ describe('findRouteMatch', () => {
   })
 
   describe('case sensitivity competition', () => {
-    it('reuses an insensitive static node for differently cased siblings', () => {
+    it('matches differently cased static siblings', () => {
       const tree = {
         id: '__root__',
         isRoot: true,
@@ -498,10 +489,6 @@ describe('findRouteMatch', () => {
         ],
       }
       const { processedTree } = processRouteTree(tree)
-      const docs = processedTree.segmentTree.staticInsensitive?.get('docs')
-
-      expect(processedTree.segmentTree.staticInsensitive?.size).toBe(1)
-      expect(docs?.staticInsensitive?.size).toBe(2)
       expect(findRouteMatch('/DOCS/api', processedTree)?.route.id).toBe(
         '/Docs/API',
       )
@@ -1576,7 +1563,7 @@ describe('findRouteMatch', () => {
 
       expect(findRouteMatch('/a', processedTree)?.route.id).toBe('/_layout/a')
     })
-    it('builds segment tree correctly', () => {
+    it('matches index and ordinary routes through a pathless parser', () => {
       const tree = {
         path: '/',
         isRoot: true,
@@ -1620,268 +1607,16 @@ describe('findRouteMatch', () => {
         ],
       }
       const { processedTree } = processRouteTree(tree)
-      expect(processedTree.segmentTree).toMatchInlineSnapshot(`
-        {
-          "caseSensitive": undefined,
-          "data": undefined,
-          "depth": 0,
-          "dynamic": [
-            {
-              "caseSensitive": false,
-              "data": undefined,
-              "depth": 1,
-              "dynamic": null,
-              "index": null,
-              "kind": 1,
-              "optional": null,
-              "parent": [Circular],
-              "parse": null,
-              "pathless": [
-                {
-                  "caseSensitive": undefined,
-                  "data": [
-                    [
-                      1,
-                      "foo",
-                      "/",
-                      "",
-                    ],
-                  ],
-                  "depth": 2,
-                  "dynamic": null,
-                  "index": {
-                    "caseSensitive": undefined,
-                    "data": [
-                      [
-                        1,
-                        "foo",
-                        "/",
-                        "",
-                      ],
-                    ],
-                    "depth": 3,
-                    "dynamic": null,
-                    "index": null,
-                    "kind": 4,
-                    "optional": null,
-                    "parent": [Circular],
-                    "parse": null,
-                    "pathless": null,
-                    "prefix": undefined,
-                    "priority": 0,
-                    "route": {
-                      "_interpolation": [
-                        [
-                          1,
-                          "foo",
-                          "/",
-                          "",
-                        ],
-                      ],
-                      "fullPath": "/$foo/",
-                      "id": "/$foo/_layout/",
-                      "options": {},
-                      "path": "/",
-                    },
-                    "static": null,
-                    "staticInsensitive": null,
-                    "suffix": undefined,
-                    "wildcard": null,
-                  },
-                  "kind": 5,
-                  "optional": null,
-                  "parent": [Circular],
-                  "parse": [Function],
-                  "pathless": null,
-                  "prefix": undefined,
-                  "priority": 0,
-                  "route": {
-                    "_interpolation": [
-                      [
-                        1,
-                        "foo",
-                        "/",
-                        "",
-                      ],
-                    ],
-                    "children": [
-                      {
-                        "_interpolation": [
-                          [
-                            1,
-                            "foo",
-                            "/",
-                            "",
-                          ],
-                          "/bar",
-                        ],
-                        "fullPath": "/$foo/bar",
-                        "id": "/$foo/_layout/bar",
-                        "options": {},
-                        "path": "bar",
-                      },
-                      {
-                        "_interpolation": [
-                          [
-                            1,
-                            "foo",
-                            "/",
-                            "",
-                          ],
-                        ],
-                        "fullPath": "/$foo/",
-                        "id": "/$foo/_layout/",
-                        "options": {},
-                        "path": "/",
-                      },
-                    ],
-                    "fullPath": "/$foo",
-                    "id": "/$foo/_layout",
-                    "options": {
-                      "params": {
-                        "parse": [Function],
-                      },
-                    },
-                    "path": "$foo",
-                  },
-                  "static": null,
-                  "staticInsensitive": Map {
-                    "bar" => {
-                      "caseSensitive": undefined,
-                      "data": [
-                        [
-                          1,
-                          "foo",
-                          "/",
-                          "",
-                        ],
-                        "/bar",
-                      ],
-                      "depth": 3,
-                      "dynamic": null,
-                      "index": null,
-                      "kind": 0,
-                      "optional": null,
-                      "parent": [Circular],
-                      "parse": null,
-                      "pathless": null,
-                      "prefix": undefined,
-                      "priority": 0,
-                      "route": {
-                        "_interpolation": [
-                          [
-                            1,
-                            "foo",
-                            "/",
-                            "",
-                          ],
-                          "/bar",
-                        ],
-                        "fullPath": "/$foo/bar",
-                        "id": "/$foo/_layout/bar",
-                        "options": {},
-                        "path": "bar",
-                      },
-                      "static": null,
-                      "staticInsensitive": null,
-                      "suffix": undefined,
-                      "wildcard": null,
-                    },
-                  },
-                  "suffix": undefined,
-                  "wildcard": null,
-                },
-              ],
-              "prefix": "",
-              "priority": 0,
-              "route": null,
-              "static": null,
-              "staticInsensitive": Map {
-                "hello" => {
-                  "caseSensitive": undefined,
-                  "data": [
-                    [
-                      1,
-                      "foo",
-                      "/",
-                      "",
-                    ],
-                    "/hello",
-                  ],
-                  "depth": 2,
-                  "dynamic": null,
-                  "index": null,
-                  "kind": 0,
-                  "optional": null,
-                  "parent": [Circular],
-                  "parse": null,
-                  "pathless": null,
-                  "prefix": undefined,
-                  "priority": 0,
-                  "route": {
-                    "_interpolation": [
-                      [
-                        1,
-                        "foo",
-                        "/",
-                        "",
-                      ],
-                      "/hello",
-                    ],
-                    "fullPath": "/$foo/hello",
-                    "id": "/$foo/hello",
-                    "options": {},
-                    "path": "$foo/hello",
-                  },
-                  "static": null,
-                  "staticInsensitive": null,
-                  "suffix": undefined,
-                  "wildcard": null,
-                },
-              },
-              "suffix": "",
-              "wildcard": null,
-            },
-          ],
-          "index": {
-            "caseSensitive": undefined,
-            "data": undefined,
-            "depth": 1,
-            "dynamic": null,
-            "index": null,
-            "kind": 4,
-            "optional": null,
-            "parent": [Circular],
-            "parse": null,
-            "pathless": null,
-            "prefix": undefined,
-            "priority": 0,
-            "route": {
-              "_interpolation": undefined,
-              "fullPath": "/",
-              "id": "/",
-              "options": {},
-              "path": "/",
-            },
-            "static": null,
-            "staticInsensitive": null,
-            "suffix": undefined,
-            "wildcard": null,
-          },
-          "kind": 0,
-          "optional": null,
-          "parent": undefined,
-          "parse": null,
-          "pathless": null,
-          "prefix": undefined,
-          "priority": 0,
-          "route": null,
-          "static": null,
-          "staticInsensitive": null,
-          "suffix": undefined,
-          "wildcard": null,
-        }
-      `)
+      expect(findRouteMatch('/', processedTree)?.route.id).toBe('/')
+      expect(findRouteMatch('/value/bar', processedTree)?.route.id).toBe(
+        '/$foo/_layout/bar',
+      )
+      expect(findRouteMatch('/value/', processedTree)?.route.id).toBe(
+        '/$foo/_layout/',
+      )
+      expect(findRouteMatch('/value/hello', processedTree)?.route.id).toBe(
+        '/$foo/hello',
+      )
     })
     it('does not consume a path segment during param extraction', () => {
       const tree = {
