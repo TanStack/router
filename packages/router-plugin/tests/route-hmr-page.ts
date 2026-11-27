@@ -251,6 +251,11 @@ export interface RouteHmrPage {
    */
   warnings: () => Array<Diagnostic>
   /**
+   * The errors the dev server reported so far (its logger, the bundler's
+   * compilations), as they read: a file it failed to compile shows here.
+   */
+  serverErrors: () => Array<string>
+  /**
    * Vite only: how many client modules the router plugin's own `load` hook
    * gave code so far, the outputs it derives from a route file (split
    * chunks, the modules they share), told by provenance (route-app's
@@ -502,6 +507,11 @@ export const Route = createRootRoute({})
       }
       return server.splitOutputs()
     },
+    serverErrors: () =>
+      server
+        .diagnostics()
+        .filter((diagnostic) => diagnostic.severity === 'error')
+        .map((diagnostic) => diagnostic.text),
     warnings: () => [
       ...diagnosticsOf(appWarnings(server.diagnostics(), printed()), 'warning'),
       ...diagnosticsOf(

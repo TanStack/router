@@ -453,12 +453,16 @@ interface HotUpdate {
 /** What a row needs of a dev server's page, whatever the bundler. */
 interface App {
   edit: (files: Record<string, string>, expected: string) => Promise<boolean>
-  /** Writes files the dev server fails to compile. */
+  /** Writes files the dev server fails to compile (asserts it reported their error). */
   writeBroken: (files: Record<string, string>, current: string) => Promise<void>
   click: (selector: string) => Promise<void>
   waitFor: (text: string) => Promise<void>
   evaluate: <T>(script: string) => Promise<T>
-  hot: Array<HotUpdate>
+  /**
+   * Rsbuild, opened with `recordHot`: the hot updates the page fetched
+   * since the last call, each body read in full.
+   */
+  hotUpdates?: () => Promise<Array<HotUpdate>>
 }
 
 /** The module ids of a webpack-family hot-update chunk. */
@@ -468,22 +472,29 @@ const hotModules = (text: string): Array<string> =>
     (m) => m[1]!,
   )
 
+/** Records the page's hot-update responses (`App.hotUpdates`). */
+function recordHotUpdates(page: BrowserPage['page']) {
+  const pending: Array<Promise<HotUpdate>> = []
+  page.on('response', (response) => {
+    if (/\.hot-update\.js$/.test(response.url())) {
+      pending.push(
+        response
+          .text()
+          .then((text) => ({ modules: hotModules(text), bytes: text.length })),
+      )
+    }
+  })
+  return () => Promise.all(pending.splice(0))
+}
+
 async function open(
   bundler: Bundler,
   fw: Fw,
   files: Record<string, string>,
   ready: string,
   ctx: TestContext,
+  recordHot = false,
 ): Promise<App> {
-  const hot: Array<HotUpdate> = []
-  const record = (page: BrowserPage['page']) => {
-    page.on('response', async (response) => {
-      if (/\.hot-update\.js$/.test(response.url())) {
-        const text = await response.text().catch(() => '')
-        hot.push({ modules: hotModules(text), bytes: text.length })
-      }
-    })
-  }
   if (bundler === 'webpack' || bundler === 'webpack-maps') {
     const app = await openWebpackHmrPage({
       target: fw,
@@ -491,7 +502,6 @@ async function open(
       ready,
       devtool: bundler === 'webpack' ? undefined : 'cheap-module-source-map',
     })
-    record(app.page.page)
     return {
       edit: async (edited, expected) =>
         (await app.edit(edited, expected)).reloaded,
@@ -501,7 +511,6 @@ async function open(
       click: (selector) => app.page.page.locator(selector).first().click(),
       waitFor: (text) => app.page.waitForText(text, { selector: '#app' }),
       evaluate: (script) => app.page.page.evaluate(script),
-      hot,
     }
   }
   const app = await openRouteHmrPage({
@@ -511,18 +520,23 @@ async function open(
     files,
     ready,
   })
-  record(app.page.page)
   return {
     edit: async (edited, expected) =>
       (await app.edit(edited, expected)).reloaded,
-    // the page goes on showing what it showed
+    // the page goes on showing what it showed, and the dev server reports
+    // the edited file's error
     writeBroken: async (edited, current) => {
+      const before = app.serverErrors().length
       await app.edit(edited, current)
+      const reported = app.serverErrors().slice(before).join('\n')
+      for (const file of Object.keys(edited)) {
+        expect(reported, `the error of ${file}`).toContain(file)
+      }
     },
     click: app.click,
     waitFor: (text) => app.page.waitForText(text, { selector: '#app' }),
     evaluate: app.evaluate,
-    hot,
+    ...(recordHot && { hotUpdates: recordHotUpdates(app.page.page) }),
   }
 }
 
@@ -677,12 +691,14 @@ ${ui.page('value.text', label)}`,
       'rsbuild %s: a component edit holds the chunk alone, a shared module edit the shared module alone',
       async (fw, ctx) => {
         const ui = uiOf(fw, true)
-        const app = await open('rsbuild', fw, route(ui, 'a'), 'a v1', ctx)
+        const app = await open('rsbuild', fw, route(ui, 'a'), 'a v1', ctx, true)
         await app.edit({ [FILE]: route(ui, 'b')[FILE] }, 'b v1')
-        const component = app.hot.splice(0)
+        const component = await app.hotUpdates!()
         expect(component.flatMap((u) => u.modules)).toHaveLength(1)
         await app.edit({ 'shared.ts': `export const base = 'v2'\n` }, 'b v2')
-        expect(app.hot.flatMap((u) => u.modules)).toEqual(['./shared.ts'])
+        expect((await app.hotUpdates!()).flatMap((u) => u.modules)).toEqual([
+          './shared.ts',
+        ])
       },
     )
   })
