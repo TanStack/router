@@ -139,7 +139,7 @@ export const Route = createFileRoute('/')({ component: () => <p>home</p> })
           onTestFinished,
         )
         await app.page.page.evaluate('window.__keptDocument = true')
-        const option = `window.__TSR_ROUTER__.routesById['/extra'].options.errorComponent`
+        const option = `window.__APP_ROUTER__.routesById['/extra'].options.errorComponent`
         for (const error of [true, false]) {
           await app.edit({ 'routes/extra.tsx': extra(error) }, 'home')
           expect(

@@ -42,12 +42,14 @@ import type { Config } from '../src/webpack'
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 const require = createRequire(import.meta.url)
 
+/** The app's entry: its router in `#app`, also `window.__APP_ROUTER__` (as `route-hmr-page.ts`'s). */
 const mains = {
   react: `import { createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 const router = createRouter({ routeTree })
+;(window as any).__APP_ROUTER__ = router
 createRoot(document.getElementById('app')!).render(
   createElement(RouterProvider, { router }),
 )
@@ -56,6 +58,7 @@ createRoot(document.getElementById('app')!).render(
 import { RouterProvider, createRouter } from '@tanstack/solid-router'
 import { routeTree } from './routeTree.gen'
 const router = createRouter({ routeTree })
+;(window as any).__APP_ROUTER__ = router
 render(() => <RouterProvider router={router} />, document.getElementById('app')!)
 `,
 }
