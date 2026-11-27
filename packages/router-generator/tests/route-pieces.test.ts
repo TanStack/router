@@ -11,7 +11,7 @@ import { createSSRApp } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import { createApp, fileRoute, generate, read, rootRoute } from './app'
 import { routeIdOf } from './route-id'
-import { evaluateModule, routesOf, urlsOf, withRouteTree } from './route-tree'
+import { evaluateModule, routesOf, withRouteTree } from './route-tree'
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -40,13 +40,16 @@ const componentOptions = [
 ] as const
 
 /**
- * The text each component option of each route renders, by route id, once
- * the router loaded the route (its lazy route file and components). Piece
- * files load lazily: the app that loaded the route tree has loaded none of
- * them before a route is loaded.
+ * What one load of the route tree at `treeFile` shows, by route id: each
+ * route's file (`files`, relative to the tree) and full path (`urls`), and
+ * the text each of its component options renders once the router loaded the
+ * route (`pieces`: its lazy route file and components); and the text of the
+ * pages at `urls` (`pages`). Piece files load lazily: the app that loaded
+ * the route tree has loaded none of them before a route is loaded.
  */
-function piecesOf(treeFile: string) {
-  return withRouteTree(treeFile, async ({ router, render, loadedFiles }) => {
+function treeOf(treeFile: string, pageUrls: Array<string> = []) {
+  return withRouteTree(treeFile, async (tree) => {
+    const { router, render, loadedFiles } = tree
     expect(
       loadedFiles().filter((file) => file.endsWith('.vue')),
       'the piece files loaded with the route tree, before any route is loaded',
@@ -63,7 +66,17 @@ function piecesOf(treeFile: string) {
         }
       }
     }
-    return pieces
+    const urls = Object.fromEntries(
+      Object.values(router.routesById).map((route) => [
+        route.id,
+        route.fullPath,
+      ]),
+    )
+    const pages: Record<string, string> = {}
+    for (const url of pageUrls) {
+      pages[url] = textOf(await tree.renderAt(url))
+    }
+    return { files: tree.routeFiles(), urls, pieces, pages }
   })
 }
 
@@ -92,7 +105,8 @@ describe('Vue piece files', () => {
     const root = await createApp(files)
     const { generatedRouteTree } = await generate(root, { target: 'vue' })
 
-    expect(await routesOf(generatedRouteTree)).toEqual({
+    const { files: routes, pieces } = await treeOf(generatedRouteTree)
+    expect(routes).toEqual({
       __root__: 'routes/__root.ts',
       '/': 'routes/index.ts',
       '/about': null,
@@ -100,7 +114,7 @@ describe('Vue piece files', () => {
       '/posts/$postId': 'routes/posts.$postId.ts',
       '/settings': 'routes/settings.ts',
     })
-    expect(await piecesOf(generatedRouteTree)).toEqual({
+    expect(pieces).toEqual({
       __root__: {
         component: 'root',
         notFoundComponent: 'root not found',
@@ -135,7 +149,7 @@ describe('Vue piece files', () => {
     })
 
     expect(generatedRouteTree.endsWith('.js')).toBe(true)
-    expect(await piecesOf(generatedRouteTree)).toEqual({
+    expect((await treeOf(generatedRouteTree)).pieces).toEqual({
       __root__: { component: 'root' },
       '/': { component: 'index' },
     })
@@ -155,13 +169,14 @@ describe('Vue piece files', () => {
     })
     const { generatedRouteTree } = await generate(root, { target: 'vue' })
 
-    expect(await routesOf(generatedRouteTree)).toEqual({
+    const { files, pieces } = await treeOf(generatedRouteTree)
+    expect(files).toEqual({
       __root__: 'routes/__root.ts',
       '/posts': 'routes/posts.ts',
       '/posts/$postId': 'routes/posts.$postId.ts',
       '/posts/$postId/edit': 'routes/posts.$postId.edit.ts',
     })
-    expect((await piecesOf(generatedRouteTree))['/posts']).toEqual({
+    expect(pieces['/posts']).toEqual({
       component: 'posts',
     })
   })
@@ -186,7 +201,7 @@ export const Route = createLazyFileRoute('/about')({
     })
     const { generatedRouteTree } = await generate(root, { target: 'vue' })
 
-    expect(await piecesOf(generatedRouteTree)).toEqual({
+    expect((await treeOf(generatedRouteTree)).pieces).toEqual({
       __root__: {},
       '/about': { component: 'about lazy' },
       '/posts': { component: 'posts' },
@@ -213,12 +228,13 @@ export const Route = createLazyFileRoute('/about')({
     })
     const { generatedRouteTree } = await generate(root, { target: 'vue' })
 
-    expect(await urlsOf(generatedRouteTree)).toEqual({
+    const { urls, pieces } = await treeOf(generatedRouteTree)
+    expect(urls).toEqual({
       __root__: '/',
       '/posts': '/posts',
       '/posts/': '/posts/',
     })
-    expect((await piecesOf(generatedRouteTree))['/posts']).toEqual({
+    expect(pieces['/posts']).toEqual({
       component: 'posts',
     })
   })
@@ -276,13 +292,12 @@ export default createLazyFileRoute('/about')({
       })
       const { generatedRouteTree } = await generate(root, { target: 'vue' })
 
-      expect((await piecesOf(generatedRouteTree))['/about']).toEqual({
+      const { pieces, pages } = await treeOf(generatedRouteTree, ['/about'])
+      expect(pieces['/about']).toEqual({
         component: 'about',
         pendingComponent: 'about pending',
       })
-      await withRouteTree(generatedRouteTree, async (tree) => {
-        expect(textOf(await tree.renderAt('/about'))).toBe('about')
-      })
+      expect(pages['/about']).toBe('about')
     },
   )
 
@@ -301,7 +316,7 @@ export default createLazyFileRoute('/about')({
     })
     const { generatedRouteTree } = await generate(root, { target: 'vue' })
 
-    expect(await piecesOf(generatedRouteTree)).toEqual({
+    expect((await treeOf(generatedRouteTree)).pieces).toEqual({
       __root__: { component: 'root' },
       '/': {},
     })
@@ -326,16 +341,13 @@ describe('empty files', () => {
       const { generatedRouteTree } = await generate(root, { target: 'vue' })
 
       expect(await read(root, `src/routes/${file}`)).toBe('')
-      expect(await routesOf(generatedRouteTree)).toEqual({
+      // The routes load and render (whatever the generator did with the
+      // empty file: an attached piece must load and render too).
+      const { files } = await treeOf(generatedRouteTree, ['/posts'])
+      expect(files).toEqual({
         __root__: 'routes/__root.ts',
         '/posts': 'routes/posts.ts',
       })
-      // The routes load and render (whatever the generator did with the
-      // empty file: an attached piece must load and render too).
-      await piecesOf(generatedRouteTree)
-      await withRouteTree(generatedRouteTree, ({ renderAt }) =>
-        renderAt('/posts'),
-      )
     },
   )
 

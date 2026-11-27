@@ -29,6 +29,7 @@ import { configOf, createApp, fileRoute, read, rootRoute, save } from './app'
 import { expectOnlyOwnedEdits } from './owned-edits'
 import { routeIdOf } from './route-id'
 import { observeRouteTree, routesOf } from './route-tree'
+import type { ObservedRoute } from './route-tree'
 import type { Config } from '../src'
 
 /** A generator for the app at `root`, after its first run. */
@@ -62,6 +63,12 @@ async function freshTree(root: string, config: Config) {
   return observeRouteTree(fresh)
 }
 
+/** The route files of an observed tree by route id (`routesOf`, same load). */
+const filesOf = (observed: Record<string, ObservedRoute>) =>
+  Object.fromEntries(
+    Object.entries(observed).map(([id, route]) => [id, route.file]),
+  )
+
 /** Deletes an app file (path relative to the app root); returns its path. */
 async function remove(root: string, file: string) {
   const filePath = path.join(root, file)
@@ -81,15 +88,14 @@ describe('route edits', () => {
     const about = await save(root, 'src/routes/about.tsx', fileRoute('/about'))
     await generator.run({ type: 'create', path: about })
 
-    expect(await routesOf(config.generatedRouteTree)).toEqual({
+    const observed = await observeRouteTree(config.generatedRouteTree)
+    expect(filesOf(observed)).toEqual({
       __root__: 'routes/__root.tsx',
       '/about': 'routes/about.tsx',
       '/posts': 'routes/posts.tsx',
       '/posts/$id': 'routes/posts.$id.tsx',
     })
-    expect(await observeRouteTree(config.generatedRouteTree)).toEqual(
-      await freshTree(root, config),
-    )
+    expect(observed).toEqual(await freshTree(root, config))
   })
 
   test('deleting a nested route gives the route tree of a fresh run', async () => {
@@ -104,14 +110,13 @@ describe('route edits', () => {
     const deleted = await remove(root, 'src/routes/posts.$id.tsx')
     await generator.run({ type: 'delete', path: deleted })
 
-    expect(await routesOf(config.generatedRouteTree)).toEqual({
+    const observed = await observeRouteTree(config.generatedRouteTree)
+    expect(filesOf(observed)).toEqual({
       __root__: 'routes/__root.tsx',
       '/posts': 'routes/posts.tsx',
       '/posts/new': 'routes/posts.new.tsx',
     })
-    expect(await observeRouteTree(config.generatedRouteTree)).toEqual(
-      await freshTree(root, config),
-    )
+    expect(observed).toEqual(await freshTree(root, config))
   })
 
   test('a route deleted after an edit that changed no route leaves the route tree', async () => {
@@ -292,14 +297,13 @@ describe.each([
       }
       await Promise.all(events.map((event) => generator.run(event)))
 
-      expect(await routesOf(config.generatedRouteTree)).toEqual({
+      const observed = await observeRouteTree(config.generatedRouteTree)
+      expect(filesOf(observed)).toEqual({
         __root__: 'routes/__root.tsx',
         ...routes,
       })
       expect(await routeIdOf(await read(root, to))).toBe(id)
-      expect(await observeRouteTree(config.generatedRouteTree)).toEqual(
-        await freshTree(root, config),
-      )
+      expect(observed).toEqual(await freshTree(root, config))
     },
   )
 })
@@ -835,15 +839,12 @@ describe('route files outside the routes directory', () => {
 
   // Control: the two tests above (same harness, editing route files).
 
-  // Bug: edits to the file `virtualRouteConfig` points to are ignored by a
-  // running generator: its update event is dropped (the absolute event path
-  // is compared with the configured relative path), and the config module
-  // is loaded from jiti's cache anyway.
-  // Source: src/generator.ts:1639-1644 (isFileRelevantForRouteTreeGeneration),
-  // src/filesystem/virtual/loadConfigFile.ts (jiti import of the config).
-  // Impact: in dev, changing the virtual route config has no effect until
-  // the dev server restarts.
-  test('editing the virtualRouteConfig file updates the route tree', async () => {
+  /**
+   * A running generator of an app whose `routes.ts` virtual route config
+   * routes `posts.tsx` at `/posts`, told of an edit routing it at
+   * `/articles` (the file itself unchanged).
+   */
+  async function movePostsInConfigFile() {
     const routes = (routePath: string) =>
       `import { rootRoute, route } from '@tanstack/virtual-file-routes'
 
@@ -857,9 +858,21 @@ export const routes = rootRoute('__root.tsx', [route('${routePath}', 'posts.tsx'
     const { config, generator } = await startGenerator(root, {
       virtualRouteConfig: './routes.ts',
     })
-
     const configFile = await save(root, 'routes.ts', routes('/articles'))
     await generator.run({ type: 'update', path: configFile })
+    return { root, config }
+  }
+
+  // Bug: edits to the file `virtualRouteConfig` points to are ignored by a
+  // running generator: its update event is dropped (the absolute event path
+  // is compared with the configured relative path), and the config module
+  // is loaded from jiti's cache anyway.
+  // Source: src/generator.ts:1639-1644 (isFileRelevantForRouteTreeGeneration),
+  // src/filesystem/virtual/loadConfigFile.ts (jiti import of the config).
+  // Impact: in dev, changing the virtual route config has no effect until
+  // the dev server restarts.
+  test('editing the virtualRouteConfig file updates the route tree', async () => {
+    const { config } = await movePostsInConfigFile()
 
     expect(await routesOf(config.generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
@@ -877,22 +890,7 @@ export const routes = rootRoute('__root.tsx', [route('${routePath}', 'posts.tsx'
   // route config edit until the file is touched or the server restarts.
   describe('a route file whose route the config moves without a content change gets its new id', () => {
     test('route() path in the virtualRouteConfig file', async () => {
-      const routes = (routePath: string) =>
-        `import { rootRoute, route } from '@tanstack/virtual-file-routes'
-
-export const routes = rootRoute('__root.tsx', [route('${routePath}', 'posts.tsx')])
-`
-      const root = await createApp({
-        'routes.ts': routes('/posts'),
-        'src/routes/__root.tsx': rootRoute(),
-        'src/routes/posts.tsx': fileRoute('/posts'),
-      })
-      const { generator } = await startGenerator(root, {
-        virtualRouteConfig: './routes.ts',
-      })
-
-      const configFile = await save(root, 'routes.ts', routes('/articles'))
-      await generator.run({ type: 'update', path: configFile })
+      const { root } = await movePostsInConfigFile()
 
       expect(await routeIdOf(await read(root, 'src/routes/posts.tsx'))).toBe(
         '/articles',

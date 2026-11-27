@@ -5,11 +5,10 @@
  * every route renders something (what is free), and the files follow
  * `quoteStyle` and `semicolons`.
  */
-import { parseSync } from 'vite'
 import { describe, expect, it } from 'vitest'
 import { createApp, generate, read } from './app'
-import { routeCallOf, routeCallSpansOf } from './route-id'
-import { routesOf, withRouteTree } from './route-tree'
+import { codeStyle, routeCallOf, routeCallSpansOf } from './route-id'
+import { withRouteTree } from './route-tree'
 
 /** The text of server-rendered `html`: its text nodes, joined. */
 const textOf = (html: string) =>
@@ -54,15 +53,14 @@ describe.each(['react', 'solid', 'vue'] as const)(
       for (const [file, id, constructor] of Object.values(pages)) {
         expect(await scaffolded(file)).toEqual({ constructor, id })
       }
-      expect(await routesOf(generatedRouteTree)).toEqual({
-        __root__: 'routes/__root.tsx',
-        '/posts': 'routes/posts.tsx',
-        '/about': null,
-        '/{-$locale}/contact': 'routes/{-$locale}/contact.tsx',
-        '/{-$locale}/help': null,
-      })
-
       await withRouteTree(generatedRouteTree, async (tree) => {
+        expect(tree.routeFiles()).toEqual({
+          __root__: 'routes/__root.tsx',
+          '/posts': 'routes/posts.tsx',
+          '/about': null,
+          '/{-$locale}/contact': 'routes/{-$locale}/contact.tsx',
+          '/{-$locale}/help': null,
+        })
         const rootModule = await tree.import(`${root}/src/routes/__root.tsx`)
         expect(rootModule.Route).toBe(tree.router.routeTree)
         expect(rootModule.Route.isRoot).toBe(true)
@@ -96,7 +94,7 @@ describe.each(['react', 'solid', 'vue'] as const)(
 
         for (const file of files) {
           const code = await read(root, `src/routes/${file}`)
-          const style = codeStyle(code)
+          const style = codeStyle(code, 'route.tsx', routeCallSpansOf(code).id)
           expect(style.quotes, file).toEqual([
             quoteStyle === 'single' ? "'" : '"',
           ])
@@ -107,61 +105,3 @@ describe.each(['react', 'solid', 'vue'] as const)(
     )
   },
 )
-
-/**
- * The quote characters of the string literals of `code` without quote
- * characters in them (a formatter may quote the others either way to avoid
- * escapes; JSX attribute values and the route id argument aside), and how
- * many of its statements that end with a semicolon in a file using them
- * (imports, expressions, returns, variable declarations outside loop heads)
- * there are, and end with one.
- */
-function codeStyle(code: string) {
-  const { program, errors } = parseSync('route.tsx', code)
-  expect(errors).toEqual([])
-  const id = routeCallSpansOf(code).id
-  const quotes = new Set<string>()
-  let statements = 0
-  let withSemicolon = 0
-  const visit = (node: unknown, parent?: Record<string, any>): void => {
-    if (Array.isArray(node)) {
-      node.forEach((child) => visit(child, parent))
-      return
-    }
-    if (!node || typeof node !== 'object') {
-      return
-    }
-    const record = node as Record<string, any>
-    if (record.type === 'JSXAttribute') {
-      return
-    }
-    if (
-      record.type === 'Literal' &&
-      typeof record.value === 'string' &&
-      !/["']/.test(record.value) &&
-      !(id && record.start >= id[0] && record.end <= id[1])
-    ) {
-      quotes.add(String(record.raw)[0]!)
-    }
-    if (
-      [
-        'ImportDeclaration',
-        'ExpressionStatement',
-        'ReturnStatement',
-        'VariableDeclaration',
-      ].includes(record.type) &&
-      !(parent?.type ?? '').startsWith('For') &&
-      parent?.type !== 'ExportNamedDeclaration'
-    ) {
-      statements++
-      if (code.slice(record.start, record.end).endsWith(';')) {
-        withSemicolon++
-      }
-    }
-    for (const value of Object.values(record)) {
-      visit(value, record)
-    }
-  }
-  visit(program)
-  return { quotes: [...quotes], statements, withSemicolon }
-}

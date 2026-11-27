@@ -34,7 +34,7 @@ import {
 } from './app'
 import { recordInputs } from './consumer-inputs'
 import { expectOnlyOwnedEdits } from './owned-edits'
-import { routeCallOf, routeIdOf } from './route-id'
+import { codeStyle, routeCallOf, routeIdOf } from './route-id'
 import { routesOf, urlsOf, withRouteTree } from './route-tree'
 import type { Config } from '../src'
 
@@ -354,19 +354,21 @@ describe('route tree options', () => {
   })
 
   /**
-   * The imports of the app's route files in a route tree, static and
-   * dynamic: route file (relative to the app, without its extension) to
-   * the specifiers that import it. Imports of other modules (packages,
-   * generated support modules) are left out: the options are about the
-   * route files.
+   * Asserts the imports of the app's route files `files` in a route tree,
+   * static and dynamic (or `kinds` only): each file is imported, and each
+   * import passes `check`; imports of other modules (packages, generated
+   * support modules) are left out, the options are about the route files.
+   * And, in the same load, the tree's routes are `app()`'s.
    */
-  async function routeFileImports(
+  async function expectRouteFileImports(
     root: string,
     treeFile: string,
     files: Array<string>,
+    check: (edge: { specifier: string; importer: string }) => void,
     kinds: Array<'static' | 'dynamic'> = ['static', 'dynamic'],
   ) {
-    return withRouteTree(treeFile, async (tree) => {
+    await withRouteTree(treeFile, async (tree) => {
+      expect(tree.routeFiles()).toEqual(appRoutes())
       const initial = [...tree.imports]
       if (kinds.includes('dynamic')) {
         for (const route of Object.values(tree.router.routesById)) {
@@ -384,7 +386,10 @@ describe('route tree options', () => {
         )
         imports[file]?.push(edge)
       }
-      return imports
+      for (const [file, specifiers] of Object.entries(imports)) {
+        expect(specifiers.length, file).toBeGreaterThan(0)
+        specifiers.forEach(check)
+      }
     })
   }
 
@@ -412,41 +417,12 @@ describe('route tree options', () => {
       const { generatedRouteTree } = await generate(root, config)
 
       const code = await readFile(generatedRouteTree, 'utf8')
-      const { program, errors } = parseSync('routeTree.gen.ts', code)
-      expect(errors).toEqual([])
-      // The quotes of the string literals without quote characters in them
-      // (a printer may quote the others either way to avoid escapes).
-      const quotes = new Set<string>()
-      const visit = (node: unknown) => {
-        if (Array.isArray(node)) {
-          node.forEach(visit)
-        } else if (node && typeof node === 'object') {
-          const { type, value, raw } = node as Record<string, unknown>
-          if (
-            type === 'Literal' &&
-            typeof value === 'string' &&
-            !/["']/.test(value)
-          ) {
-            quotes.add(String(raw)[0]!)
-          }
-          Object.values(node).forEach(visit)
-        }
-      }
-      visit(program)
-      expect([...quotes]).toEqual([quote])
-      const statements = program.body.filter(
-        (statement) =>
-          statement.type === 'ImportDeclaration' ||
-          statement.type === 'VariableDeclaration' ||
-          (statement.type === 'ExportNamedDeclaration' &&
-            statement.declaration?.type === 'VariableDeclaration'),
-      )
-      expect(statements.length).toBeGreaterThan(0)
-      for (const statement of statements) {
-        expect(code.slice(statement.start, statement.end).endsWith(';')).toBe(
-          semicolons,
-        )
-      }
+      // (the quotes of the string literals without quote characters in them:
+      // a printer may quote the others either way to avoid escapes)
+      const style = codeStyle(code, 'routeTree.gen.ts')
+      expect(style.quotes).toEqual([quote])
+      expect(style.statements).toBeGreaterThan(0)
+      expect(style.withSemicolon).toBe(semicolons ? style.statements : 0)
       expect(await routesOf(generatedRouteTree)).toEqual(appRoutes())
     },
   )
@@ -457,17 +433,17 @@ describe('route tree options', () => {
       addExtensions: true,
     })
 
-    const imports = await routeFileImports(root, generatedRouteTree, appFiles())
-    for (const [file, specifiers] of Object.entries(imports)) {
-      expect(specifiers.length, file).toBeGreaterThan(0)
-      for (const { specifier, importer } of specifiers) {
+    await expectRouteFileImports(
+      root,
+      generatedRouteTree,
+      appFiles(),
+      ({ specifier, importer }) => {
         expect(specifier).toMatch(/\.tsx$/)
         expect(
           existsSync(path.resolve(path.dirname(importer), specifier)),
         ).toBe(true)
-      }
-    }
-    expect(await routesOf(generatedRouteTree)).toEqual(appRoutes())
+      },
+    )
   })
 
   test.each(['js', '.js'])(
@@ -479,18 +455,14 @@ describe('route tree options', () => {
       })
       const { generatedRouteTree } = await generate(root)
 
-      const imports = await routeFileImports(
+      await expectRouteFileImports(
         root,
         generatedRouteTree,
         appFiles(),
-      )
-      for (const [file, specifiers] of Object.entries(imports)) {
-        expect(specifiers.length, file).toBeGreaterThan(0)
-        for (const { specifier } of specifiers) {
+        ({ specifier }) => {
           expect(specifier).toMatch(/[^.]\.js$/)
-        }
-      }
-      expect(await routesOf(generatedRouteTree)).toEqual(appRoutes())
+        },
+      )
     },
   )
 
@@ -520,19 +492,15 @@ describe('route tree options', () => {
     })
 
     // (the static imports of the route files; the lazy file: below)
-    const imports = await routeFileImports(
+    await expectRouteFileImports(
       root,
       generatedRouteTree,
       appFiles().filter((file) => !file.includes('.lazy.')),
+      ({ specifier }) => {
+        expect(path.isAbsolute(specifier), specifier).toBe(true)
+      },
       ['static'],
     )
-    for (const [file, specifiers] of Object.entries(imports)) {
-      expect(specifiers.length, file).toBeGreaterThan(0)
-      for (const { specifier } of specifiers) {
-        expect(path.isAbsolute(specifier), specifier).toBe(true)
-      }
-    }
-    expect(await routesOf(generatedRouteTree)).toEqual(appRoutes())
   })
 
   // Bug: with importRoutesUsingAbsolutePaths, the route tree still imports
@@ -552,14 +520,14 @@ describe('route tree options', () => {
     })
 
     // (static imports of the route files and dynamic ones of the lazy file)
-    const imports = await routeFileImports(root, generatedRouteTree, appFiles())
-    for (const [file, specifiers] of Object.entries(imports)) {
-      expect(specifiers.length, file).toBeGreaterThan(0)
-      for (const { specifier } of specifiers) {
+    await expectRouteFileImports(
+      root,
+      generatedRouteTree,
+      appFiles(),
+      ({ specifier }) => {
         expect(path.isAbsolute(specifier), specifier).toBe(true)
-      }
-    }
-    expect(await routesOf(generatedRouteTree)).toEqual(appRoutes())
+      },
+    )
   })
 
   test.each([

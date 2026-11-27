@@ -9,6 +9,7 @@
  * by loading the route tree with the real router (route-tree.ts).
  */
 import { parseSync } from 'vite'
+import { expect } from 'vitest'
 
 /** The router packages a route file may import its route constructor from. */
 const routerPackages = /^@tanstack\/(?:react|solid|vue)-router$/
@@ -194,4 +195,68 @@ function findRouteCall(code: string, fileName: string) {
 /** The route id a route file passes to its route constructor. */
 export function routeIdOf(code: string): Promise<string | undefined> {
   return Promise.resolve(routeCallOf(code).id)
+}
+
+/**
+ * The quote characters of the string literals of `code` without quote
+ * characters in them (a formatter may quote the others either way to avoid
+ * escapes; JSX attribute values and the span `skip`, such as a route id
+ * argument, aside; parsed as `fileName`), and how many of its statements that end with a
+ * semicolon in a file using them (imports, expressions, returns, variable
+ * declarations outside loop heads, exported ones included) there are, and
+ * end with one.
+ */
+export function codeStyle(
+  code: string,
+  fileName: string,
+  skip?: readonly [number, number],
+) {
+  const { program, errors } = parseSync(fileName, code)
+  expect(errors).toEqual([])
+  const quotes = new Set<string>()
+  let statements = 0
+  let withSemicolon = 0
+  const visit = (node: unknown, parent?: Record<string, any>): void => {
+    if (Array.isArray(node)) {
+      node.forEach((child) => visit(child, parent))
+      return
+    }
+    if (!node || typeof node !== 'object') {
+      return
+    }
+    const record = node as Record<string, any>
+    if (record.type === 'JSXAttribute') {
+      return
+    }
+    if (
+      record.type === 'Literal' &&
+      typeof record.value === 'string' &&
+      !/["']/.test(record.value) &&
+      !(skip && record.start >= skip[0] && record.end <= skip[1])
+    ) {
+      quotes.add(String(record.raw)[0]!)
+    }
+    if (
+      ([
+        'ImportDeclaration',
+        'ExpressionStatement',
+        'ReturnStatement',
+        'VariableDeclaration',
+      ].includes(record.type) &&
+        !(parent?.type ?? '').startsWith('For') &&
+        parent?.type !== 'ExportNamedDeclaration') ||
+      (record.type === 'ExportNamedDeclaration' &&
+        record.declaration?.type === 'VariableDeclaration')
+    ) {
+      statements++
+      if (code.slice(record.start, record.end).endsWith(';')) {
+        withSemicolon++
+      }
+    }
+    for (const value of Object.values(record)) {
+      visit(value, record)
+    }
+  }
+  visit(program)
+  return { quotes: [...quotes], statements, withSemicolon }
 }
