@@ -88,18 +88,7 @@ export const getServerDefault = () => ({ s1: 's' })
 `
 
 const host = useStartHost({
-  start: { importProtection: { enabled: false } },
   files: {
-    'tsconfig.json': JSON.stringify({
-      compilerOptions: {
-        target: 'ES2022',
-        module: 'ESNext',
-        moduleResolution: 'Bundler',
-        jsx: 'react-jsx',
-        strict: true,
-        verbatimModuleSyntax: true,
-      },
-    }),
     ...Object.fromEntries(
       Object.entries(routes).flatMap(([name, route]) => [
         [`src/removal-${name}-db.server.ts`, serverModule],

@@ -1,6 +1,6 @@
 import { expect } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
-import { inPage, serveCase, useStartHost } from './regression-helpers'
+import { inPage, serveCase } from './regression-helpers'
 import type { PageSettled } from './regression-helpers'
 
 // The dead-code removal rule's rows (SPEC G16, R153 amendment, R170): a
@@ -14,28 +14,6 @@ import type { PageSettled } from './regression-helpers'
 // that the client does not load the server module. Sources: the merged DCE
 // design and its reviews (design-dce-merged-v3.md, design-dce-v4-table.md),
 // each row naming its case.
-
-/**
- * No import protection (its dev mock would hide a leaked import from the
- * loads) and `verbatimModuleSyntax` (without it, the TypeScript transform
- * drops imports nothing reads after the compiler and hides leaks).
- */
-export const useRemovalHost = () =>
-  useStartHost({
-    start: { importProtection: { enabled: false } },
-    files: {
-      'tsconfig.json': JSON.stringify({
-        compilerOptions: {
-          target: 'ES2022',
-          module: 'ESNext',
-          moduleResolution: 'Bundler',
-          jsx: 'react-jsx',
-          strict: true,
-          verbatimModuleSyntax: true,
-        },
-      }),
-    },
-  })
 
 /** The `createServerOnlyFn` and `createServerFn` imports of a row. */
 export const SO = `import { createServerOnlyFn } from '@tanstack/react-start'\n`

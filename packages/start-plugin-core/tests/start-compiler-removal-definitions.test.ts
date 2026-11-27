@@ -1,6 +1,6 @@
-import { describe, expect, test } from 'vitest'
+import { describe, test } from 'vitest'
 import { useStartHost } from './regression-helpers'
-import { SF, SO, checkRow, useRemovalHost } from './removal-cases'
+import { SF, SO, checkRow } from './removal-cases'
 import type { Row } from './removal-cases'
 
 // What the dead-code removal takes from the definitions below the top level:
@@ -9,7 +9,7 @@ import type { Row } from './removal-cases'
 // itself while it is initialised is a statement and stays.
 // The rows and how they are checked: `./removal-cases`.
 
-const host = useRemovalHost()
+const host = useStartHost()
 const check = async (row: Row) => checkRow(await host(), row)
 
 // A parameter that is a name with a default keeps its place: when every read of it
@@ -978,57 +978,4 @@ export const run = () => g()
       gone: true,
     },
   ])('$name', check)
-})
-
-// With RSC, a server fn's handler runs in the provider (the `rsc`
-// environment), which copies the module-level definitions it reads; SSR's
-// module calls it and keeps what its own code reads. One pattern can feed
-// both: each side evaluates the defaults its code needs, and no other (M5,
-// P4; Astra As6).
-describe('RSC: the caller and the provider', () => {
-  const rscHost = useStartHost({ rsc: true })
-  const record = `export const calls: Array<string> = []
-export const record = (name: string) => {
-  calls.push(name)
-  return name
-}
-`
-  test.each([
-    {
-      name: 'a pattern with a leaf for a client-only fn and one for the handler',
-      code: `import { createClientOnlyFn, createServerFn } from '@tanstack/react-start'
-import { record } from './record'
-const { clientOnly = record('client'), serverOnly = record('server'), kept } = (globalThis as any).removalCfg ?? {}
-export const c = createClientOnlyFn(() => clientOnly)
-export const fn = createServerFn().handler(async () => serverOnly)
-export const k = kept
-`,
-    },
-    {
-      name: 'a pattern whose handler leaf is read through a helper',
-      code: `import { createClientOnlyFn, createServerFn } from '@tanstack/react-start'
-import { record } from './record'
-const { clientOnly = record('client'), serverOnly = record('server'), kept } = (globalThis as any).removalCfg ?? {}
-function read() { return serverOnly }
-export const c = createClientOnlyFn(() => clientOnly)
-export const fn = createServerFn().handler(async () => read())
-export const k = kept
-`,
-    },
-  ])('$name', { timeout: 15_000 }, async ({ code }) => {
-    const c = await (
-      await rscHost()
-    ).case({
-      'module.tsx': code,
-      'record.ts': record,
-    })
-    const ssr = await c.ssr()
-    expect([...(await c.ssr('record.ts')).calls]).toEqual([])
-    expect(await c.inRequest(() => ssr.fn())).toBe('server')
-    expect([...(await c.ssr('record.ts')).calls]).toEqual([])
-    expect([...(await c.rsc('record.ts')).calls]).toEqual(['server'])
-    const client = await c.client(`module.c()
-return [...(await load('record.ts')).calls]`)
-    expect(client.result).toEqual(['client'])
-  })
 })

@@ -15,11 +15,8 @@ import {
 import type { StartCase, StartHost } from './regression-helpers'
 
 /**
- * The host defaults these tests use: no import
- * protection (its dev mock would hide a leaked server import from the
- * client's loads) and an app tsconfig with `verbatimModuleSyntax` (without
- * it, Vite's TypeScript transform drops unreferenced imports after the
- * compiler and hides leaks).
+ * The host's app tsconfig (`start-host.ts`), which a case's own
+ * `tsconfig.json` extends with the TypeScript settings it is about.
  */
 const hostTsconfig = {
   compilerOptions: {
@@ -31,28 +28,13 @@ const hostTsconfig = {
     verbatimModuleSyntax: true,
   },
 }
-const hostDefaults = {
-  start: { importProtection: { enabled: false } },
-  files: { 'tsconfig.json': JSON.stringify(hostTsconfig) },
-}
 
 // The compiler removes code that only served a transformed call. Everything
 // else is user code that must survive, even when nothing seems to read it.
 // Observed through the public Start host (`./start-host`): the client in a
 // real page, the server in the SSR environment and in real requests.
 
-const host = useStartHost({
-  start: hostDefaults.start,
-  // Decorated classes are written for TypeScript's `experimentalDecorators`
-  files: {
-    'tsconfig.json': JSON.stringify({
-      compilerOptions: {
-        ...hostTsconfig.compilerOptions,
-        experimentalDecorators: true,
-      },
-    }),
-  },
-})
+const host = useStartHost()
 beforeAll(async () => {
   await (await host()).page()
 }, 60_000)
@@ -651,10 +633,7 @@ export const getBadge = createServerFn().handler(async () => Badge('Ada'))`,
 // module of an app whose React plugin uses the classic runtime
 // (`react({ jsxRuntime: 'classic' })`), with the real React.
 describe('keeps working with the classic JSX runtime downstream', () => {
-  const classic = useStartHost({
-    ...hostDefaults,
-    react: { jsxRuntime: 'classic' },
-  })
+  const classic = useStartHost({ react: { jsxRuntime: 'classic' } })
 
   test('the client and the server render it', async () => {
     const served = await serveCase(await classic(), {
@@ -718,6 +697,12 @@ export const fn = createServerFn().handler(async () => secrets.key)`,
 // integration/start-build-user-code.test.ts).
 test('decorated classes next to a server fn compile to valid modules', async () => {
   const served = await serveCase(await host(), {
+    'tsconfig.json': JSON.stringify({
+      compilerOptions: {
+        ...hostTsconfig.compilerOptions,
+        experimentalDecorators: true,
+      },
+    }),
     'module.tsx': `import { createServerFn } from '@tanstack/react-start'
 const tag = (name: string) => (target: unknown) => target
 @tag('repository')

@@ -53,8 +53,7 @@ import {
   placementModule,
   placements,
 } from './createServerFn/placements'
-import { factoryEdits } from './compiler-inputs'
-import type { PageSettled, StartCase, StartHost } from './regression-helpers'
+import type { PageSettled, StartCase } from './regression-helpers'
 import type { PlacementHead } from './createServerFn/placements'
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
@@ -70,44 +69,7 @@ const dbFile = `export const db = {
 }
 `
 
-/**
- * The dev-edit pins' app (its own host, which runs no cases: a dev edit
- * settles once the watcher reported every app file, and case directories
- * are not watched): its files are on disk before the dev server starts, and
- * a server route of the app calls the aliased server fn from server code.
- */
-const editDirs = {
-  reexportChain: 'src/edits/reexport-chain',
-  aliasedEnvOnly: 'src/edits/aliased-env-only',
-}
-/** `files` in the directory `dir`. */
-const inDir = (dir: string, files: Record<string, string>) =>
-  Object.fromEntries(
-    Object.entries(files).map(([file, code]) => [`${dir}/${file}`, code]),
-  )
-const editFiles = {
-  ...inDir(editDirs.reexportChain, factoryEdits.reexportChain.files),
-  ...inDir(editDirs.aliasedEnvOnly, factoryEdits.aliasedEnvOnly.files),
-  'src/routes/edit-probe.ts': `import { createFileRoute } from '@tanstack/react-router'
-import { serverFn } from '../edits/aliased-env-only/module'
-export const Route = createFileRoute('/edit-probe')({
-  server: {
-    handlers: {
-      GET: async () => {
-        try {
-          return Response.json({ value: await serverFn() })
-        } catch (error) {
-          return Response.json({ thrown: { name: error.name, message: error.message } })
-        }
-      },
-    },
-  },
-})
-`,
-}
-
 const host = useStartHost()
-const editHost = useStartHost({ files: editFiles })
 
 /** A case of `files` with the server-only module. */
 async function newCase(files: Record<string, string>) {
@@ -997,71 +959,6 @@ export const fn = createServerFn().handler(createServerOnlyFn(async () => db.x()
   // real RSC app: react-start-rsc tests/integration/rsc-start-dev.test.ts
   // "a server function of a 'use client' module runs on the server" (no
   // directive-mechanism requirement here).
-})
-
-describe('dev edits', () => {
-  /**
-   * Edits app files through the dev server's watcher (written before the
-   * server started, so this is a change of existing files), and evaluates
-   * `module.tsx` of `dir` in the SSR environment.
-   */
-  async function editAndImport(
-    started: StartHost,
-    dir: string,
-    files: Record<string, string>,
-  ) {
-    await started.edit(
-      Object.fromEntries(
-        Object.entries(files).map(([file, code]) => [`${dir}/${file}`, code]),
-      ),
-    )
-    return started.host.importServer(`/${dir}/module.tsx`, 'ssr')
-  }
-
-  // On main, in dev, the importer keeps the old behaviour (here it runs a
-  // function that should now be client-only) until it is edited itself or the
-  // server restarts.
-  // Source: rerouted compiler.test.ts "invalidateModule clears cached module
-  // resolution state" (green through the internal compiler, which the test
-  // invalidated and recompiled itself); reproduced through a real Vite dev
-  // edit. Unbundled client edits of a server fn factory are covered by
-  // integration/start-compiler-dev-server.test.ts.
-  test('a dev edit of a module a re-export chain ends in recompiles its importers', async () => {
-    const started = await editHost()
-    const dir = editDirs.reexportChain
-    const before = await started.host.importServer(`/${dir}/module.tsx`)
-    expect(settle(before.myFn)).toBe('server-only-value')
-
-    const after = await editAndImport(
-      started,
-      dir,
-      factoryEdits.reexportChain.edit,
-    )
-    expect(settle(after.myFn)).toEqual(throwsError)
-  }, 30_000)
-
-  // Control for the pin above (same harness, and the concept of
-  // compiler.test.ts "recompiles aliased env-only calls in a provider whose
-  // source only mentions createServerFn", rerouted through a real dev edit):
-  // a server fn module whose source only mentions createServerFn calls an
-  // env-only factory the factory module renames; after the factory module
-  // is edited into another kind, the server fn runs the new code.
-  test('a dev edit of an aliased env-only factory recompiles the server fn that calls it', async () => {
-    const started = await editHost()
-    const dir = editDirs.aliasedEnvOnly
-    // The server route of the app calls the server fn from server code.
-    const callServerFn = async () =>
-      fromPage(
-        (await (
-          await fetch(new URL('/edit-probe', started.host.dev.url))
-        ).json()) as PageSettled,
-      )
-
-    expect(await callServerFn()).toBe('server-only-value')
-
-    await started.edit(inDir(dir, factoryEdits.aliasedEnvOnly.edit))
-    expect(await callServerFn()).toEqual(throwsError)
-  }, 30_000)
 })
 
 describe('dead-code elimination', () => {

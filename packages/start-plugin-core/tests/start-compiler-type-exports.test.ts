@@ -24,7 +24,6 @@ import {
 } from './regression-helpers'
 
 const host = useStartHost({
-  start: { importProtection: { enabled: false } },
   plugins: [
     babel({ presets: [[typescript, { allExtensions: true, isTSX: true }]] }),
   ],

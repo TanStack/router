@@ -27,26 +27,7 @@ import type { PageSettled, ServedCase } from './regression-helpers'
 // in a real page, the server in the SSR environment and in real requests.
 // "Not loaded" is what the environment's module graph reaches.
 
-/**
- * No import protection (its dev mock would hide a leaked import from the
- * loads) and `verbatimModuleSyntax` (without it, the TypeScript transform
- * drops imports nothing reads after the compiler and hides leaks).
- */
-const host = useStartHost({
-  start: { importProtection: { enabled: false } },
-  files: {
-    'tsconfig.json': JSON.stringify({
-      compilerOptions: {
-        target: 'ES2022',
-        module: 'ESNext',
-        moduleResolution: 'Bundler',
-        jsx: 'react-jsx',
-        strict: true,
-        verbatimModuleSyntax: true,
-      },
-    }),
-  },
-})
+const host = useStartHost()
 
 type Environment = 'client' | 'ssr'
 

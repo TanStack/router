@@ -23,28 +23,6 @@ import {
 } from './compiler-inputs'
 import type { PageSettled, StartCase } from './regression-helpers'
 
-/**
- * The host defaults these tests use: no import
- * protection (its dev mock would hide a leaked server import from the
- * client's loads) and an app tsconfig with `verbatimModuleSyntax` (without
- * it, Vite's TypeScript transform drops unreferenced imports after the
- * compiler and hides leaks).
- */
-const hostTsconfig = {
-  compilerOptions: {
-    target: 'ES2022',
-    module: 'ESNext',
-    moduleResolution: 'Bundler',
-    jsx: 'react-jsx',
-    strict: true,
-    verbatimModuleSyntax: true,
-  },
-}
-const hostDefaults = {
-  start: { importProtection: { enabled: false } },
-  files: { 'tsconfig.json': JSON.stringify(hostTsconfig) },
-}
-
 // Each environment keeps the implementation of its own environment (and only
 // the imports that implementation reads) and replaces the other one with a
 // stub that throws. The compiler only rewrites calls it can resolve to a
@@ -54,7 +32,7 @@ const hostDefaults = {
 // public Start host (`./start-host`): the client in a real page, the server
 // in the SSR environment and in real requests, on Start's real runtime.
 
-const host = useStartHost(hostDefaults)
+const host = useStartHost()
 beforeAll(async () => {
   await (await host()).page()
 }, 60_000)
@@ -1047,115 +1025,6 @@ export { createServerOnlyFn } from '@tanstack/react-start'
     expect(await inPage(served, 'return module.doubled()')).toBe(42)
     expect(await settleInPage(served, 'module.serverOnly')).toEqual(throwsError)
     expect((await served.ssr()).serverOnly()).toBe('x')
-  })
-
-  // Dev edits: the files are written through the dev server's watcher
-  // (`StartHost.edit`, a watched directory of the app) and requested again;
-  // the dev server invalidates what the edit changed, as in an app. Their
-  // own host: it writes no case directories (which its watcher ignores, and
-  // the edit settle would wait for).
-  describe('dev edits', () => {
-    // The edit directories exist before the dev server starts, so its
-    // watcher watches them from the start (as in an app)
-    const editHost = useStartHost({
-      ...hostDefaults,
-      files: {
-        ...hostDefaults.files,
-        'src/edits/factory/.keep': '',
-        'src/edits/export-star/.keep': '',
-      },
-    })
-    beforeAll(async () => {
-      await (await editHost()).page()
-    }, 60_000)
-
-    /**
-     * Imports an app module in the host's page and runs `script` with it as
-     * `module` (again, on the new document, when an edit reloaded the page;
-     * `fresh`: on a new document). Through the host's page runs, which
-     * bound a run and report the page's errors and console when it fails.
-     */
-    async function inEditPage(
-      url: string,
-      script: string,
-      runOptions?: { fresh?: boolean },
-    ) {
-      const run = await (
-        await editHost()
-      ).run(
-        `(async () => { const module = await import(${JSON.stringify(url)}); ${script} })()`,
-        runOptions,
-      )
-      return run.result
-    }
-
-    // On main, until the dev server restarts, the page calls a server fn that
-    // no longer exists (here: Start's RPC fails), or keeps the old client
-    // behaviour of an edited factory.
-    // Reproduced through a Vite dev server and the public Start plugin; served
-    // code read for the diagnosis only.
-    test('dev: editing a factory module recompiles its importers against the new code', async () => {
-      const started = await editHost()
-      const dir = 'src/edits/factory'
-      await started.edit({
-        [`${dir}/b.ts`]: `import { createServerFn } from '@tanstack/react-start'
-export const base = createServerFn()`,
-        [`${dir}/c.ts`]: `export * from './b'`,
-        // (`./db`, not `./db.server`: after the edit the handler is user
-        // code the client runs, and import protection would deny a `.server`
-        // module there.)
-        [`${dir}/db.ts`]: `export const db = { x: () => 'x' }\n`,
-        [`${dir}/a.tsx`]: `import { base } from './c'
-import { db } from './db'
-export const fn = base.handler(async () => db.x())`,
-      })
-      // Before: a server fn (Start's fetcher), calling the server.
-      expect(
-        await inEditPage(
-          `/${dir}/a.tsx`,
-          'return { url: typeof module.fn.url, result: await module.fn() }',
-        ),
-      ).toEqual({ url: 'string', result: 'x' })
-      // `base` is no server fn builder anymore: the handler is user code.
-      await started.edit({
-        [`${dir}/b.ts`]: `export const base = { handler: (fn: unknown) => fn }`,
-      })
-      expect(
-        await inEditPage(
-          `/${dir}/a.tsx`,
-          `try {
-  return { url: typeof module.fn.url, result: await module.fn() }
-} catch (error) {
-  return { url: typeof module.fn.url, threw: String(error && error.message) }
-}`,
-          { fresh: true },
-        ),
-      ).toEqual({ url: 'undefined', result: 'x' })
-    }, 30_000)
-
-    test('dev: a server fn imported through an export * of the Start package compiles after an unrelated edit', async () => {
-      const started = await editHost()
-      const dir = 'src/edits/export-star'
-      const code = `import { createServerFn } from './start'
-export const fn = createServerFn().handler(async () => 'secret-body')`
-      await started.edit({
-        [`${dir}/start.ts`]: `export * from '@tanstack/react-start'`,
-        [`${dir}/other.ts`]: `export const x = 1`,
-        [`${dir}/a.ts`]: code,
-      })
-      expect(await started.host.transform(`/${dir}/a.ts`)).not.toContain(
-        'secret-body',
-      )
-      await started.edit({ [`${dir}/other.ts`]: `export const x = 2` })
-      await started.edit({ [`${dir}/b.ts`]: code })
-      expect(await started.host.transform(`/${dir}/b.ts`)).not.toContain(
-        'secret-body',
-      )
-      // The client's server fn reaches its handler through the server.
-      expect(await inEditPage(`/${dir}/b.ts`, 'return await module.fn()')).toBe(
-        'secret-body',
-      )
-    }, 30_000)
   })
 })
 

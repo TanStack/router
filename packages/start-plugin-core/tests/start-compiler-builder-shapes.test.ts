@@ -26,26 +26,7 @@ import {
 } from './regression-helpers'
 import type { StartCase } from './regression-helpers'
 
-/**
- * No import protection (its dev mock would hide a leaked import from the
- * loads) and `verbatimModuleSyntax` (without it, the TypeScript transform
- * drops imports nothing reads after the compiler and hides leaks).
- */
-const host = useStartHost({
-  start: { importProtection: { enabled: false } },
-  files: {
-    'tsconfig.json': JSON.stringify({
-      compilerOptions: {
-        target: 'ES2022',
-        module: 'ESNext',
-        moduleResolution: 'Bundler',
-        jsx: 'react-jsx',
-        strict: true,
-        verbatimModuleSyntax: true,
-      },
-    }),
-  },
-})
+const host = useStartHost()
 
 const DB = `export const db = { x: () => 'from the server', y: () => 'more from the server' }\n`
 const P = `import { createServerFn, createMiddleware, createIsomorphicFn, createServerOnlyFn, createStart } from '@tanstack/react-start'

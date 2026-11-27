@@ -11,7 +11,7 @@ import {
 } from '../regression-helpers'
 import { clientMiddleware, clientMiddlewareOf } from '../page-values'
 
-/** A third-party library the middlewares below import (a real package). */
+/** A third-party library a middleware below imports (a real package of its case). */
 const someLib = {
   'node_modules/@some/lib/package.json': JSON.stringify({
     name: '@some/lib',
@@ -21,7 +21,7 @@ const someLib = {
   'node_modules/@some/lib/index.js': `export const foo = () => 'foo'\n`,
 }
 
-const host = useStartHost({ files: someLib })
+const host = useStartHost()
 
 describe('createMiddleware compiles correctly', () => {
   // Malformed-input diagnostic control (SPEC §8, G5): `.validator()`
@@ -65,15 +65,17 @@ describe('the client keeps the browser part of a middleware', () => {
 
   // Source: snapshot fixture create-function-middleware.ts
   test('a function middleware keeps .client() and drops .server() and its imports', async () => {
-    const served =
-      await evaluateClient(`import { createMiddleware } from '@tanstack/react-start'
+    const served = await evaluateClient(
+      `import { createMiddleware } from '@tanstack/react-start'
 import { foo } from '@some/lib'
 export const fnMw = createMiddleware({ type: 'function' })
   .client(() => 'client')
   .server(({ next }) => {
     foo()
     return next()
-  })`)
+  })`,
+      someLib,
+    )
     expectNotLoaded(await served.loads(), ['@some/lib'])
     expect(
       await inPage(

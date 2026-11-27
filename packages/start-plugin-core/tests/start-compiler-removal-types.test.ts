@@ -1,5 +1,6 @@
 import { describe, test } from 'vitest'
-import { SO, checkRow, useRemovalHost } from './removal-cases'
+import { useStartHost } from './regression-helpers'
+import { SO, checkRow } from './removal-cases'
 import type { Row } from './removal-cases'
 
 // What a type the client erases names: along erased text a type declaration
@@ -7,7 +8,7 @@ import type { Row } from './removal-cases'
 // and an ambient declaration is its value's own text.
 // The rows and how they are checked: `./removal-cases`.
 
-const host = useRemovalHost()
+const host = useStartHost()
 const check = async (row: Row) => checkRow(await host(), row)
 
 // A reference names the declarations of its space (D1 A): a read or `typeof`

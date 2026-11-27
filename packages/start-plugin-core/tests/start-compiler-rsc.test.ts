@@ -17,6 +17,8 @@
  * - RSC CSS: the Flight stream a module renders names the stylesheet the
  *   module imports, for each JSX leaf of a conditional (SPEC J7.2, J7.3;
  *   the page-level matrix is react-start-rsc's rsc-css-*).
+ * - dead-code removal on both servers: the SSR caller and the provider each
+ *   evaluate the module-level definitions their own code reads (SPEC G16).
  * The Rsbuild counterparts (two layers of one environment) are
  * `integration/rsbuild/rsc-layers.test.ts`.
  * Source: RSC investigation (11-19: no compile-level row compiled an `rsc`
@@ -90,6 +92,66 @@ export const greet = createServerFn().handler(() => 'MARK_GREET_HANDLER')
   )
 })
 
+// With RSC, a server fn's handler runs in the provider (the `rsc`
+// environment), which copies the module-level definitions it reads; SSR's
+// module calls it and keeps what its own code reads. One pattern can feed
+// both: each side evaluates the defaults its code needs, and no other (M5,
+// P4; Astra As6). (The dead-code removal rule's other rows:
+// start-compiler-removal-definitions.test.ts.)
+describe('RSC: the caller and the provider', () => {
+  const host = useStartHost({ rsc: true })
+  const record = `export const calls: Array<string> = []
+export const record = (name: string) => {
+  calls.push(name)
+  return name
+}
+`
+  test.each([
+    {
+      name: 'a pattern with a leaf for a client-only fn and one for the handler',
+      code: `import { createClientOnlyFn, createServerFn } from '@tanstack/react-start'
+import { record } from './record'
+const { clientOnly = record('client'), serverOnly = record('server'), kept } = (globalThis as any).removalCfg ?? {}
+export const c = createClientOnlyFn(() => clientOnly)
+export const fn = createServerFn().handler(async () => serverOnly)
+export const k = kept
+`,
+    },
+    {
+      name: 'a pattern whose handler leaf is read through a helper',
+      code: `import { createClientOnlyFn, createServerFn } from '@tanstack/react-start'
+import { record } from './record'
+const { clientOnly = record('client'), serverOnly = record('server'), kept } = (globalThis as any).removalCfg ?? {}
+function read() { return serverOnly }
+export const c = createClientOnlyFn(() => clientOnly)
+export const fn = createServerFn().handler(async () => read())
+export const k = kept
+`,
+    },
+  ])('$name', { timeout: 15_000 }, async ({ code }) => {
+    const c = await (
+      await host()
+    ).case({
+      'module.tsx': code,
+      'record.ts': record,
+    })
+    const ssr = await c.ssr()
+    expect([...(await c.ssr('record.ts')).calls]).toEqual([])
+    expect(await c.inRequest(() => ssr.fn())).toBe('server')
+    expect([...(await c.ssr('record.ts')).calls]).toEqual([])
+    expect([...(await c.rsc('record.ts')).calls]).toEqual(['server'])
+    const client = await c.client(`module.c()
+return [...(await load('record.ts')).calls]`)
+    expect(client.result).toEqual(['client'])
+  })
+})
+
+// (The host below is its own RSC dev server, unshared: `@vitejs/plugin-rsc`
+// keeps the runner a server fn call from SSR reaches the provider through
+// in one process-global (`__VITE_ENVIRONMENT_RUNNER_IMPORT__`), which the
+// last RSC dev server created sets. After this one closes, a shared RSC
+// host's SSR can no longer call its provider: the rows above that call
+// server fns run before it, the ones below only compile and render.)
 describe("Vite with RSC: import protection's 'use client' exception", () => {
   const violations: Array<{
     env: string
