@@ -381,38 +381,6 @@ export const guard = (options) => createMiddleware({ type: 'function' }).server(
     timeout,
   )
 
-  // A builder export the module assigns again holds whatever was assigned
-  // last: its summary cannot tell, so the export is no Start value, as when
-  // the module had no summary. Here an ordinary object replaces it, whose
-  // own `.inputValidator()` is ordinary code: the build keeps it.
-  // Source: review of the dependency summaries (2026-11-27, Astra's
-  // `mutable` fixture).
-  test(
-    'a package that does not declare Start, a builder export assigned an ordinary object: its `.inputValidator()` builds and runs on the client',
-    async () => {
-      const lib = installPackage('npm', {
-        name: 'dep-x',
-        declaration: 'none',
-        files: {
-          'barrel.js': `export { createServerFn as make } from '@tanstack/react-start'\n`,
-          'base.js': `import { make } from './barrel.js'\nexport let base = make()\nbase = { inputValidator(fn) { return fn } }\n`,
-          'index.js': `import { base } from './base.js'\nexport const run = base.inputValidator(() => 'MARK_ORDINARY_RESULT')\n`,
-        },
-      })
-      const build = await buildStart({
-        bundler,
-        files: {
-          ...lib.files,
-          'src/entry.ts': `import { run } from 'dep-x'\nexport const result = () => run()\n`,
-        },
-        packageJson: appManifest([lib]),
-        entry: 'src/entry.ts',
-      })
-      expect(build.client.where('MARK_ORDINARY_RESULT')).not.toBe('nowhere')
-    },
-    timeout,
-  )
-
   // A Start package's module is read like the app's: its namespace handed
   // to code the compiler cannot follow carries its builder there, which is
   // refused as for an app module (an ordinary package's namespace is not checked: the class decides

@@ -41,6 +41,24 @@ interface Refused extends Compiled {
 }
 
 const compiled: Array<Compiled> = [
+  // The export's summary describes the value it starts with: a builder the
+  // module then replaces by a builder of the same kind (accepted in its own
+  // module, R92) is followed in another module.
+  // Source: confirmation of the dependency summaries' review fixes
+  // (2026-11-27, Fable): a rule making a reassigned export unknown shipped
+  // this handler to the client without a message.
+  {
+    name: 'a `let` builder export reassigned the same kind',
+    files: {
+      'src/base.ts': `import { createServerFn } from '@tanstack/react-start'
+export let base = createServerFn({ method: 'POST' })
+base = base.middleware([])
+`,
+      'src/entry.ts': `import { base } from './base'
+export const fn = base.handler(async () => 'MARK_SERVER_SECRET')
+`,
+    },
+  },
   {
     name: '`export * as` of a project module',
     files: {

@@ -210,6 +210,15 @@ function info not found` when one of them calls it, and the build says nothing, 
 
 ## Accepted limits
 
+- **An export that starts as a builder and is later replaced by an ordinary object is still read as a builder**
+  (`export let base = make(); base = { inputValidator(fn) { return fn } }`, also an assignment through Solid's
+  `ref={base}`): a summary describes an export's initial value, so another module's `base.inputValidator(…)` fails
+  the build with the rename message, and a `.handler()` on it is compiled as a server function. Seen in a package
+  that does not declare Start, which before the dependency summaries was not read. A rule making every reassigned
+  export unknown shipped the handler of a builder reassigned to a builder of the same kind (`base =
+base.middleware([])`, accepted in its module, R92) to the client without a message, so it was dropped (user
+  decision, 2026-11-27, "2a fix 2"). Source: the dependency summaries' reviews (Astra's `mutable` fixture; Fable's
+  confirmation). No test. Workaround: do not reuse the binding (a second name), or a `const`.
 - **A `let` or `var` of a Vue component passed as server code is refused in development even when nothing assigns
   it** (`let impl = () => …; createServerOnlyFn(impl)` in `<script setup>`, or a `let`/`var` of a normal `<script>`
   paired with `<script setup>`): Vue's development output, and a build with Vue's devtools, hands every such binding to

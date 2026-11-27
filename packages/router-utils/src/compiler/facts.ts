@@ -515,9 +515,10 @@ export class RawFactsCache {
     holder.p = (async () => {
       // (a read that throws leaves no rejected read behind: the next ask
       // reads again)
+      let reading: Promise<Text> | null = null
       try {
         const prior = entry.facts
-        const reading = this.textOf(entry, canonicalId, env)
+        reading = this.textOf(entry, canonicalId, env)
         const text = await this.readSaved(canonicalId, env, prior, reading)
         const built = this.build(canonicalId, text ?? null)
         // A file that stops parsing (saved mid-edit) keeps the last facts it
@@ -559,6 +560,9 @@ export class RawFactsCache {
       } finally {
         if (entry.pending === holder.p) {
           entry.pending = null
+          if (entry.reading === reading) {
+            entry.reading = null
+          }
         }
       }
     })()
