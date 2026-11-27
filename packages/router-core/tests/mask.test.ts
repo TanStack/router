@@ -842,4 +842,29 @@ describe('buildLocation - masked locations and the static location cache', () =>
     expect(afterUpdate).not.toBe(first)
     expect(afterUpdate!.maskedLocation).toBeUndefined()
   })
+
+  test('builds a changed copy of cached options from its own values', () => {
+    const { buildFromEachSource } = setup()
+    const opts = { to: '/photo' }
+    const [first] = buildFromEachSource(opts)
+    expect(first!.href).toBe('/photo')
+
+    const [copy, copyAgain] = buildFromEachSource({ ...opts, to: '/posts' })
+    expect(copy!.href).toBe('/posts')
+    expect(copyAgain).toBe(copy)
+  })
+
+  test('does not reuse a location cached by another router', () => {
+    const { buildFromEachSource } = setup([
+      { routeTree: null as any, from: '/photo', to: '/posts' },
+    ])
+    const opts = { to: '/photo' }
+    const [first] = buildFromEachSource(opts)
+    expect(first!.maskedLocation!.href).toBe('/posts')
+
+    const other = setup()
+    const [fromOther] = other.buildFromEachSource(opts)
+    expect(fromOther).not.toBe(first)
+    expect(fromOther!.maskedLocation).toBeUndefined()
+  })
 })

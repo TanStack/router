@@ -1039,6 +1039,22 @@ type LightweightRouteMatchCacheEntry = [
   result: LightweightRouteMatchResult,
 ]
 
+/**
+ * A location built without reading the current location, cached on the
+ * stable options object a Link owns. Links pass a new object when their
+ * values change. The entry records its owner, so spread copies of the options
+ * miss, and the router's `lightweightCache`, so replacing that map
+ * invalidates it. Client only: server renders never repeat an options object,
+ * so server bundles fold `isServer` and drop the cache entirely.
+ */
+type StaticLocationEntry = [
+  owner: object,
+  epoch: object,
+  location: ParsedLocation,
+]
+
+type StaticLocationOptions = { _nextLocation?: StaticLocationEntry }
+
 /** Indexes and caches rebuilt together when the route tree changes. */
 type RouteTreeCaches<TRouteTree extends AnyRoute> =
   ProcessRouteTreeResult<TRouteTree> & {
@@ -1185,15 +1201,13 @@ export class RouterCore<
   routesByPath!: RoutesByPath<TRouteTree>
   processedTree!: ProcessedTree<TRouteTree, any, any>
   resolvePathCache!: SieveCache<string, string>
+  // Replaced whenever the route tree or options change. Its identity also
+  // tags the locations `buildLocation` caches on options objects, so
+  // replacing it invalidates those too.
   private lightweightCache!: WeakMap<
     ParsedLocation,
     LightweightRouteMatchCacheEntry
   >
-  // Locations built without reading the current location, keyed by the stable
-  // options object a Link owns. Links pass a new object when their values change.
-  // Client only: server renders never repeat an options object, so server
-  // bundles fold `isServer` and drop the cache entirely.
-  private staticLocations: WeakMap<object, ParsedLocation> | undefined
   isServer!: boolean
   readonly pathParamsDecoder?: (encoded: string) => string
   protocolAllowlist!: Set<string>
@@ -1269,9 +1283,11 @@ export class RouterCore<
 
     this.isServer =
       this.options.isServer ?? isServer ?? typeof document === 'undefined'
-    // `isServer` is a per-bundle constant, so server builds drop the cache.
+    // Option changes can alter built locations: a new map also invalidates
+    // the static locations tagged with the old one. `isServer` is a
+    // per-bundle constant, so server builds drop this reset.
     if (!(isServer ?? this.isServer)) {
-      this.staticLocations = new WeakMap()
+      this.lightweightCache = new WeakMap()
     }
 
     this.protocolAllowlist = new Set(this.options.protocolAllowlist)
@@ -1404,9 +1420,6 @@ export class RouterCore<
   setRoutes(caches: RouteTreeCaches<TRouteTree>) {
     Object.assign(this, caches)
     this.lightweightCache = new WeakMap()
-    if (!(isServer ?? this.isServer)) {
-      this.staticLocations = new WeakMap()
-    }
 
     const notFoundRoute = this.options.notFoundRoute
 
@@ -1785,7 +1798,7 @@ export class RouterCore<
   }
 
   getMatchedRoutes: GetMatchRoutesFn = (pathname) => {
-    const rawParams: Record<string, string> = Object.create(null)
+    const rawParams: Record<string, string> = createNull()
     const match = findRouteMatch(
       trimPathRight(pathname),
       this.processedTree,
@@ -1888,9 +1901,13 @@ export class RouterCore<
    */
   buildLocation: BuildLocationFn = (opts) => {
     if (!(isServer ?? this.isServer)) {
-      const cached = this.staticLocations!.get(opts)
-      if (cached) {
-        return cached
+      const cached = (opts as StaticLocationOptions)._nextLocation
+      if (
+        cached &&
+        cached[1 /* epoch */] === this.lightweightCache &&
+        cached[0 /* owner */] === opts
+      ) {
+        return cached[2 /* location */]
       }
     }
 
@@ -1925,9 +1942,12 @@ export class RouterCore<
       // The lightweight match (fullPath, search, params without full match
       // objects) is only computed when a build actually reads it.
       let lightweight: LightweightRouteMatchResult | undefined
-      const current = () => {
+      const current: {
+        (): ParsedLocation
+        <TKey extends keyof ParsedLocation>(key: TKey): ParsedLocation[TKey]
+      } = (key?: keyof ParsedLocation): any => {
         usedCurrent = true
-        return currentLocation
+        return key ? currentLocation[key] : currentLocation
       }
       const currentMatch = () =>
         (lightweight ??= this.matchRoutesLightweight(current()))
@@ -1963,7 +1983,7 @@ export class RouterCore<
         to[0] === '/'
           ? ''
           : dest.unsafeRelative === 'path'
-            ? current().pathname
+            ? current('pathname')
             : (dest.from ?? currentMatch()[1 /* fullPath */]),
         to,
         this.options.trailingSlash,
@@ -2079,7 +2099,7 @@ export class RouterCore<
         let search = currentMatch()[2 /* search */]
         if (opts._includeValidateSearch && this.options.search?.strict) {
           const validatedSearch = {}
-          destRoutes.forEach((route) => {
+          for (const route of destRoutes) {
             if (route.options.validateSearch) {
               try {
                 Object.assign(
@@ -2093,7 +2113,7 @@ export class RouterCore<
                 // ignore errors here because they are already handled in matchRoutes
               }
             }
-          })
+          }
           search = validatedSearch
         }
         return search
@@ -2103,35 +2123,24 @@ export class RouterCore<
       // equal nested values stable once the location is committed.
       const nextSearch: Record<string, unknown> = middlewares.length
         ? applySearchMiddleware(middlewares, fromSearch(), dest)
-        : dest.search === true
-          ? fromSearch()
-          : typeof dest.search === 'function'
-            ? dest.search(fromSearch())
-            : (dest.search as Record<string, unknown>) || EMPTY_RECORD
+        : dest.search
+          ? resolveFromCurrent(dest.search, fromSearch)
+          : EMPTY_RECORD
 
       // Stringify the next search
       const searchStr = this.options.stringifySearch(nextSearch)
 
       // Resolve the next hash
-      const hash =
-        dest.hash === true
-          ? current().hash
-          : typeof dest.hash === 'function'
-            ? dest.hash(current().hash)
-            : dest.hash || undefined
+      const hash: string = resolveFromCurrent(dest.hash, current, 'hash') || ''
 
       // Resolve the next hash string
       const hashStr = hash ? `#${hash}` : ''
 
       // Resolve the next state. A literal state never reads the current one
       // and, like the search, is not shared with it here.
-      const nextState: HistoryState = !dest.state
-        ? EMPTY_RECORD
-        : dest.state === true
-          ? current().state
-          : typeof dest.state === 'function'
-            ? dest.state(current().state)
-            : dest.state
+      const nextState: HistoryState = dest.state
+        ? resolveFromCurrent(dest.state, current, 'state')
+        : EMPTY_RECORD
 
       // Create the full path of the location
       const fullPath = `${nextPathname}${searchStr}${hashStr}`
@@ -2173,7 +2182,7 @@ export class RouterCore<
         search: nextSearch,
         searchStr,
         state: nextState as any,
-        hash: hash ?? '',
+        hash,
         external,
         unmaskOnReload: dest.unmaskOnReload,
       }
@@ -2192,17 +2201,15 @@ export class RouterCore<
         this.processedTree,
       )
       if (match) {
-        const params = Object.assign(createNull(), match.rawParams)
         const { from: _from, params: maskParams, ...maskProps } = match.route
 
         // If mask has a params function, call it with the matched params as context
-        // Otherwise, use the matched params or the provided params value
-        const nextParams = resolveNextParams(maskParams, params)
-
+        // Otherwise, use the matched params or the provided params value.
+        // Neither mutates the cached match params: updaters get a copy.
         next.maskedLocation = build({
           from: opts.from,
           ...maskProps,
-          params: nextParams,
+          params: resolveNextParams(maskParams, match.rawParams),
         })
       }
     }
@@ -2211,7 +2218,11 @@ export class RouterCore<
     // `usedCurrent`. Route masks belong to the route tree and options, whose
     // updates replace the cache.
     if (!(isServer ?? this.isServer) && !usedCurrent && opts._fromLocation) {
-      this.staticLocations!.set(opts, next)
+      ;(opts as StaticLocationOptions)._nextLocation = [
+        opts,
+        this.lightweightCache,
+        next,
+      ]
     }
 
     return next
@@ -2869,6 +2880,21 @@ function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
   return {}
 }
 
+// `true` keeps the current value and an updater receives it. `read` runs only
+// when needed, so a literal value keeps the built location independent of the
+// current one.
+function resolveFromCurrent(
+  value: unknown,
+  read: (key?: any) => unknown,
+  key?: keyof ParsedLocation,
+): any {
+  return value === true
+    ? read(key)
+    : typeof value === 'function'
+      ? value(read(key))
+      : value
+}
+
 function resolveNextParams(
   spec: unknown,
   base: Record<string, unknown>,
@@ -2876,7 +2902,7 @@ function resolveNextParams(
   if (spec === undefined || spec === true) {
     return base
   }
-  const next = Object.create(null)
+  const next = createNull()
   if (spec === false || spec === null) {
     return next
   }
