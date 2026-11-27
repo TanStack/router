@@ -122,21 +122,21 @@ test.each([
     gatePhase: 'beforeLoad' as const,
     useReadContext: (childRoute: any) => childRoute.useRouteContext(),
     expectedMessage:
-      'Cannot access route context for "/parent/child" inside the pendingComponent of "/parent/child". Inside a pendingComponent, only parent route contexts can be accessed.',
+      'Cannot access route context for "/parent/child" inside its own pendingComponent. Inside a pendingComponent, only parent route contexts can be accessed. To access inherited context, use `useRouteContext({ from: \'/parent\' })`.',
   },
   {
     name: 'self route.useRouteContext() during loader pending',
     gatePhase: 'loader' as const,
     useReadContext: (childRoute: any) => childRoute.useRouteContext(),
     expectedMessage:
-      'Cannot access route context for "/parent/child" inside the pendingComponent of "/parent/child". Inside a pendingComponent, only parent route contexts can be accessed.',
+      'Cannot access route context for "/parent/child" inside its own pendingComponent. Inside a pendingComponent, only parent route contexts can be accessed. To access inherited context, use `useRouteContext({ from: \'/parent\' })`.',
   },
   {
     name: 'useRouteContext({ strict: false }) during loader pending',
     gatePhase: 'loader' as const,
     useReadContext: () => useRouteContext({ strict: false }),
     expectedMessage:
-      'Cannot access route context inside the pendingComponent of "/parent/child". Inside a pendingComponent, only parent route contexts can be accessed.',
+      'Cannot access route context inside the pendingComponent of "/parent/child". Inside a pendingComponent, only parent route contexts can be accessed. To access inherited context, use `useRouteContext({ from: \'/parent\' })`.',
   },
 ])(
   'throws when accessing $name inside a pendingComponent',
@@ -326,7 +326,7 @@ test('throws when accessing child or grandchild route context inside a parent pe
 
     expect(
       await screen.findByText(
-        'Cannot access route context for "/parent/child" inside the pendingComponent of "/parent". Inside a pendingComponent, only parent route contexts can be accessed.',
+        'Cannot access route context for "/parent/child" inside the pendingComponent of "/parent". Inside a pendingComponent, only parent route contexts can be accessed. To access inherited context, use `useRouteContext({ from: rootRouteId })`.',
       ),
     ).toBeVisible()
 
@@ -413,7 +413,7 @@ test('throws when accessing grandchild route context inside a parent pendingComp
 
     expect(
       await screen.findByText(
-        'Cannot access route context for "/parent/child/grandchild" inside the pendingComponent of "/parent". Inside a pendingComponent, only parent route contexts can be accessed.',
+        'Cannot access route context for "/parent/child/grandchild" inside the pendingComponent of "/parent". Inside a pendingComponent, only parent route contexts can be accessed. To access inherited context, use `useRouteContext({ from: rootRouteId })`.',
       ),
     ).toBeVisible()
   } finally {
@@ -467,7 +467,7 @@ test('throws when accessing root route context inside rootRoute pendingComponent
 
     expect(
       await screen.findByText(
-        'Cannot access route context for "__root__" inside the pendingComponent of "__root__". Inside a pendingComponent, only parent route contexts can be accessed.',
+        'Cannot access route context for the root route inside its own pendingComponent. Inside a pendingComponent, only parent route contexts can be accessed, and the root route has no parent.',
       ),
     ).toBeVisible()
   } finally {
@@ -537,7 +537,7 @@ test('enforces parent-only route context inside router defaultPendingComponent',
 
     expect(
       await screen.findByText(
-        'Cannot access route context for "/child" inside the pendingComponent of "/child". Inside a pendingComponent, only parent route contexts can be accessed.',
+        'Cannot access route context for "/child" inside its own pendingComponent. Inside a pendingComponent, only parent route contexts can be accessed. To access inherited context, use `useRouteContext({ from: rootRouteId })`.',
       ),
     ).toBeVisible()
   } finally {

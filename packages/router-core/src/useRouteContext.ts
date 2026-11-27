@@ -1,3 +1,4 @@
+import { rootRouteId } from './root'
 import type { AnyRoute } from './route'
 import type { AllContext, RouteById } from './routeInfo'
 import type { AnyRouter } from './router'
@@ -17,9 +18,19 @@ export function _assertPendingRouteContextAccess(
     }
   }
 
-  throw new Error(
-    `Cannot access route context${from ? ` for "${from}"` : ''} inside the pendingComponent of "${pendingRoute.id}". Inside a pendingComponent, only parent route contexts can be accessed.`,
-  )
+  const isRootPending = pendingRoute.id === rootRouteId
+  const pendingLabel = isRootPending ? 'the root route' : `"${pendingRoute.id}"`
+  const lead =
+    from === pendingRoute.id || (isRootPending && !from)
+      ? `Cannot access route context for ${pendingLabel} inside its own pendingComponent.`
+      : `Cannot access route context${from ? ` for "${from}"` : ''} inside the pendingComponent of ${pendingLabel}.`
+
+  const parentId = pendingRoute.parentRoute?.id
+  const guidance = parentId
+    ? `Inside a pendingComponent, only parent route contexts can be accessed. To access inherited context, use \`useRouteContext({ from: ${parentId === rootRouteId ? 'rootRouteId' : `'${parentId}'`} })\`.`
+    : 'Inside a pendingComponent, only parent route contexts can be accessed, and the root route has no parent.'
+
+  throw new Error(`${lead} ${guidance}`)
 }
 
 export interface UseRouteContextBaseOptions<
