@@ -77,7 +77,7 @@ function caseFiles(c: BatchCase, i: number): Record<string, string> {
         /(from\s+|import\(\s*|require\(\s*)(['"])\.\.\//g,
         `$1$2../${id}/`,
       ),
-    [`${id}/entry.ts`]: `${toRoute(c.entry)}export const batchCase = '${caseMark(i)}'\n`,
+    [`${id}/entry.ts`]: `${toRoute(c.entry)}\nexport const batchCase = '${caseMark(i)}'\n`,
   }
   for (const [name, text] of Object.entries(c.files ?? {})) {
     files[`${id}/${name}`] = toRoute(text)
@@ -112,8 +112,12 @@ export function batchBuild(
       })
     } catch (error) {
       const message = String((error as Error).message)
+      // (by the source paths the error names: the route file or a file
+      // under the case's directory, never an emitted chunk's name)
       const named = cases.flatMap((c, i) =>
-        new RegExp(`\\bc${i}(?:/|\\.tsx)`).test(message)
+        new RegExp(`(?:routes[\\\\/]c${i}\\.tsx|[\\\\/]c${i}[\\\\/])`).test(
+          message,
+        )
           ? [`"${c.name}" (routes/c${i}.tsx)`]
           : [],
       )
@@ -136,36 +140,51 @@ export function batchBuild(
     }
     built ??= make()
     const app = await built
+    const groupImports =
+      options.bundler === 'webpack' || options.bundler === 'rspack'
     const byName = new Map(app.chunks.map((chunk) => [chunk.fileName, chunk]))
     const own = app.chunks.filter((chunk) => chunk.code.includes(caseMark(i)))
-    const loaded = new Set<string>()
-    const visit = (fileName: string) => {
-      if (loaded.has(fileName)) {
+    /**
+     * The chunks loading with `fileName`. Vite: its static imports,
+     * transitively (real edges). webpack and Rspack: `imports` are the
+     * other chunks of the chunk's groups (`chunksOfStats`), one level: a
+     * chunk two cases' groups share (a vendor chunk) lists both cases'
+     * chunks, so it is never expanded.
+     */
+    const loadedWith = (fileName: string, into: Set<string>) => {
+      if (into.has(fileName)) {
         return
       }
-      loaded.add(fileName)
+      into.add(fileName)
       for (const imported of byName.get(fileName)?.imports ?? []) {
-        visit(imported)
+        if (groupImports) {
+          into.add(imported)
+        } else {
+          loadedWith(imported, into)
+        }
       }
     }
-    own.forEach((chunk) => visit(chunk.fileName))
-    // (every chunk the case's entry loads, with it or on demand: other
-    // cases' chunks hold their own copies of a shared marker text)
+    const loaded = new Set<string>()
+    own.forEach((chunk) => loadedWith(chunk.fileName, loaded))
+    // Every chunk the case loads, with its entry or on demand (other cases'
+    // chunks hold their own copies of a shared marker text): webpack and
+    // Rspack follow the dynamic imports of the chunks the case loads on
+    // demand only (a shared chunk's children are other cases' too)
     const reachable = new Set<string>()
-    const reach = (fileName: string) => {
+    const loads = (fileName: string) => {
       if (reachable.has(fileName)) {
         return
       }
-      reachable.add(fileName)
-      const chunk = byName.get(fileName)
-      for (const next of [
-        ...(chunk?.imports ?? []),
-        ...(chunk?.dynamicImports ?? []),
-      ]) {
-        reach(next)
+      const group = new Set<string>()
+      loadedWith(fileName, group)
+      group.forEach((member) => reachable.add(member))
+      for (const member of groupImports ? [fileName] : group) {
+        for (const next of byName.get(member)?.dynamicImports ?? []) {
+          loads(next)
+        }
       }
     }
-    own.forEach((chunk) => reach(chunk.fileName))
+    own.forEach((chunk) => loads(chunk.fileName))
     const file = `routes/c${i}.tsx`
     return {
       build: app,

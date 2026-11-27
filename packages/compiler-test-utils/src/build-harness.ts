@@ -241,12 +241,26 @@ export class DanglingNameError extends Error {
   constructor(
     readonly bundler: Bundler,
     readonly names: Record<string, Array<string>>,
+    /**
+     * The modules (source paths) whose code reads each name free, by name
+     * (none: no module's code reads it, e.g. a bundle-level hook added it).
+     */
+    readonly readers: Record<string, Array<string>> = {},
   ) {
     super(
       `${bundler}: the production client build reads names that are never declared or imported:\n${Object.entries(
         names,
       )
-        .map(([fileName, list]) => `  ${fileName}: ${list.join(', ')}`)
+        .map(
+          ([fileName, list]) =>
+            `  ${fileName}: ${list
+              .map((name) =>
+                readers[name]?.length
+                  ? `${name} (read by ${readers[name].join(', ')})`
+                  : name,
+              )
+              .join(', ')}`,
+        )
         .join('\n')}`,
     )
     this.name = 'DanglingNameError'
@@ -1345,8 +1359,8 @@ async function checkDanglingNames(
     },
   }
   const dangling: Record<string, Array<string>> = {}
-  /** Whether each name counts (one decision per build). */
-  const decided = new Map<string, Promise<boolean>>()
+  /** Whether each name counts, and the modules that read it (one decision per build). */
+  const decided = new Map<string, Promise<NameVerdict>>()
   for (const chunk of chunks) {
     const names: Array<string> = []
     const read = readNames(chunk.code, undefined, { keepProbed: true })
@@ -1362,7 +1376,7 @@ async function checkDanglingNames(
         counts = nameCounts(name, scope)
         decided.set(name, counts)
       }
-      if (await counts) {
+      if ((await counts).counts) {
         names.push(name)
       }
     }
@@ -1371,8 +1385,20 @@ async function checkDanglingNames(
     }
   }
   if (Object.keys(dangling).length > 0) {
-    throw new DanglingNameError(bundler, dangling)
+    const readers: Record<string, Array<string>> = {}
+    for (const name of new Set(Object.values(dangling).flat())) {
+      readers[name] = (await decided.get(name)!).readers.map((resource) =>
+        path.relative(evidence.root, resource),
+      )
+    }
+    throw new DanglingNameError(bundler, dangling, readers)
   }
+}
+
+/** Whether a free name counts (`nameCounts`), and the modules whose code reads it free. */
+interface NameVerdict {
+  counts: boolean
+  readers: Array<string>
 }
 
 /**
@@ -1380,11 +1406,14 @@ async function checkDanglingNames(
  * attributed to the modules whose code after the build's transforms reads
  * it free.
  */
-async function nameCounts(name: string, scope: ScopeEvidence) {
+async function nameCounts(
+  name: string,
+  scope: ScopeEvidence,
+): Promise<NameVerdict> {
   const parsed = scope.parsedModules
   if (!parsed) {
     // No evidence of the modules
-    return true
+    return { counts: true, readers: [] }
   }
   const readers: Array<string> = []
   let bound = false
@@ -1413,14 +1442,14 @@ async function nameCounts(name: string, scope: ScopeEvidence) {
   if (readers.length === 0) {
     // The bundler dropped a binding, a bundle-level hook added the read,
     // or the modules that read it probe it
-    return !bound
+    return { counts: !bound, readers }
   }
   for (const resource of readers) {
     if (await countsAsDangling(name, resource, parsed, scope)) {
-      return true
+      return { counts: true, readers }
     }
   }
-  return false
+  return { counts: false, readers }
 }
 
 interface ModuleEvidence {
