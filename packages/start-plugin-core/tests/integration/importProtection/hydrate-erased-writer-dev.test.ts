@@ -58,11 +58,24 @@ export function Page() { return <Hydrate when={load()}><Chart c={getCache()} /><
 `,
 }
 
-/** waits for the boundary's children to render */
-const readChart = `for (let i = 0; i < 200 && !document.querySelector('[data-chart]'); i++) {
-  await new Promise((resolve) => setTimeout(resolve, 25))
-}
-return document.querySelector('[data-chart]')?.textContent ?? null`
+/** The text of the boundary's children once they render (null after 5 s): an observer of the document, not a poll. */
+const readChart = `const chart =
+  document.querySelector('[data-chart]') ??
+  (await new Promise((resolve) => {
+    const observer = new MutationObserver(() => {
+      const found = document.querySelector('[data-chart]')
+      if (found) {
+        observer.disconnect()
+        resolve(found)
+      }
+    })
+    observer.observe(document, { childList: true, subtree: true })
+    setTimeout(() => {
+      observer.disconnect()
+      resolve(null)
+    }, 5000)
+  }))
+return chart?.textContent ?? null`
 
 async function devRun(host: 'vite' | 'rsbuild', page: string) {
   const recorder = violationRecorder({ behavior: 'mock', mockAccess: 'off' })
