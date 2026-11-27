@@ -155,7 +155,7 @@ Excludes file IDs that include `tsr-split` or `tsr-shared`.
 1. Extracts the grouping from the `?tsr-split=<encoded>` query parameter
 2. Decodes it via `decodeIdentifier()` to get the list of properties this
    virtual file should export (e.g., `['component']`)
-3. Reads shared bindings from `sharedBindingsMap` for the base file
+3. Gets the base file's shared bindings from `getSharedBindings()`
 4. Calls `compileCodeSplitVirtualRoute()` which:
    - Removes shared binding declarations before traversal (prevents scope
      collision crashes)
@@ -177,7 +177,7 @@ Excludes file IDs that include `tsr-split` or `tsr-shared`.
 **What it does:**
 
 1. Extracts the base file path from the ID
-2. Looks up shared bindings from `sharedBindingsMap`
+2. Gets the base file's shared bindings from `getSharedBindings()`
 3. Calls `compileCodeSplitSharedRoute()` which:
    - Keeps only declarations of shared bindings and their transitive
      dependencies
@@ -416,14 +416,18 @@ The three plugins share a closure containing `sharedBindingsMap`:
 
 ```
 Plugin 1 (reference): computeSharedBindings() → sharedBindingsMap.set(id, bindings)
-Plugin 2 (virtual):   sharedBindingsMap.get(baseId) → pass to compileCodeSplitVirtualRoute()
-Plugin 3 (shared):    sharedBindingsMap.get(baseId) → pass to compileCodeSplitSharedRoute()
+Plugin 2 (virtual):   getSharedBindings(baseId, code) → pass to compileCodeSplitVirtualRoute()
+Plugin 3 (shared):    getSharedBindings(baseId, code) → pass to compileCodeSplitSharedRoute()
 ```
 
 This works because all three plugins run in the same JavaScript process and
 the map is captured by closure. In typical builds, the reference module is
 transformed first and then the bundler resolves the emitted dynamic imports,
-which triggers transformations for the virtual/shared module IDs.
+which triggers transformations for the virtual/shared module IDs. When a
+virtual or shared module is transformed first, for example because a dev
+server serves the reference module's output from a cache,
+`getSharedBindings()` computes the bindings from that module's source with
+the same groupings and records them in the map.
 
 ---
 
@@ -844,8 +848,10 @@ useless).
 ### 8. Plugin Ordering in the Array Matters
 
 The 3 plugins must be returned in order: reference, virtual, shared. The
-reference plugin populates `sharedBindingsMap` before the other two consume
-it. Bundlers process transforms in plugin array order for a given module ID.
+reference plugin usually populates `sharedBindingsMap` before the other two
+read it; when it has not, they compute the bindings themselves (see
+Cross-Plugin Communication). Bundlers process transforms in plugin array
+order for a given module ID.
 
 ### 9. Imported Bindings Are Never Shared
 
