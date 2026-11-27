@@ -51,6 +51,7 @@ import type { RouterHistory } from '../src'
 
 const ioObserveMock = vi.fn()
 const ioDisconnectMock = vi.fn()
+const ioUnobserveMock = vi.fn()
 let ioCallback: IntersectionObserverCallback
 let history: RouterHistory
 
@@ -58,6 +59,7 @@ beforeEach(() => {
   const io = getIntersectionObserverMock({
     observe: ioObserveMock,
     disconnect: ioDisconnectMock,
+    unobserve: ioUnobserveMock,
     onCreate: (callback) => {
       ioCallback = callback
     },
@@ -5151,7 +5153,7 @@ describe('Link', () => {
     },
   )
 
-  test('Router.preload="viewport", should trigger the IntersectionObserver\'s observe and disconnect methods', async () => {
+  test('Router.preload="viewport", should observe the link and unobserve it on cleanup', async () => {
     const rootRoute = createRootRoute()
     const RouteComponent = () => {
       const [count, setCount] = React.useState(0)
@@ -5184,8 +5186,7 @@ describe('Link', () => {
     expect(ioObserveMock).toBeCalled()
     expect(ioObserveMock).toBeCalledTimes(2) // since React.StrictMode is enabled it double renders
 
-    expect(ioDisconnectMock).toBeCalled()
-    expect(ioDisconnectMock).toBeCalledTimes(1) // since React.StrictMode is enabled it should have disconnected
+    expect(ioUnobserveMock).toBeCalledTimes(1) // since React.StrictMode is enabled it should have unobserved
 
     const output = screen.getByRole('status')
     expect(output).toHaveTextContent('0')
@@ -5196,7 +5197,7 @@ describe('Link', () => {
       expect(output).toHaveTextContent('1')
     })
     expect(ioObserveMock).toBeCalledTimes(2) // it should not observe again
-    expect(ioDisconnectMock).toBeCalledTimes(1) // it should not disconnect again
+    expect(ioUnobserveMock).toBeCalledTimes(1) // it should not unobserve again
   })
 
   test('Link.preload="viewport" should respect preloadDelay', async () => {
@@ -5299,6 +5300,7 @@ describe('Link', () => {
     )
     await vi.advanceTimersByTimeAsync(49)
 
+    // Leaving and re-entering within one batch restarts the delay.
     ioCallback(
       [
         {
@@ -5312,6 +5314,8 @@ describe('Link', () => {
       ],
       {} as IntersectionObserver,
     )
+    await vi.advanceTimersByTimeAsync(49)
+    expect(preloadRouteSpy).toHaveBeenCalledOnce()
     await vi.advanceTimersByTimeAsync(1)
     expect(preloadRouteSpy).toHaveBeenCalledTimes(2)
 
@@ -5319,6 +5323,55 @@ describe('Link', () => {
     fireEvent.mouseLeave(intentLink)
     await vi.advanceTimersByTimeAsync(50)
     expect(preloadRouteSpy).toHaveBeenCalledTimes(2)
+  })
+
+  test('Link.preload="viewport" should preload only the intersecting link', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <Link to="/about" preload="viewport">
+            About Link
+          </Link>
+          <Link to="/other" preload="viewport">
+            Other Link
+          </Link>
+        </>
+      ),
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+    })
+    const otherRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/other',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, aboutRoute, otherRoute]),
+      history,
+      defaultPreloadDelay: 0,
+    })
+    const preloadRouteSpy = vi.spyOn(router, 'preloadRoute')
+
+    render(<RouterProvider router={router} />)
+
+    const aboutLink = await screen.findByRole('link', { name: 'About Link' })
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: aboutLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    expect(preloadRouteSpy).toHaveBeenCalledOnce()
+    expect(preloadRouteSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ to: '/about' }),
+    )
   })
 
   test('Link.preload="viewport" should cancel and use new link options after they change', async () => {
@@ -5384,7 +5437,6 @@ describe('Link', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Change destination' }))
     expect(viewportLink).toHaveAttribute('href', '/other')
-    expect(ioCallback).not.toBe(initialIoCallback)
 
     ioCallback(
       [

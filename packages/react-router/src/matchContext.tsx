@@ -14,6 +14,11 @@ declare module '@tanstack/router-core' {
      * root id). A scope without links holds no location.
      */
     _linkScopes?: Record<string, LinkScope>
+    /**
+     * The one observer for all `preload="viewport"` links; it routes each
+     * entry to its link's handler.
+     */
+    _linkObserver?: IntersectionObserver
   }
 }
 

@@ -20,10 +20,12 @@ export function createTimer() {
 export const getIntersectionObserverMock = ({
   observe,
   disconnect,
+  unobserve,
   onCreate,
 }: {
   observe: Mock
   disconnect: Mock
+  unobserve?: Mock
   onCreate?: (callback: IntersectionObserverCallback) => void
 }) => {
   return class IO implements IntersectionObserver {
@@ -45,7 +47,9 @@ export const getIntersectionObserverMock = ({
     takeRecords(): Array<IntersectionObserverEntry> {
       return []
     }
-    unobserve(): void {}
+    unobserve(): void {
+      unobserve?.()
+    }
     observe(): void {
       observe()
     }

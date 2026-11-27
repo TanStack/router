@@ -47,15 +47,14 @@ type LinkState = [href: string | undefined, isActive?: boolean]
 // `explicitUndefined` is required: an explicit `undefined` clears an
 // inherited param or search key, so `{}` and `{ category: undefined }` build
 // different locations and must not be treated as equal here.
-function useStableValues<T extends ReadonlyArray<unknown>>(...values: T): T {
-  const ref = React.useRef<ReadonlyArray<unknown>>(values)
-  const stable = ref.current as Array<unknown>
+function useStableValues<T extends Array<unknown>>(...values: T): T {
+  const stable = React.useRef(values).current
   values.forEach((value, index) => {
     if (!deepEqual(stable[index], value, false, true)) {
       stable[index] = value
     }
   })
-  return ref.current as T
+  return stable
 }
 
 function preloadLink(router: AnyRouter, options: unknown) {
@@ -362,9 +361,9 @@ export function useLinkProps<
   // `dest` goes through as-is.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const enqueuePreload = React.useCallback(
-    (e?: React.MouseEvent | React.FocusEvent | IntersectionObserverEntry) => {
-      const isIntersecting = (e as IntersectionObserverEntry | undefined)
-        ?.isIntersecting
+    (e: React.MouseEvent | React.FocusEvent | IntersectionObserverEntry) => {
+      const isIntersecting = (e as Partial<IntersectionObserverEntry>)
+        .isIntersecting
       if (!(isIntersecting ?? preload === 'intent')) {
         if (isIntersecting === false) {
           cancelPreload(innerRef)
@@ -382,7 +381,7 @@ export function useLinkProps<
         preloadLink(router, dest)
       }, preloadDelay)
     },
-    [router, dest, innerRef, preload, preloadDelay],
+    [router, dest, preload, preloadDelay],
   )
 
   // Preload side effects: `render` preloads once per link, `viewport` watches
@@ -397,30 +396,31 @@ export function useLinkProps<
       hasRenderFetched.current = true
       preloadLink(router, dest)
     }
-    let active = true
+    const element = innerRef.current
     let observer: IntersectionObserver | undefined
     if (
       preload === 'viewport' &&
-      innerRef.current &&
+      element &&
       typeof IntersectionObserver === 'function'
     ) {
-      observer = new IntersectionObserver(
-        (entries) => {
-          // A queued observer notification can arrive after disconnect().
-          if (active) {
-            enqueuePreload(entries.pop())
-          }
-        },
+      observer = router.stores._linkObserver ??= new IntersectionObserver(
+        (entries) =>
+          entries.forEach((entry) =>
+            viewportHandlers.get(entry.target)?.(entry),
+          ),
         { rootMargin: '100px' },
       )
-      observer.observe(innerRef.current)
+      viewportHandlers.set(element, enqueuePreload)
+      observer.observe(element)
     }
     return () => {
-      active = false
-      observer?.disconnect()
+      // Deleting the handler also drops notifications queued before
+      // `unobserve`.
+      viewportHandlers.delete(element!)
+      observer?.unobserve(element!)
       cancelPreload(innerRef)
     }
-  }, [router, dest, preload, enqueuePreload, innerRef])
+  }, [router, dest, preload, enqueuePreload])
 
   const props = collectElementProps(options, host)
   props.ref = forwardedRef ? mergedRef : innerRef
@@ -644,6 +644,11 @@ function getServerLinkProps(
 type LinkRef = React.RefObject<Element | null> & {
   t?: ReturnType<typeof setTimeout>
 }
+// The handler of each element observed by its router's viewport observer.
+const viewportHandlers = new WeakMap<
+  Element,
+  (entry: IntersectionObserverEntry) => void
+>()
 const cancelPreload = (ref: LinkRef) => {
   clearTimeout(ref.t)
   ref.t = undefined
