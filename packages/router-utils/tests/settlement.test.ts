@@ -70,7 +70,7 @@ const PLAIN = 'export const use = 1\n'
 const memoryHost = (files: Record<string, string>) =>
   new MemoryHost({ files, recognizer: RECOGNIZER })
 
-/** A host whose first resolution of `./b` waits, before its answer, until `release()`; `holding` opens then. */
+/** A host whose first resolution of `./b` waits before its answer: `holding` resolves once it waits, `release()` lets it finish. */
 function holdingB(files: Record<string, string>) {
   let hold: (() => void) | null = null
   const holding = gate()
@@ -332,6 +332,9 @@ describe('outputs of one text', () => {
 // overtaken (a dependency saved during each) answers unpublished, and its
 // host still acts on it while the stale-set rebuild of the same text
 // publishes with the current facts: both read current, facts differing.
+// Accepted: moving the generation at publication would also end an
+// unpublished env-module answer whose split sibling publishes first, which
+// writes no server functions (worse).
 // Source: Fable's and Gemini's reviews of settlement step 1, question 3.
 describe('an answer every attempt of which was overtaken', () => {
   it.fails(
