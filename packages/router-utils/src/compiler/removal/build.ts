@@ -13,12 +13,7 @@
  * candidate and what it reads stays.
  */
 import { BindingFlags } from 'yuku'
-import {
-  isExpressionWrapper,
-  namespaceName,
-  patternIdentifiers,
-  unwrapExpression,
-} from '../source'
+import { namespaceName, patternIdentifiers, unwrapExpression } from '../source'
 import { VALUE, classify, isDefinition } from '../declarations'
 import type { Node, SourceFile } from 'yuku'
 import type { ClusterGraph, ClusterId } from '../clusters'
@@ -389,21 +384,17 @@ export class Definitions {
   /**
    * Whether evaluating a declarator, a parameter or a class declaration
    * reads a binding it declares before that binding has its value (`const x
-   * = x`, `const { v = v } = o`, `const v = (() => v)()`, `class X { [X]() {}
-   * }`, `const v = class { static s = v }`): the read throws, so the
-   * declaration is a statement with an effect, not a definition.
+   * = x`, `const { v = v } = o`, `class X extends X {}`, `class X { [X]() {}
+   * }`): the read throws, so the declaration is a statement with an effect,
+   * not a definition.
    *
    * A read is before the value when it stands in the initialiser, in the
    * pattern up to the end of the binding's own element, or in the default of
-   * a pattern around the binding (`{ a: { x } = x }`). It runs then unless a
-   * function stands between that is not called on the spot (a callback
-   * passed to a call is taken to run later: only then does the source work),
-   * or an async function (its throw is a rejected promise), or the body of a
-   * generator (it runs when iterated; its parameters are initialised by the
-   * call), or an instance member of a class. A class
-   * declaration reads itself in its heritage, its computed keys and its
-   * decorators only: its static members see the class. An implicit call (a
-   * getter read on the spot) is not followed.
+   * a pattern around the binding (`{ a: { x } = x }`); a class declaration
+   * reads itself in its heritage, its computed keys and its decorators. Only
+   * a direct read counts: one inside a function, a class field's value or a
+   * static block is not followed, even where a call, a getter, a tag or the
+   * class's evaluation runs it on the spot (a stated limit, KNOWN-BUGS).
    */
   readsItself(node: Node): boolean {
     let hit = this.selfReads.get(node.start)
@@ -500,7 +491,7 @@ export class Definitions {
           at < valued ||
           (init !== null && at >= init.start && at < init.end) ||
           (around !== null && around.some((d) => at >= d.start && at < d.end))
-        if (early && this.runsWith(at, node)) {
+        if (early && this.direct(at, node)) {
           return true
         }
       }
@@ -508,64 +499,21 @@ export class Definitions {
     return false
   }
 
-  /** Whether the code at `at` runs when `root` (a declarator, a parameter, a class declaration) is evaluated. */
-  private runsWith(at: number, root: Node): boolean {
+  /** Whether no function, class field value or static block of `root` stands around `at`. */
+  private direct(at: number, root: Node): boolean {
     const file = this.file
     let from: Node | null = null
     for (let n = file.nodeAt(at); n !== null; from = n, n = file.parentOf(n)) {
       if (n === root) {
         return true
       }
-      if (isFunction(n)) {
-        if (
-          n.type !== 'TSDeclareFunction' &&
-          n.type !== 'TSEmptyBodyFunctionExpression' &&
-          'async' in n
-        ) {
-          const generator = 'generator' in n && n.generator
-          // a generator's body runs when it is iterated, and an async
-          // function's throw is a rejected promise: neither throws here. A
-          // generator's parameters are initialised by the call (an async
-          // generator's too)
-          if (generator ? from === n.body : n.async) {
-            return false
-          }
-        }
-        // called on the spot: `(() => v)()`, `new (function () { v })()`
-        let callee: Node = n
-        let call = file.parentOf(callee)
-        while (
-          call !== null &&
-          isExpressionWrapper(call) &&
-          call.expression === callee
-        ) {
-          callee = call
-          call = file.parentOf(callee)
-        }
-        if (
-          (call?.type !== 'CallExpression' && call?.type !== 'NewExpression') ||
-          call.callee !== callee
-        ) {
-          return false
-        }
-        continue
-      }
       if (
-        (n.type === 'PropertyDefinition' || n.type === 'AccessorProperty') &&
-        n.value === from
+        isFunction(n) ||
+        n.type === 'StaticBlock' ||
+        ((n.type === 'PropertyDefinition' || n.type === 'AccessorProperty') &&
+          n.value === from)
       ) {
-        const owner = file.parentOf(file.parentOf(n)!)
-        // an instance member runs per instance; a static one of the class
-        // declaration itself sees the class
-        if (!n.static || owner === root) {
-          return false
-        }
-      }
-      if (n.type === 'StaticBlock') {
-        const owner = file.parentOf(file.parentOf(n)!)
-        if (owner === root) {
-          return false
-        }
+        return false
       }
     }
     return false

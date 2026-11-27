@@ -659,16 +659,15 @@ declaration table of 11-23). Rows: `start-plugin-core/tests/start-compiler-remov
   `const db = connect()`. Row: `start-compiler-erasure.test.ts` "a `let` a top-level statement assigns stays with the
   statement, which runs at load".
 
-- **Self-reads are followed through code that runs on the spot only** (1.4 of the design): a function counts only as
-  the callee of a call or `new` written there. A getter read on the spot (`const x = ({ get data() { return x } }).data`),
-  a generator advanced with `.next()`, a method called through a member (`(function () { return x }).call(null)`,
-  `({ m() { return x } }).m()`), a class expression's constructor or instance field run by `new (class { y = x })()`,
-  an async call awaited in the initialiser (`await (async () => x)()`) and a function called as a template tag are not
-  followed: such a declarator leaves where the source throws (or rejects) at once. Base kept these declarators below
-  the top level. The difference is observable where the code catches the error itself: a method that catches the
-  `ReferenceError`, records it and returns normally records it on the server and not on the client. A self-read in a
-  branch that cannot run still keeps its declarator, and a declarator that reads itself stays whole, with what its
-  other names hold. Rows: "self-reads".
+- **Only a direct self-read is seen** (accepted limit, user direction 2026-11-26, pile-of-cases item 3: stop proving
+  timing): a declaration reads itself only where the read stands outside any function, class field value or static
+  block of it (`const x = x`, `const { a = a } = o`, `function f(a = a)`, `class X extends X {}`). A declaration whose
+  evaluation throws only through a call, a getter, a tag or a class's static initialiser that reads it (`const v =
+(() => v)()`, `const x = ({ get d() { return x } }).d`, `const v = class { static s = v }`) is not seen: such a
+  declarator leaves where the source throws at once. Low user risk: the source fails wherever it runs; the difference
+  is observable only where the code catches the `ReferenceError` itself. A self-read in a branch that cannot run still
+  keeps its declarator, and a declarator that reads itself stays whole, with what its other names hold. Rows:
+  "self-reads".
 
 - **A binding nothing reads is not ours, also beside a type of its name that removed code used** (D1 A): with `const
 db = connect(); type Foo = typeof db; const Foo = register()` and erased code naming `Foo` as a type, `db` leaves
