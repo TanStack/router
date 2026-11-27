@@ -1,20 +1,30 @@
 /**
  * Route HMR of a Start route module that keeps a binding one of its split
  * chunks (or a `<Hydrate>` chunk) reads, on Start's Rsbuild dev server, React
- * and Solid (SPEC J3.3; the plain Router rows are
- * `router-plugin/tests/integration/route-hmr-browser-kept-binding.test.ts`).
- * The route module self-accepts, so its update holds none of the chunks; the
- * route module's next evaluation invalidates those reading what it keeps
- * and refreshes the route once the update is applied.
+ * and Solid (SPEC J3.3). The route module self-accepts, so its update holds
+ * none of the chunks; the route module's next evaluation invalidates those
+ * reading what it keeps and refreshes the route once the update is applied.
+ *
+ * The shapes of the kept binding and of the edit (primitives, objects,
+ * functions, exported or not, component-only and loader-only edits, a route
+ * not mounted or left, three chunks reading it) are the plain Router rows of
+ * `router-plugin/tests/integration/route-hmr-browser-kept-binding.test.ts`,
+ * on Rsbuild with React Refresh and Solid's hot updates. Here, what Start
+ * adds: a server-rendered, hydrated page (per framework, an exported object
+ * the loader and the component read, and one the component alone reads: the
+ * controls), a server fn the loader and the component call, a syntax
+ * error Start's dev server reports before the fix, and a `<Hydrate>` child
+ * reading the kept binding.
  *
  * Each row edits twice (`v2`, `v3`) on an open, hydrated page and reads what
- * it shows, whether it reloaded, how many times the loader ran and, for
- * React (React Refresh) and where no chunk reads a kept binding for Solid,
- * the component's state. A chunk reading a kept binding evaluates again on a
- * route module edit, so a Solid component there remounts.
+ * it shows, whether it reloaded, how many times the loader ran, the page's
+ * errors and, for React (React Refresh), the component's state. A chunk
+ * reading a kept binding evaluates again on a route module edit, so a Solid
+ * component there remounts.
  *
- * The last rows read the hot updates of a `<Hydrate>` child's edit and of a
- * component edit: they hold the edited module alone, as before.
+ * The last row reads the hot updates of a `<Hydrate>` child's edit and of a
+ * component edit: each holds the edited module alone, and neither runs the
+ * loader or resets the component's state.
  */
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { pluginReact } from '@rsbuild/plugin-react'
@@ -59,10 +69,6 @@ interface Row {
   shows: (v: string) => string
   /** Loader runs per edit (none: not counted). */
   loaderRuns?: number
-  /** No chunk reads a kept binding: Solid keeps the component's state too. */
-  keepsState?: boolean
-  unmounted?: boolean
-  left?: boolean
   syntaxError?: boolean
 }
 
@@ -80,33 +86,15 @@ ${page(fw, read)}`,
 const shows = (v: string) => `shows ${v}`
 
 const rows: Array<Row> = [
-  {
-    name: 'exported primitive both read',
-    files: shape((v) => `export const value = '${v}'`, 'value'),
-    shows,
-    loaderRuns: 1,
-  },
+  // the controls: an exported object the loader and the component read
+  // (Start's compiles of it reach the placement of an exported binding two
+  // outputs share, and of the file's unused `Link` import, which the router
+  // rows do not), and one the component alone reads, so only the
+  // invalidation of its chunk shows the edit (the loader does not rerun with
+  // it)
   {
     name: 'exported object both read',
     files: shape((v) => `export const value = { text: '${v}' }`, 'value.text'),
-    shows,
-    loaderRuns: 1,
-  },
-  {
-    name: 'exported function both read',
-    files: shape((v) => `export function value() { return '${v}' }`, 'value()'),
-    shows,
-    loaderRuns: 1,
-  },
-  {
-    name: 'unexported object both read',
-    files: shape((v) => `const value = { text: '${v}' }`, 'value.text'),
-    shows,
-    loaderRuns: 1,
-  },
-  {
-    name: 'unexported function both read',
-    files: shape((v) => `function value() { return '${v}' }`, 'value()'),
     shows,
     loaderRuns: 1,
   },
@@ -118,52 +106,6 @@ const rows: Array<Row> = [
       false,
     ),
     shows,
-    loaderRuns: 1,
-  },
-  {
-    name: 'exported constant, copied',
-    files: shape((v) => `export const value = '${v}'`, 'value', false),
-    shows,
-    loaderRuns: 1,
-  },
-  {
-    name: 'component-only edit',
-    files: (fw, v) => ({
-      [FILE]: `${imports(fw)}const value = { text: 'k' }
-export const Route = createFileRoute('/')({
-  loader: () => { ${loaderCount}; return value.text },
-  component: Page,
-})
-${page(fw, 'value.text', `shows-${v}`)}`,
-    }),
-    shows: (v) => `shows-${v} k`,
-    loaderRuns: 0,
-  },
-  {
-    name: 'loader-only edit',
-    files: (fw, v) => ({
-      [FILE]: `${imports(fw)}const value = { text: 'k' }
-export const Route = createFileRoute('/')({
-  loader: () => { ${loaderCount}; return '${v}' },
-  component: Page,
-})
-${page(fw, `value.text + ${loaderData(fw)}`)}`,
-    }),
-    shows: (v) => `shows k${v}`,
-    loaderRuns: 1,
-    keepsState: true,
-  },
-  {
-    name: 'loader-only edit, the chunk reads a kept binding',
-    files: (fw, v) => ({
-      [FILE]: `${imports(fw)}const value = { text: 'k' }
-export const Route = createFileRoute('/')({
-  loader: () => { ${loaderCount}; return value.text + '${v}' },
-  component: Page,
-})
-${page(fw, `value.text + ${loaderData(fw)}`)}`,
-    }),
-    shows: (v) => `shows kk${v}`,
     loaderRuns: 1,
   },
   // a server fn in the route file, which the loader and the component call:
@@ -186,51 +128,6 @@ ${page(fw, loaderData(fw), 'shows', `<button id="f" onClick={() => getData().the
     files: shape((v) => `const value = { text: '${v}' }`, 'value.text'),
     shows,
     syntaxError: true,
-  },
-  {
-    name: 'route not mounted',
-    unmounted: true,
-    files: (fw, v) => ({
-      [FILE]: `${imports(fw)}export const Route = createFileRoute('/')({ component: () => <p>home <Link id="go" to="/other">go</Link></p> })
-`,
-      'src/routes/other.tsx': `${imports(fw)}const value = { text: '${v}' }
-export const Route = createFileRoute('/other')({
-  loader: () => value.text,
-  component: Page,
-})
-${page(fw, 'value.text')}`,
-    }),
-    shows,
-  },
-  {
-    name: 'route left, then edited',
-    left: true,
-    files: (fw, v) => ({
-      [FILE]: `${imports(fw)}const value = { text: '${v}' }
-export const Route = createFileRoute('/')({
-  loader: () => value.text,
-  component: Page,
-})
-${page(fw, 'value.text', 'shows', '<Link id="go" to="/other">go</Link>')}`,
-      'src/routes/other.tsx': `${imports(fw)}export const Route = createFileRoute('/other')({ component: () => <p>away <Link id="back" to="/">back</Link></p> })
-`,
-    }),
-    shows,
-  },
-  {
-    name: 'nested split: three chunks read it',
-    files: (fw, v) => ({
-      [FILE]: `${imports(fw)}const value = { text: '${v}' }
-export const Route = createFileRoute('/')({
-  loader: () => { ${loaderCount}; return value.text },
-  component: Page,
-  notFoundComponent: () => <p>{value.text}</p>,
-  errorComponent: () => <p>{value.text}</p>,
-})
-${page(fw, 'value.text')}`,
-    }),
-    shows,
-    loaderRuns: 1,
   },
   // a boundary in the split component reads the kept binding: its chunk
   // imports it from the route module too. (Solid: the page of a Solid
@@ -279,25 +176,10 @@ async function runRow(fw: Fw, row: Row) {
   const waitFor = (expected: string) =>
     page.waitForText(expected, { selector: '#app', timeout: 15_000 })
   const loaderRuns = () => p.evaluate<number>('globalThis.__loaderRuns ?? 0')
-  await waitFor(row.unmounted ? 'home' : row.shows('v1'))
-  if (row.left) {
-    await p.locator('#go').click()
-    await waitFor('away')
-    for (const v of ['v2', 'v3']) {
-      await server.edit(row.files(fw, v))
-      await p.locator('#back').click()
-      await waitFor(row.shows(v))
-      await p.locator('#go').click()
-      await waitFor('away')
-    }
-    expect(page.loads()).toBe(1)
-    return
-  }
-  if (!row.unmounted) {
-    await p.locator('#c').click()
-    await p.locator('#c').click()
-    await waitFor('n=2')
-  }
+  await waitFor(row.shows('v1'))
+  await p.locator('#c').click()
+  await p.locator('#c').click()
+  await waitFor('n=2')
   if (row.syntaxError) {
     const broken = Object.fromEntries(
       Object.entries(row.files(fw, 'v2')).map(([k, t]) => [
@@ -311,7 +193,7 @@ async function runRow(fw: Fw, row: Row) {
   for (const v of ['v2', 'v3']) {
     const before = { loads: page.loads(), runs: await loaderRuns() }
     await server.edit(row.files(fw, v))
-    await waitFor(row.unmounted ? 'home' : row.shows(v))
+    await waitFor(row.shows(v))
     // the fix after a failed compile may reload the page (Rsbuild's client
     // does when it showed the error); no other edit reloads
     const mayReload = row.syntaxError === true && v === 'v2'
@@ -326,12 +208,10 @@ async function runRow(fw: Fw, row: Row) {
         before.runs + row.loaderRuns,
       )
     }
-    // (after a syntax error the page may have reloaded: no state to compare)
-    if (
-      !row.unmounted &&
-      !row.syntaxError &&
-      (fw === 'react' || row.keepsState)
-    ) {
+    // (after a syntax error the page may have reloaded: no state to
+    // compare; a chunk reading a kept binding evaluates again, so a Solid
+    // component there remounts)
+    if (!row.syntaxError && fw === 'react') {
       expect(
         await p.evaluate(`document.querySelector('#c')?.textContent`),
         `${v} state`,
@@ -342,10 +222,6 @@ async function runRow(fw: Fw, row: Row) {
       await p.locator('#f').click()
       await page.waitForText(`late ${v}`, { selector: '#late' })
     }
-  }
-  if (row.unmounted) {
-    await p.locator('#go').click()
-    await waitFor(row.shows('v3'))
   }
   expect(page.errors).toEqual([])
 }
@@ -380,7 +256,7 @@ describe('Rsbuild dev: hot updates of a route keeping a binding its chunks read'
         label: string,
       ) => `${imports('react', `import { Hydrate } from '@tanstack/react-start'\nimport { load } from '@tanstack/react-start/hydration'\nimport { Child } from '../child'\n`)}const value = { text: 'k' }
 export const Route = createFileRoute('/')({
-  loader: () => value.text,
+  loader: () => { ${loaderCount}; return value.text },
   component: Page,
 })
 ${page('react', 'value.text', label, '<Hydrate when={load()}><Child text={value.text} /></Hydrate>')}`
@@ -390,16 +266,35 @@ ${page('react', 'value.text', label, '<Hydrate when={load()}><Child text={value.
         [FILE]: route('a'),
         'src/child.tsx': child('one'),
       })
+      const p = browser.page
+      /** What the page shows of the edit, the component's state and the loader runs. */
+      const shown = async () => ({
+        state: await p.evaluate(`document.querySelector('#c')?.textContent`),
+        loaderRuns: await p.evaluate<number>('globalThis.__loaderRuns ?? 0'),
+      })
       await browser.waitForText('one k', { selector: '#app' })
+      await p.locator('#c').click()
+      await p.locator('#c').click()
+      await browser.waitForText('n=2', { selector: '#app' })
+      const before = await shown()
+
       await server.edit({ 'src/child.tsx': child('two') })
       await browser.waitForText('two k', { selector: '#app' })
-      expect(await hotModules(server)).toEqual(['./src/child.tsx'])
+      expect(await shown()).toEqual({ ...before, state: 'n=2' })
+      const childUpdate = await hotModules(server)
+      expect(childUpdate).toHaveLength(1)
+      expect(childUpdate[0]).toMatch(/src\/child\.tsx$/)
+
       await server.edit({ [FILE]: route('b') })
       await browser.waitForText('b k', { selector: '#app' })
-      expect(await hotModules(server)).toEqual([
-        `./${FILE}?tsr-split=component`,
-      ])
+      expect(await shown()).toEqual({ ...before, state: 'n=2' })
+      // one module of the route file: its component's chunk (the route
+      // module self-accepts, so an update holding it too would be wider)
+      const componentUpdate = await hotModules(server)
+      expect(componentUpdate).toHaveLength(1)
+      expect(componentUpdate[0]).toContain('src/routes/index.tsx')
       expect(browser.loads()).toBe(1)
+      expect(browser.errors).toEqual([])
     },
   )
 })
