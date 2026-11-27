@@ -198,7 +198,7 @@ interface FactsEntry {
   /**
    * The text of the entry's next build: a read in flight, or the text a
    * file event read (`readChange`). `get` and `marker` share it, and the
-   * answer built from it takes it.
+   * first of them to have it takes it (`takeText`).
    */
   reading: Promise<Text> | null
 }
@@ -515,8 +515,12 @@ export class RawFactsCache {
     const holder: { p: Promise<RawFacts> | null } = { p: null }
     holder.p = (async () => {
       const prior = entry.facts
-      const reading = this.textOf(entry, canonicalId, env)
-      const text = await this.readSaved(canonicalId, env, prior, reading)
+      const text = await this.readSaved(
+        canonicalId,
+        env,
+        prior,
+        this.takeText(entry, canonicalId, env),
+      )
       const built = this.build(canonicalId, text ?? null)
       // A file that stops parsing (saved mid-edit) keeps the last facts it
       // parsed to: its importers' decisions stand until it parses again (a
@@ -539,9 +543,6 @@ export class RawFactsCache {
         entry.facts = text === undefined ? null : facts
         entry.stale = false
         entry.pending = null
-        if (entry.reading === reading) {
-          entry.reading = null
-        }
         if (
           text === null &&
           !isVirtualId(canonicalId) &&
@@ -571,12 +572,25 @@ export class RawFactsCache {
   }
 
   /** The entry's next text: its read in flight or carried, else a new read. */
-  private textOf(
+  /**
+   * The entry's text, the one read path of its readers (`get`, `marker`):
+   * a read in flight, or a change event's text (`markStale`), is shared by
+   * the readers that ask meanwhile and taken once, here: the next ask reads
+   * the module again.
+   */
+  private async takeText(
     entry: FactsEntry,
     canonicalId: string,
     env: string,
   ): Promise<Text> {
-    return (entry.reading ??= this.read(canonicalId, env))
+    const reading = (entry.reading ??= this.read(canonicalId, env))
+    try {
+      return await reading
+    } finally {
+      if (entry.reading === reading) {
+        entry.reading = null
+      }
+    }
   }
 
   /**
@@ -612,8 +626,9 @@ export class RawFactsCache {
     if (!e) {
       this.setEntry(key, entry)
     }
-    const reading = this.textOf(entry, canonicalId, env)
-    const text = await reading
+    // (an event meanwhile supersedes what this read concludes)
+    const changes = this.changes
+    const text = await this.takeText(entry, canonicalId, env)
     // (an empty read of a file that held a module goes to `get`, which
     // reads it again for a moment: `readSaved`. A file event checks the
     // importers' markers at once, maybe while an in-place save has the
@@ -625,8 +640,7 @@ export class RawFactsCache {
     ) {
       return (await this.getTarget(canonicalId, env)).targetFacts.marker
     }
-    if (entry.reading === reading) {
-      entry.reading = null
+    if (this.changes === changes) {
       if (
         text !== undefined &&
         (text !== null || isVirtualId(canonicalId)) &&
