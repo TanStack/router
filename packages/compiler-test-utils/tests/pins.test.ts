@@ -79,6 +79,13 @@ test.fails('a cleanup throws', () => {
   })
 })
 test.fails('the test times out', () => new Promise(() => {}), 50)
+test.fails('the test times out while a polled assertion waits', async () => {
+  await expect.poll(() => 1, { timeout: 5000, interval: 10 }).toBe(2)
+}, 50)
+test.fails('an assertion fails, then a cleanup times out', () => {
+  onTestFinished(() => new Promise(() => {}), 50)
+  expect(1).toBe(2)
+})
 test.fails('nothing fails', () => {})
 `
 
@@ -93,6 +100,10 @@ test('a pin passes only when an assertion of it fails', async () => {
     'the harness throws': 'fail',
     'a cleanup throws': 'fail',
     'the test times out': 'fail',
+    // (Vitest's `TestTimeoutError`, not the poll's assertion)
+    'the test times out while a polled assertion waits': 'fail',
+    // (a `HookTimeoutError`)
+    'an assertion fails, then a cleanup times out': 'fail',
     'nothing fails': 'fail',
   })
 }, 60_000)
