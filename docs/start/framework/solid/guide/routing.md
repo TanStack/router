@@ -198,6 +198,9 @@ To create a route, create a new file that corresponds to the path of the route y
 | `/posts/:postId` | `posts/$postId.tsx` | Dynamic Route  |
 | `/rest/*`        | `rest/$.tsx`        | Wildcard Route |
 
+> [!NOTE]
+> When you create a layout route (like `posts.tsx`), the auto-generated component will not contain an `<Outlet />` by default. You must add an `<Outlet />` to the component to render its child routes (like `posts/$postId.tsx` and `posts/index.tsx`).
+
 ## Defining Routes
 
 To define a route, use the `createFileRoute` function to export the route as the `Route` variable.
