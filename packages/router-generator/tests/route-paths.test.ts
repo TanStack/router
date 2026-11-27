@@ -24,7 +24,7 @@ import {
   childlessLayouts,
   lazyOnlyAnchorLayoutInDirectory,
 } from './real-router-cases'
-import { matchesOf, routesOf, urlsOf } from './route-tree'
+import { matchesOf, routesOf, urlsOf, withRouteTree } from './route-tree'
 import type { Config } from '../src'
 
 /** An app with a root route and a route file for each of `files`. */
@@ -36,6 +36,22 @@ async function appWithRoutes(files: Array<string>) {
     routeFiles[`src/routes/${file}`] = fileRoute('/wrong')
   }
   return createApp(routeFiles)
+}
+
+/**
+ * The full path of each route of the router built from the route tree at
+ * `treeFile`, by the file whose `Route` it is (relative to the tree), read in
+ * one load of the tree.
+ */
+function pathByFile(treeFile: string) {
+  return withRouteTree(treeFile, ({ router, fileOf }) =>
+    Object.fromEntries(
+      Object.values(router.routesById).map((route) => [
+        fileOf(route.id),
+        route.fullPath,
+      ]),
+    ),
+  )
 }
 
 describe('underscores', () => {
@@ -91,13 +107,7 @@ describe('underscores', () => {
       ]),
     })
 
-    const urls = await urlsOf(generatedRouteTree)
-    const routes = await routesOf(generatedRouteTree)
-    expect(
-      Object.fromEntries(
-        Object.entries(routes).map(([id, file]) => [file, urls[id]]),
-      ),
-    ).toEqual({
+    expect(await pathByFile(generatedRouteTree)).toEqual({
       'routes/__root.tsx': '/',
       'routes/foo.tsx': '/_foo',
       'routes/phys/[_]hello.tsx': '/_foo/_p/_hello',
@@ -123,13 +133,7 @@ describe('underscores', () => {
       ]),
     })
 
-    const urls = await urlsOf(generatedRouteTree)
-    const routes = await routesOf(generatedRouteTree)
-    expect(
-      Object.fromEntries(
-        Object.entries(routes).map(([id, file]) => [file, urls[id]]),
-      ),
-    ).toEqual({
+    expect(await pathByFile(generatedRouteTree)).toEqual({
       'routes/__root.tsx': '/',
       'routes/foo.tsx': '/_foo',
       'routes/lay.tsx': '/_foo',
@@ -169,13 +173,7 @@ describe('underscores', () => {
     ])
     const { generatedRouteTree } = await generate(root)
 
-    const urls = await urlsOf(generatedRouteTree)
-    const routes = await routesOf(generatedRouteTree)
-    expect(
-      Object.fromEntries(
-        Object.entries(routes).map(([id, file]) => [file, urls[id]]),
-      ),
-    ).toEqual({
+    expect(await pathByFile(generatedRouteTree)).toEqual({
       'routes/__root.tsx': '/',
       'routes/_layout.tsx': '/',
       'routes/_layout/[_][_]foo.tsx': '/__foo',
@@ -221,13 +219,7 @@ describe('virtual route paths', () => {
       ]),
     })
 
-    const urls = await urlsOf(generatedRouteTree)
-    const routes = await routesOf(generatedRouteTree)
-    expect(
-      Object.fromEntries(
-        Object.entries(routes).map(([id, file]) => [file, urls[id]]),
-      ),
-    ).toEqual({
+    expect(await pathByFile(generatedRouteTree)).toEqual({
       'routes/__root.tsx': '/',
       'routes/a.tsx': '/files.json',
       'routes/b.tsx': '/pathless.layout',
@@ -583,13 +575,7 @@ describe('conflicting routes', () => {
         ]),
       })
 
-      const urls = await urlsOf(generatedRouteTree)
-      const routes = await routesOf(generatedRouteTree)
-      expect(
-        Object.fromEntries(
-          Object.entries(routes).map(([id, file]) => [file, urls[id]]),
-        ),
-      ).toEqual({
+      expect(await pathByFile(generatedRouteTree)).toEqual({
         'routes/__root.tsx': '/',
         'routes/about.tsx': '/about',
         'routes/features/index.tsx': '/',
@@ -640,15 +626,9 @@ describe('conflicting routes', () => {
         virtualRouteConfig: virtualRootRoute(rootFile, [mount]),
       })
 
-      const urls = await urlsOf(generatedRouteTree)
-      const routes = await routesOf(generatedRouteTree)
       const dir = path.posix.dirname(rootFile)
       const prefix = dir === '.' ? '' : `${dir}/`
-      expect(
-        Object.fromEntries(
-          Object.entries(routes).map(([id, file]) => [file, urls[id]]),
-        ),
-      ).toEqual({
+      expect(await pathByFile(generatedRouteTree)).toEqual({
         [`routes/${rootFile}`]: '/',
         [`routes/${prefix}index.tsx`]: '/',
         [`routes/${prefix}posts/route.tsx`]: '/posts',
