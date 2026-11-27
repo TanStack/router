@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/prefer-for-of */
 import * as fsp from 'node:fs/promises'
 import path from 'node:path'
-import * as prettier from 'prettier'
 import { rootPathId } from './filesystem/physical/rootPathId'
+import type * as prettier from 'prettier'
 import type { Config, TokenMatcher } from './config'
 import type {
   ImportDeclaration,
@@ -806,6 +806,7 @@ export async function format(
     semicolons: boolean
   },
 ): Promise<string> {
+  const prettier = await import('prettier')
   const prettierOptions: prettier.Config = {
     semi: config.semicolons,
     singleQuote: config.quoteStyle === 'single',
