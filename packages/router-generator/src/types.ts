@@ -27,6 +27,8 @@ export type RouteNode = {
   _virtualParentRoutePath?: string
   /** Internal routePath segment metadata for escaped or explicit literal syntax. */
   _routePathSegmentMetadata?: Array<RoutePathSegmentMetadata | undefined>
+  /** Internal: the variable name derived from the file path, before de-duplication. */
+  _baseVariableName?: string
 }
 
 export interface GetRouteNodesResult {
