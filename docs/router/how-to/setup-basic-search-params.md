@@ -427,7 +427,7 @@ After setting up basic search parameters, you might want to:
   - [Valibot Documentation](https://valibot.dev/) - Lightweight validation library
   - [Yup Documentation](https://github.com/jquense/yup) - Object schema validation
 - **TanStack Router:**
-  - [TanStack Zod Adapter](https://tanstack.com/router/latest/docs/framework/react/api/router/zodValidator) - Official Zod adapter
-  - [TanStack Valibot Adapter](https://tanstack.com/router/latest/docs/framework/react/api/router/valibotValidator) - Official Valibot adapter
+  - [TanStack Zod Adapter](https://github.com/TanStack/router/tree/main/packages/zod-adapter) - Official Zod adapter (the API doc page for `zodValidator` was retired; the GitHub repo is the canonical home)
+  - [TanStack Valibot Adapter](https://github.com/TanStack/router/tree/main/packages/valibot-adapter) - Official Valibot adapter (the API doc page for `valibotValidator` was retired; the GitHub repo is the canonical home)
   - [Search Parameters Guide](../guide/search-params.md) - Comprehensive search parameters documentation
   - [Type Safety Guide](../guide/type-safety.md) - Understanding TanStack Router's type safety
