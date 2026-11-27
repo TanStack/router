@@ -57,6 +57,15 @@ export type ScenarioStep =
       testId: string
       settleHops?: number
     }
+  | {
+      /**
+       * Runs app work that leaves the router location unchanged, such as
+       * mounting or unmounting a list of Links. `run` must resolve only after
+       * that work has rendered.
+       */
+      type: 'run'
+      run: () => void | Promise<void>
+    }
   | { type: 'navigate'; getOptions: () => object }
   | { type: 'preload'; getOptions: () => object; settleHops?: number }
   | { type: 'invalidate'; settleHops?: number }
@@ -295,6 +304,11 @@ export interface ScenarioSetupOptions {
    * browser history traversal. All other scenarios use fresh memory history.
    */
   historyMode?: 'memory' | 'browser'
+  /**
+   * Test id that must render before the warm-up lap. Needed by scenarios
+   * whose steps click no links, so nothing else waits for the first render.
+   */
+  readyTestId?: string
 }
 
 function warnAboutDevMode(frameworkLabel: string) {
@@ -394,6 +408,10 @@ export function createScenarioSetup(options: ScenarioSetupOptions) {
           await settle(step.settleHops ?? 4)
           return
         }
+        case 'run': {
+          await step.run()
+          return
+        }
         case 'navigate': {
           const renderedPromise = rendered()
           router.navigate(step.getOptions())
@@ -434,6 +452,9 @@ export function createScenarioSetup(options: ScenarioSetupOptions) {
     await router.load()
 
     const linkTestIds = new Set<string>()
+    if (options.readyTestId) {
+      linkTestIds.add(options.readyTestId)
+    }
     for (const step of options.steps) {
       if (typeof step === 'string') {
         linkTestIds.add(step)

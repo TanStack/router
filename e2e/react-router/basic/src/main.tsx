@@ -22,7 +22,10 @@ import type { ErrorComponentProps } from '@tanstack/react-router'
 
 const rootRoute = createRootRoute({
   validateSearch: z.object({
-    devtools: z.enum(['panel', 'shadow']).optional().catch(undefined),
+    devtools: z
+      .enum(['panel', 'shadow', 'shadow-auto'])
+      .optional()
+      .catch(undefined),
   }),
   component: RootComponent,
   notFoundComponent: () => {
@@ -99,28 +102,30 @@ function RootComponent() {
         </div>
         <div className="ml-auto flex gap-2 text-sm items-center">
           Devtools:
-          {(['floating', 'panel', 'shadow'] as const).map((mode) => (
-            <Link
-              key={mode}
-              to="."
-              search={(prev) => ({
-                ...prev,
-                devtools: mode === 'floating' ? undefined : mode,
-              })}
-              className={
-                (devtools ?? 'floating') === mode ? 'font-bold' : undefined
-              }
-            >
-              {mode}
-            </Link>
-          ))}
+          {(['floating', 'panel', 'shadow', 'shadow-auto'] as const).map(
+            (mode) => (
+              <Link
+                key={mode}
+                to="."
+                search={(prev) => ({
+                  ...prev,
+                  devtools: mode === 'floating' ? undefined : mode,
+                })}
+                className={
+                  (devtools ?? 'floating') === mode ? 'font-bold' : undefined
+                }
+              >
+                {mode}
+              </Link>
+            ),
+          )}
         </div>
       </div>
       <Outlet />
       {devtools === 'panel' ? (
         <TanStackRouterDevtoolsPanel />
-      ) : devtools === 'shadow' ? (
-        <ShadowDevtoolsPanel />
+      ) : devtools === 'shadow' || devtools === 'shadow-auto' ? (
+        <ShadowDevtoolsPanel passShadowDOMTarget={devtools === 'shadow'} />
       ) : (
         <TanStackRouterDevtools position="bottom-right" />
       )}
@@ -128,7 +133,11 @@ function RootComponent() {
   )
 }
 
-function ShadowDevtoolsPanel() {
+function ShadowDevtoolsPanel({
+  passShadowDOMTarget,
+}: {
+  passShadowDOMTarget: boolean
+}) {
   const [shadowRoot, setShadowRoot] = useState<ShadowRoot>()
 
   return (
@@ -141,7 +150,9 @@ function ShadowDevtoolsPanel() {
     >
       {shadowRoot
         ? createPortal(
-            <TanStackRouterDevtoolsPanel shadowDOMTarget={shadowRoot} />,
+            <TanStackRouterDevtoolsPanel
+              shadowDOMTarget={passShadowDOMTarget ? shadowRoot : undefined}
+            />,
             shadowRoot,
           )
         : null}
