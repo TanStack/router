@@ -18,6 +18,7 @@ import { onFileFinished } from '@tanstack/compiler-test-utils/test-scope'
 import { build, rootRoute } from './build-harness'
 import type {
   BuildResult,
+  Chunk,
   Placement,
 } from '@tanstack/compiler-test-utils/build-harness'
 
@@ -43,6 +44,15 @@ export interface CaseApp {
   where: (marker: string | RegExp) => Placement
   /** The whole build. */
   build: BuildResult
+  /**
+   * The chunks the case's entry loads, with it or on demand (its entry
+   * chunk first): the case's whole output, whatever other cases emitted.
+   */
+  chunks: Array<Chunk>
+  /** The case's route file, relative to the app root (`routes/c<i>.tsx`). */
+  file: string
+  /** The route file's text as the build read it (its path and imports rewritten). */
+  route: string
 }
 
 type BuildOptions = Omit<Parameters<typeof build>[0], 'files'> & {
@@ -156,8 +166,12 @@ export function batchBuild(
       }
     }
     own.forEach((chunk) => reach(chunk.fileName))
+    const file = `routes/c${i}.tsx`
     return {
       build: app,
+      chunks: [...reachable].map((fileName) => byName.get(fileName)!),
+      file,
+      route: caseFiles(c, i)[file]!,
       run: (script = '') =>
         app.run(
           `const caseEntry = await entry.c${i}()\nreturn await (async (entry) => { ${script} })(caseEntry)`,
@@ -185,5 +199,24 @@ export function batchBuild(
         return lazy ? 'lazy' : 'nowhere'
       },
     }
+  }
+}
+
+/**
+ * A group of cases registered while the test file is collected: `add(c)`
+ * at describe level returns the row's `CaseApp` getter; the group's build
+ * (`batchBuild` of every case added) starts at the first row's call.
+ */
+export function batchCases(
+  options: BuildOptions,
+): (c: BatchCase) => () => Promise<CaseApp> {
+  const cases: Array<BatchCase> = []
+  let caseApp: ((c: BatchCase) => Promise<CaseApp>) | undefined
+  return (c) => {
+    if (caseApp) {
+      throw new Error(`batch case "${c.name}" added after its group built`)
+    }
+    cases.push(c)
+    return () => (caseApp ??= batchBuild(options, cases))(c)
   }
 }

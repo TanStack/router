@@ -18,6 +18,7 @@
  * and strings of the runtime, which minifiers keep).
  */
 import { expect } from 'vitest'
+import { batchCases } from './batch-build'
 import {
   build,
   buildWithRsbuild,
@@ -29,6 +30,7 @@ import type {
   BuildResult,
   Bundler,
 } from '@tanstack/compiler-test-utils/build-harness'
+import type { CaseApp } from './batch-build'
 import type { Framework } from './build-harness'
 
 export const timeout = 120_000
@@ -157,9 +159,62 @@ export async function expectProductionClientBundle(
   }
   expect(output(app)).toEqual(output(control))
   for (const [file, code] of Object.entries(output(app))) {
-    expect(code, file).not.toMatch(
-      /__tsrHot|__tsrRouteHmr|__TSR_ROUTERS__|vite:afterUpdate|MissingFactoryError|addStatusHandler/,
-    )
+    expect(code, file).not.toMatch(devOnly)
+  }
+}
+
+/** Code the production bundle must not hold: route HMR and the dev runtimes' hooks. */
+const devOnly =
+  /__tsrHot|__tsrRouteHmr|__TSR_ROUTERS__|vite:afterUpdate|MissingFactoryError|addStatusHandler/
+
+/**
+ * `expectProductionClientBundle(bundler, 'react', true, routeFile)` of
+ * several route files (no root route) in one app build and one control
+ * build (`batchCases`): `add(name, routeFile?)` at describe level gives the
+ * row. Each row runs its own case and compares the chunks its case's entry
+ * loads with the control's.
+ */
+export function productionClientBundles(bundler: 'vite' | 'rspack') {
+  const options = (control: boolean) =>
+    ({
+      bundler,
+      framework: 'react',
+      env: 'client',
+      nodeEnv: control ? 'production' : null,
+      pluginOptions: {
+        autoCodeSplitting: true,
+        codeSplittingOptions: { addHmr: control ? false : undefined },
+      },
+    }) as const
+  const apps = batchCases(options(false))
+  const controls = batchCases(options(true))
+  return (name: string, routeFile?: string) => {
+    const c = {
+      name,
+      route: routeFile ?? route('react'),
+      entry: clientMountEntry,
+    }
+    const appOf = apps(c)
+    const controlOf = controls(c)
+    return async () => {
+      const app = await appOf()
+      const control = await controlOf()
+      const run = await app.run(
+        'const { component } = entry.Route.options\nif (component) await entry.mount(component)',
+      )
+      if (routeFile === undefined) {
+        expect(run.html).toContain('MARK_PAGE')
+        expect(app.where('MARK_PAGE')).toBe('lazy')
+      }
+      const own = (built: CaseApp) =>
+        Object.fromEntries(
+          built.chunks.map((chunk) => [chunk.fileName, chunk.code]),
+        )
+      expect(own(app)).toEqual(own(control))
+      for (const chunk of app.chunks) {
+        expect(chunk.code, chunk.fileName).not.toMatch(devOnly)
+      }
+    }
   }
 }
 

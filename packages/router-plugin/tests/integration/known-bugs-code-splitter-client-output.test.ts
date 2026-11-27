@@ -11,6 +11,7 @@ import {
   findDiagnostics,
   mentionsFile,
 } from '@tanstack/compiler-test-utils/diagnostics'
+import { batchCases } from '../batch-build'
 import { build, clientMountEntry, head, routeApp } from '../build-harness'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
 
@@ -24,35 +25,35 @@ describe('server-only route options on the client', () => {
   /** Start's client configuration of the code splitter. */
   const deleteNodes = ['ssr', 'server', 'headers']
 
+  /** One client build (Vite) with Start's `deleteNodes` of every route below (`batchCases`). */
+  const secrets = batchCases({
+    bundler: 'vite',
+    env: 'client',
+    pluginOptions: { codeSplittingOptions: { deleteNodes } },
+  })
+
   /**
-   * A client build with Start's `deleteNodes` of a route whose `option`
-   * reads a server secret (its options object followed by `cast`, e.g.
-   * `as any`).
+   * A route of `secrets` whose `option` reads a server secret (its options
+   * object followed by `cast`, e.g. `as any`): where the secret ships.
    */
-  async function secretPlacement(bundler: Bundler, option: string, cast = '') {
-    const app = await build({
-      bundler,
-      env: 'client',
-      pluginOptions: { codeSplittingOptions: { deleteNodes } },
-      files: routeApp(
-        `${head}import { readSecret } from '../db.server'
+  function secretPlacement(name: string, option: string, cast = '') {
+    const app = secrets({
+      name,
+      route: `${head}import { readSecret } from '../db.server'
 export const Route = createFileRoute('/')({
   ${option},
   component: () => <p>page</p>,
 }${cast})
 `,
-        {
-          env: 'client',
-          files: {
-            'db.server.ts': `export function readSecret() {
+      entry: clientMountEntry,
+      files: {
+        'db.server.ts': `export function readSecret() {
   return (globalThis as any).MARK_SERVER_SECRET
 }
 `,
-          },
-        },
-      ),
+      },
     })
-    return app.where('MARK_SERVER_SECRET')
+    return async () => (await app()).where('MARK_SERVER_SECRET')
   }
 
   // Whether a server-only option reaches the client bundle is the router
@@ -61,19 +62,23 @@ export const Route = createFileRoute('/')({
   // cells of the two tests below were decided by the same transform as
   // their Vite cells).
 
+  const ssrProperty = secretPlacement(
+    'an `ssr` property',
+    'ssr: () => !!readSecret()',
+  )
   test('a client build has no server code of an `ssr` property (vite)', async () => {
-    expect(await secretPlacement('vite', 'ssr: () => !!readSecret()')).toBe(
-      'nowhere',
-    )
+    expect(await ssrProperty()).toBe('nowhere')
   }, 60_000)
 
   // Bug: build-level canary of the method pin in
   // pages/known-bugs-code-splitter.test.ts (same root cause).
   // Impact: the server code of an `ssr()` method reaches the client bundle.
+  const ssrMethod = secretPlacement(
+    'an `ssr()` method',
+    'ssr() { return !!readSecret() }',
+  )
   test('a client build has no server code of an `ssr()` method (vite)', async () => {
-    expect(
-      await secretPlacement('vite', 'ssr() { return !!readSecret() }'),
-    ).toBe('nowhere')
+    expect(await ssrMethod()).toBe('nowhere')
   }, 60_000)
 
   // Bug: build-level canary of the typed-wrapper pin in
@@ -81,16 +86,19 @@ export const Route = createFileRoute('/')({
   // a cast or `satisfies` are not read; one bundler, as above).
   // Impact: the server handler and its server-only import reach the client
   // bundle.
-  test.each(['as never', 'as any', 'satisfies object'])(
-    'a client build has no server code of options wrapped in `%s` (vite)',
-    async (cast) => {
-      expect(
-        await secretPlacement(
-          'vite',
-          'server: { handlers: { GET: () => readSecret() } }',
-          ` ${cast}`,
-        ),
-      ).toBe('nowhere')
+  test.each(
+    ['as never', 'as any', 'satisfies object'].map((cast) => ({
+      cast,
+      placement: secretPlacement(
+        `options wrapped in \`${cast}\``,
+        'server: { handlers: { GET: () => readSecret() } }',
+        ` ${cast}`,
+      ),
+    })),
+  )(
+    'a client build has no server code of options wrapped in `$cast` (vite)',
+    async ({ placement }) => {
+      expect(await placement()).toBe('nowhere')
     },
     60_000,
   )

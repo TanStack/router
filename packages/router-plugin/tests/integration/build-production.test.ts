@@ -9,15 +9,22 @@ import { describe, test } from 'vitest'
 import { frameworks } from '../build-harness'
 import {
   expectProductionClientBundle,
+  productionClientBundles,
   routeShapes,
   timeout,
 } from '../production-bundle'
 
 describe.each(['vite', 'rspack'] as const)('%s', (bundler) => {
+  // (React's plain route and the route shapes below that are no root route:
+  // one app build and one control build)
+  const batched = productionClientBundles(bundler)
+  const plainReact = batched('the plain route')
   test.each(frameworks)(
     'a production %s client bundle has no dev-only code',
     async (framework) => {
-      await expectProductionClientBundle(bundler, framework, true)
+      await (framework === 'react'
+        ? plainReact()
+        : expectProductionClientBundle(bundler, framework, true))
     },
     timeout,
   )
@@ -47,18 +54,28 @@ describe.each(['vite', 'rspack'] as const)('%s', (bundler) => {
   // Routes whose route HMR compile differs from the plain route's (SPEC
   // J3.7, G7)
   test.each(
-    routeShapes.filter(({ name }) =>
-      [
-        'a route with lowercase components',
-        'a root route',
-        'a root route with context',
-        'an explicitly undefined component',
-      ].includes(name),
-    ),
+    routeShapes
+      .filter(({ name }) =>
+        [
+          'a route with lowercase components',
+          'a root route',
+          'a root route with context',
+          'an explicitly undefined component',
+        ].includes(name),
+      )
+      .map((shape) => ({
+        ...shape,
+        // (a root route is the app's root: a build of its own)
+        batched: /\bcreateRootRoute/.test(shape.route)
+          ? undefined
+          : batched(shape.name, shape.route),
+      })),
   )(
     'a production client bundle of $name has no dev-only code',
-    async ({ route }) => {
-      await expectProductionClientBundle(bundler, 'react', true, route)
+    async ({ route, batched: row }) => {
+      await (row
+        ? row()
+        : expectProductionClientBundle(bundler, 'react', true, route))
     },
     timeout,
   )
