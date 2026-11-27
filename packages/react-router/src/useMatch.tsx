@@ -119,7 +119,7 @@ export type UseMatchResult<
   ? TStrict extends true
     ? MakeRouteMatch<TRouter['routeTree'], TFrom, TStrict>
     : MakeRouteMatchUnion<TRouter>
-  : TSelected
+  : NoInfer<TSelected>
 
 /**
  * Read and select the nearest or targeted route match.

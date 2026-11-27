@@ -10,4 +10,6 @@ export type UseLoaderDepsResult<
   TRouter extends AnyRouter,
   TFrom,
   TSelected,
-> = unknown extends TSelected ? ResolveUseLoaderDeps<TRouter, TFrom> : TSelected
+> = unknown extends TSelected
+  ? ResolveUseLoaderDeps<TRouter, TFrom>
+  : NoInfer<TSelected>

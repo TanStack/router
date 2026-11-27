@@ -29,7 +29,7 @@ export type UseLocationResult<
   TSelected,
 > = unknown extends TSelected
   ? RouterState<TRouter['routeTree']>['location']
-  : TSelected
+  : NoInfer<TSelected>
 
 /**
  * Read the current location from the router state with optional selection.
