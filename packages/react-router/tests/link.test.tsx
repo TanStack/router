@@ -5321,6 +5321,39 @@ describe('Link', () => {
     expect(preloadRouteSpy).toHaveBeenCalledTimes(2)
   })
 
+  test('Link does not clear a preload timer it never started', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <Link to="/about" preload="intent" preloadDelay={50}>
+          About
+        </Link>
+      ),
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
+      history,
+    })
+
+    const { unmount } = render(<RouterProvider router={router} />)
+    const link = await screen.findByRole('link', { name: 'About' })
+    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout')
+
+    fireEvent.mouseLeave(link)
+    fireEvent.blur(link)
+    unmount()
+
+    const calls = clearTimeoutSpy.mock.calls.length
+    clearTimeoutSpy.mockRestore()
+    expect(calls).toBe(0)
+  })
+
   test('Link.preload="viewport" should cancel and use new link options after they change', async () => {
     const rootRoute = createRootRoute()
     const RouteComponent = () => {
