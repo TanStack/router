@@ -30,6 +30,12 @@ export const Route = createRootRoute({
       { children: '.inline-styled { color: green; font-weight: bold; }' },
     ],
   }),
+  scripts: () => [
+    {
+      children:
+        'window.__INLINE_SCRIPT_RUNS__ = (window.__INLINE_SCRIPT_RUNS__ || 0) + 1',
+    },
+  ],
   component: RootComponent,
 })
 
