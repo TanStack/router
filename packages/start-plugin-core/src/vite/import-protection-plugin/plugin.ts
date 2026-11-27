@@ -1644,6 +1644,7 @@ export function importProtectionPlugin(
           type PluginResolveResult = NonNullable<
             Awaited<ReturnType<typeof this.resolve>>
           >
+          type ResolveImportAttributes = { attributes?: Record<string, string> }
 
           const resolveAgainstImporter = async (): Promise<{
             id: string
@@ -1653,17 +1654,19 @@ export function importProtectionPlugin(
             perf?.count('thisResolve.calls')
             let primary: PluginResolveResult | null = null
             try {
-              const resolveOptions: Parameters<typeof this.resolve>[2] = {
+              const resolveOptions: NonNullable<
+                Parameters<typeof this.resolve>[2]
+              > &
+                ResolveImportAttributes = {
                 custom: _options.custom,
                 isEntry: _options.isEntry,
                 skipSelf: true,
               }
               if ('attributes' in _options) {
-                const resolveOptionsWithAttributes =
-                  resolveOptions as typeof resolveOptions & {
-                    attributes?: unknown
-                  }
-                resolveOptionsWithAttributes.attributes = _options.attributes
+                // Vite passes attributes here but omits them from the hook type.
+                resolveOptions.attributes = (
+                  _options as ResolveImportAttributes
+                ).attributes
               }
               primary = await this.resolve(source, importer, resolveOptions)
             } finally {
