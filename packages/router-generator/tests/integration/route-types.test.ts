@@ -8,6 +8,7 @@
  */
 import { describe, expect, test } from 'vitest'
 import {
+  appWithRoutes,
   createApp,
   fileRoute,
   generate,
@@ -25,17 +26,6 @@ import {
   shapeCases,
 } from '../real-router-cases'
 import { typeAssertions, typeErrorsOf } from '../type-check'
-
-/** An app with a root route and a route file for each of `files`. */
-async function appWithRoutes(files: Array<string>) {
-  const routeFiles: Record<string, string> = {
-    'src/routes/__root.tsx': rootRoute(),
-  }
-  for (const file of files) {
-    routeFiles[`src/routes/${file}`] = fileRoute('/wrong')
-  }
-  return createApp(routeFiles)
-}
 
 describe('route tree types agree with the router', () => {
   test.each(

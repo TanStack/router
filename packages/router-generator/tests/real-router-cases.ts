@@ -15,6 +15,10 @@ import { rootRoute } from './app'
 import { page, pagesApp, routes, sfc } from './real-router'
 import type { Case } from './real-router'
 
+/** A React route file rendering `text` (`page` for React). */
+const reactPage = (constructor: string, text: string, outlet = false) =>
+  page('react', constructor, text, outlet)
+
 /** Route shapes of file names and of a virtual route config (React). */
 export const shapeCases: Array<Case> = [
   {
@@ -151,15 +155,13 @@ export const shapeCases: Array<Case> = [
 export const groupLayout: Case = {
   name: 'a route group layout',
   files: {
-    'src/routes/__root.tsx': page('react', 'createRootRoute', 'root', true),
-    'src/routes/(marketing)/route.tsx': page(
-      'react',
+    'src/routes/__root.tsx': reactPage('createRootRoute', 'root', true),
+    'src/routes/(marketing)/route.tsx': reactPage(
       'createFileRoute',
       'marketing',
       true,
     ),
-    'src/routes/(marketing)/pricing.tsx': page(
-      'react',
+    'src/routes/(marketing)/pricing.tsx': reactPage(
       'createFileRoute',
       'pricing',
     ),
@@ -264,9 +266,9 @@ export const childlessLayoutCase = ({
 }: (typeof childlessLayouts)[number]): Case => ({
   name: `a childless ${file} next to the index route`,
   files: {
-    'src/routes/__root.tsx': page('react', 'createRootRoute', 'root', true),
-    'src/routes/index.tsx': page('react', 'createFileRoute', 'home'),
-    [`src/routes/${file}`]: page('react', constructor, 'auth', true),
+    'src/routes/__root.tsx': reactPage('createRootRoute', 'root', true),
+    'src/routes/index.tsx': reactPage('createFileRoute', 'home'),
+    [`src/routes/${file}`]: reactPage(constructor, 'auth', true),
   },
   expected: {
     __root__: ['/', null],
@@ -285,22 +287,19 @@ export const childlessLayoutCase = ({
 export const lazyOnlyAnchorLayoutInDirectory: Case = {
   name: 'a pathless layout in a directory under a lazy-only route',
   files: {
-    'src/routes/__root.tsx': page('react', 'createRootRoute', 'root', true),
-    'src/routes/app.tsx': page('react', 'createFileRoute', 'app', true),
-    'src/routes/app/posts.lazy.tsx': page(
-      'react',
+    'src/routes/__root.tsx': reactPage('createRootRoute', 'root', true),
+    'src/routes/app.tsx': reactPage('createFileRoute', 'app', true),
+    'src/routes/app/posts.lazy.tsx': reactPage(
       'createLazyFileRoute',
       'posts',
       true,
     ),
-    'src/routes/app/posts/drafts/_layout.tsx': page(
-      'react',
+    'src/routes/app/posts/drafts/_layout.tsx': reactPage(
       'createFileRoute',
       'layout',
       true,
     ),
-    'src/routes/app/posts/drafts/_layout/child.tsx': page(
-      'react',
+    'src/routes/app/posts/drafts/_layout/child.tsx': reactPage(
       'createFileRoute',
       'child',
     ),
@@ -330,15 +329,13 @@ export const lazyOnlyAnchorLayoutInDirectory: Case = {
 export const lazyOnlyPathlessLayout: Case = {
   name: 'a lazy-only pathless layout',
   files: {
-    'src/routes/__root.tsx': page('react', 'createRootRoute', 'root', true),
-    'src/routes/settings/_layout.lazy.tsx': page(
-      'react',
+    'src/routes/__root.tsx': reactPage('createRootRoute', 'root', true),
+    'src/routes/settings/_layout.lazy.tsx': reactPage(
       'createLazyFileRoute',
       'settings',
       true,
     ),
-    'src/routes/settings/_layout/profile.tsx': page(
-      'react',
+    'src/routes/settings/_layout/profile.tsx': reactPage(
       'createFileRoute',
       'profile',
     ),

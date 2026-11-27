@@ -7,6 +7,7 @@ import {
   mkdtemp,
   readFile,
   rm,
+  symlink,
   utimes,
   writeFile,
 } from 'node:fs/promises'
@@ -82,6 +83,33 @@ export async function save(root: string, file: string, content: string) {
   await utimes(filePath, savedAt, savedAt)
   recordInputs(root, { [file]: content })
   return filePath
+}
+
+/** An app with a root route and a route file (id `/wrong`) for each of `files`. */
+export function appWithRoutes(files: Array<string>) {
+  return createApp({
+    'src/routes/__root.tsx': rootRoute(),
+    ...Object.fromEntries(
+      files.map((file) => [`src/routes/${file}`, fileRoute('/wrong')]),
+    ),
+  })
+}
+
+/**
+ * Writes `text` to `target` (relative to `root`) and links `link` to it,
+ * with `linkText` as the link's text.
+ */
+export async function linked(
+  root: string,
+  link: string,
+  target: string,
+  text: string,
+  linkText = path.join(root, target),
+) {
+  await mkdir(path.dirname(path.join(root, target)), { recursive: true })
+  await writeFile(path.join(root, target), text)
+  await mkdir(path.dirname(path.join(root, link)), { recursive: true })
+  await symlink(linkText, path.join(root, link))
 }
 
 /** A root route file for `target`. */

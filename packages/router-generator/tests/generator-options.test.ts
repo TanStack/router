@@ -22,77 +22,18 @@ import {
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { captureDiagnostics } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
-import { Generator, getConfig } from '../src'
+import { Generator } from '../src'
+import { configOf, createApp, generate, read, rootRoute } from './app'
 import { recordInputs } from './consumer-inputs'
 import { expectOnlyOwnedEdits } from './owned-edits'
 import { routeCallOf, routeIdOf } from './route-id'
 import { routesOf, urlsOf, withRouteTree } from './route-tree'
 import type { Config } from '../src'
 
-let roots: Array<string> = []
-
-afterEach(async () => {
+afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllEnvs()
-  await Promise.all(
-    roots.map((root) => rm(root, { recursive: true, force: true })),
-  )
-  roots = []
 })
-
-/**
- * Creates an app in a temporary directory with the given files (paths
- * relative to the app root) and returns its root.
- */
-async function createApp(files: Record<string, string>) {
-  const root = await mkdtemp(
-    path.join(runDirectory(), 'tsr-generator-options-'),
-  )
-  roots.push(root)
-  for (const [file, content] of Object.entries(files)) {
-    await mkdir(path.dirname(path.join(root, file)), { recursive: true })
-    await writeFile(path.join(root, file), content)
-  }
-  recordInputs(root, files)
-  return root
-}
-
-/**
- * The configuration of the app at `root`, read like the bundler plugins do
- * (its `tsr.config.json`, then `inlineConfig`), with the default `src/routes`
- * directory and `src/routeTree.gen.ts` route tree. Temporary files go to the
- * app, on the same filesystem.
- */
-function configOf(root: string, inlineConfig: Partial<Config> = {}) {
-  const config = getConfig(
-    {
-      disableLogging: true,
-      tmpDir: path.join(root, '.tanstack/tmp'),
-      ...inlineConfig,
-    },
-    root,
-  )
-  recordInputs(root, {}, config.target)
-  return config
-}
-
-/** Runs the generator once on the app at `root`. */
-async function generate(root: string, inlineConfig: Partial<Config> = {}) {
-  const config = configOf(root, inlineConfig)
-  await new Generator({ config, root }).run()
-  return config
-}
-
-function read(root: string, file: string) {
-  return readFile(path.join(root, file), 'utf8')
-}
-
-function rootRoute(target: Config['target'] = 'react') {
-  return `import { createRootRoute } from '@tanstack/${target}-router'
-
-export const Route = createRootRoute()
-`
-}
 
 describe('route files whose id the generator fixes', () => {
   const postsRoute = (

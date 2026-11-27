@@ -15,8 +15,8 @@
  */
 import { describe, test } from 'vitest'
 import { expectDeterministic } from '@tanstack/compiler-test-utils/determinism'
+import { createApp } from './app'
 import {
-  appRoot,
   generateFresh,
   inDirectory,
   listingOrders,
@@ -27,7 +27,7 @@ import {
 
 describe('route tree determinism', () => {
   test('the order the filesystem lists the route files in does not change the routes', async () => {
-    const root = await appRoot()
+    const root = await createApp({})
     await expectDeterministic(
       listingOrders,
       (order) => withListingOrder(order, () => generateFresh(root)),
@@ -36,7 +36,7 @@ describe('route tree determinism', () => {
   })
 
   test('the working directory does not change the routes', async () => {
-    const root = await appRoot()
+    const root = await createApp({})
     await expectDeterministic(
       workingDirectories(root),
       (directory) => inDirectory(directory, () => generateFresh(root)),

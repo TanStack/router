@@ -8,7 +8,7 @@
  * rescan, an edit, a failed batch).
  */
 import { readFileSync } from 'node:fs'
-import { mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import {
@@ -16,19 +16,12 @@ import {
   expectDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { Generator, contentDigest, replaceBackslash } from '../src'
-import { configOf, createApp, fileRoute, rootRoute, save } from './app'
+import { configOf, createApp, fileRoute, linked, rootRoute, save } from './app'
 import type { GeneratorPlugin, GetRoutesByFileMapResult } from '../src'
 
 /** A registry as plain data, for comparison. */
 function entriesOf(routes: GetRoutesByFileMapResult) {
   return Object.fromEntries(routes)
-}
-
-/** Writes `text` to `file` (relative to `root`) and links `link` to it. */
-async function linked(root: string, link: string, file: string, text: string) {
-  await mkdir(path.dirname(path.join(root, file)), { recursive: true })
-  await writeFile(path.join(root, file), text)
-  await symlink(path.join(root, file), path.join(root, link))
 }
 
 describe('the registry', () => {

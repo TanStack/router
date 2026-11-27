@@ -28,11 +28,11 @@ import {
   prepareFixture,
   unformattedFooter,
 } from './generator-fixture'
-import { crlfRoutes, generateCrlf } from './crlf-app'
+import { createApp, generate, read } from './app'
 import { fixtureRoutes } from './generator-fixtures'
 import { expectOnlyOwnedEdits } from './owned-edits'
 import { routeCallOf } from './route-id'
-import { withRouteTree } from './route-tree'
+import { observeRouteTree, withRouteTree } from './route-tree'
 import type { FixtureRoute } from './generator-fixtures'
 import type { Config } from '../src'
 
@@ -267,15 +267,51 @@ describe('generator fixtures', async () => {
 // routes are the same as with LF sources, and a second run changes nothing.
 // Source: review of #8504.
 describe('route files with CRLF line endings', () => {
-  it('gives the routes of LF sources, and a second run changes nothing', async () => {
-    const lf = await generateCrlf('\n')
-    const crlf = await generateCrlf('\r\n')
-    expect(crlf.observed).toEqual(lf.observed)
-    expect(crlf.second.observed).toEqual(crlf.first.observed)
-    expect(crlf.second.routes).toEqual(crlf.first.routes)
-    // The route files are left as written.
-    expect(crlf.first.routes).toEqual(
-      Object.values(crlfRoutes).map((code) => code.replaceAll('\n', '\r\n')),
+  const routeFiles = {
+    'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute()
+`,
+    'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/')({
+  component: () => null,
+})
+`,
+    'src/routes/posts.$postId.tsx': `import { createFileRoute } from '@tanstack/react-router'
+export const Route = createFileRoute('/posts/$postId')({
+  loader: () => 'post',
+})
+`,
+  }
+
+  /** The routes and the route files after each of two runs, with `newline` line endings. */
+  async function generateTwice(newline: string) {
+    const files = Object.fromEntries(
+      Object.entries(routeFiles).map(([file, code]) => [
+        file,
+        code.replaceAll('\n', newline),
+      ]),
     )
+    const root = await createApp(files)
+    const runs = []
+    for (const _run of [1, 2]) {
+      const { generatedRouteTree } = await generate(root)
+      runs.push({
+        observed: await observeRouteTree(generatedRouteTree),
+        routes: await Promise.all(
+          Object.keys(files).map((file) => read(root, file)),
+        ),
+      })
+    }
+    return { files, runs }
+  }
+
+  it('gives the routes of LF sources, and a second run changes nothing', async () => {
+    const lf = await generateTwice('\n')
+    const crlf = await generateTwice('\r\n')
+    const [first, second] = crlf.runs
+    expect(first!.observed).toEqual(lf.runs[0]!.observed)
+    expect(second).toEqual(first)
+    // The route files are left as written.
+    expect(first!.routes).toEqual(Object.values(crlf.files))
   })
 })

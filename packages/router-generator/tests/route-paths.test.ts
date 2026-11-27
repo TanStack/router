@@ -17,7 +17,14 @@ import {
   rootRoute as virtualRootRoute,
   route as virtualRoute,
 } from '@tanstack/virtual-file-routes'
-import { createApp, fileRoute, generate, read, rootRoute } from './app'
+import {
+  appWithRoutes,
+  createApp,
+  fileRoute,
+  generate,
+  read,
+  rootRoute,
+} from './app'
 import { checkApp, page } from './real-router'
 import {
   childlessLayoutCase,
@@ -26,17 +33,6 @@ import {
 } from './real-router-cases'
 import { matchesOf, routesOf, urlsOf, withRouteTree } from './route-tree'
 import type { Config } from '../src'
-
-/** An app with a root route and a route file for each of `files`. */
-async function appWithRoutes(files: Array<string>) {
-  const routeFiles: Record<string, string> = {
-    'src/routes/__root.tsx': rootRoute(),
-  }
-  for (const file of files) {
-    routeFiles[`src/routes/${file}`] = fileRoute('/wrong')
-  }
-  return createApp(routeFiles)
-}
 
 /**
  * The full path of each route of the router built from the route tree at

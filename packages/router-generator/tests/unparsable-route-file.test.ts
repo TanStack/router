@@ -7,7 +7,6 @@
 import { writeFileSync } from 'node:fs'
 import {
   mkdir,
-  mkdtemp,
   readFile,
   rm,
   stat,
@@ -16,53 +15,16 @@ import {
   writeFile,
 } from 'node:fs/promises'
 import path from 'node:path'
-import { afterAll, expect, test } from 'vitest'
-import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
+import { expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { captureDiagnostics } from '@tanstack/compiler-test-utils/diagnostic-channel'
-import {
-  Generator,
-  createGeneratorSession,
-  getConfig,
-  replaceBackslash,
-} from '../src'
-import { recordInputs } from './consumer-inputs'
+import { Generator, createGeneratorSession, replaceBackslash } from '../src'
+import { configOf, createApp } from './app'
 import type { Logger } from '../src'
 
 /** The route files the generator knows: `/`-separated on every platform. */
 function routeFiles(generator: Generator) {
   return [...generator.getRoutesByFileMap().keys()]
-}
-
-const roots: Array<string> = []
-afterAll(async () => {
-  await Promise.all(
-    roots.map((root) => rm(root, { recursive: true, force: true })),
-  )
-})
-
-async function createApp(files: Record<string, string>) {
-  const root = await mkdtemp(path.join(runDirectory(), 'tsr-unparsable-'))
-  roots.push(root)
-  for (const [file, content] of Object.entries(files)) {
-    await mkdir(path.dirname(path.join(root, file)), { recursive: true })
-    await writeFile(path.join(root, file), content)
-  }
-  recordInputs(root, files)
-  return root
-}
-
-function configOf(root: string, overrides: Record<string, unknown> = {}) {
-  return getConfig(
-    {
-      disableLogging: true,
-      routesDirectory: path.join(root, 'src/routes'),
-      generatedRouteTree: path.join(root, 'src/routeTree.gen.ts'),
-      tmpDir: path.join(root, '.tanstack/tmp'),
-      ...overrides,
-    },
-    root,
-  )
 }
 
 // Main's `run()` rejected naming the file (`tsr generate` exited 1).

@@ -19,7 +19,7 @@ import { openDiagnosticChannel } from '@tanstack/compiler-test-utils/diagnostic-
 import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { onFileFinished } from '@tanstack/compiler-test-utils/test-scope'
 import { inputsOf, recordInputs } from './consumer-inputs'
-import type { PluginOption, ViteDevServer, Logger as ViteLogger } from 'vite'
+import type { PluginOption, ViteDevServer } from 'vite'
 import type { createClientConsumer as CreateClientConsumer } from './consumer-client'
 
 const nodeModules = path.resolve(import.meta.dirname, '../node_modules')
@@ -75,8 +75,6 @@ interface Host {
   server: ViteDevServer
   /** The loads running now: the observer plugin records into each one whose app holds the file. */
   loads: Set<Load>
-  /** Where Vite's logger writes: the channel of the load running now. */
-  logger: { target: ViteLogger | undefined }
 }
 
 const hosts = new Map<string, Promise<Host>>()
@@ -170,7 +168,6 @@ function hostOf(framework: string): Promise<Host> {
 
 async function createHost(framework: string): Promise<Host> {
   const loads = new Set<Load>()
-  const logger: Host['logger'] = { target: undefined }
   const plugins: Array<PluginOption> = [observerPlugin(loads)]
   if (framework === 'vue') {
     const { default: vue } = await import('@vitejs/plugin-vue')
@@ -179,22 +176,6 @@ async function createHost(framework: string): Promise<Host> {
   if (framework === 'solid') {
     const { default: solid } = await import('vite-plugin-solid')
     plugins.push(solid({ ssr: true }))
-  }
-  const silent = createLogger('silent')
-  const target = () => logger.target ?? silent
-  const customLogger: ViteLogger = {
-    info: (message, options) => target().info(message, options),
-    warn: (message, options) => target().warn(message, options),
-    warnOnce: (message, options) => target().warnOnce(message, options),
-    error: (message, options) => target().error(message, options),
-    clearScreen: (type) => target().clearScreen(type),
-    hasErrorLogged: (error) => target().hasErrorLogged(error),
-    get hasWarned() {
-      return target().hasWarned
-    },
-    set hasWarned(value) {
-      target().hasWarned = value
-    },
   }
   // (Vite resolves the externals of SSR from its root: the packages every
   // app links)
@@ -209,7 +190,8 @@ async function createHost(framework: string): Promise<Host> {
       cacheDir: path.join(root, '.vite'),
       envDir: false,
       appType: 'custom',
-      customLogger,
+      // (no row reads what Vite logs while it loads an app)
+      customLogger: createLogger('silent'),
       clearScreen: false,
       plugins,
       server: { middlewareMode: true, hmr: false, watch: null, ws: false },
@@ -222,7 +204,7 @@ async function createHost(framework: string): Promise<Host> {
     await close()
     await rm(root, { recursive: true, force: true })
   }
-  return { server, loads, logger }
+  return { server, loads }
 }
 
 async function withModule<T>(
@@ -284,7 +266,6 @@ async function withModule<T>(
   await writeFile(entry, consumerSource(framework))
   const channel = openDiagnosticChannel()
   host.loads.add(load)
-  host.logger.target = channel.viteLogger()
   const runner = createServerModuleRunner(environment, { hmr: false })
   try {
     const consumer = await runner.import(entry)
@@ -307,7 +288,6 @@ async function withModule<T>(
     })
   } finally {
     host.loads.delete(load)
-    host.logger.target = undefined
     await runner.close()
     channel.close()
     await rm(entry, { force: true })

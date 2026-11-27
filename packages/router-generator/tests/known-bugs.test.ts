@@ -3,70 +3,34 @@
  * bug main had, which today's compiler fixes (a regression test,
  * oracle/KNOWN-BUGS.md).
  */
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { parseSync } from 'vite'
 import { describe, expect, test } from 'vitest'
-import { captureDiagnostics } from '@tanstack/compiler-test-utils/diagnostic-channel'
-import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
-import { Generator, getConfig } from '../src'
-import { recordDirectoryInputs } from './consumer-inputs'
+import { createApp, generate, read, rootRoute } from './app'
 import { routeIdOf } from './route-id'
 import { routesOf } from './route-tree'
 
 /**
  * Runs the generator on an app with a root route and `routes/moved.tsx`
- * holding `source`, like after moving a route file to `/moved`. Returns the
- * route file as the generator wrote it, the routes of the route tree (route
- * id to file) and the warnings.
+ * holding `source`, like after moving a route file to `/moved`, and loads the
+ * route tree with the real router; both must succeed. Returns the route file
+ * as the generator wrote it.
  */
 async function generateMovedRoute(
   source: string,
   otherFiles: Record<string, string> = {},
 ) {
-  const root = await mkdtemp(path.join(runDirectory(), 'tsr-known-bugs-'))
-  try {
-    await mkdir(path.join(root, 'routes'))
-    await writeFile(
-      path.join(root, 'routes/__root.tsx'),
-      `import { createRootRoute } from '@tanstack/react-router'
-export const Route = createRootRoute()`,
-    )
-    await writeFile(path.join(root, 'routes/moved.tsx'), source)
-    for (const [file, content] of Object.entries(otherFiles)) {
-      await mkdir(path.dirname(path.join(root, file)), { recursive: true })
-      await writeFile(path.join(root, file), content)
-    }
-    const config = getConfig({
-      routesDirectory: path.join(root, 'routes'),
-      generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
-      // Same filesystem as the app, so the generator can rename its temp files
-      tmpDir: path.join(root, '.tanstack/tmp'),
-    })
-    await recordDirectoryInputs(root, config.generatedRouteTree)
-    let error: unknown
-    const { diagnostics, result: routes } = await captureDiagnostics(
-      async () => {
-        try {
-          await new Generator({ config, root }).run()
-          return await routesOf(config.generatedRouteTree)
-        } catch (caught) {
-          error = caught
-          return undefined
-        }
-      },
-    )
-    return {
-      error,
-      written: await readFile(path.join(root, 'routes/moved.tsx'), 'utf8'),
-      routes,
-      diagnostics,
-      root,
-      file: path.join(root, 'routes/moved.tsx'),
-    }
-  } finally {
-    await rm(root, { recursive: true, force: true })
-  }
+  const root = await createApp({
+    'routes/__root.tsx': rootRoute(),
+    'routes/moved.tsx': source,
+    ...otherFiles,
+  })
+  const { generatedRouteTree } = await generate(root, {
+    routesDirectory: path.join(root, 'routes'),
+    generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
+  })
+  await routesOf(generatedRouteTree)
+  return read(root, 'routes/moved.tsx')
 }
 
 // (What Start learns of a route's option keys from the generator, which
@@ -79,11 +43,10 @@ describe('route constructor imports', () => {
   // recognized.
   // Impact: the route keeps its old id when its file moves.
   test('a moved route with an aliased import of the constructor gets the id of its new path', async () => {
-    const { written, error } =
+    const written =
       await generateMovedRoute(`import { createFileRoute as route } from '@tanstack/react-router'
 export const Route = route('/old')({})`)
     expect(await routeIdOf(written)).toBe('/moved')
-    expect(error).toBeUndefined()
   })
 
   // Bug: same root cause as above, for `createFileRoute` imported from a
@@ -96,7 +59,7 @@ export const Route = route('/old')({})`)
   // Impact: the written route file declares `createFileRoute` twice and no
   // longer parses, so the app fails to build.
   test('a moved route importing createFileRoute from a module of the app stays a valid module', async () => {
-    const { written, error } = await generateMovedRoute(
+    const written = await generateMovedRoute(
       `import { createFileRoute } from '../lib/router'
 export const Route = createFileRoute('/old')({})`,
       {
@@ -108,6 +71,5 @@ export const Route = createFileRoute('/old')({})`,
       showSemanticErrors: true,
     })
     expect(errors.map((error) => error.message)).toEqual([])
-    expect(error).toBeUndefined()
   })
 })

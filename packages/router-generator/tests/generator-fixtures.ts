@@ -16,6 +16,71 @@ export type FixtureRoute = [
   ...lazy: Array<string>,
 ]
 
+/** The routes of the virtual route config of the virtual* fixtures, inline or in a config file. */
+const virtualRoutes: Record<string, FixtureRoute> = {
+  '/': ['/', '__root__', 'routes/index.tsx'],
+  '/$lang/': ['/$lang/', '__root__', 'routes/pages.tsx'],
+  '/_layout': ['/', '__root__', 'routes/layout.tsx'],
+  '/_layout/dashboard': ['/dashboard', '/_layout', 'routes/db/dashboard.tsx'],
+  '/_layout/dashboard/': [
+    '/dashboard/',
+    '/_layout/dashboard',
+    'routes/db/dashboard-index.tsx',
+  ],
+  '/_layout/dashboard/invoices': [
+    '/dashboard/invoices',
+    '/_layout/dashboard',
+    'routes/db/dashboard-invoices.tsx',
+  ],
+  '/_layout/dashboard/invoices/': [
+    '/dashboard/invoices/',
+    '/_layout/dashboard/invoices',
+    'routes/db/invoices-index.tsx',
+  ],
+  '/_layout/dashboard/invoices/$id': [
+    '/dashboard/invoices/$id',
+    '/_layout/dashboard/invoices',
+    'routes/db/invoice-detail.tsx',
+  ],
+  '/_layout/hello/': ['/hello/', '/_layout', 'routes/subtree/index.tsx'],
+  '/_layout/hello/foo/': [
+    '/hello/foo/',
+    '/_layout',
+    'routes/subtree/foo/index.tsx',
+  ],
+  '/_layout/hello/foo/$id': [
+    '/hello/foo/$id',
+    '/_layout',
+    'routes/subtree/foo/$id.tsx',
+  ],
+  __root__: ['/', null, 'routes/root.tsx'],
+}
+
+/** The routes of the regex index and route tokens, inline or in tsr.config.json. */
+const regexTokenRoutes: Record<string, FixtureRoute> = {
+  '/': ['/', '__root__', 'routes/index-page.tsx'],
+  '/dashboard': ['/dashboard', '__root__', 'routes/dashboard.main-layout.tsx'],
+  '/dashboard/': [
+    '/dashboard/',
+    '/dashboard',
+    'routes/dashboard.home-page.tsx',
+  ],
+  '/dashboard/settings': [
+    '/dashboard/settings',
+    '/dashboard',
+    'routes/dashboard.settings.tsx',
+  ],
+  __root__: ['/', null, 'routes/__root.tsx'],
+}
+
+/** The routes of a physical directory merged at the root, with an empty or no path prefix. */
+const mergedPhysicalRoutes: Record<string, FixtureRoute> = {
+  '/': ['/', '__root__', 'routes/merged/index.tsx'],
+  '/about': ['/about', '__root__', 'routes/about.tsx'],
+  '/contact': ['/contact', '__root__', 'routes/merged/contact.tsx'],
+  __root__: ['/', null, 'routes/__root.tsx'],
+}
+
 export const fixtureRoutes: Record<string, Record<string, FixtureRoute>> = {
   'add-extensions-custom': {
     '/': ['/', '__root__', 'routes/index.tsx'],
@@ -545,44 +610,8 @@ export const fixtureRoutes: Record<string, Record<string, FixtureRoute>> = {
     ],
     __root__: ['/', null, 'routes/__root.tsx'],
   },
-  'regex-tokens-inline': {
-    '/': ['/', '__root__', 'routes/index-page.tsx'],
-    '/dashboard': [
-      '/dashboard',
-      '__root__',
-      'routes/dashboard.main-layout.tsx',
-    ],
-    '/dashboard/': [
-      '/dashboard/',
-      '/dashboard',
-      'routes/dashboard.home-page.tsx',
-    ],
-    '/dashboard/settings': [
-      '/dashboard/settings',
-      '/dashboard',
-      'routes/dashboard.settings.tsx',
-    ],
-    __root__: ['/', null, 'routes/__root.tsx'],
-  },
-  'regex-tokens-json': {
-    '/': ['/', '__root__', 'routes/index-page.tsx'],
-    '/dashboard': [
-      '/dashboard',
-      '__root__',
-      'routes/dashboard.main-layout.tsx',
-    ],
-    '/dashboard/': [
-      '/dashboard/',
-      '/dashboard',
-      'routes/dashboard.home-page.tsx',
-    ],
-    '/dashboard/settings': [
-      '/dashboard/settings',
-      '/dashboard',
-      'routes/dashboard.settings.tsx',
-    ],
-    __root__: ['/', null, 'routes/__root.tsx'],
-  },
+  'regex-tokens-inline': regexTokenRoutes,
+  'regex-tokens-json': regexTokenRoutes,
   'regex-tokens-plus-json': {
     '/': ['/', '__root__', 'routes/+page.tsx'],
     '/dashboard': ['/dashboard', '__root__', 'routes/dashboard/+layout.tsx'],
@@ -677,120 +706,9 @@ export const fixtureRoutes: Record<string, Record<string, FixtureRoute>> = {
     ],
     __root__: ['/', null, 'routes/__root.tsx'],
   },
-  'virtual-config-file-default-export': {
-    '/': ['/', '__root__', 'routes/index.tsx'],
-    '/$lang/': ['/$lang/', '__root__', 'routes/pages.tsx'],
-    '/_layout': ['/', '__root__', 'routes/layout.tsx'],
-    '/_layout/dashboard': ['/dashboard', '/_layout', 'routes/db/dashboard.tsx'],
-    '/_layout/dashboard/': [
-      '/dashboard/',
-      '/_layout/dashboard',
-      'routes/db/dashboard-index.tsx',
-    ],
-    '/_layout/dashboard/invoices': [
-      '/dashboard/invoices',
-      '/_layout/dashboard',
-      'routes/db/dashboard-invoices.tsx',
-    ],
-    '/_layout/dashboard/invoices/': [
-      '/dashboard/invoices/',
-      '/_layout/dashboard/invoices',
-      'routes/db/invoices-index.tsx',
-    ],
-    '/_layout/dashboard/invoices/$id': [
-      '/dashboard/invoices/$id',
-      '/_layout/dashboard/invoices',
-      'routes/db/invoice-detail.tsx',
-    ],
-    '/_layout/hello/': ['/hello/', '/_layout', 'routes/subtree/index.tsx'],
-    '/_layout/hello/foo/': [
-      '/hello/foo/',
-      '/_layout',
-      'routes/subtree/foo/index.tsx',
-    ],
-    '/_layout/hello/foo/$id': [
-      '/hello/foo/$id',
-      '/_layout',
-      'routes/subtree/foo/$id.tsx',
-    ],
-    __root__: ['/', null, 'routes/root.tsx'],
-  },
-  'virtual-config-file-named-export': {
-    '/': ['/', '__root__', 'routes/index.tsx'],
-    '/$lang/': ['/$lang/', '__root__', 'routes/pages.tsx'],
-    '/_layout': ['/', '__root__', 'routes/layout.tsx'],
-    '/_layout/dashboard': ['/dashboard', '/_layout', 'routes/db/dashboard.tsx'],
-    '/_layout/dashboard/': [
-      '/dashboard/',
-      '/_layout/dashboard',
-      'routes/db/dashboard-index.tsx',
-    ],
-    '/_layout/dashboard/invoices': [
-      '/dashboard/invoices',
-      '/_layout/dashboard',
-      'routes/db/dashboard-invoices.tsx',
-    ],
-    '/_layout/dashboard/invoices/': [
-      '/dashboard/invoices/',
-      '/_layout/dashboard/invoices',
-      'routes/db/invoices-index.tsx',
-    ],
-    '/_layout/dashboard/invoices/$id': [
-      '/dashboard/invoices/$id',
-      '/_layout/dashboard/invoices',
-      'routes/db/invoice-detail.tsx',
-    ],
-    '/_layout/hello/': ['/hello/', '/_layout', 'routes/subtree/index.tsx'],
-    '/_layout/hello/foo/': [
-      '/hello/foo/',
-      '/_layout',
-      'routes/subtree/foo/index.tsx',
-    ],
-    '/_layout/hello/foo/$id': [
-      '/hello/foo/$id',
-      '/_layout',
-      'routes/subtree/foo/$id.tsx',
-    ],
-    __root__: ['/', null, 'routes/root.tsx'],
-  },
-  'virtual-config-file-tsconfig-paths': {
-    '/': ['/', '__root__', 'routes/index.tsx'],
-    '/$lang/': ['/$lang/', '__root__', 'routes/pages.tsx'],
-    '/_layout': ['/', '__root__', 'routes/layout.tsx'],
-    '/_layout/dashboard': ['/dashboard', '/_layout', 'routes/db/dashboard.tsx'],
-    '/_layout/dashboard/': [
-      '/dashboard/',
-      '/_layout/dashboard',
-      'routes/db/dashboard-index.tsx',
-    ],
-    '/_layout/dashboard/invoices': [
-      '/dashboard/invoices',
-      '/_layout/dashboard',
-      'routes/db/dashboard-invoices.tsx',
-    ],
-    '/_layout/dashboard/invoices/': [
-      '/dashboard/invoices/',
-      '/_layout/dashboard/invoices',
-      'routes/db/invoices-index.tsx',
-    ],
-    '/_layout/dashboard/invoices/$id': [
-      '/dashboard/invoices/$id',
-      '/_layout/dashboard/invoices',
-      'routes/db/invoice-detail.tsx',
-    ],
-    '/_layout/hello/': ['/hello/', '/_layout', 'routes/subtree/index.tsx'],
-    '/_layout/hello/foo/': [
-      '/hello/foo/',
-      '/_layout',
-      'routes/subtree/foo/index.tsx',
-    ],
-    '/_layout/hello/foo/$id': [
-      '/hello/foo/$id',
-      '/_layout',
-      'routes/subtree/foo/$id.tsx',
-    ],
-    __root__: ['/', null, 'routes/root.tsx'],
-  },
+  'virtual-config-file-default-export': virtualRoutes,
+  'virtual-config-file-named-export': virtualRoutes,
+  'virtual-config-file-tsconfig-paths': virtualRoutes,
   'virtual-explicit-dotted-paths': {
     '/direct.path': ['/direct.path', '__root__', 'routes/direct.tsx'],
     '/mounted.path/': [
@@ -907,12 +825,7 @@ export const fixtureRoutes: Record<string, Record<string, FixtureRoute>> = {
     '/_root-index/$id': ['/_root-index/$id', '__root__', 'routes/root-id.tsx'],
     __root__: ['/', null, 'routes/__root.tsx'],
   },
-  'virtual-physical-empty-path-merge': {
-    '/': ['/', '__root__', 'routes/merged/index.tsx'],
-    '/about': ['/about', '__root__', 'routes/about.tsx'],
-    '/contact': ['/contact', '__root__', 'routes/merged/contact.tsx'],
-    __root__: ['/', null, 'routes/__root.tsx'],
-  },
+  'virtual-physical-empty-path-merge': mergedPhysicalRoutes,
   'virtual-physical-inside-nested': {
     '/': ['/', '__root__', 'routes/index.tsx'],
     '/s1/_layout': ['/s1', '__root__', 'subtree/routes/_layout.tsx'],
@@ -934,12 +847,7 @@ export const fixtureRoutes: Record<string, Record<string, FixtureRoute>> = {
     '/feature/': ['/feature/', '/feature', 'routes/feature/index.tsx'],
     __root__: ['/', null, 'routes/__root.tsx'],
   },
-  'virtual-physical-no-prefix': {
-    '/': ['/', '__root__', 'routes/merged/index.tsx'],
-    '/about': ['/about', '__root__', 'routes/about.tsx'],
-    '/contact': ['/contact', '__root__', 'routes/merged/contact.tsx'],
-    __root__: ['/', null, 'routes/__root.tsx'],
-  },
+  'virtual-physical-no-prefix': mergedPhysicalRoutes,
   'virtual-physical-pathless-layout-literal-index': {
     '/_layout': ['/', '__root__', 'routes/layout.tsx'],
     '/_layout/_nested/': [
@@ -994,42 +902,5 @@ export const fixtureRoutes: Record<string, Record<string, FixtureRoute>> = {
     ],
     __root__: ['/', null, 'routes/__root.tsx'],
   },
-  virtual: {
-    '/': ['/', '__root__', 'routes/index.tsx'],
-    '/$lang/': ['/$lang/', '__root__', 'routes/pages.tsx'],
-    '/_layout': ['/', '__root__', 'routes/layout.tsx'],
-    '/_layout/dashboard': ['/dashboard', '/_layout', 'routes/db/dashboard.tsx'],
-    '/_layout/dashboard/': [
-      '/dashboard/',
-      '/_layout/dashboard',
-      'routes/db/dashboard-index.tsx',
-    ],
-    '/_layout/dashboard/invoices': [
-      '/dashboard/invoices',
-      '/_layout/dashboard',
-      'routes/db/dashboard-invoices.tsx',
-    ],
-    '/_layout/dashboard/invoices/': [
-      '/dashboard/invoices/',
-      '/_layout/dashboard/invoices',
-      'routes/db/invoices-index.tsx',
-    ],
-    '/_layout/dashboard/invoices/$id': [
-      '/dashboard/invoices/$id',
-      '/_layout/dashboard/invoices',
-      'routes/db/invoice-detail.tsx',
-    ],
-    '/_layout/hello/': ['/hello/', '/_layout', 'routes/subtree/index.tsx'],
-    '/_layout/hello/foo/': [
-      '/hello/foo/',
-      '/_layout',
-      'routes/subtree/foo/index.tsx',
-    ],
-    '/_layout/hello/foo/$id': [
-      '/hello/foo/$id',
-      '/_layout',
-      'routes/subtree/foo/$id.tsx',
-    ],
-    __root__: ['/', null, 'routes/root.tsx'],
-  },
+  virtual: virtualRoutes,
 }

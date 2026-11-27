@@ -17,30 +17,22 @@ import {
   readlink,
   stat,
   symlink,
-  writeFile,
 } from 'node:fs/promises'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { Generator } from '../src'
-import { configOf, createApp, fileRoute, generate, rootRoute } from './app'
+import {
+  configOf,
+  createApp,
+  fileRoute,
+  generate,
+  linked,
+  rootRoute,
+} from './app'
 import { withRouteTree } from './route-tree'
 
 const wrongId = `import { createFileRoute } from '@tanstack/react-router'\nexport const Route = createFileRoute('/wrong')({})\n`
-
-/** Writes `target` (relative to `root`) and links `link` to it with `linkText`. */
-async function linked(
-  root: string,
-  link: string,
-  target: string,
-  text: string,
-  linkText = path.join(root, target),
-) {
-  await mkdir(path.dirname(path.join(root, target)), { recursive: true })
-  await writeFile(path.join(root, target), text)
-  await mkdir(path.dirname(path.join(root, link)), { recursive: true })
-  await symlink(linkText, path.join(root, link))
-}
 
 async function expectLink(root: string, link: string, linkText: string) {
   const file = path.join(root, link)

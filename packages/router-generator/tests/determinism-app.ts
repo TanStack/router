@@ -4,11 +4,11 @@
  * filesystem.
  */
 import fs from 'node:fs'
-import fsp, { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import fsp, { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { syncBuiltinESMExports } from 'node:module'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { expect, onTestFinished, vi } from 'vitest'
+import { expect, vi } from 'vitest'
 import {
   expectDiagnostic,
   findDiagnostics,
@@ -51,13 +51,6 @@ export const files: Record<string, string> = {
 const routeFiles = new Set(
   Object.keys(files).map((file) => path.posix.relative('src', file)),
 )
-
-/** An app directory removed when the test finishes. */
-export async function appRoot() {
-  const root = await mkdtemp(path.join(tmpdir(), 'tsr-determinism-'))
-  onTestFinished(() => rm(root, { recursive: true, force: true }))
-  return root
-}
 
 /**
  * Writes the app's route files at `root` (anew), runs a new generator, and

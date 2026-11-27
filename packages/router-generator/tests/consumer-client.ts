@@ -2,11 +2,10 @@
 import { randomUUID } from 'node:crypto'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { createServer } from 'vite'
+import { createLogger, createServer } from 'vite'
 import { linkDirectory } from '@tanstack/compiler-test-utils/app-directory'
 import { runInPage } from '@tanstack/compiler-test-utils/browser'
 import { runAsDevCommand } from '@tanstack/compiler-test-utils/dev-command'
-import { openDiagnosticChannel } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { onFileFinished } from '@tanstack/compiler-test-utils/test-scope'
 import { inputsOf } from './consumer-inputs'
@@ -76,7 +75,6 @@ async function createConsumerServer(framework: string) {
   if (framework === 'solid') {
     plugins.push((await import('vite-plugin-solid')).default())
   }
-  const channel = openDiagnosticChannel()
   const server = await runAsDevCommand(async () =>
     createServer({
       root,
@@ -85,7 +83,7 @@ async function createConsumerServer(framework: string) {
       envDir: false,
       appType: 'custom',
       plugins,
-      customLogger: channel.viteLogger(),
+      customLogger: createLogger('silent'),
       // (the apps are outside the root, in their own directories)
       server: {
         host: '127.0.0.1',
@@ -106,12 +104,8 @@ async function createConsumerServer(framework: string) {
   await server.listen()
   const close = server.close.bind(server)
   server.close = async () => {
-    try {
-      await close()
-    } finally {
-      channel.close()
-      await rm(root, { recursive: true, force: true })
-    }
+    await close()
+    await rm(root, { recursive: true, force: true })
   }
   return server
 }
