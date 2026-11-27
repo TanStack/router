@@ -146,6 +146,8 @@ export { rootRouteId } from './root'
 export type { RootRouteId } from './root'
 
 export { BaseRoute, BaseRouteApi, BaseRootRoute } from './route'
+export { processRouteTree, findRouteMatch } from './new-process-route-tree'
+export type { ProcessRouteTreeResult } from './new-process-route-tree'
 export type {
   AnyPathParams,
   SearchSchemaInput,
