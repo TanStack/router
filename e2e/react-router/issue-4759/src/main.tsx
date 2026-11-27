@@ -36,7 +36,7 @@ const routePendingRoute = createRoute({
   component: () => <div data-state="loaded">loaded</div>,
 })
 function RoutePending() {
-  const { locale } = routePendingRoute.useRouteContext()
+  const { locale } = rootRoute.useRouteContext()
   return (
     <div data-state="pending" data-pending-source="route" data-locale={locale}>
       route pending
@@ -48,7 +48,7 @@ const router = createRouter({
 })
 const usesRoutePending = window.location.pathname === '/route-pending'
 function DefaultPending() {
-  const { locale } = indexRoute.useRouteContext()
+  const { locale } = rootRoute.useRouteContext()
   return (
     <div
       data-state="pending"

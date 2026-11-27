@@ -827,7 +827,7 @@ test('a retained prefix exposes one fresh context chain before descendant pendin
       await pendingReady
     },
     pendingComponent: () => {
-      const user = fRoute.useRouteContext({
+      const user = eRoute.useRouteContext({
         select: (context) => context.user,
       })
       return <div data-testid="f-pending">F pending for {user()}</div>

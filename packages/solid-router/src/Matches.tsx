@@ -59,6 +59,7 @@ export function Matches() {
                   return renderInNonRouteComponentContext(
                     () => <PendingComponent />,
                     'pendingComponent',
+                    rootRoute(),
                   )
                 }
                 return <PendingComponent />

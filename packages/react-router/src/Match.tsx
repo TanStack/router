@@ -33,8 +33,24 @@ export function renderPending(
 
   const pendingElement = <PendingComponent />
   return process.env.NODE_ENV !== 'production'
-    ? wrapInNonRouteComponentContext(pendingElement, 'pendingComponent')
+    ? wrapInNonRouteComponentContext(pendingElement, 'pendingComponent', route!)
     : pendingElement
+}
+
+function renderDefaultPending(
+  router: ReturnType<typeof useRouter>,
+  pendingRoute: AnyRoute,
+) {
+  const PendingComponent = router.options.defaultPendingComponent
+  if (!PendingComponent) {
+    return null
+  }
+
+  return wrapInNonRouteComponentContext(
+    <PendingComponent />,
+    'pendingComponent',
+    pendingRoute,
+  )
 }
 
 type OutletMatchSelection = [
@@ -267,7 +283,7 @@ export const Outlet = React.memo(function OutletImpl() {
     const nonRouteComponent = React.useContext(nonRouteComponentContext!)
     if (nonRouteComponent) {
       console.warn(
-        `Warning: An <Outlet /> was rendered inside a ${nonRouteComponent}. <Outlet /> should only be rendered inside a route component.`,
+        `Warning: An <Outlet /> was rendered inside a ${nonRouteComponent.component}. <Outlet /> should only be rendered inside a route component.`,
       )
     }
   }
@@ -318,7 +334,13 @@ export const Outlet = React.memo(function OutletImpl() {
 
   if (routeId === rootRouteId) {
     return (
-      <React.Suspense fallback={renderPending(router)}>
+      <React.Suspense
+        fallback={
+          process.env.NODE_ENV !== 'production'
+            ? renderDefaultPending(router, router.routesById[childRouteId])
+            : renderPending(router)
+        }
+      >
         {nextMatch}
       </React.Suspense>
     )

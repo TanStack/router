@@ -1,6 +1,26 @@
+import type { AnyRoute } from './route'
 import type { AllContext, RouteById } from './routeInfo'
 import type { AnyRouter } from './router'
 import type { Expand, StrictOrFrom } from './utils'
+
+export function _assertPendingRouteContextAccess(
+  pendingRoute: AnyRoute,
+  from: string | undefined,
+): void {
+  if (from) {
+    let parent = pendingRoute.parentRoute
+    while (parent) {
+      if (parent.id === from) {
+        return
+      }
+      parent = parent.parentRoute
+    }
+  }
+
+  throw new Error(
+    `Cannot access route context${from ? ` for "${from}"` : ''} inside the pendingComponent of "${pendingRoute.id}". Inside a pendingComponent, only parent route contexts can be accessed.`,
+  )
+}
 
 export interface UseRouteContextBaseOptions<
   TRouter extends AnyRouter,

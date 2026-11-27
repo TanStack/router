@@ -1,5 +1,7 @@
+import * as Vue from 'vue'
+import { _assertPendingRouteContextAccess } from '@tanstack/router-core'
+import { nonRouteComponentContext } from './nonRouteComponentContext'
 import { useMatch } from './useMatch'
-import type * as Vue from 'vue'
 import type {
   AnyRouter,
   RegisteredRouter,
@@ -23,9 +25,29 @@ export function useRouteContext<
 >(
   opts: UseRouteContextOptions<TRouter, TFrom, TStrict, TSelected>,
 ): Vue.Ref<UseRouteContextResult<TRouter, TFrom, TStrict, TSelected>> {
+  const nonRouteComponent =
+    process.env.NODE_ENV !== 'production'
+      ? Vue.inject(nonRouteComponentContext!, undefined)
+      : undefined
+
+  if (process.env.NODE_ENV !== 'production') {
+    if (nonRouteComponent?.value.component === 'pendingComponent') {
+      _assertPendingRouteContextAccess(nonRouteComponent.value.route, opts.from)
+    }
+  }
+
   return useMatch({
     ...opts,
-    select: (match) =>
-      opts.select ? opts.select(match.context) : match.context,
+    select: (match) => {
+      if (process.env.NODE_ENV !== 'production') {
+        if (nonRouteComponent?.value.component === 'pendingComponent') {
+          _assertPendingRouteContextAccess(
+            nonRouteComponent.value.route,
+            opts.from,
+          )
+        }
+      }
+      return opts.select ? opts.select(match.context) : match.context
+    },
   }) as any
 }

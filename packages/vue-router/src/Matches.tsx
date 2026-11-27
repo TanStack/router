@@ -1,4 +1,5 @@
 import * as Vue from 'vue'
+import { rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useSelector } from '@tanstack/vue-store'
 import { CatchBoundary } from './CatchBoundary'
@@ -46,6 +47,7 @@ export const Matches = Vue.defineComponent({
               router.options.defaultPendingComponent,
               undefined,
               'pendingComponent',
+              router.routesById[rootRouteId],
             )
           : Vue.h(router.options.defaultPendingComponent)
         : null
