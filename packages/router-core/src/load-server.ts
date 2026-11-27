@@ -957,7 +957,14 @@ export async function loadServerRoute(
     }
   })
   if (result.type === 'render') {
-    runRouteLifecycle(router, previous, result.matches, previousEnd, nextEnd)
+    runRouteLifecycle(
+      router,
+      previous,
+      result.matches,
+      previousEnd,
+      nextEnd,
+      next,
+    )
   }
   router._commitPromise?.resolve()
   router._commitPromise = undefined

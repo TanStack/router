@@ -58,6 +58,9 @@ test('server route lifecycle callbacks run after loaded matches are published', 
       loaderData: 'foo data',
       context: expect.objectContaining({ ready: true }),
     }),
+    expect.objectContaining({
+      location: expect.objectContaining({ href: '/foo?step=one' }),
+    }),
   )
 
   events.length = 0
