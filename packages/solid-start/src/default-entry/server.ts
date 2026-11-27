@@ -3,7 +3,7 @@ import {
   defaultStreamHandler,
   createServerEntry as createCoreServerEntry,
 } from '@tanstack/solid-start/server'
-import type { Register } from '@tanstack/solid-router'
+import type { Register } from '@tanstack/solid-start'
 import type { RequestHandler } from '@tanstack/solid-start/server'
 
 const fetch = createStartHandler(defaultStreamHandler)
