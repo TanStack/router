@@ -13,7 +13,6 @@
  */
 import path from 'node:path'
 import { expect, test } from 'vitest'
-import { RSBUILD_ENVIRONMENT_NAMES } from '../../../src/rsbuild/planning'
 import {
   documentAfter,
   handlerRoute,
@@ -63,7 +62,7 @@ test(
       config: {
         tools: {
           rspack: (config, { environment }) => {
-            if (environment.name === RSBUILD_ENVIRONMENT_NAMES.server) {
+            if (environment.name === 'ssr') {
               config.plugins.push(veto)
             }
           },
@@ -101,7 +100,7 @@ test(
       config: {
         tools: {
           rspack: (config, { environment }) => {
-            if (environment.name === RSBUILD_ENVIRONMENT_NAMES.server) {
+            if (environment.name === 'ssr') {
               ;(config.module.rules ??= []).push({
                 test: /routeTree\.gen\.ts$/,
                 enforce: 'pre',

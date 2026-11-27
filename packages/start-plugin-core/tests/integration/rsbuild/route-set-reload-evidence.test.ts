@@ -13,7 +13,6 @@ import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test } from 'vitest'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
-import { RSBUILD_ENVIRONMENT_NAMES } from '../../../src/rsbuild/planning'
 import {
   documentAfter,
   handlerRoute,
@@ -67,8 +66,8 @@ test(
         ).includes("'/new'"),
       describe: () => 'the generator did not publish the added route',
     })
-    compilers.get(RSBUILD_ENVIRONMENT_NAMES.server)!.watching!.invalidate()
-    compilers.get(RSBUILD_ENVIRONMENT_NAMES.client)!.watching!.invalidate()
+    compilers.get('ssr')!.watching!.invalidate()
+    compilers.get('client')!.watching!.invalidate()
     await waitForOutcome({
       timeout: 10_000,
       applied: () => reload.clientHash() !== clientBefore,
