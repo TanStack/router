@@ -16,8 +16,8 @@ import { describe, expect, onTestFinished, test } from 'vitest'
 import { viteVersions } from '@tanstack/compiler-vite-versions'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
 import { runNodeProgram } from '@tanstack/compiler-test-utils/run-node'
-import { onFileFinished } from '@tanstack/compiler-test-utils/test-scope'
 import { tanstackRouter } from '../../src/vite'
+import { batchBuild } from '../batch-build'
 import { build, buildWithRsbuild, head, rootRoute } from '../build-harness'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
@@ -335,63 +335,27 @@ return [html, entry.registry.size]`,
 type Runner = { name: string; run: (c: Case) => Promise<unknown> }
 
 /**
- * The files of `cases` in one app: case `i`'s route at `routes/c<i>.tsx`
- * (path `/c<i>`), its own files under `c<i>/`, and its entry (`entryOf`) at
- * `c<i>/entry.ts`, which `entry.ts` exports as `c<i>`, a function importing
- * it: a run of one case evaluates that case's modules only.
- */
-function batchFiles(cases: Array<Case>) {
-  const files: Record<string, string> = { 'routes/__root.tsx': rootRoute }
-  const entries: Array<string> = []
-  cases.forEach((c, i) => {
-    const id = `c${i}`
-    files[`routes/${id}.tsx`] = `${head}${c.route}`
-      .replace("createFileRoute('/')", `createFileRoute('/${id}')`)
-      .replaceAll("from '../child'", `from '../${id}/child'`)
-    for (const [name, text] of Object.entries(c.files ?? {})) {
-      files[`${id}/${name}`] = text.replaceAll(
-        "from './routes/index'",
-        `from '../routes/${id}'`,
-      )
-    }
-    files[`${id}/entry.ts`] = entryOf(c.reexports).replaceAll(
-      "from './routes/index'",
-      `from '../routes/${id}'`,
-    )
-    entries.push(`export const ${id} = () => import('./${id}/entry')\n`)
-  })
-  files['entry.ts'] = entries.join('')
-  return files
-}
-
-/**
- * Vite 8: one production SSR build of every case (`batchFiles`), built at
- * the first run and disposed of when the file ended; each case's script
- * runs in a Node process of its own, on its case's entry.
+ * Vite 8: one production SSR build of every case (`batchBuild`); each
+ * case's script runs in a Node process of its own, on its case's entry.
  */
 function viteBatch(cases: Array<Case>): Runner['run'] {
-  let built: ReturnType<typeof build> | undefined
-  return async (c) => {
-    built ??= build({
-      bundler: 'vite',
-      env: 'ssr',
-      minify: false,
-      prefix: '.copied-exports-',
-      // Files outlive the test that built them; the file's end disposes
-      registerCleanup: undefined,
-      files: batchFiles(cases),
-    }).then((app) => {
-      onFileFinished(() => app.dispose())
-      return app
-    })
-    const app = await built
-    const id = `c${cases.indexOf(c)}`
-    return (
-      await app.run(
-        `const caseEntry = await entry.${id}()\nreturn await (async (entry) => { ${c.script} })(caseEntry)`,
-      )
-    ).result
-  }
+  const batched = new Map(
+    cases.map((c) => [
+      c,
+      {
+        name: c.name,
+        route: `${head}${c.route}`,
+        entry: entryOf(c.reexports),
+        files: c.files,
+      },
+    ]),
+  )
+  const caseApp = batchBuild(
+    { bundler: 'vite', env: 'ssr', minify: false, prefix: '.copied-exports-' },
+    [...batched.values()],
+  )
+  return async (c) =>
+    (await (await caseApp(batched.get(c)!)).run(c.script)).result
 }
 
 const bundler = (name: 'rspack' | 'webpack') => async (c: Case) => {
