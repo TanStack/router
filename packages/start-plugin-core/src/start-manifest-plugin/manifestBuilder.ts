@@ -264,6 +264,7 @@ export function buildStartManifest(options: {
   clientBuild: NormalizedClientBuild
   routeTreeRoutes: RouteTreeRoutes
   basePath: string
+  preloadQuery?: string
   inlineCss?: InlineCssOptions
   scriptFormat?: ScriptFormat
   additionalRouteAssets?: Partial<
@@ -274,6 +275,7 @@ export function buildStartManifest(options: {
   const assetResolvers = createManifestAssetResolvers(
     options.basePath,
     scannedChunks.chunksByFileName,
+    options.preloadQuery,
   )
 
   const routes = buildRouteManifestRoutes({
@@ -365,6 +367,7 @@ export function scanClientChunks(
 export function createManifestAssetResolvers(
   basePath: string,
   chunksByFileName: ReadonlyMap<string, NormalizedClientChunk>,
+  preloadQuery?: string,
 ): ManifestAssetResolvers {
   const assetPathByFileName = new Map<string, string>()
   const stylesheetLinkByFileName = new Map<string, ManifestCssLink>()
@@ -446,6 +449,11 @@ export function createManifestAssetResolvers(
     return closure
   }
 
+  const getPreloadPath = (fileName: string) =>
+    preloadQuery
+      ? `${getAssetPath(fileName)}?${preloadQuery}`
+      : getAssetPath(fileName)
+
   const getChunkPreloads = (chunk: NormalizedClientChunk) => {
     const cachedPreloads = preloadsByChunk.get(chunk)
     if (cachedPreloads) {
@@ -453,10 +461,10 @@ export function createManifestAssetResolvers(
     }
 
     const { fileNames } = getStaticImportClosure(chunk)
-    const preloads = [getAssetPath(chunk.fileName)]
+    const preloads = [getPreloadPath(chunk.fileName)]
 
     for (let i = 0; i < fileNames.length; i++) {
-      preloads.push(getAssetPath(fileNames[i]!))
+      preloads.push(getPreloadPath(fileNames[i]!))
     }
 
     preloadsByChunk.set(chunk, preloads)

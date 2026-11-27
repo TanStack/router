@@ -1,4 +1,5 @@
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
+import { generateDeploymentMetadataModule } from '../deployment-metadata-module'
 import { generateSerializationAdaptersModule } from '../serialization-adapters-module'
 import { generateServerFnResolverModule } from '../start-compiler/server-fn-resolver-module'
 import { buildStartManifest } from '../start-manifest-plugin/manifestBuilder'
@@ -253,6 +254,7 @@ export function registerVirtualModules(
         manifest: string
         serverFnResolver: string
         pluginAdapters: string
+        deploymentMetadata: string
         rsc: {
           rscRuntime: string
           rscHmr: string
@@ -268,6 +270,10 @@ export function registerVirtualModules(
         manifest: virtualPath(root, VIRTUAL_MODULES.startManifest),
         serverFnResolver: virtualPath(root, VIRTUAL_MODULES.serverFnResolver),
         pluginAdapters: virtualPath(root, VIRTUAL_MODULES.pluginAdapters),
+        deploymentMetadata: virtualPath(
+          root,
+          VIRTUAL_MODULES.deploymentMetadata,
+        ),
         rsc: opts.rscEnabled
           ? {
               rscRuntime: virtualPath(root, RSC_RUNTIME_VIRTUAL_ID),
@@ -437,6 +443,10 @@ export function registerVirtualModules(
       })
     }
 
+    // Rsbuild has no deployment metadata discovery, so skew protection is disabled.
+    content[paths.deploymentMetadata] =
+      generateDeploymentMetadataModule(undefined)
+
     // --- RSC virtual modules ---
     if (rscPaths) {
       // virtual:tanstack-rsc-runtime
@@ -476,6 +486,7 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
     const aliasMap: Record<string, string> = {
       [VIRTUAL_MODULES.startManifest]: paths.manifest,
       [VIRTUAL_MODULES.serverFnResolver]: paths.serverFnResolver,
+      [VIRTUAL_MODULES.deploymentMetadata]: paths.deploymentMetadata,
     }
     if (hasSerializationAdapters) {
       aliasMap[VIRTUAL_MODULES.pluginAdapters] = paths.pluginAdapters

@@ -295,6 +295,52 @@ describe('getChunkCssAssets', () => {
 })
 
 describe('buildStartManifest', () => {
+  test('appends preloadQuery to preloads only', () => {
+    const entryChunk = makeChunk({
+      fileName: 'entry.js',
+      isEntry: true,
+      imports: ['shared.js'],
+      importedCss: ['root.css'],
+    })
+    const sharedChunk = makeChunk({ fileName: 'shared.js' })
+    const routeChunk = makeChunk({
+      fileName: 'dashboard.js',
+      imports: ['shared.js'],
+      importedCss: ['dashboard.css'],
+      moduleIds: ['/routes/dashboard.tsx?tsr-split=component'],
+    })
+
+    const manifest = buildStartManifest({
+      clientBuild: normalizeTestBuild({
+        'entry.js': entryChunk,
+        'shared.js': sharedChunk,
+        'dashboard.js': routeChunk,
+      }),
+      routeTreeRoutes: {
+        __root__: {},
+        '/dashboard': { filePath: '/routes/dashboard.tsx' },
+      },
+      basePath: '/assets',
+      preloadQuery: 'dpl=dpl_123',
+    })
+
+    expect(manifest.routes.__root__).toMatchObject({
+      preloads: [
+        '/assets/entry.js?dpl=dpl_123',
+        '/assets/shared.js?dpl=dpl_123',
+      ],
+      css: ['/assets/root.css'],
+      scripts: [{ attrs: { src: '/assets/entry.js' } }],
+    })
+    expect(manifest.routes['/dashboard']).toMatchObject({
+      preloads: [
+        '/assets/dashboard.js?dpl=dpl_123',
+        '/assets/shared.js?dpl=dpl_123',
+      ],
+      css: ['/assets/dashboard.css'],
+    })
+  })
+
   test('skips inline CSS transforms when no relative URLs need rebasing', () => {
     expect(shouldRebaseInlineCssUrls('.root {\n  color: red;\n}')).toBe(false)
     expect(shouldRebaseInlineCssUrls('.root{background:url(/dot.svg)}')).toBe(

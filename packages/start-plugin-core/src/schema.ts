@@ -41,9 +41,9 @@ const importProtectionOptionsSchema = z
      */
     mockAccess: z.enum(['error', 'warn', 'off']).optional(),
     onViolation: z
-      .custom<
-        (violation: unknown) => boolean | void | Promise<boolean | void>
-      >((value) => typeof value === 'function')
+      .custom<(violation: unknown) => boolean | void | Promise<boolean | void>>(
+        (value) => typeof value === 'function',
+      )
       .optional(),
     include: z.array(patternSchema).optional(),
     exclude: z.array(patternSchema).optional(),
@@ -272,9 +272,9 @@ export const tanstackStartOptionsObjectSchema = z.object({
       enabled: z.boolean().optional(),
       concurrency: z.number().optional(),
       filter: z
-        .custom<
-          (page: z.infer<typeof pageSchema>) => unknown
-        >((value) => typeof value === 'function')
+        .custom<(page: z.infer<typeof pageSchema>) => unknown>(
+          (value) => typeof value === 'function',
+        )
         .optional(),
       failOnError: z.boolean().optional(),
       autoStaticPathsDiscovery: z.boolean().optional(),

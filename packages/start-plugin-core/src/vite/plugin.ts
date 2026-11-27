@@ -1,6 +1,7 @@
 import { realpathSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { crawlFrameworkPkgs } from 'vitefu'
+import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import {
   applyResolvedBaseAndOutput,
   applyResolvedRouterBasepath,
@@ -12,6 +13,11 @@ import {
   normalizePublicBase,
   shouldRewriteDevBasepath,
 } from '../planning'
+import {
+  generateDeploymentMetadataModule,
+  getDeploymentQuery,
+  resolveDeploymentMetadata,
+} from '../deployment-metadata-module'
 import { importProtectionPlugin } from './import-protection-plugin/plugin'
 import { startCompilerPlugin } from './start-compiler-plugin/plugin'
 import { loadEnvPlugin } from './load-env-plugin/plugin'
@@ -37,12 +43,19 @@ import {
 } from './output-directory'
 import { postServerBuild } from './post-server-build'
 import { serializationAdaptersPlugin } from './serialization-adapters-plugin'
+import { createVirtualModule } from './createVirtualModule'
+import {
+  createDeploymentRenderBuiltUrl,
+  discoverRequestMetadata,
+} from './deployment-metadata'
+
 import type {
   TanStackStartVitePluginCoreOptions,
   ViteRscForwardSsrResolverStrategy,
 } from './types'
 import type { TanStackStartViteInputConfig } from './schema'
 import type { PluginOption } from 'vite'
+import type { ResolvedDeploymentMetadata } from '@tanstack/start-server-core'
 
 export function tanStackStartVite(
   corePluginOpts: TanStackStartVitePluginCoreOptions,
@@ -62,6 +75,9 @@ export function tanStackStartVite(
   // When the router basepath and vite base are misaligned during dev,
   // we install a URL rewrite middleware instead of erroring.
   let needsDevBaseRewrite = false
+
+  let deploymentMetadata: ResolvedDeploymentMetadata | undefined
+  let deploymentQuery: string | undefined
 
   const environments: Array<{
     name: string
@@ -105,6 +121,33 @@ export function tanStackStartVite(
           resolvedStartConfig,
           startConfig,
         })
+
+        let renderBuiltUrl: ((filename: string) => string) | undefined
+
+        if (command === 'build') {
+          const deploymentMetadataSource =
+            await discoverRequestMetadata(viteConfig)
+
+          if (deploymentMetadataSource) {
+            deploymentMetadata = await resolveDeploymentMetadata(
+              deploymentMetadataSource,
+            )
+          }
+
+          if (deploymentMetadata) {
+            deploymentQuery = getDeploymentQuery(deploymentMetadata)
+          }
+
+          if (deploymentQuery) {
+            renderBuiltUrl = createDeploymentRenderBuiltUrl({
+              deploymentQuery,
+              publicBase: resolvedStartConfig.basePaths.publicBase,
+              hasUserRenderBuiltUrl: Boolean(
+                viteConfig.experimental?.renderBuiltUrl,
+              ),
+            })
+          }
+        }
 
         if (
           shouldRewriteDevBasepath({
@@ -180,6 +223,7 @@ export function tanStackStartVite(
           // see https://vite.dev/config/shared-options.html#apptype
           // this will prevent vite from injecting middlewares that we don't want
           appType: viteConfig.appType ?? 'custom',
+          experimental: renderBuiltUrl ? { renderBuiltUrl } : undefined,
           environments: viteConfigPlan.environments,
           resolve: viteConfigPlan.resolve,
           define: createViteDefineConfig({
@@ -245,6 +289,13 @@ export function tanStackStartVite(
     }),
     startManifestPlugin({
       getConfig,
+      getDeploymentQuery: () => deploymentQuery,
+    }),
+    createVirtualModule({
+      name: 'tanstack-start-core:deployment-metadata',
+      moduleId: VIRTUAL_MODULES.deploymentMetadata,
+      enforce: 'pre',
+      load: () => generateDeploymentMetadataModule(deploymentMetadata),
     }),
     // When the vite base and router basepath are misaligned (e.g. base: '/_ui/', basepath: '/'),
     // install a middleware that rewrites incoming request URLs to prepend the vite base prefix.
