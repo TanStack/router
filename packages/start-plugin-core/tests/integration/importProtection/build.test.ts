@@ -5,7 +5,7 @@
  * A mock is told by what it does (`mock-helpers.ts`, `describeValue`:
  * `a safe mock`), and a violation by what `onViolation` receives.
  */
-import { describe, expect, test } from 'vitest'
+import { afterAll, describe, expect, test } from 'vitest'
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStart, startBundlers } from '../../build-harness'
@@ -17,7 +17,7 @@ import {
   reportedViolations,
   violationsOf,
 } from '../../importProtection/start-apps'
-import type { StartBuild } from '../../build-harness'
+import type { StartBuild, StartBuildError } from '../../build-harness'
 import type { TanStackStartInputConfig } from '../../../src'
 
 const timeout = 60_000
@@ -208,50 +208,151 @@ export const value = 1
 // Source: review (the default rules were never built in error mode: every
 // build test replaced `client.files`).
 describe.each(startBundlers)('%s build, default rules', (bundler) => {
+  /**
+   * The violations of the default rules, each case in a directory of its
+   * own of one failing build per environment (a build stops at the first
+   * environment that fails): `cases/<name>/` holds the denied module and its
+   * importer (the client's `entry.ts`, the server's `server.ts`), which the
+   * environment's entry re-exports. Each row reads its own case's report.
+   */
+  const failing = {
+    file: {
+      environment: 'client',
+      files: {
+        'secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+        'entry.ts': `import { secret } from './secret.server'
+export const read = () => secret()
+`,
+      },
+    },
+    dotFile: {
+      environment: 'client',
+      files: {
+        '.private/db.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+        'entry.ts': `import { secret } from './.private/db.server'
+export const read = () => secret()
+`,
+      },
+    },
+    specifier: {
+      environment: 'client',
+      files: {
+        'entry.ts': `import { getRequest } from '@tanstack/react-start/server'
+export const read = () => getRequest()
+`,
+      },
+    },
+    marked: {
+      environment: 'client',
+      files: {
+        'marked.ts':
+          deniedModules['a server-only-marked module'].files['src/marked.ts'],
+        'entry.ts': `import { secret } from './marked'
+export const read = () => secret()
+`,
+      },
+    },
+    clientFile: {
+      environment: 'server',
+      files: {
+        'widget.client.ts': `export const widget = () => 'MARK_CLIENT'\n`,
+        'server.ts': `import { widget } from './widget.client'
+export const read = () => widget()
+`,
+      },
+    },
+    clientMarked: {
+      environment: 'server',
+      files: {
+        'marked.ts': clientOnlyMarked['src/marked.ts'],
+        'server.ts': `import { secret } from './marked'
+export const read = () => secret()
+`,
+      },
+    },
+  } as const
+  type Case = keyof typeof failing
+  const names = Object.keys(failing) as Array<Case>
+  const reexporting = (environment: 'client' | 'server', file: string) =>
+    names
+      .filter((name) => failing[name].environment === environment)
+      .map((name) => `export * as ${name} from './cases/${name}/${file}'\n`)
+      .join('')
+  const failed: Partial<Record<'client' | 'server', Promise<StartBuildError>>> =
+    {}
+  /** The failed build's violations of case `name` (and its error output). */
+  async function failureOf(name: Case) {
+    const { environment } = failing[name]
+    const error = await (failed[environment] ??= rejection(
+      buildStart({
+        bundler,
+        files: {
+          ...Object.fromEntries(
+            names
+              .filter((n) => failing[n].environment === environment)
+              .flatMap((n) =>
+                Object.entries(failing[n].files).map(([file, code]) => [
+                  `src/cases/${n}/${file}`,
+                  code,
+                ]),
+              ),
+          ),
+          ...(environment === 'client'
+            ? { 'src/entry.ts': reexporting('client', 'entry') }
+            : {
+                'src/client.ts': `export const read = () => 'client'\n`,
+                'src/server.ts': reexporting('server', 'server'),
+              }),
+        },
+        entry:
+          environment === 'client'
+            ? 'src/entry.ts'
+            : { client: 'src/client.ts', ssr: 'src/server.ts' },
+      }),
+    ))
+    const own = error.violations.filter((v) =>
+      v.importer.includes(`/src/cases/${name}/`),
+    )
+    const recorded = { root: error.root, violations: own }
+    const [report, ...others] = violationsOf(recorded)
+    expect(report, `the violation of ${name}`).toBeDefined()
+    expect(others).toEqual([])
+    expectPrinted(error.diagnostics, error.root, report!, 'error')
+    return { recorded, report: report!, rule: String(own[0]!.pattern) }
+  }
+  const at = (name: Case, file: string, position = '') =>
+    `src/cases/${name}/${file}${position}`
+
   // Each violation carries the rule that matched (the file pattern, or the
   // denied specifier; SPEC J6.5).
-  test.each<{
-    name: string
-    files: Record<string, string>
-    reported: string
-    rule: string
-  }>([
+  test.each<{ name: string; case: Case; rule: string }>([
     {
       name: 'a client import of a *.server.* file',
-      files: appUsing('a denied file'),
-      reported: 'src/entry.ts:2:27',
+      case: 'file',
       rule: '**/*.server.*',
     },
     {
       name: 'a client import of a *.server.* file in a dot directory',
-      files: {
-        'src/.private/db.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
-        'src/entry.ts': `import { secret } from './.private/db.server'
-export const read = () => secret()
-`,
-      },
-      reported: 'src/entry.ts:2:27',
+      case: 'dotFile',
       rule: '**/*.server.*',
     },
     {
       name: 'a client import of @tanstack/react-start/server',
-      files: {
-        'src/entry.ts': `import { getRequest } from '@tanstack/react-start/server'
-export const read = () => getRequest()
-`,
-      },
-      reported: 'src/entry.ts:2:27',
+      case: 'specifier',
       rule: '@tanstack/react-start/server',
     },
   ])(
     '$name fails the build, naming the importer at the use or the import, and the rule',
-    async ({ files, reported, rule }) => {
-      const build = buildStart({ bundler, files, entry: 'src/entry.ts' })
-      const report = await failureReport(build)
-      expectViolationsAt(await rejection(build), [
-        { environment: 'client', use: reported, also: ['src/entry.ts:1'] },
+    async ({ case: name, rule }) => {
+      const { recorded, rule: matched } = await failureOf(name)
+      expectViolationsAt(recorded, [
+        {
+          environment: 'client',
+          use: at(name, 'entry.ts', ':2:27'),
+          also: [at(name, 'entry.ts', ':1')],
+        },
       ])
-      expect(report.rule).toContain(rule)
+      expect(matched).toContain(rule)
     },
     timeout,
   )
@@ -259,27 +360,15 @@ export const read = () => getRequest()
   test(
     'a server import of a *.client.* file fails the build, naming the importer at the use or the import, and the rule',
     async () => {
-      const server = `import { widget } from './widget.client'
-export const read = () => widget()
-`
-      const build = buildStart({
-        bundler,
-        files: {
-          'src/widget.client.ts': `export const widget = () => 'MARK_CLIENT'\n`,
-          'src/server.ts': server,
-          'src/client.ts': `export const read = () => 'client'\n`,
-        },
-        entry: { client: 'src/client.ts', ssr: 'src/server.ts' },
-      })
-      const report = await failureReport(build)
-      expectViolationsAt(await rejection(build), [
+      const { recorded, rule } = await failureOf('clientFile')
+      expectViolationsAt(recorded, [
         {
           environment: 'server',
-          use: 'src/server.ts:2:27',
-          also: ['src/server.ts:1'],
+          use: at('clientFile', 'server.ts', ':2:27'),
+          also: [at('clientFile', 'server.ts', ':1')],
         },
       ])
-      expect(report.rule).toContain('**/*.client.*')
+      expect(rule).toContain('**/*.client.*')
     },
     timeout,
   )
@@ -287,18 +376,12 @@ export const read = () => widget()
   test(
     'a client import of a server-only-marked module fails the build, naming the module and its importer',
     async () => {
-      const report = await failureReport(
-        buildStart({
-          bundler,
-          files: appUsing('a server-only-marked module'),
-          entry: 'src/entry.ts',
-        }),
-      )
+      const { report } = await failureOf('marked')
       expect(report.environment).toBe('client')
       expectMarkerViolation(report, {
-        marker: 'src/marked.ts:1',
-        use: 'src/entry.ts:2:27',
-        imports: ['src/entry.ts:1'],
+        marker: at('marked', 'marked.ts', ':1'),
+        use: at('marked', 'entry.ts', ':2:27'),
+        imports: [at('marked', 'entry.ts', ':1')],
       })
     },
     timeout,
@@ -307,25 +390,12 @@ export const read = () => widget()
   test(
     'a server import of a client-only-marked module fails the build, naming the module and its importer',
     async () => {
-      const serverImportsMarked = `import { secret } from './marked'
-export const read = () => secret()
-`
-      const report = await failureReport(
-        buildStart({
-          bundler,
-          files: {
-            ...clientOnlyMarked,
-            'src/server.ts': serverImportsMarked,
-            'src/client.ts': `export const read = () => 'client'\n`,
-          },
-          entry: { client: 'src/client.ts', ssr: 'src/server.ts' },
-        }),
-      )
+      const { report } = await failureOf('clientMarked')
       expect(report.environment).toBe('server')
       expectMarkerViolation(report, {
-        marker: 'src/marked.ts:1',
-        use: 'src/server.ts:2:27',
-        imports: ['src/server.ts:1'],
+        marker: at('clientMarked', 'marked.ts', ':1'),
+        use: at('clientMarked', 'server.ts', ':2:27'),
+        imports: [at('clientMarked', 'server.ts', ':1')],
       })
     },
     timeout,
@@ -333,34 +403,48 @@ export const read = () => secret()
 
   // Several modules import the marked module (directly and through a
   // re-export), so the marker check sees it imported after it has seen its
-  // marker.
+  // marker; one build, each environment with its own marked module.
+  const severalImporters = (marker: 'server-only' | 'client-only') => ({
+    [`src/${marker}/marked.ts`]: `import '@tanstack/react-start/${marker}'
+export const secret = () => 'MARK_SECRET'
+`,
+    [`src/${marker}/d.ts`]: `import { secret } from './marked'
+export const d = () => secret()
+`,
+    [`src/${marker}/c.ts`]: `export { d } from './d'\n`,
+    [`src/${marker}/user.ts`]: `import { secret } from './marked'
+import { d } from './c'
+export const read = () => secret() + '|' + d()
+`,
+  })
+  let several: Promise<StartBuild> | undefined
+  const cleanups: Array<() => Promise<void>> = []
+  afterAll(async () => {
+    for (const cleanup of cleanups.reverse()) {
+      await cleanup()
+    }
+  })
   test.each([
     { env: 'ssr', marker: 'server-only', build: 'server' },
     { env: 'client', marker: 'client-only', build: 'client' },
   ] as const)(
     'the $build build may import a $marker-marked module from several modules, without any import-protection output',
-    async ({ env, marker }) => {
-      const built = await buildStart({
+    async ({ env }) => {
+      const built = await (several ??= buildStart({
         bundler,
         files: {
-          'src/marked.ts': `import '@tanstack/react-start/${marker}'
-export const secret = () => 'MARK_SECRET'
-`,
-          'src/d.ts': `import { secret } from './marked'
-export const d = () => secret()
-`,
-          'src/c.ts': `export { d } from './d'\n`,
-          'src/user.ts': `import { secret } from './marked'
-import { d } from './c'
-export const read = () => secret() + '|' + d()
-`,
-          'src/other.ts': `export const read = () => 'other'\n`,
+          ...severalImporters('server-only'),
+          ...severalImporters('client-only'),
         },
-        entry:
-          env === 'ssr'
-            ? { client: 'src/other.ts', ssr: 'src/user.ts' }
-            : { client: 'src/user.ts', ssr: 'src/other.ts' },
-      })
+        entry: {
+          client: 'src/client-only/user.ts',
+          ssr: 'src/server-only/user.ts',
+        },
+        // (shared by both rows: removed after the file)
+        registerCleanup: (cleanup) => {
+          cleanups.push(cleanup)
+        },
+      }))
       expect((await built[env].run(`return entry.read()`)).result).toBe(
         'MARK_SECRET|MARK_SECRET',
       )
