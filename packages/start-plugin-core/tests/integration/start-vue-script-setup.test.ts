@@ -31,10 +31,16 @@ export const base = createServerFn()
 export const label = 'x'
 `
 
+/** One dev host for the cases of this file (each case is its own module). */
+let devHost: Promise<StartHost> | undefined
+const vueHost = () =>
+  (devHost ??= createStartHost({ framework: 'vue' }).then((host) => {
+    hosts.push(host)
+    return host
+  }))
+
 async function caseOf(script: string) {
-  const host = await createStartHost({ framework: 'vue' })
-  hosts.push(host)
-  return host.case({
+  return (await vueHost()).case({
     'b.ts': builder,
     'Page.vue': `<script setup>
 ${script}
@@ -216,14 +222,8 @@ console.log(read)
 </template>
 `
 
-/** One dev host for the cases below (each case is its own module). */
-let devHost: Promise<StartHost> | undefined
 async function sfcCase(sfc: string) {
-  devHost ??= createStartHost({ framework: 'vue' }).then((host) => {
-    hosts.push(host)
-    return host
-  })
-  return (await devHost).case({
+  return (await vueHost()).case({
     'b.ts': builder,
     'Page.vue': sfc,
     'module.ts': `export { default } from './Page.vue'\n`,

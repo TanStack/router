@@ -42,10 +42,17 @@ ${script}
 </template>
 `
 
+/** One dev host for the cases of this file (each case is its own module). */
+let devHost: Promise<StartHost> | undefined
+
 async function refusalOf(source: string) {
-  const host = await createStartHost({ framework: 'vue' })
-  hosts.push(host)
-  const startCase = await host.case({
+  devHost ??= createStartHost({ framework: 'vue' }).then((host) => {
+    hosts.push(host)
+    return host
+  })
+  const startCase = await (
+    await devHost
+  ).case({
     'b.ts': builder,
     'Page.vue': source,
     'module.ts': `export { default } from './Page.vue'\n`,
