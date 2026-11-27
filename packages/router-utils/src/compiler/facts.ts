@@ -490,7 +490,16 @@ export class RawFactsCache {
   }
 
   /** The facts of a module, read (on a miss) for environment `env`. */
-  async get(canonicalId: string, env: string): Promise<RawFacts> {
+  get(canonicalId: string, env: string): Promise<RawFacts> {
+    return this.factsOf(canonicalId, env, null)
+  }
+
+  /** `get`; `taken`: the entry's text a reader already took (`takeText`), built from on a miss. */
+  private async factsOf(
+    canonicalId: string,
+    env: string,
+    taken: Promise<Text> | null,
+  ): Promise<RawFacts> {
     const key = this.keyOf(canonicalId, env)
     let e = this.entries.get(key)
     // (`noFacts`: the entry is kept for all but its reuse: a file that stops
@@ -519,7 +528,7 @@ export class RawFactsCache {
         canonicalId,
         env,
         prior,
-        this.takeText(entry, canonicalId, env),
+        taken ?? this.takeText(entry, canonicalId, env),
       )
       const built = this.build(canonicalId, text ?? null)
       // A file that stops parsing (saved mid-edit) keeps the last facts it
@@ -571,7 +580,6 @@ export class RawFactsCache {
     }
   }
 
-  /** The entry's next text: its read in flight or carried, else a new read. */
   /**
    * The entry's text, the one read path of its readers (`get`, `marker`):
    * a read in flight, or a change event's text (`markStale`), is shared by
@@ -628,7 +636,8 @@ export class RawFactsCache {
     }
     // (an event meanwhile supersedes what this read concludes)
     const changes = this.changes
-    const text = await this.takeText(entry, canonicalId, env)
+    const taken = this.takeText(entry, canonicalId, env)
+    const text = await taken
     // (an empty read of a file that held a module goes to `get`, which
     // reads it again for a moment: `readSaved`. A file event checks the
     // importers' markers at once, maybe while an in-place save has the
@@ -638,7 +647,8 @@ export class RawFactsCache {
       (this.mayHaveMarker(text) ||
         (text === '' && this.maySave(canonicalId, entry.facts)))
     ) {
-      return (await this.getTarget(canonicalId, env)).targetFacts.marker
+      // (the target facts are built from the text taken here: one read)
+      return (await this.targetOf(canonicalId, env, taken)).targetFacts.marker
     }
     if (this.changes === changes) {
       if (
@@ -677,12 +687,21 @@ export class RawFactsCache {
   }
 
   /** The facts J6 target facts are taken from (`get`, or a fresh read when the target-facts knob is off). */
-  async getTarget(canonicalId: string, env: string): Promise<RawFacts> {
+  getTarget(canonicalId: string, env: string): Promise<RawFacts> {
+    return this.targetOf(canonicalId, env, null)
+  }
+
+  /** `getTarget`; `taken`: as `factsOf`'s. */
+  private async targetOf(
+    canonicalId: string,
+    env: string,
+    taken: Promise<Text> | null,
+  ): Promise<RawFacts> {
     if (this.noTargets && !this.isKnownSpecifier(canonicalId)) {
       // the entry as `get` keeps it, and the target facts rebuilt from a
       // fresh read, but for a file that stops parsing: it keeps the facts it
       // last parsed to, as with the knob off
-      const kept = await this.get(canonicalId, env)
+      const kept = await this.factsOf(canonicalId, env, taken)
       const text = await this.read(canonicalId, env)
       const built = this.build(canonicalId, text ?? null, true)
       return text != null &&
@@ -692,7 +711,7 @@ export class RawFactsCache {
         ? kept
         : built
     }
-    const facts = await this.get(canonicalId, env)
+    const facts = await this.factsOf(canonicalId, env, taken)
     if (!facts.opaque) {
       return facts
     }
@@ -702,7 +721,7 @@ export class RawFactsCache {
     // recorded (`null`) stays current and nothing is evicted by the question
     const key = this.keyOf(canonicalId, env)
     const e = this.entries.get(key)
-    const text = await this.read(canonicalId, env)
+    const text = await (taken ?? this.read(canonicalId, env))
     const full: RawFacts = {
       ...this.build(canonicalId, text ?? null, true),
       summary: null,
