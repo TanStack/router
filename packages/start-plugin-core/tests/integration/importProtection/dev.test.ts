@@ -150,6 +150,15 @@ export const read = () => secret()
 const deniedFileUse = 'src/a.ts:2:27'
 
 /**
+ * `make`'s result, made by the first call: the rows that read one run of
+ * the same app and options share it (each its own assertions).
+ */
+function once<T>(make: () => Promise<T>): () => Promise<T> {
+  let made: Promise<T> | undefined
+  return () => (made ??= make())
+}
+
+/**
  * The violation of `deniedFileApp`, reported at the use of `secret` or at
  * the import of the denied file (SPEC J6.5).
  */
@@ -176,7 +185,7 @@ describe('a client import of a denied file', () => {
    * Starts the app with a `src/a.ts` that imports nothing, loads it, then
    * edits `src/a.ts` to import the denied file and loads it again.
    */
-  async function addDeniedImportByAnEdit() {
+  const addDeniedImportByAnEdit = once(async () => {
     const server = await startProtectedDevServer({
       ...deniedFileApp,
       'src/a.ts': `export const read = () => 'plain'\n`,
@@ -185,7 +194,7 @@ describe('a client import of a denied file', () => {
     await server.edit({ 'src/a.ts': deniedFileApp['src/a.ts'] })
     const client = await server.load('/src/entry.ts')
     return { server, client }
-  }
+  })
 
   test(
     'added by an edit of the importer is mocked, without a restart',
@@ -478,7 +487,7 @@ describe('log', () => {
    * client loads the app, and when it loads it again after an edit of
    * `src/a.ts` that keeps the denied import.
    */
-  async function logsAroundAnEdit(log: 'once' | 'always') {
+  async function logsAroundAnEditOf(log: 'once' | 'always') {
     const server = await startProtectedDevServer(deniedFileApp, { log })
     await server.load('/src/entry.ts')
     const first = warningsNaming(server, 'src/a.ts').length
@@ -495,6 +504,12 @@ export const other = 1
       afterEdit: warningsNaming(server, 'src/a.ts', mark).length,
     }
   }
+  const logsAroundAnEditRuns = {
+    once: once(() => logsAroundAnEditOf('once')),
+    always: once(() => logsAroundAnEditOf('always')),
+  }
+  const logsAroundAnEdit = (log: 'once' | 'always') =>
+    logsAroundAnEditRuns[log]()
 
   // Source: review (`log`).
   test(
@@ -631,9 +646,8 @@ export { b } from './b'
   test(
     "'once' logs one warning for one import",
     async () => {
-      const server = await startProtectedDevServer(deniedFileApp)
-      await server.load('/src/entry.ts')
-      expect(warningsNaming(server, 'src/a.ts')).toHaveLength(1)
+      // ('once' is the default; the first load of `logsAroundAnEdit`)
+      expect((await logsAroundAnEdit('once')).first).toBe(1)
     },
     timeout,
   )
@@ -644,11 +658,8 @@ export { b } from './b'
   test(
     "'always' logs one warning for one import each time its module is loaded",
     async () => {
-      const server = await startProtectedDevServer(deniedFileApp, {
-        log: 'always',
-      })
-      await server.load('/src/entry.ts')
-      expect(warningsNaming(server, 'src/a.ts')).toHaveLength(1)
+      // (the first load of `logsAroundAnEdit`)
+      expect((await logsAroundAnEdit('always')).first).toBe(1)
     },
     timeout,
   )
@@ -1093,11 +1104,17 @@ export const read = () => secret()
 
   // Source: mutation testing (the logging half of the pin below,
   // which passes).
+  /** The app loaded importer first (its server and what the client loaded). */
+  const importerFirst = once(async () => {
+    const server = await startProtectedDevServer(markedApp(serverOnly))
+    const client = await server.load('/src/entry.ts')
+    return { server, client }
+  })
+
   test(
     'is logged when the client loads the importer first',
     async () => {
-      const server = await startProtectedDevServer(markedApp(serverOnly))
-      await server.load('/src/entry.ts')
+      const { server } = await importerFirst()
       expect(loggedViolations(server)).toContainEqual(markerReport('a', 'b'))
     },
     timeout,
@@ -1135,8 +1152,7 @@ export const peek = () => other()
   test(
     'is mocked when the client loads the importer first',
     async () => {
-      const server = await startProtectedDevServer(markedApp(serverOnly))
-      const client = await server.load('/src/entry.ts')
+      const { client } = await importerFirst()
       expect(modulesContaining(client, 'MARK_B_CODE')).toEqual([])
     },
     timeout,
@@ -2487,7 +2503,7 @@ export const read = () => secret()
   }
 
   /** The trace steps of each warning logged when the client loads the app. */
-  async function tracesOf(importProtection: ImportProtectionOptions) {
+  async function tracesOfRun(importProtection: ImportProtectionOptions) {
     const server = await startProtectedDevServer(chainApp, importProtection)
     await server.load('/src/entry.ts')
     const reports = violationsOf(server)
@@ -2499,6 +2515,7 @@ export const read = () => secret()
       })),
     )
   }
+  const cutTraces = once(() => tracesOfRun({ maxTraceDepth: 1 }))
 
   // Source: mutation testing (the trace from Vite's module graph, which dev
   // import protection prefers when it is longer than its own: here, its own
@@ -2506,7 +2523,7 @@ export const read = () => secret()
   test(
     'with maxTraceDepth, the trace ends at the importer, each step naming the import of the next',
     async () => {
-      for (const trace of await tracesOf({ maxTraceDepth: 1 })) {
+      for (const trace of await cutTraces()) {
         expect(trace.at(-1)?.file).toBe('src/b.ts')
         for (const [index, step] of trace.slice(0, -1).entries()) {
           expect(step.imports).toBe(
@@ -2525,7 +2542,7 @@ export const read = () => secret()
     'with maxTraceDepth, a deeper trace is cut, keeping the importer',
     async () => {
       // (which steps a cut keeps, besides the importer, is not specified)
-      for (const trace of await tracesOf({ maxTraceDepth: 1 })) {
+      for (const trace of await cutTraces()) {
         expect(trace.length).toBeLessThanOrEqual(1 + 1)
         expect(trace.at(-1)?.file).toBe('src/b.ts')
       }
