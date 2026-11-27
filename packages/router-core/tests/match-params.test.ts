@@ -667,6 +667,93 @@ describe('params.parse route selection', () => {
       )
       expect(findRouteMatch('/abc/bar', processedTree)).toBeNull()
     })
+
+    it("pathless child without params.parse keeps the parent's params.parse", () => {
+      const rootRoute = new BaseRootRoute({})
+      const postRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '$postId',
+        params: {
+          parse: ({ postId }: { postId: string }) =>
+            /^\d+$/.test(postId) ? { postId } : false,
+        },
+      })
+      const layoutRoute = new BaseRoute({
+        getParentRoute: () => postRoute,
+        id: '_layout',
+      })
+      const detailsRoute = new BaseRoute({
+        getParentRoute: () => layoutRoute,
+        path: 'details',
+      })
+      const routeTree = rootRoute.addChildren([
+        postRoute.addChildren([layoutRoute.addChildren([detailsRoute])]),
+      ])
+      const router = createTestRouter({
+        routeTree,
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+      })
+      const matchIds = (path: string) =>
+        router.matchRoutes(path, {}).map((match) => match.routeId)
+
+      expect(matchIds('/123')).toEqual(['__root__', '/$postId'])
+      expect(matchIds('/123/details')).toEqual([
+        '__root__',
+        '/$postId',
+        '/$postId/_layout',
+        '/$postId/_layout/details',
+      ])
+      expect(matchIds('/abc')).toEqual(['__root__'])
+      expect(matchIds('/abc/details')).toEqual(['__root__'])
+    })
+
+    it("pathless child without params.parse keeps the parent's priority fallback", () => {
+      const rootRoute = new BaseRootRoute({})
+      const postsRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: 'posts',
+      })
+      const postIdRoute = new BaseRoute({
+        getParentRoute: () => postsRoute,
+        path: '$postId',
+        params: {
+          parse: ({ postId }: { postId: string }) =>
+            /^\d+$/.test(postId) ? { postId } : false,
+          priority: 10,
+        },
+      })
+      const layoutRoute = new BaseRoute({
+        getParentRoute: () => postIdRoute,
+        id: '_layout',
+      })
+      const layoutIndexRoute = new BaseRoute({
+        getParentRoute: () => layoutRoute,
+        path: '/',
+      })
+      const slugRoute = new BaseRoute({
+        getParentRoute: () => postsRoute,
+        path: '$slug',
+      })
+      const routeTree = rootRoute.addChildren([
+        postsRoute.addChildren([
+          postIdRoute.addChildren([
+            layoutRoute.addChildren([layoutIndexRoute]),
+          ]),
+          slugRoute,
+        ]),
+      ])
+      const router = createTestRouter({
+        routeTree,
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+      })
+
+      expect(router.matchRoutes('/posts/123', {}).at(-1)?.routeId).toBe(
+        '/posts/$postId/_layout/',
+      )
+      expect(router.matchRoutes('/posts/hello', {}).at(-1)?.routeId).toBe(
+        '/posts/$slug',
+      )
+    })
   })
 
   describe('optional params', () => {
