@@ -1,6 +1,6 @@
 /**
- * A bare import of a denied module (`import './x.server'`, `import {} from`,
- * `export {} from`) is a violation wherever the build keeps its importer
+ * A bare import of a denied module (`import './x.server'`, `import {} from`;
+ * `export {} from`: own-and-type-imports.test.ts) is a violation wherever the build keeps its importer
  * (SPEC J6.4), decided by the import as the bundler's own graph holds it:
  * whatever the compiler read of the importer (a package module it does not
  * compile, an import a later plugin added, an import that is bare only after
@@ -227,21 +227,6 @@ test(
         },
       ),
     ).toEqual(['src/entry.ts'])
-  },
-  timeout,
-)
-
-// (Rsbuild: SWC turns `export {} from` into `export {}`: the bundler never
-// imports the marker, as at the base)
-test(
-  'vite build: an own server-only marker written `export {} from` fails the build in the client entry',
-  async () => {
-    expect(
-      await failedAt('vite', {
-        'src/client.ts': `export {} from '@tanstack/react-start/server-only'\nconsole.log('client')\n`,
-        'src/entry.ts': `export const read = () => 'entry'\n`,
-      }),
-    ).toEqual(['src/client.ts'])
   },
   timeout,
 )

@@ -1942,7 +1942,7 @@ Paths under `start-plugin-core/tests/integration/`; `ip/` means `integration/imp
   nothing".
 - **Allowing an import only silenced the report on `main`** (`onViolation` returning `false`, replaced by
   `allowImport`): the mock was already chosen. SPEC J6.6.
-  `ip/build-markers.test.ts`: "allows the import of %s: the build succeeds and the client gets the real module";
+  `ip/allow-import-cases.ts` (Vite and Rsbuild builds): "true: the real module, from the only pass; no report";
   `ip/dev.test.ts`: "allowImport returning true: the client gets the real module"; "with behavior "error", an
   import of a denied file it allows gets the real module"; `ip/policy.test.ts`: "the client gets the real module".
 - **Exempt importers get the mock** (the denied file is mocked in its own transform, for every importer). SPEC J6.7.

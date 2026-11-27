@@ -45,19 +45,6 @@ export const secret = () => 'MARK_SECRET'
     },
   },
 }
-type DeniedModule = keyof typeof deniedModules
-const deniedModuleNames = Object.keys(deniedModules) as Array<DeniedModule>
-
-/** An app whose client entry `src/entry.ts` uses `denied`. */
-function appUsing(denied: DeniedModule) {
-  const { importedAs, files } = deniedModules[denied]
-  return {
-    ...files,
-    'src/entry.ts': `import { secret } from '${importedAs}'
-export const read = () => secret()
-`,
-  }
-}
 
 /**
  * What a failed build reported, on every channel (a compiler may print the
@@ -93,28 +80,6 @@ async function clientRead(
     warnings: problems(build.diagnostics).map(({ text }) => text),
   }
 }
-
-// On main, an import a project allows with `allowImport` (documented:
-// guide/import-protection.md) would be a mock in the client: its calls return
-// mocks in production, without any warning.
-// Source: review.
-describe.each(startBundlers)(
-  '%s build, allowImport returning true',
-  (bundler) => {
-    const allowed = { hasRealCode: true, ranReal: true, warnings: [] }
-    const allowAll = { importProtection: { allowImport: () => true } }
-
-    test.each(deniedModuleNames)(
-      'allows the import of %s: the build succeeds and the client gets the real module',
-      async (denied) => {
-        expect(await clientRead(bundler, appUsing(denied), allowAll)).toEqual(
-          allowed,
-        )
-      },
-      timeout,
-    )
-  },
-)
 
 // Which client imports of a server-only-marked module are checked: a
 // marker violation is reported for each importer that is in scope and
