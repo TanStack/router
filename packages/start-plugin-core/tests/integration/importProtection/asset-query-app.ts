@@ -52,8 +52,11 @@ export const webpackContext = (regExp: string) =>
 
 export type Files = Record<string, string>
 
-/** Whether an emitted file holds the canary, as it is or as a base64 `data:` URL (`?inline`). */
-export async function emittedCanaries(dir: string): Promise<Array<string>> {
+/** Whether an emitted file holds `canary`, as it is or as a base64 `data:` URL (`?inline`). */
+export async function emittedCanaries(
+  dir: string,
+  canary = CANARY,
+): Promise<Array<string>> {
   const entries = await readdir(dir, { recursive: true, withFileTypes: true })
   const hits: Array<string> = []
   for (const entry of entries) {
@@ -65,7 +68,7 @@ export async function emittedCanaries(dir: string): Promise<Array<string>> {
     const inlined = [...text.matchAll(/;base64,([A-Za-z0-9+/=]+)/g)].map((m) =>
       Buffer.from(m[1]!, 'base64').toString('latin1'),
     )
-    if ([text, ...inlined].some((t) => t.includes(CANARY))) {
+    if ([text, ...inlined].some((t) => t.includes(canary))) {
       hits.push(file)
     }
   }
@@ -90,6 +93,61 @@ export const buildApp = (
     entry: 'src/entry.ts',
     start: { importProtection: options },
   })
+
+/**
+ * The canary of form `index` of `formsApp` (`_` after the number: no
+ * canary is a prefix of another).
+ */
+export const canaryOf = (index: number) => `${CANARY}_${index}_`
+
+/** The directory of form `index` of `formsApp`. */
+export const formDir = (index: number) => `src/f${index}`
+
+/**
+ * One app of several forms (`[name, entry, files]`, as `app` takes them):
+ * form `i` is `src/f<i>/` (`formDir`), its entry `src/f<i>/entry.ts` and its
+ * files there, with the canary `canaryOf(i)`; its reader is
+ * `globalThis.texts<i>`. The app's entry imports every form's entry.
+ */
+export function formsApp(forms: Array<[string, string, Files]>) {
+  const files: Files = {}
+  forms.forEach(([, entry, own], i) => {
+    for (const [file, text] of Object.entries(own)) {
+      files[file.replace(/^src\//, `${formDir(i)}/`)] = text.replaceAll(
+        CANARY,
+        canaryOf(i),
+      )
+    }
+    files[`${formDir(i)}/entry.ts`] = entry.replace(
+      '(globalThis as any).texts =',
+      `(globalThis as any).texts${i} =`,
+    )
+  })
+  return app(forms.map((_, i) => `import './f${i}/entry'\n`).join(''), files)
+}
+
+/**
+ * `readTexts` of each of `count` forms of `formsApp`: by form, its reading,
+ * or `{ error }` when its reader throws.
+ */
+export const readFormTexts = (count: number) => `const all = []
+for (let i = 0; i < ${count}; i++) {
+  try {
+    const out = []
+    for (const value of await globalThis['texts' + i]()) {
+      out.push(value)
+      if (value.startsWith('data:')) {
+        out.push(atob(value.split(',')[1]))
+      } else if (value.startsWith('/') || value.startsWith('http')) {
+        out.push(await (await fetch(value)).text())
+      }
+    }
+    all.push(out.join('\\n'))
+  } catch (error) {
+    all.push({ error: String(error?.message ?? error) })
+  }
+}
+return all`
 
 /** The page's texts, and for each a URL's content (`?url`) or a `data:` URL's. */
 export const readTexts = `const out = []

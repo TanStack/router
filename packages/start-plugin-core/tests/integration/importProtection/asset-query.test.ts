@@ -33,12 +33,15 @@ import {
   buildApp,
   byFileRule,
   byMarker,
+  canaryOf,
   clientViolations,
   eagerGlob,
   emittedCanaries,
+  formDir,
+  formsApp,
   importProtection,
   lazyGlob,
-  readTexts,
+  readFormTexts,
   staticImport,
   templateImport,
   textFile,
@@ -164,16 +167,69 @@ const rsbuildOnly: Array<[string, string, Files]> = [
   ],
 ]
 
+/** The result of `make`, made by the first call (rows of one shared app). */
+const once = <T>(make: () => Promise<T>) => {
+  let made: Promise<T> | undefined
+  return () => (made ??= make())
+}
+
+/** `forms` with each form's index (its directory in `formsApp`). */
+const indexed = (forms: Array<[string, string, Files]>) =>
+  forms.map(([name, entry, files], i) => [name, entry, files, i] as const)
+
+/** Whether `file` is one of form `index` of `formsApp`. */
+const inForm = (index: number) => (file: string) =>
+  file.startsWith(`${formDir(index)}/`)
+
+/**
+ * Who a dev server reports for form `index`: the importer of a static
+ * import; for a pattern import, which has no report of its own (SPEC J6.7),
+ * the denied file it reaches, served as its mock.
+ */
+const devReported = (entry: string, files: Files, index: number) =>
+  entry.startsWith('import * as module from')
+    ? [`${formDir(index)}/entry.ts`]
+    : Object.keys(files).map((file) =>
+        file.replace(/^src\//, `${formDir(index)}/`),
+      )
+
 describe.each<[StartBundler, Array<[string, string, Files]>]>([
   ['vite', [...bothHosts, ...viteOnly, ...viteBuildOnly]],
   ['rsbuild', [...bothHosts, ...rsbuildOnly]],
 ])('%s build', (bundler, forms) => {
-  test.each(forms)(
+  // every form in one app: what each emitted file holds of each form's
+  // canary (all output, `data:` URLs decoded), and the importers reported
+  const built = once(async () => {
+    const result = await buildStart({
+      bundler,
+      files: formsApp(forms),
+      entry: 'src/entry.ts',
+      start: { importProtection },
+    })
+    return {
+      emitted: await Promise.all(
+        forms.map((_, i) => emittedCanaries(result.client.outDir, canaryOf(i))),
+      ),
+      importers: importersIn(result, 'client'),
+    }
+  })
+
+  test.each(indexed(forms))(
     '%s is mocked and reported',
-    async (_name, entry, files) => {
-      const result = await buildApp(bundler, entry, files)
-      expect(await emittedCanaries(result.client.outDir)).toEqual([])
-      expect(importersIn(result, 'client')).toEqual(['src/entry.ts'])
+    async (_name, _entry, _files, i) => {
+      const { emitted, importers } = await built()
+      expect(emitted[i]).toEqual([])
+      expect(importers.filter(inForm(i))).toEqual([`${formDir(i)}/entry.ts`])
+    },
+    timeout,
+  )
+
+  test(
+    'every form is reported, and nothing else',
+    async () => {
+      expect((await built()).importers).toEqual(
+        forms.map((_, i) => `${formDir(i)}/entry.ts`).sort(),
+      )
     },
     timeout,
   )
@@ -271,37 +327,48 @@ describe.each<[StartBundler, Array<[string, string, Files]>]>([
   )
 })
 
-/**
- * Who a dev server reports: the importer of a static import; for a pattern
- * import, which has no report of its own (SPEC J6.7), the denied file it
- * reaches, served as its mock.
- */
-const devReported = (entry: string, files: Files) =>
-  entry.startsWith('import * as module from')
-    ? ['src/entry.ts']
-    : Object.keys(files)
-
 describe('vite dev', () => {
-  test.each([...bothHosts, ...viteOnly])(
+  const forms = [...bothHosts, ...viteOnly]
+  // every form in one app and one page: each form's reading, and the
+  // importers reported once every reader ran (lazy imports included)
+  const served = once(async () => {
+    const recorder = violationRecorder(importProtection)
+    const server = await startDevServer({
+      browser: true,
+      start: { importProtection: recorder.importProtection },
+      files: formsApp(forms),
+    })
+    const { result } = await runViteClient(
+      server,
+      '/src/router.ts',
+      readFormTexts(forms.length),
+    )
+    await server.idle()
+    return {
+      texts: result as Array<unknown>,
+      importers: importersIn({ root: server.root, ...recorder }, 'client'),
+    }
+  })
+
+  test.each(indexed(forms))(
     '%s is mocked and reported',
-    async (_name, entry, files) => {
-      const recorder = violationRecorder(importProtection)
-      const server = await startDevServer({
-        browser: true,
-        start: { importProtection: recorder.importProtection },
-        files: app(entry, files),
-      })
-      const { result } = await runViteClient(
-        server,
-        '/src/router.ts',
-        readTexts,
-      )
-      await server.idle()
+    async (_name, entry, files, i) => {
+      const { texts, importers } = await served()
       // (the reader read something: a value, a URL's content)
-      expect(result).toMatch(/./)
-      expect(result).not.toContain(CANARY)
-      expect(importersIn({ root: server.root, ...recorder }, 'client')).toEqual(
-        devReported(entry, files),
+      expect(texts[i]).toMatch(/./)
+      expect(texts[i]).not.toContain(canaryOf(i))
+      expect(importers.filter(inForm(i))).toEqual(devReported(entry, files, i))
+    },
+    timeout,
+  )
+
+  test(
+    'every form is reported, and nothing else',
+    async () => {
+      expect((await served()).importers).toEqual(
+        indexed(forms)
+          .flatMap(([, entry, files, i]) => devReported(entry, files, i))
+          .sort(),
       )
     },
     timeout,
@@ -370,25 +437,45 @@ test(
 )
 
 describe('rsbuild dev', () => {
-  test.each([...bothHosts, ...rsbuildOnly])(
+  const forms = [...bothHosts, ...rsbuildOnly]
+  // every form in one app and one page (`formsApp`, as on Vite)
+  const served = once(async () => {
+    const recorder = violationRecorder(importProtection)
+    const server = await startRsbuildStartDevServer({
+      compileTimeout: timeout,
+      browser: true,
+      hmr: false,
+      files: formsApp(forms),
+      start: { importProtection: recorder.importProtection },
+    })
+    const { result } = await captureConsole(() =>
+      clientResult(server, readFormTexts(forms.length)),
+    )
+    return {
+      texts: result as Array<unknown>,
+      importers: importersIn({ root: server.root, ...recorder }, 'client'),
+    }
+  })
+
+  test.each(indexed(forms))(
     '%s is mocked and reported',
-    async (_name, entry, files) => {
-      const recorder = violationRecorder(importProtection)
-      const server = await startRsbuildStartDevServer({
-        compileTimeout: timeout,
-        browser: true,
-        hmr: false,
-        files: app(entry, files),
-        start: { importProtection: recorder.importProtection },
-      })
-      const { result } = await captureConsole(() =>
-        clientResult(server, readTexts),
-      )
+    async (_name, entry, files, i) => {
+      const { texts, importers } = await served()
       // (the reader read something: a value, a URL's content)
-      expect(result).toMatch(/./)
-      expect(result).not.toContain(CANARY)
-      expect(importersIn({ root: server.root, ...recorder }, 'client')).toEqual(
-        devReported(entry, files),
+      expect(texts[i]).toMatch(/./)
+      expect(texts[i]).not.toContain(canaryOf(i))
+      expect(importers.filter(inForm(i))).toEqual(devReported(entry, files, i))
+    },
+    timeout,
+  )
+
+  test(
+    'every form is reported, and nothing else',
+    async () => {
+      expect((await served()).importers).toEqual(
+        indexed(forms)
+          .flatMap(([, entry, files, i]) => devReported(entry, files, i))
+          .sort(),
       )
     },
     timeout,
