@@ -10,9 +10,11 @@ export default defineConfig({
     tailwindcss(),
     cloudflare({ viteEnvironment: { name: 'ssr' }, inspectorPort: false }),
     tanstackStart({
+      pages: [{ path: '/static' }],
       prerender: {
         enabled: true,
-        filter: (page) => page.path === '/static',
+        autoStaticPathsDiscovery: false,
+        crawlLinks: false,
       },
     }),
     viteReact(),

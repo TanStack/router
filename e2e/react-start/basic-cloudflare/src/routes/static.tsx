@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
-import { env } from 'cloudflare:workers'
+import { content } from '../cache-fixture'
 
 export const Route = createFileRoute('/static')({
   loader: () => getData(),
@@ -9,7 +9,7 @@ export const Route = createFileRoute('/static')({
 
 const getData = createServerFn().handler(() => {
   return {
-    myVar: env.MY_VAR,
+    myVar: content.value,
   }
 })
 
