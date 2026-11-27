@@ -16,6 +16,8 @@
  * handler reaches server code and HTTP calls. On
  * Vite's and Rsbuild's dev servers.
  */
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import {
   afterAll,
   beforeAll,
@@ -191,7 +193,25 @@ function Page() {
 
 interface Served {
   url: string
+  root: string
   edit: (files: Record<string, string>) => Promise<unknown>
+}
+
+/**
+ * Puts the row's files back to the app's text before it runs: an earlier
+ * attempt of the row (a retry, a repeat) edited them on the shared dev
+ * server. The row's first check then waits for the outcome of that text.
+ */
+async function restore(server: Served, names: Array<keyof typeof files>) {
+  const edited = names.filter(
+    (name) =>
+      readFileSync(path.join(server.root, name), 'utf8') !== files[name],
+  )
+  if (edited.length > 0) {
+    await server.edit(
+      Object.fromEntries(edited.map((name) => [name, files[name]])),
+    )
+  }
 }
 
 type Cleanup = (cleanup: () => Promise<void>) => void
@@ -203,7 +223,7 @@ const servers: Record<string, (registerCleanup: Cleanup) => Promise<Served>> = {
       files,
       registerCleanup,
     })
-    return { url: server.url!, edit: (f) => server.edit(f) }
+    return { url: server.url!, root: server.root, edit: (f) => server.edit(f) }
   },
   rsbuild: async (registerCleanup) => {
     const server = await startRsbuildStartDevServer({
@@ -212,13 +232,13 @@ const servers: Record<string, (registerCleanup: Cleanup) => Promise<Served>> = {
       files,
       registerCleanup,
     })
-    return { url: server.url!, edit: (f) => server.edit(f) }
+    return { url: server.url!, root: server.root, edit: (f) => server.edit(f) }
   },
 }
 
 describe.each(Object.keys(servers))('%s dev', (bundler) => {
   // One dev server for the bundler's rows: each row serves its own route
-  // and edits files no other row reads (its starting state is the app's).
+  // and edits files no other row reads, from the app's text (`restore`).
   let server!: Served
   let stop: (() => Promise<void>) | undefined
   beforeAll(async () => {
@@ -246,6 +266,7 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
       /** What a client call over HTTP gives, from a fresh page. */
       const called = () => clientCall(server.url, 'probe')
 
+      await restore(server, ['src/fns.ts', 'src/kept.ts'])
       await rendered('a:P1/b/H1|K1')
       expect(await called()).toBe('client=a:P1/b/H1|K1')
 
@@ -275,6 +296,7 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
           })
           .toBe(expected)
 
+      await restore(server, ['src/lazy-schema.ts', 'src/routes/stubbed.tsx'])
       await reaches('client=S1/H1')
       await server.edit({ 'src/lazy-schema.ts': lazySchema('S2') })
       await reaches('client=S2/H1')
@@ -306,6 +328,7 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
           .poll(() => clientCall(url, 'nested-probe'), { timeout: 15_000 })
           .toBe(expected)
 
+      await restore(server, ['src/nested-fns.ts'])
       await rendered('N:H1')
       await reaches('client=N:H1')
       await server.edit({ 'src/nested-fns.ts': nestedFns('H2') })
@@ -327,6 +350,7 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
           new RegExp(`^client=L/${mark}:(\\d+) client=L/${mark}:(\\d+)$`),
         )
 
+      await restore(server, ['src/stop-schema.ts'])
       await reaches('S1')
       await server.edit({ 'src/stop-schema.ts': stopSchema('S2') })
       await reaches('S2')
@@ -348,6 +372,7 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
           ),
         )
 
+      await restore(server, ['src/lib-builder.ts', 'src/routes/built.tsx'])
       await reaches('B1', 'H1')
       await server.edit({ 'src/lib-builder.ts': libBuilder('B2') })
       await reaches('B2', 'H1')
