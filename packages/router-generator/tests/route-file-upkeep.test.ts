@@ -26,12 +26,7 @@ import {
 import { createApp, generate, read, rootRoute } from './app'
 import { expectOnlyOwnedEdits } from './owned-edits'
 import { routeCallOf } from './route-id'
-import {
-  evaluateModule,
-  exportsRoute,
-  routesOf,
-  withRouteTree,
-} from './route-tree'
+import { evaluateModule, routesOf, withRouteTree } from './route-tree'
 import type { Config } from '../src'
 
 afterEach(() => {
@@ -42,57 +37,58 @@ const routerPackage = '@tanstack/react-router'
 const router = `'${routerPackage}'`
 
 /**
+ * What a route tree does when the real router loads it: `'loads'`, or
+ * `{ fails }`, the error it fails with (a reported file the tree imports as
+ * written, whose `Route` is no route).
+ */
+type TreeLoad = 'loads' | { fails: string }
+
+/**
  * Runs the generator on an app with a root route, `src/routes/<file>`
- * holding `source` and `otherFiles` (paths relative to the app root). The
- * run must succeed, unless `reportAllowed`: a failed run is then returned
- * (`error`, for `expectReported`). A run that succeeds is followed by a
- * load of its route tree with the real router, which must succeed too. One
- * exception, with `reportAllowed`: the tree imports a reported file as
- * written, so when that file exports no route the tree can use (its `Route`,
- * loaded in the app, has no `update`), the tree cannot load. Such a load
- * leaves `routes` undefined, and only the report can pass
- * (`expectReported`). A file that exports a route must leave a tree that
- * loads, warning or not.
- * Returns the file as the generator left it, the warnings (the load's
- * included) and `routes`, the tree's routes (route id to file).
+ * holding `source` and `otherFiles` (paths relative to the app root), then
+ * loads its route tree with the real router. The run must succeed, unless
+ * `reportAllowed`: a failed run is then returned (`error`, for
+ * `expectReported`). The load must go as `tree` says: a tree that loads
+ * gives `routes` (route id to file), one that fails must fail with its error
+ * (`routes` undefined). Returns the file as the generator left it, the
+ * warnings (the load's included), `error` and `routes`.
  */
 async function upkeep(
   file: string,
   source: string,
   config: Partial<Config> = {},
   otherFiles: Record<string, string> = {},
-  reportAllowed = false,
+  { reportAllowed = false, tree = 'loads' as TreeLoad } = {},
 ) {
   const root = await createApp({
     'src/routes/__root.tsx': rootRoute(),
     [`src/routes/${file}`]: source,
     ...otherFiles,
   })
-  const routeFile = path.join(root, 'src/routes', file)
   let error: unknown
   let routes: Record<string, string | null> | undefined
   const { diagnostics } = await captureDiagnostics(async () => {
-    let tree: string
+    let treeFile: string
     try {
-      tree = (await generate(root, { disableLogging: false, ...config }))
+      treeFile = (await generate(root, { disableLogging: false, ...config }))
         .generatedRouteTree
     } catch (e) {
-      if (!reportAllowed) {
+      // (a tree expected to fail is a tree: its run must succeed)
+      if (!reportAllowed || tree !== 'loads') {
         throw e
       }
       error = e
       return
     }
-    routes = await routesOf(tree).catch(async (e: unknown) => {
-      if (reportAllowed && !(await exportsRoute(routeFile))) {
-        return undefined
-      }
-      throw e
-    })
+    if (tree === 'loads') {
+      routes = await routesOf(treeFile)
+    } else {
+      await expect(routesOf(treeFile)).rejects.toThrow(tree.fails)
+    }
   })
   return {
     root,
-    file: routeFile,
+    file: path.join(root, 'src/routes', file),
     written: await read(root, `src/routes/${file}`),
     diagnostics,
     error,
@@ -100,12 +96,16 @@ async function upkeep(
   }
 }
 
-/** `upkeep` of a file the generator may report instead of keeping up. */
+/**
+ * `upkeep` of a file the generator may report instead of keeping up, whose
+ * tree goes as `tree` says.
+ */
 const upkeepOrReport = (
   file: string,
   source: string,
+  tree: TreeLoad,
   otherFiles: Record<string, string> = {},
-) => upkeep(file, source, {}, otherFiles, true)
+) => upkeep(file, source, {}, otherFiles, { reportAllowed: true, tree })
 
 /**
  * Asserts that the generator reported the file by name: the run failed
@@ -904,12 +904,14 @@ export const createFileRoute = (id: any) => (options: any) =>
   test.each([
     {
       name: 'declared in the file',
+      tree: 'loads' as const,
       source: `${factory.replace('export const', 'const')}
 export const Route = createFileRoute('/old')({})
 `,
     },
     {
       name: 'imported from another module of the app',
+      tree: 'loads' as const,
       source: `import { createFileRoute } from './-factory'
 
 export const Route = createFileRoute('/old')({})
@@ -917,8 +919,8 @@ export const Route = createFileRoute('/old')({})
     },
   ])(
     'a createFileRoute $name keeps its meaning: the file is left as it is, or reported',
-    async ({ source }) => {
-      const outcome = await upkeepOrReport('new.tsx', source, {
+    async ({ source, tree }) => {
+      const outcome = await upkeepOrReport('new.tsx', source, tree, {
         'src/routes/-factory.ts': factory,
       })
       const { root, written } = outcome
@@ -965,6 +967,7 @@ describe('route files the generator does not rewrite', () => {
   test.each([
     {
       name: 'a Route from another module',
+      tree: 'loads' as const,
       source: `import { postsRoute } from './-posts-route'
 export const Route = postsRoute
 `,
@@ -980,6 +983,7 @@ export const postsRoute = createFileRoute('/new')({
     },
     {
       name: 'a Route made by a route factory of the app',
+      tree: 'loads' as const,
       source: `import { makeRoute } from './-make-route'
 export const Route = makeRoute()({ component: () => 'new page' })
 `,
@@ -993,8 +997,8 @@ export const makeRoute = () => createFileRoute('/new')
     },
   ])(
     '$name is left as it is and registered, or reported by name',
-    async ({ source, helper: [helperFile, helperSource] }) => {
-      const outcome = await upkeepOrReport('new.tsx', source, {
+    async ({ source, tree, helper: [helperFile, helperSource] }) => {
+      const outcome = await upkeepOrReport('new.tsx', source, tree, {
         [helperFile]: helperSource,
       })
       const { root, written } = outcome
@@ -1021,6 +1025,7 @@ export const makeRoute = () => createFileRoute('/new')
   test.each([
     {
       name: 'a template literal id',
+      tree: 'loads' as const,
       source: `import { createFileRoute } from ${router}
 const Page = () => null
 export const Route = createFileRoute(\`/old\`)({ component: Page })
@@ -1028,6 +1033,7 @@ export const Route = createFileRoute(\`/old\`)({ component: Page })
     },
     {
       name: 'an id read from a variable',
+      tree: 'loads' as const,
       source: `import { createFileRoute } from ${router}
 const routeId = '/old'
 export const Route = createFileRoute(routeId)({})
@@ -1035,6 +1041,7 @@ export const Route = createFileRoute(routeId)({})
     },
     {
       name: 'an interpolated template literal id',
+      tree: 'loads' as const,
       source: `import { createFileRoute } from ${router}
 const x = 'old'
 export const Route = createFileRoute(\`/\${x}\`)({})
@@ -1042,8 +1049,8 @@ export const Route = createFileRoute(\`/\${x}\`)({})
     },
   ])(
     'a route file with $name gets the literal id or is reported by name',
-    async ({ source }) => {
-      const outcome = await upkeepOrReport('new.tsx', source)
+    async ({ source, tree }) => {
+      const outcome = await upkeepOrReport('new.tsx', source, tree)
       const { written } = outcome
 
       if (routeCallOf(written).id === '/new') {
@@ -1101,6 +1108,7 @@ export const Route = createFileRoute(('/old' as const))({})
       `import { createFileRoute } from ${router}
 export const Route = createFileRoute(('/old'))
 `,
+      { fails: 'Route.update is not a function' },
     )
     expectReported(outcome)
     expect(
@@ -1116,16 +1124,24 @@ export const Route = createFileRoute(('/old'))
   // curried into ``createFileRoute('/new')(`/old`)``.
   // (a template literal is never the options, interpolated or not)
   test.each([
-    { name: 'a template literal id', id: '`/old`' },
-    { name: 'an interpolated template literal id', id: '`/${segment}`' },
+    {
+      name: 'a template literal id',
+      id: '`/old`',
+      tree: { fails: 'Route.update is not a function' },
+    },
+    {
+      name: 'an interpolated template literal id',
+      id: '`/${segment}`',
+      tree: { fails: 'Route.update is not a function' },
+    },
   ])(
     '$name of a call without the options call is reported at the id and kept',
-    async ({ id }) => {
+    async ({ id, tree }) => {
       const source = `import { createFileRoute } from ${router}
 const segment = 'old'
 export const Route = createFileRoute(${id})
 `
-      const outcome = await upkeepOrReport('new.tsx', source)
+      const outcome = await upkeepOrReport('new.tsx', source, tree)
       expect(outcome.written).toBe(source)
       expectReported(outcome, { position: diagnosticPosition(source, id) })
     },
@@ -1137,25 +1153,31 @@ export const Route = createFileRoute(${id})
   test.each([
     {
       name: 'a createFileRoute call without the options call',
+      tree: { fails: 'Route.update is not a function' },
       source: `import { createFileRoute } from ${router}
 export const Route = createFileRoute('/old')
 `,
     },
     {
       name: 'createFileRoute imported as a type only',
+      tree: { fails: 'createFileRoute is not defined' },
       source: `import type { createFileRoute } from ${router}
 export const Route = createFileRoute('/old')({})
 `,
     },
     {
       name: 'an aliased createFileRoute call without the options call',
+      tree: { fails: 'Route.update is not a function' },
       source: `import { createFileRoute as fileRoute } from ${router}
 export const Route = fileRoute('/old')
 `,
     },
-  ])('a route file with $name is reported by name', async ({ source }) => {
-    expectReported(await upkeepOrReport('new.tsx', source))
-  })
+  ])(
+    'a route file with $name is reported by name',
+    async ({ source, tree }) => {
+      expectReported(await upkeepOrReport('new.tsx', source, tree))
+    },
+  )
 
   // R130: a route made by the app's own helper gets nothing, whatever the
   // helper is named (REVIEW-design5-final finding 3: the generator decided
@@ -1193,6 +1215,7 @@ export const createFileRoute = (id: any) =>
     {
       name: 'options passed to createFileRoute directly',
       constructor: 'createFileRoute',
+      tree: 'loads',
       source: `import { createFileRoute } from ${router}
 export const Route = createFileRoute({ component: () => null })
 `,
@@ -1200,6 +1223,7 @@ export const Route = createFileRoute({ component: () => null })
     {
       name: 'options passed to createLazyFileRoute directly',
       constructor: 'createLazyFileRoute',
+      tree: 'loads',
       fileName: 'new.lazy.tsx',
       source: `import { createLazyFileRoute } from ${router}
 export const Route = createLazyFileRoute({ component: () => null })
@@ -1207,8 +1231,8 @@ export const Route = createLazyFileRoute({ component: () => null })
     },
   ] as const)(
     'a route file with $name is reported by name or repaired',
-    async ({ source, constructor, fileName = 'new.tsx' }) => {
-      const outcome = await upkeepOrReport(fileName, source)
+    async ({ source, constructor, tree, fileName = 'new.tsx' }) => {
+      const outcome = await upkeepOrReport(fileName, source, tree)
       const { written } = outcome
 
       if (outcome.error === undefined && written !== source) {
