@@ -699,8 +699,10 @@ function Page() {
 export const Route = createFileRoute('/')({ component: Page })
 `)
       await expectValidModules(route)
-      expect(await route.isLazy('component')).toBe(true)
-      expect(await route.run(`return render('component')`)).toBe('<p>page</p>')
+      expect(await route.renderLazy('component')).toEqual({
+        lazy: true,
+        html: '<p>page</p>',
+      })
     },
   )
 

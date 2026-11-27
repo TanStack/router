@@ -418,8 +418,10 @@ export const Route = createFileRoute('/')({
 })
 `)
     await expectValidModules(route)
-    expect(await route.isLazy('component')).toBe(true)
-    expect(await route.run(`return render('component')`)).toBe('<p>chart</p>')
+    expect(await route.renderLazy('component')).toEqual({
+      lazy: true,
+      html: '<p>chart</p>',
+    })
 
     const { modules } = await route.modules()
     const directives = Object.values(modules).flatMap((code) =>

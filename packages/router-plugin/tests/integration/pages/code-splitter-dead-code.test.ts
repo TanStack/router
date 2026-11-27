@@ -499,8 +499,10 @@ export const Route = createFileRoute('/')({
   component: () => <p>{f.length}{g.length}</p>,
 })
 `)
-    expect(await route.isLazy('component')).toBe(true)
-    expect(await route.run(`return render('component')`)).toBe('<p>22</p>')
+    expect(await route.renderLazy('component')).toEqual({
+      lazy: true,
+      html: '<p>22</p>',
+    })
   })
 
   // Source: React Router remove-exports-test.ts "iife with dependencies".

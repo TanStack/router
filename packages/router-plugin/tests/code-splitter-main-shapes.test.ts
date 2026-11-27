@@ -84,8 +84,10 @@ export const Route = createFileRoute('/')({ component: ${value} })
       { files: { 'page.tsx': pageFile } },
     )
     await expectValidModules(route)
-    expect(await route.isLazy('component')).toBe(true)
-    expect(await route.run(`return render('component')`)).toBe('<p>page</p>')
+    expect(await route.renderLazy('component')).toEqual({
+      lazy: true,
+      html: '<p>page</p>',
+    })
   })
 
   // (SPEC §2.1: the chunk imports the route file by a specifier holding the `'`)
@@ -96,8 +98,10 @@ export const Route = createFileRoute('/')({ component: ${value} })
       { filename: "what's-new.tsx", routeId: "/what's-new" },
     )
     await expectValidModules(route)
-    expect(await route.isLazy('component')).toBe(true)
-    expect(await route.run(`return render('component')`)).toBe('<p>new</p>')
+    expect(await route.renderLazy('component')).toEqual({
+      lazy: true,
+      html: '<p>new</p>',
+    })
   })
 
   it('splits a loader given as an imported function, which loads its data', async () => {
@@ -554,8 +558,10 @@ export const Route = createFileRoute('/')({ component: () => <p>{String(${read})
 `,
     )
     await expectValidModules(route)
-    expect(await route.isLazy('component')).toBe(true)
-    expect(await route.run(`return render('component')`)).toBe(html)
+    expect(await route.renderLazy('component')).toEqual({
+      lazy: true,
+      html,
+    })
   })
 
   // O1 (review-phase1-final 3.1): code reaching a copied binding only
@@ -572,8 +578,10 @@ export const Route = createFileRoute('/')({ component: Comp })
 `,
     )
     await expectValidModules(route)
-    expect(await route.isLazy('component')).toBe(true)
-    expect(await route.run(`return render('component')`)).toBe('<p>0/1</p>')
+    expect(await route.renderLazy('component')).toEqual({
+      lazy: true,
+      html: '<p>0/1</p>',
+    })
   })
 })
 
@@ -1029,8 +1037,10 @@ export const Route = createFileRoute('/')({ component: Page })
 `,
       )
       await expectValidModules(route)
-      expect(await route.isLazy('component')).toBe(true)
-      expect(await route.run(`return render('component')`)).toBe(html)
+      expect(await route.renderLazy('component')).toEqual({
+        lazy: true,
+        html,
+      })
       expect((await route.production()).where('MARK_HELPER')).toBe('lazy')
     },
   )
@@ -1063,8 +1073,10 @@ export const Route = createFileRoute('/')({ component: Page })
 `,
       )
       await expectValidModules(route)
-      expect(await route.isLazy('component')).toBe(true)
-      expect(await route.run(`return render('component')`)).toBe(html)
+      expect(await route.renderLazy('component')).toEqual({
+        lazy: true,
+        html,
+      })
       expect((await route.production()).where('MARK_HELPER')).toBe('eager+lazy')
     },
   )
@@ -1091,8 +1103,10 @@ export const Route = createFileRoute('/')({ component: ${value} })
 `,
     )
     await expectValidModules(route)
-    expect(await route.isLazy('component')).toBe(true)
-    expect(await route.run(`return render('component')`)).toBe(html)
+    expect(await route.renderLazy('component')).toEqual({
+      lazy: true,
+      html,
+    })
     expect(
       (await route.diagnostics()).filter((d) => d.severity === 'warning'),
     ).toEqual([])
@@ -1139,8 +1153,10 @@ export const Route = createFileRoute('/')({ ${options} component: Page })
 `,
       )
       await expectValidModules(route)
-      expect(await route.isLazy('component')).toBe(true)
-      expect(await route.run(`return render('component')`)).toBe(html)
+      expect(await route.renderLazy('component')).toEqual({
+        lazy: true,
+        html,
+      })
       expect((await route.production()).where('MARK_HELPER')).toBe('lazy')
     },
   )
@@ -1376,8 +1392,10 @@ describe('method shorthand and `this` (#8623, #8688)', () => {
 `,
     )
     await expectValidModules(route)
-    expect(await route.isLazy('component')).toBe(true)
-    expect(await route.run(`return render('component')`)).toBe('<p>page</p>')
+    expect(await route.renderLazy('component')).toEqual({
+      lazy: true,
+      html: '<p>page</p>',
+    })
     expectNoProblems(await route.diagnostics())
   })
 

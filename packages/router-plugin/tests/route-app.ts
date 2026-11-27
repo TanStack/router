@@ -1024,6 +1024,13 @@ export interface RouteApp {
    */
   isLazy: (option: string) => Promise<boolean>
   /**
+   * `isLazy(option)`, then `render(option)` in the same document: whether
+   * loading the option requested a module the compilers emitted that did
+   * not load with the route module, and the HTML the option renders (which
+   * loads it as `render` does: a document of its own would give the same).
+   */
+  renderLazy: (option: string) => Promise<{ lazy: boolean; html: string }>
+  /**
    * Code of each module the compilers emitted that loading the option
    * requests (one or more: facades and support modules are allowed); fails
    * for an option that is not lazy.
@@ -1127,13 +1134,18 @@ ${body}
   const run = async <T>(body: string, runOptions?: { before?: string }) =>
     (await runPage<T>(body, runOptions)).result
 
-  const newlyCompiled = (option: string) =>
-    run<Array<string>>(`const before = new Set(await compiled())
+  /** A page run's code: `newly`, the modules loading `option` requested. */
+  const loadOption = (
+    option: string,
+  ) => `const before = new Set(await compiled())
 await trigger(${JSON.stringify(option)})
 // A module the option requested that failed to compile is no lazily
 // loaded module: the option is broken (fail, never count it as lazy)
 probe.assertNoFailedRequests()
-return (await compiled()).filter((request) => !before.has(request))`)
+const newly = (await compiled()).filter((request) => !before.has(request))`
+  const newlyCompiled = (option: string) =>
+    run<Array<string>>(`${loadOption(option)}
+return newly`)
 
   /**
    * The production client build of the app as it is now (`vite build` of
@@ -1184,6 +1196,9 @@ return (await compiled()).filter((request) => !before.has(request))`)
     runPage,
     production,
     isLazy: async (option) => (await newlyCompiled(option)).length > 0,
+    renderLazy: (option) =>
+      run<{ lazy: boolean; html: string }>(`${loadOption(option)}
+return { lazy: newly.length > 0, html: await render(${JSON.stringify(option)}) }`),
     loadedBy: async (option) => {
       const loaded = await run<
         Array<string>

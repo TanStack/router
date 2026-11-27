@@ -98,8 +98,10 @@ function Page() {
   return <p>page</p>
 }
 `)
-    expect(await loaded.isLazy('component')).toBe(true)
-    expect(await loaded.run(`return render('component')`)).toBe('<p>page</p>')
+    expect(await loaded.renderLazy('component')).toEqual({
+      lazy: true,
+      html: '<p>page</p>',
+    })
   })
 
   // Controls for the pins above and in "route factories written in other
@@ -134,8 +136,10 @@ describe('route factories written in other shapes', () => {
 }
 export const Route = createFileRoute<'/'>('/')({ component: Page })
 `)
-    expect(await route.isLazy('component')).toBe(true)
-    expect(await route.run(`return render('component')`)).toBe('<p>page</p>')
+    expect(await route.renderLazy('component')).toEqual({
+      lazy: true,
+      html: '<p>page</p>',
+    })
   })
 
   // Bug: route options returned by a call (`createFileRoute('/')(

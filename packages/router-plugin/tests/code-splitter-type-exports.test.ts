@@ -154,8 +154,8 @@ test('a split component reads a member of a dotted namespace', async () => {
 export const Route = createFileRoute('/')({ component: () => <p>{N.M.a}</p> })
 `,
   )
-  expect(await loaded.isLazy('component')).toBe(true)
-  expect(await loaded.run(`return render('component')`)).toBe(
-    '<p>MARK_DOTTED</p>',
-  )
+  expect(await loaded.renderLazy('component')).toEqual({
+    lazy: true,
+    html: '<p>MARK_DOTTED</p>',
+  })
 })

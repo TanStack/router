@@ -586,8 +586,10 @@ export const Route = createFileRoute('/')({
 export const Route = createFileRoute('/')({ component: Page as any })
 `)
     await expectValidModules(route)
-    expect(await route.isLazy('component')).toBe(true)
-    expect(await route.run(`return render('component')`)).toBe('<p>page</p>')
+    expect(await route.renderLazy('component')).toEqual({
+      lazy: true,
+      html: '<p>page</p>',
+    })
   })
 
   // Whether such options are split is pinned in known-bugs-code-splitter.test.ts
@@ -783,8 +785,10 @@ describe('route factories', () => {
     expect(await route.host.dev.read('route.tsx')).toMatch(
       /createFileRoute \((['"`])\/x\1\)/,
     )
-    expect(await route.isLazy('component')).toBe(true)
-    expect(await route.run(`return render('component')`)).toBe('<p>spaced</p>')
+    expect(await route.renderLazy('component')).toEqual({
+      lazy: true,
+      html: '<p>spaced</p>',
+    })
   })
 
   // A root route created with `createRootRoute ({`, `createRootRouteWithContext

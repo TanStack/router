@@ -87,8 +87,8 @@ it('splits a component whose JSX text after a fragment starts with an em dash', 
 })
 `)
   await expectValidModules(route)
-  expect(await route.isLazy('component')).toBe(true)
-  expect(await route.run(`return render('component')`)).toBe(
-    '<p>first — second</p>',
-  )
+  expect(await route.renderLazy('component')).toEqual({
+    lazy: true,
+    html: '<p>first — second</p>',
+  })
 })

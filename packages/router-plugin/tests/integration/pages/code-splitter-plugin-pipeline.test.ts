@@ -296,10 +296,10 @@ export const Route = createFileRoute('/')({ component: () => <p use:tip>tip</p> 
 `,
       { targetFramework: 'solid' },
     )
-    expect(await route.isLazy('component')).toBe(true)
-    expect(await route.run(`return render('component')`)).toBe(
-      '<p data-tip="on">tip</p>',
-    )
+    expect(await route.renderLazy('component')).toEqual({
+      lazy: true,
+      html: '<p data-tip="on">tip</p>',
+    })
   })
 
   // Each framework's route module imports the lazy route helpers from its

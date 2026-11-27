@@ -168,8 +168,10 @@ const Page = () => <p>{getComponentName({ Page })}</p>`,
   ])('$name', async ({ body, expected }) => {
     const route = await loadRoute(pageRoute(body))
     await expectValidModules(route)
-    expect(await route.isLazy('component')).toBe(true)
-    expect(await route.run(`return render('component')`)).toBe(expected)
+    expect(await route.renderLazy('component')).toEqual({
+      lazy: true,
+      html: expected,
+    })
   })
 })
 
@@ -602,10 +604,10 @@ function Page() {
       { filename: 'route.js' },
     )
     await expectValidModules(route)
-    expect(await route.isLazy('component')).toBe(true)
-    expect(await route.run(`return render('component')`)).toBe(
-      'body,second,first',
-    )
+    expect(await route.renderLazy('component')).toEqual({
+      lazy: true,
+      html: 'body,second,first',
+    })
   })
 })
 
