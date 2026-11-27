@@ -1,4 +1,12 @@
 /**
+ * Kept (2a review, 2026-11-27): the sole coverage of a dev window no oracle
+ * test reaches. The window is a host read of a marked module still in flight
+ * when that file's change event lands; a dev server or watch build cannot
+ * hold its filesystem read open, and the oracle settles edits by their
+ * outcome with no hold point inside a read, so no public input meets it
+ * deterministically. To become a behaviour test of a dev server if the
+ * harness ever gets a held read.
+ *
  * A module edited while `marker` reads it: once the edit's event landed,
  * the cache answers the edited text, whether the event carries the text
  * (`markStale(path, read)`), only marks the path (`markStale(path)`), or
