@@ -31,11 +31,6 @@ export function lazyRouteComponent<
       error = undefined
       loadPromise = importer()
         .then((res) => {
-          // Resolved clients have no preload work; SSR can reuse the import.
-          if (!(isServer ?? typeof window === 'undefined')) {
-            loadPromise = undefined
-            ;(lazyComp as any).preload = undefined
-          }
           comp = res[exportName ?? 'default']
         })
         .catch((err) => {
