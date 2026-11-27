@@ -3,7 +3,7 @@ import {
   defaultStreamHandler,
   createServerEntry as createCoreServerEntry,
 } from '@tanstack/vue-start/server'
-import type { Register } from '@tanstack/vue-router'
+import type { Register } from '@tanstack/router-core'
 import type { RequestHandler } from '@tanstack/vue-start/server'
 
 const fetch = createStartHandler(defaultStreamHandler)
