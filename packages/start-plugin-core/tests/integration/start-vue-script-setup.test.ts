@@ -7,6 +7,7 @@
  */
 import vue from '@vitejs/plugin-vue'
 import {
+  diagnosticPosition,
   diagnosticsOf,
   expectDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
@@ -39,17 +40,20 @@ const vueHost = () =>
     return host
   }))
 
-async function caseOf(script: string) {
-  return (await vueHost()).case({
-    'b.ts': builder,
-    'Page.vue': `<script setup>
+/** A component whose `<script setup>` block is `script`. */
+const sfcOf = (script: string) => `<script setup>
 ${script}
 </script>
 
 <template>
   <p>page</p>
 </template>
-`,
+`
+
+async function caseOf(script: string) {
+  return (await vueHost()).case({
+    'b.ts': builder,
+    'Page.vue': sfcOf(script),
     'module.ts': `export { default } from './Page.vue'\n`,
   })
 }
@@ -100,12 +104,16 @@ test.each([
     script: `import { createServerFn } from '@tanstack/vue-start'
 const own = { get make() { return createServerFn } }
 console.log(own)`,
+    at: 'createServerFn } }',
+    names: 'createServerFn',
   },
   {
     name: 'an object of the block holding a builder',
     script: `import { base } from './b'
 const own = { base }
 console.log(own)`,
+    at: 'base }\nconsole.log(own)',
+    names: 'base',
   },
   {
     name: 'an object of the block named like the generated one',
@@ -115,11 +123,24 @@ const nested = () => {
   return returned
 }
 console.log(nested)`,
+    at: 'base }\n  return returned',
+    names: 'base',
   },
-])('$name is refused', async ({ script }) => {
+])('$name is refused', async ({ script, at, names }) => {
   const startCase = await caseOf(script)
-  expect(await compileError(startCase, 'client', 'Page.vue')).toBeInstanceOf(
-    Error,
+  const failure = await compileError(startCase, 'client', 'Page.vue')
+  expect(failure, 'a compile error').toBeInstanceOf(Error)
+  // an error at the use in the SFC (line and column), naming what it refuses
+  const refusal = expectDiagnostic(
+    [...diagnosticsOf(failure!.error), ...failure!.reported],
+    {
+      severity: 'error',
+      file: failure!.file,
+      position: diagnosticPosition(sfcOf(script), at),
+    },
+  )
+  expect(refusal.text, 'the refusal names the binding').toContain(
+    `\`${names}\``,
   )
 })
 
