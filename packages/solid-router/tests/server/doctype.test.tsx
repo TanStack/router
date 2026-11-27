@@ -49,4 +49,15 @@ describe('document type', () => {
       expect(html.match(/<!DOCTYPE html>/g)).toHaveLength(1)
     },
   )
+
+  test('stream writes the document type in the same chunk as the shell', async () => {
+    const response = await renderDocument('stream')
+    const reader = response.body!.getReader()
+    const { value } = await reader.read()
+    await reader.cancel()
+
+    expect(
+      new TextDecoder().decode(value).startsWith('<!DOCTYPE html><html'),
+    ).toBe(true)
+  })
 })

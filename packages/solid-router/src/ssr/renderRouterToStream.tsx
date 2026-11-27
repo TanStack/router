@@ -10,7 +10,8 @@ import { getSolidRenderOptions } from './renderOptions'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { JSX } from '@solidjs/web'
 
-const doctype = new TextEncoder().encode('<!DOCTYPE html>')
+// Rendered with the shell: prepending it to the stream copies the first chunk.
+const doctype = Solid.ssr('<!DOCTYPE html>')
 
 export const renderRouterToStream = async ({
   request,
@@ -33,28 +34,14 @@ export const renderRouterToStream = async ({
 
   try {
     const stream = Solid.renderToStream(
-      () => children,
+      () => [doctype, children],
       getSolidRenderOptions(router, manifest),
     )
 
     // Cancelling the transform's reader errors this writable, which makes
     // Solid's later writes reject and be ignored. Solid exposes no disposal
     // handle for unresolved renderer work; see router-core's STREAMING.md.
-    let doctypeWritten = false
-    const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>({
-      // The doctype joins the shell so it stays one renderer record.
-      transform(chunk, controller) {
-        if (doctypeWritten) {
-          controller.enqueue(chunk)
-          return
-        }
-        doctypeWritten = true
-        const out = new Uint8Array(doctype.length + chunk.length)
-        out.set(doctype, 0)
-        out.set(chunk, doctype.length)
-        controller.enqueue(out)
-      },
-    })
+    const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>()
     const rendererAbort = isbot(request.headers.get('User-Agent'))
       ? new AbortController()
       : undefined
