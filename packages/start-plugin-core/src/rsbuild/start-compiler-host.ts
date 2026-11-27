@@ -210,9 +210,9 @@ export function registerStartCompilerTransforms(
     }
 
     const rules = config.module.rules ?? []
-    rules.push({
+    rules.unshift({
       test: TRANSFORM_ID_REGEX[0],
-      enforce: 'post',
+      enforce: 'pre',
       use: [
         {
           loader: metadataLoader,
