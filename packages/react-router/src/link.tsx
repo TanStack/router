@@ -503,7 +503,6 @@ const ROUTER_OPTION_KEYS = /* @__PURE__ */ new Set([
   'activeProps',
   'inactiveProps',
   'activeOptions',
-  '_asChild',
 ])
 
 // Copies the element props. An object rest would test every key against the
@@ -808,59 +807,6 @@ export interface LinkComponentRoute<
   ): React.ReactElement
 }
 
-/**
- * Creates a typed Link-like component that preserves TanStack Router's
- * navigation semantics and type-safety while delegating rendering to the
- * provided host component.
- *
- * Useful for integrating design system anchors/buttons while keeping
- * router-aware props (eg. `to`, `params`, `search`, `preload`).
- *
- * @param Comp The host component to render (eg. a design-system Link/Button)
- * @returns A router-aware component with the same API as `Link`.
- * @link https://tanstack.com/router/latest/docs/framework/react/guide/custom-link
- */
-export function createLink<const TComp>(
-  Comp: Constrain<TComp, any, (props: CreateLinkProps) => ReactNode>,
-): LinkComponent<TComp> {
-  return React.forwardRef(function CreatedLink(props, ref) {
-    return <Link {...(props as any)} _asChild={Comp} ref={ref} />
-  }) as any
-}
-
-/**
- * A strongly-typed anchor component for declarative navigation.
- * Handles path, search, hash and state updates with optional route preloading
- * and active-state styling.
- *
- * Props:
- * - `preload`: Controls route preloading (eg. 'intent', 'render', 'viewport', true/false)
- * - `preloadDelay`: Delay in ms before preloading on focus, hover, or viewport entry
- * - `activeProps`/`inactiveProps`: Additional props merged when link is active/inactive
- * - `resetScroll`/`hashScrollIntoView`: Control scroll behavior on navigation
- * - `viewTransition`/`startTransition`: Use View Transitions/React transitions for navigation
- * - `ignoreBlocker`: Bypass registered blockers
- *
- * @returns An anchor-like element that navigates without full page reloads.
- * @link https://tanstack.com/router/latest/docs/framework/react/api/router/linkComponent
- */
-export const Link: LinkComponent<'a'> = React.memo(
-  React.forwardRef<Element, any>((props, ref) => {
-    const host = props._asChild || 'a'
-    const linkProps = useLinkProps(props as any, ref, host)
-
-    const children =
-      typeof props.children === 'function'
-        ? props.children({
-            isActive: (linkProps as any)['data-status'] === 'active',
-          })
-        : props.children
-
-    return React.createElement(host, linkProps, children)
-  }),
-  areLinkPropsEqual,
-) as any
-
 // A Link's output depends only on its props, the router context and its
 // route's location source, which React tracks for memoized components, so a parent
 // re-render with equal props can skip it. Router options are compared by
@@ -889,6 +835,57 @@ function areLinkPropsEqual(
   }
   return extraKeys === 0
 }
+
+/**
+ * Creates a typed Link-like component that preserves TanStack Router's
+ * navigation semantics and type-safety while delegating rendering to the
+ * provided host component.
+ *
+ * Useful for integrating design system anchors/buttons while keeping
+ * router-aware props (eg. `to`, `params`, `search`, `preload`).
+ *
+ * @param Comp The host component to render (eg. a design-system Link/Button)
+ * @returns A router-aware component with the same API as `Link`.
+ * @link https://tanstack.com/router/latest/docs/framework/react/guide/custom-link
+ */
+export const createLink = <const TComp,>(
+  Comp: Constrain<TComp, any, (props: CreateLinkProps) => ReactNode>,
+): LinkComponent<TComp> =>
+  // `Link` is `createLink('a')`, so a custom Link renders its host directly
+  // instead of wrapping `Link` in another component.
+  React.memo(
+    React.forwardRef<Element, any>((props, ref) => {
+      const linkProps = useLinkProps(props as any, ref, Comp as any)
+
+      const children =
+        typeof props.children === 'function'
+          ? props.children({
+              isActive: (linkProps as any)['data-status'] === 'active',
+            })
+          : props.children
+
+      return React.createElement(Comp as any, linkProps, children)
+    }),
+    areLinkPropsEqual,
+  ) as any
+
+/**
+ * A strongly-typed anchor component for declarative navigation.
+ * Handles path, search, hash and state updates with optional route preloading
+ * and active-state styling.
+ *
+ * Props:
+ * - `preload`: Controls route preloading (eg. 'intent', 'render', 'viewport', true/false)
+ * - `preloadDelay`: Delay in ms before preloading on focus, hover, or viewport entry
+ * - `activeProps`/`inactiveProps`: Additional props merged when link is active/inactive
+ * - `resetScroll`/`hashScrollIntoView`: Control scroll behavior on navigation
+ * - `viewTransition`/`startTransition`: Use View Transitions/React transitions for navigation
+ * - `ignoreBlocker`: Bypass registered blockers
+ *
+ * @returns An anchor-like element that navigates without full page reloads.
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/linkComponent
+ */
+export const Link: LinkComponent<'a'> = /* @__PURE__ */ createLink('a' as any)
 
 export type LinkOptionsFnOptions<
   TOptions,
