@@ -151,7 +151,8 @@ describe.each(startBundlers)('%s build', (bundler) => {
       name: 'a denied module importing a denied module',
       allow: ['src/entry.ts -> ./secret.server'],
       reported: ['src/secret.server.ts -> ./inner.server'],
-      out: 'OUT MARK_SECRET[import-protection mock]',
+      // (`describeValue`: by what the mock does, never by its label)
+      out: 'OUT MARK_SECRET a safe mock',
     },
     {
       // a live binding stays live through the allowed import

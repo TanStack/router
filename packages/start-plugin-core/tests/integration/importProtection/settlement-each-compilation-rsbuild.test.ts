@@ -40,6 +40,7 @@
  * violation twice).
  */
 import { describe, expect, test } from 'vitest'
+import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import { StartBuildError, buildStart } from '../../build-harness'
 import {
   reportedErrors,
@@ -53,7 +54,8 @@ import type { Recorded } from '../../importProtection/start-apps'
 
 const timeout = 120_000
 
-const mock = '[import-protection mock]'
+/** What a fixture renders for a mock (`describeValue`: by what it does, never by its label, SPEC §5.18). */
+const mock = 'a safe mock'
 
 const app = {
   'src/router.ts': `import { createRouter } from '@tanstack/react-router'
@@ -671,8 +673,11 @@ function Home() {
   const files = {
     ...app,
     'src/routes/index.tsx': route('FIRST'),
+    // (`describeValue` without a secret: the test reads the real code's
+    // bytes, `real`)
     'src/r.ts': `import { marker } from './d.client'
-export const run = () => String(marker())
+${describeValuePrelude}
+export const run = () => describeValue(marker())
 `,
     'src/d.client.ts': `export const marker = () => 'HOLDER_REAL'\n`,
   }

@@ -20,6 +20,7 @@
  * (/var/tmp/rsc-p1-recheck4/report.md §2, `grounded.py cyclewatch`).
  */
 import { describe, expect, test } from 'vitest'
+import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import { buildStart } from '../../build-harness'
 import { violationsOf } from '../../importProtection/start-apps'
 import { rsbuildRscLinks } from '../../start-plugins'
@@ -197,8 +198,9 @@ describe('rsbuild build --watch, a denied file in a cycle with a barrel whose im
       ) => `import { createFileRoute } from '@tanstack/react-router'
 import { createIsomorphicFn } from '@tanstack/react-start'
 import { read } from '../${from}'
+${describeValuePrelude}
 const label = createIsomorphicFn()
-  .server(() => String(read()))
+  .server(() => describeValue(read(), 'A_REAL'))
   .client(() => 'client control')
 export const Route = createFileRoute('/')({ component: Home })
 function Home() {
@@ -258,7 +260,8 @@ export const read = () => files('./a.client.ts').value()
       }
       const watched = await served(built)
       expect(watched).toEqual({
-        label: ['[import-protection mock]'],
+        // (`describeValue`: by what the mock does, never by its label)
+        label: ['a safe mock'],
         violations: [
           { importer: 'src/topPattern.ts', specifier: 'src/kit/a.client.ts' },
         ],

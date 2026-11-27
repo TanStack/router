@@ -8,6 +8,7 @@
  * - `denied`: the client file rule (root-relative globs); default `**\/*.server.*`.
  * - importers under `src/exempt/` are ignored (`ignoreImporters`).
  */
+import { describeValuePrelude } from '../../importProtection/mock-helpers'
 
 export interface SurvivalCase {
   name: string
@@ -422,7 +423,8 @@ export const cases: Array<SurvivalCase> = [
     name: 'a denied module importing a denied module',
     files: {
       'src/inner.server.ts': `export const inner = () => 'MARK_INNER'\n`,
-      'src/secret.server.ts': `import { inner } from './inner.server'\nexport const secret = () => 'MARK_SECRET' + inner()\n`,
+      // (`describeValue`: the mock told by what it does, never by its label)
+      'src/secret.server.ts': `import { inner } from './inner.server'\n${describeValuePrelude}export const secret = () => 'MARK_SECRET ' + describeValue(inner(), 'MARK_INNER')\n`,
       'src/entry.ts':
         `import { secret } from './secret.server'\n` + log('secret()'),
     },

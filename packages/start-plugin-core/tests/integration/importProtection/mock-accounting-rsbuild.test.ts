@@ -19,8 +19,15 @@
  * held federation mock, `holders8.py`: 99cc175358 and db260cf3a3 failed
  * with "survived with no importer").
  */
+import path from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { runNodeProgram } from '@tanstack/compiler-test-utils/run-node'
 import { describe, expect, test } from 'vitest'
 import { StartBuildError, buildStart } from '../../build-harness'
+import {
+  describeValuePrelude,
+  probeMockPrelude,
+} from '../../importProtection/mock-helpers'
 
 const timeout = 120_000
 
@@ -90,6 +97,56 @@ describe('a mock nothing imports in the build graph', () => {
 })
 
 describe('a mock a file-less holder imports directly', () => {
+  /**
+   * The provided module's `value`, as the route renders it on the server:
+   * read from the default share scope (no import of the held file),
+   * described (`describeValue`: a mock by what it does, never by its label).
+   */
+  const sharedReader = `import { createFileRoute } from '@tanstack/react-router'
+import { createIsomorphicFn } from '@tanstack/react-start'
+${describeValuePrelude}
+const shared = createIsomorphicFn()
+  .server(async () => {
+    await __webpack_init_sharing__('default')
+    const offered = (__webpack_share_scopes__ as any).default.offered
+    const held = (await (Object.values(offered)[0] as any).get())()
+    // (no secret given: the test reads the real code's bytes instead)
+    return describeValue(held.value)
+  })
+  .client(() => 'client control')
+export const Route = createFileRoute('/')({
+  loader: () => shared(),
+  component: Home,
+})
+function Home() {
+  return <main data-testid="held">{Route.useLoaderData()}</main>
+}
+`
+
+  /**
+   * Whether the module the container `container.cjs` (in `outDir`) exposes
+   * as `./d` exports a safe mock as `value`, read in Node as a consumer of
+   * the container reads it.
+   */
+  async function containerValueIsSafeMock(outDir: string) {
+    const { stdout } = await runNodeProgram(
+      `${probeMockPrelude}
+const { createRequire } = await import('node:module')
+const require = createRequire(${JSON.stringify(pathToFileURL(path.join(outDir, 'container.cjs')).href)})
+const container = require('./container.cjs')
+await container.init({})
+const held = (await container.get('./d'))()
+console.log('IP_HELD:' + JSON.stringify(isSafeMock(held.value, 'ORPHAN_REAL')))
+`,
+      { cwd: outDir },
+    )
+    const line = stdout.split('\n').find((l) => l.startsWith('IP_HELD:'))
+    if (!line) {
+      throw new Error(`The container gave no value: ${stdout}`)
+    }
+    return JSON.parse(line.slice('IP_HELD:'.length)) as boolean
+  }
+
   /** The server environment's plugin holding `d.client.ts` itself. */
   const holders = {
     container: (rspack: any) =>
@@ -123,6 +180,7 @@ describe('a mock a file-less holder imports directly', () => {
         bundler: 'rsbuild',
         files: {
           ...app,
+          ...(holder === 'provide' && { 'src/routes/index.tsx': sharedReader }),
           ...(dropped && {
             'src/reader.ts': `if (false) import('./d.client')\n;(globalThis as any).reader = 'READER'\n`,
           }),
@@ -147,10 +205,20 @@ describe('a mock a file-less holder imports directly', () => {
         } as never,
       })
       const server = built.ssr.chunks.map(({ code }) => code).join('\n')
-      expect({
-        mock: server.includes('[import-protection mock]'),
-        real: server.includes('ORPHAN_REAL'),
-      }).toEqual({ mock: true, real: false })
+      // the holder's consumer gets a safe mock (the container's, in Node;
+      // the share scope's, in the route), and no real code ships
+      let mock: boolean
+      if (holder === 'container') {
+        mock = await containerValueIsSafeMock(built.ssr.outDir)
+      } else {
+        const { url } = await built.preview()
+        const html = await (await fetch(new URL('/', url))).text()
+        mock = html.includes('data-testid="held">a safe mock<')
+      }
+      expect({ mock, real: server.includes('ORPHAN_REAL') }).toEqual({
+        mock: true,
+        real: false,
+      })
     },
     timeout,
   )

@@ -17,6 +17,7 @@
  * design-rsc-phase1-settlement.md S1, S1c).
  */
 import { describe, expect, test } from 'vitest'
+import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import { buildStart } from '../../build-harness'
 import { rejection, violationsOf } from '../../importProtection/start-apps'
 import { rsbuildRscLinks } from '../../start-plugins'
@@ -336,7 +337,8 @@ export const value = () => 'UP(' + String(read()) + ')'
 `,
   'src/ghost.ts': `import { read as viaPattern } from './pattern'
 if (false) import('./lower.client')
-export const read = () => String(viaPattern())
+${describeValuePrelude}
+export const read = () => describeValue(viaPattern(), 'LOW_REAL')
 `,
   'src/pattern.ts': `const files = import.meta.webpackContext('./', {
   recursive: false,
@@ -372,7 +374,8 @@ describe('Rsbuild build, a denied file a round of the settlement brings, which o
           specifier,
         })),
       }).toEqual({
-        label: ['UP([import-protection mock])'],
+        // (`describeValue`: by what the mock does, never by its label)
+        label: ['UP(a safe mock)'],
         violations: [
           { importer: 'src/pattern.ts', specifier: 'src/lower.client.ts' },
         ],

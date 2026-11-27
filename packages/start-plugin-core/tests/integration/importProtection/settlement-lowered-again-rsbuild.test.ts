@@ -28,6 +28,7 @@
  * R147), design-rsc-phase1-settlement.md amendment 2, U0 to U4.
  */
 import { describe, expect, test } from 'vitest'
+import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import { buildStart } from '../../build-harness'
 import {
   reportedErrors,
@@ -41,7 +42,8 @@ import type { Recorded } from '../../importProtection/start-apps'
 
 const timeout = 120_000
 
-const mock = '[import-protection mock]'
+/** What a fixture renders for a mock (`describeValue`: by what it does, never by its label, SPEC §5.18). */
+const mock = 'a safe mock'
 
 /** A module reading `value` of `<name>.client.ts` through a context (no import the compiler reads). */
 const pattern = (
@@ -67,8 +69,9 @@ const route = (
 import { createIsomorphicFn } from '@tanstack/react-start'
 import { read } from '../${first}'
 import { read as second } from '../${second}'
+${describeValuePrelude}
 const label = createIsomorphicFn()
-  .server(() => '${tag} ' + String(read()) + ' / ' + String(second()))
+  .server(() => '${tag} ' + describeValue(read(), 'REAL') + ' / ' + describeValue(second(), 'REAL'))
   .client(() => 'client control')
 export const Route = createFileRoute('/')({ component: Home })
 function Home() {
@@ -117,7 +120,8 @@ export const value = () => 'C:' + String(read())
   'src/grantLow.ts': grant('low'),
   'src/ghost.ts': `import { read as viaPattern } from './pattern'
 if (false) import('./low.client')
-export const read = () => String(viaPattern())
+${describeValuePrelude}
+export const read = () => describeValue(viaPattern(), 'LOW_REAL')
 `,
   'src/pattern.ts': pattern('low'),
   'src/readA.ts': pattern('a'),
@@ -136,7 +140,8 @@ const cold = {
 const coldNoDead = {
   ...cold,
   'src/ghost.ts': `import { read as viaPattern } from './pattern'
-export const read = () => String(viaPattern())
+${describeValuePrelude}
+export const read = () => describeValue(viaPattern(), 'LOW_REAL')
 `,
 }
 
