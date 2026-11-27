@@ -1942,12 +1942,9 @@ export class RouterCore<
       // The lightweight match (fullPath, search, params without full match
       // objects) is only computed when a build actually reads it.
       let lightweight: LightweightRouteMatchResult | undefined
-      const current: {
-        (): ParsedLocation
-        <TKey extends keyof ParsedLocation>(key: TKey): ParsedLocation[TKey]
-      } = (key?: keyof ParsedLocation): any => {
+      const current = () => {
         usedCurrent = true
-        return key ? currentLocation[key] : currentLocation
+        return currentLocation
       }
       const currentMatch = () =>
         (lightweight ??= this.matchRoutesLightweight(current()))
@@ -1983,7 +1980,7 @@ export class RouterCore<
         to[0] === '/'
           ? ''
           : dest.unsafeRelative === 'path'
-            ? current('pathname')
+            ? current().pathname
             : (dest.from ?? currentMatch()[1 /* fullPath */]),
         to,
         this.options.trailingSlash,
@@ -2131,7 +2128,8 @@ export class RouterCore<
       const searchStr = this.options.stringifySearch(nextSearch)
 
       // Resolve the next hash
-      const hash: string = resolveFromCurrent(dest.hash, current, 'hash') || ''
+      const hash: string =
+        resolveFromCurrent(dest.hash, () => current().hash) || ''
 
       // Resolve the next hash string
       const hashStr = hash ? `#${hash}` : ''
@@ -2139,7 +2137,7 @@ export class RouterCore<
       // Resolve the next state. A literal state never reads the current one
       // and, like the search, is not shared with it here.
       const nextState: HistoryState = dest.state
-        ? resolveFromCurrent(dest.state, current, 'state')
+        ? resolveFromCurrent(dest.state, () => current().state)
         : EMPTY_RECORD
 
       // Create the full path of the location
@@ -2883,15 +2881,11 @@ function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
 // `true` keeps the current value and an updater receives it. `read` runs only
 // when needed, so a literal value keeps the built location independent of the
 // current one.
-function resolveFromCurrent(
-  value: unknown,
-  read: (key?: any) => unknown,
-  key?: keyof ParsedLocation,
-): any {
+function resolveFromCurrent(value: unknown, read: () => unknown): any {
   return value === true
-    ? read(key)
+    ? read()
     : typeof value === 'function'
-      ? value(read(key))
+      ? value(read())
       : value
 }
 
