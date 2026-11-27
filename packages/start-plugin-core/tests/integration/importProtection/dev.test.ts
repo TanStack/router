@@ -1511,8 +1511,9 @@ export const createSecretFn = createServerFn().middleware([mw])
    * itself, not the Start compiler's lookup of it) until the client has
    * transformed `src/helper.ts`, which the lookup's import analysis
    * pre-transforms. Fix-agnostic: with the bug fixed, the order does not
-   * matter, and the hold ends on its own when the helper is never
-   * transformed for the client.
+   * matter. The hold is Vite's own barrier (`waitForRequestsIdle`): it ends
+   * when the environment has no other request in flight, so after the
+   * helper's transform when one was requested, at once when none was.
    */
   function helperBeforeFactory(): Plugin {
     let root = ''
@@ -1529,16 +1530,7 @@ export const createSecretFn = createServerFn().middleware([mw])
         ) {
           return null
         }
-        const helper = path.join(root, 'src/helper.ts')
-        const deadline = Date.now() + 5_000
-        while (
-          !(this.environment as DevEnvironment).moduleGraph.getModuleById(
-            helper,
-          )?.transformResult &&
-          Date.now() < deadline
-        ) {
-          await new Promise((resolve) => setTimeout(resolve, 5))
-        }
+        await (this.environment as DevEnvironment).waitForRequestsIdle(id)
         return null
       },
     }

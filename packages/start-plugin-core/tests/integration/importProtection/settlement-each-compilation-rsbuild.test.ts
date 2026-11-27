@@ -349,6 +349,15 @@ export const read = () => files('./w.client.ts').value()
     const delay = (ms: number) =>
       new Promise<void>((resolve) => setTimeout(resolve, ms))
 
+    /**
+     * How long an `onViolation` waits for what must not happen before it
+     * answers (the next run beginning, the build returning): a run that does
+     * not wait for the answer begins or returns within milliseconds; a run
+     * that waits does neither, so the bound is the time each of those tests
+     * takes.
+     */
+    const answerBound = 250
+
     /** What one run of the server compiler ended with: whether its errors name the denied file, or `failed`. */
     type Outcome = boolean | 'failed'
 
@@ -477,7 +486,7 @@ export const read = () => files('./w.client.ts').value()
     )
 
     test(
-      'a child failing before its settlement, the plugin failing with it, onViolation answering after the next run began or 1 s: the next run begins once it answered, and builds',
+      'a child failing before its settlement, the plugin failing with it, onViolation answering after the next run began or 250 ms: the next run begins once it answered, and builds',
       async () => {
         const outcomes: Array<Outcome> = []
         const events: Array<string> = []
@@ -497,7 +506,7 @@ export const read = () => files('./w.client.ts').value()
               new Promise<void>((resolve) => {
                 nextCompilation = resolve
               }),
-              delay(1000),
+              delay(answerBound),
             ])
             events.push('answered')
           },
@@ -557,7 +566,7 @@ export const read = () => w() + v()
     )
 
     test(
-      'Rsbuild build, a child failing before its settlement, the plugin failing with it, onViolation answering after the build returned or 1 s: the build returns once it answered',
+      'Rsbuild build, a child failing before its settlement, the plugin failing with it, onViolation answering after the build returned or 250 ms: the build returns once it answered',
       async () => {
         const events: Array<string> = []
         let returned = () => {}
@@ -580,7 +589,7 @@ export const read = () => w() + v()
                   new Promise<void>((resolve) => {
                     returned = resolve
                   }),
-                  delay(1000),
+                  delay(answerBound),
                 ])
                 events.push('answered')
               },
