@@ -10,18 +10,20 @@ import type { Planner } from '../src/compiler'
 
 const env = envInfo()
 
+/** A planner resolving every import of the module. */
+const resolving: Planner = {
+  name: 'resolving',
+  tier: 0,
+  gate: () => true,
+  plan() {},
+  async prefetch(t0, ctx) {
+    for (const i of t0.imports) {
+      await ctx.resolve(i.specifier)
+    }
+  },
+}
+
 describe('an import the resolver answers external', () => {
-  const resolving: Planner = {
-    name: 'resolving',
-    tier: 0,
-    gate: () => true,
-    plan() {},
-    async prefetch(t0, ctx) {
-      for (const i of t0.imports) {
-        await ctx.resolve(i.specifier)
-      }
-    },
-  }
   const modules = 20
   const setup = () => {
     const files: Record<string, string> = { '/app/package.json': '{}' }
@@ -56,17 +58,6 @@ describe('an import the resolver answers external', () => {
 })
 
 describe("a host's resolveKey", () => {
-  const resolving: Planner = {
-    name: 'resolving',
-    tier: 0,
-    gate: () => true,
-    plan() {},
-    async prefetch(t0, ctx) {
-      for (const i of t0.imports) {
-        await ctx.resolve(i.specifier)
-      }
-    },
-  }
   const files: Record<string, string> = { '/app/package.json': '{}' }
   for (const dir of ['a', 'b']) {
     for (let m = 0; m < 3; m++) {

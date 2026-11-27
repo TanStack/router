@@ -116,7 +116,7 @@ const CASES: Array<{
     edit: (ctx) =>
       brokenGlue(
         ctx,
-        `derived:${ctx.identity.canonicalId}?tsr-split=component`,
+        chunkOf(ctx),
         'env',
         'NOPE',
         (l) => `console.log(${l})\n`,

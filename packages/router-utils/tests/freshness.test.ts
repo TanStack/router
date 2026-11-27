@@ -41,6 +41,10 @@ const CLIENT = envInfo({ name: 'client', type: 'client' })
 const memoryHost = (files: Record<string, string>) =>
   new MemoryHost({ files, recognizer: RECOGNIZER })
 
+const factsOf = (out: CompileOutput | null) => out?.facts.planners
+const messagesOf = (out: CompileOutput | null) =>
+  out!.diagnostics.map((d) => d.message)
+
 describe('repeating an invalidation', () => {
   // `page.ts` imports `user.ts`, which imports `db.ts` (a checkout writes
   // `db.ts`, then `user.ts`, and the watcher reports them apart)
@@ -55,7 +59,7 @@ describe('repeating an invalidation', () => {
       export const page = make
     `),
   }
-  const factsOf = (out: CompileOutput | null) =>
+  const summaryOf = (out: CompileOutput | null) =>
     out!.facts.planners['toy-summary']
 
   it('a dependent saved while its dependency is invalidated still re-plans its importers', async () => {
@@ -90,8 +94,10 @@ describe('repeating an invalidation', () => {
     )
     expect(host.caches.stale.take(CLIENT.name)).toEqual(['/app/page.ts'])
     const page = await host.compile('/app/page.ts', planners())
-    expect(factsOf(page)).toEqual(
-      factsOf(await memoryHost(host.files).compile('/app/page.ts', planners())),
+    expect(summaryOf(page)).toEqual(
+      summaryOf(
+        await memoryHost(host.files).compile('/app/page.ts', planners()),
+      ),
     )
   })
 
@@ -131,7 +137,6 @@ describe('repeating an invalidation', () => {
     await invalidate(host.caches, { path: '/app/a.ts', kind: 'change' }, host)
     hold = false
     release.open()
-    const factsOf = (out: CompileOutput | null) => out?.facts.planners
     const cold = factsOf(
       await memoryHost(host.files).compile('/app/x.ts', planners()),
     )
@@ -148,9 +153,22 @@ const SERVER_ONLY = dedent(`
 /** `make` of `SERVER_ONLY`, as an export resolution reads it. */
 const SERVER_ONLY_MAKE = { t: 'envOnlyResult', kind: 'server' }
 
+/** A planner reading `virtual:foo`'s `make` (its facts: the value, or the resolution's kind). */
+const virtualReader = (): Planner => ({
+  name: 'toy',
+  tier: 1,
+  gate: () => true,
+  async prefetch(_t0, ctx) {
+    const found = await ctx.resolver.resolve('virtual:foo', 'make')
+    ctx.set(found.k === 'found' ? found.value : found.k)
+  },
+  plan(ctx) {
+    ctx.setFacts('toy', ctx.prefetched.get('toy') ?? null)
+  },
+})
+
 describe('events that move the file set', () => {
   const IMPORTER = "import { make } from './a'\nexport const use = make\n"
-  const factsOf = (out: CompileOutput | null) => out?.facts.planners
 
   // `a.ts` beside its twin `a/index.ts`: removed and created again within
   // one change, while a compile of `x.ts`, which now imports `./a`, runs
@@ -227,7 +245,6 @@ describe('events that move the file set', () => {
 describe('a request of an older text', () => {
   const OLD = "import { make as inner } from './l'\nexport const make = inner\n"
   const NEW = "import { make as inner } from './m'\nexport const make = inner\n"
-  const factsOf = (out: CompileOutput | null) => out?.facts.planners
 
   // A bundler requests `a.ts` again (a page reload) while its text still
   // imports `l.ts`: the plan hit asks its resolutions again (a touch moved
@@ -298,7 +315,6 @@ describe('a check that waits while an event lands', () => {
     '/app/a.ts': SERVER_ONLY,
     '/app/b.ts': 'export const make = 1\n',
   }
-  const factsOf = (out: CompileOutput | null) => out?.facts.planners
 
   /** A host whose `./w` resolves to `b.ts` (an alias), and whose resolutions can be held (`holdResolutions`). */
   function aliasHost() {
@@ -597,16 +613,22 @@ describe('a cache knob and what a dependency save reaches', () => {
 // change of that dependency stales nothing.
 // Source: whole-PR review C6-09 (Astra).
 describe('a restored plan, and an untouched compile of its module', () => {
-  it('a change of what the restored plan read stales nothing', async () => {
+  /** A host with `a.ts`'s plan, which read `b.ts`, restored. */
+  async function restored() {
     const files = {
       '/app/a.ts': "import { make } from './b'\nexport const x = make\n",
       '/app/b.ts': 'export const make = 1\n',
     }
-    const first = new MemoryHost({ files, recognizer: RECOGNIZER })
+    const first = memoryHost(files)
     const persisted = (await first.compile('/app/a.ts', [toySummaryPlanner()]))!
       .persisted!
-    const host = new MemoryHost({ files, recognizer: RECOGNIZER })
+    const host = memoryHost(files)
     expect(await restorePlans(host.caches, [persisted], host)).toEqual([])
+    return host
+  }
+
+  it('a change of what the restored plan read stales nothing', async () => {
+    const host = await restored()
     expect(
       await host.compile('/app/a.ts', [toySummaryPlanner()], {
         code: 'export const x = 1\n',
@@ -621,15 +643,7 @@ describe('a restored plan, and an untouched compile of its module', () => {
   // the module depends on, and the change stales it.
   // Source: Fable's review of settlement step 6a, finding 5.
   it('without a compile, a change of what the restored plan read stales its module', async () => {
-    const files = {
-      '/app/a.ts': "import { make } from './b'\nexport const x = make\n",
-      '/app/b.ts': 'export const make = 1\n',
-    }
-    const first = new MemoryHost({ files, recognizer: RECOGNIZER })
-    const persisted = (await first.compile('/app/a.ts', [toySummaryPlanner()]))!
-      .persisted!
-    const host = new MemoryHost({ files, recognizer: RECOGNIZER })
-    expect(await restorePlans(host.caches, [persisted], host)).toEqual([])
+    const host = await restored()
     host.write('/app/b.ts', 'export function make() {}\n')
     await invalidate(host.caches, { path: '/app/b.ts', kind: 'change' }, host)
     expect(host.caches.stale.take(CLIENT.name)).toEqual(['/app/a.ts'])
@@ -936,25 +950,13 @@ describe('a virtual module that read as missing and then loads', () => {
         "import { make } from 'virtual:foo'\nexport const x = make\n",
     }
     const virtual: Record<string, string> = {}
-    const reader = (): Planner => ({
-      name: 'toy',
-      tier: 1,
-      gate: () => true,
-      async prefetch(_t0, ctx) {
-        const found = await ctx.resolver.resolve('virtual:foo', 'make')
-        ctx.set(found.k === 'found' ? found.value : found.k)
-      },
-      plan(ctx) {
-        ctx.setFacts('toy', ctx.prefetched.get('toy') ?? null)
-      },
-    })
     const host = new MemoryHost({ files, recognizer: RECOGNIZER, virtual })
     expect(
-      (await host.compile('/app/a.ts', [reader()]))!.facts.planners,
+      (await host.compile('/app/a.ts', [virtualReader()]))!.facts.planners,
     ).toEqual({ toy: 'absent' })
     virtual['virtual:foo'] = SERVER_ONLY
     expireVirtual(host.caches, CLIENT.name)
-    const out = await host.compile('/app/a.ts', [reader()])
+    const out = await host.compile('/app/a.ts', [virtualReader()])
     expect(out!.facts.planners).toEqual({ toy: SERVER_ONLY_MAKE })
   })
 })
@@ -997,7 +999,6 @@ describe('a resolution that moves during a check', () => {
     await retarget()
     return factsOf(await host.compile(PAGE, planners()))
   }
-  const factsOf = (out: CompileOutput | null) => out?.facts.planners
 
   it("an open answer of the plan is not current, and the file's other outputs are built again", async () => {
     const { host, arm, retarget, moveFileSet } = setup()
@@ -1105,26 +1106,50 @@ describe("a virtual module's marker read as missing, and the module loading", ()
       }
     },
   })
-  const messages = (out: CompileOutput | null) =>
-    out!.diagnostics.map((d) => d.message)
   /** What a compile against the loaded module reports: its marker. */
   const LOADED_MARKER = ['server-only']
 
-  it('a watch rebuild (`expireVirtual`) compiles the importer against the loaded module', async () => {
+  /** The virtual modules (`loaded` is what they load), whose first load throws when `threw`. */
+  const virtualModules = (threw: boolean) => {
+    if (threw) {
+      return throwingOnce()
+    }
     const virtual: Record<string, string> = {}
-    const host = new MemoryHost({
-      files,
+    return { loaded: virtual, virtual }
+  }
+  const markerHost = (
+    virtual: Record<string, string>,
+    more: Record<string, string> = {},
+  ) =>
+    new MemoryHost({
+      files: { ...files, ...more },
       recognizer: RECOGNIZER,
       virtual,
       markerSpecifiers,
     })
+
+  it.for([
+    [
+      'a watch rebuild (`expireVirtual`) compiles the importer against the loaded module',
+      false,
+    ],
+    // The thrown load's entry stays: a watch rebuild's expiry finds it.
+    // Source: Astra's and Gemini's look at the thrown-load rule
+    // (`rejected-event.mjs`).
+    [
+      'a watch rebuild after a load that threw and then recovers sees the marker',
+      true,
+    ],
+  ] as const)('%s', async ([, threw]) => {
+    const { loaded, virtual } = virtualModules(threw)
+    const host = markerHost(virtual)
     expect(
-      messages(await host.compile('/app/page.ts', [markerReader()])),
+      messagesOf(await host.compile('/app/page.ts', [markerReader()])),
     ).toEqual([])
-    virtual['virtual:generated'] = LOADED
+    loaded['virtual:generated'] = LOADED
     expireVirtual(host.caches, CLIENT.name)
     expect(
-      messages(await host.compile('/app/page.ts', [markerReader()])),
+      messagesOf(await host.compile('/app/page.ts', [markerReader()])),
     ).toEqual(LOADED_MARKER)
   })
 
@@ -1132,37 +1157,13 @@ describe("a virtual module's marker read as missing, and the module loading", ()
   // with no hot update naming the module later): the next request after a
   // facts move reads the module again, and sees its marker.
   // Source: Fable's `recheck2/p7-virtual-miss-unannounced.probe.ts`.
-  // The thrown load's entry stays: a watch rebuild's expiry finds it.
-  // Source: Astra's and Gemini's look at the thrown-load rule
-  // (`rejected-event.mjs`).
-  it('a watch rebuild after a load that threw and then recovers sees the marker', async () => {
-    const { loaded, virtual } = throwingOnce()
-    const host = new MemoryHost({
-      files,
-      recognizer: RECOGNIZER,
-      virtual,
-      markerSpecifiers,
-    })
-    expect(
-      messages(await host.compile('/app/page.ts', [markerReader()])),
-    ).toEqual([])
-    loaded['virtual:generated'] = LOADED
-    expireVirtual(host.caches, CLIENT.name)
-    expect(
-      messages(await host.compile('/app/page.ts', [markerReader()])),
-    ).toEqual(LOADED_MARKER)
-  })
-
   it('a load that threw is read again: the next request after a save sees the marker', async () => {
     const { loaded, virtual } = throwingOnce()
-    const host = new MemoryHost({
-      files: { ...files, '/app/other.ts': 'export const o = 1\n' },
-      recognizer: RECOGNIZER,
-      virtual,
-      markerSpecifiers,
+    const host = markerHost(virtual, {
+      '/app/other.ts': 'export const o = 1\n',
     })
     expect(
-      messages(await host.compile('/app/page.ts', [markerReader()])),
+      messagesOf(await host.compile('/app/page.ts', [markerReader()])),
     ).toEqual([])
     loaded['virtual:generated'] = LOADED
     host.write('/app/other.ts', 'export const o = 2\n')
@@ -1172,22 +1173,26 @@ describe("a virtual module's marker read as missing, and the module loading", ()
       host,
     )
     expect(
-      messages(await host.compile('/app/page.ts', [markerReader()])),
+      messagesOf(await host.compile('/app/page.ts', [markerReader()])),
     ).toEqual(LOADED_MARKER)
   })
 
-  // A thrown load announced during the same compile (its host's update
-  // names the module): the kept entry lets the event through, and the
-  // compile's check reads the module again.
-  // Source: Astra's `rejected-event.mjs`, Fable's p8 (c).
-  it("a load that threw, announced during the importer's compile, reaches the importer", async () => {
-    const { loaded, virtual } = throwingOnce()
-    const host = new MemoryHost({
-      files,
-      recognizer: RECOGNIZER,
-      virtual,
-      markerSpecifiers,
-    })
+  it.for([
+    // A thrown load announced during the same compile (its host's update
+    // names the module): the kept entry lets the event through, and the
+    // compile's check reads the module again.
+    // Source: Astra's `rejected-event.mjs`, Fable's p8 (c).
+    [
+      "a load that threw, announced during the importer's compile, reaches the importer",
+      true,
+    ],
+    [
+      "its change event during the importer's compile reaches the importer",
+      false,
+    ],
+  ] as const)('%s', async ([, threw]) => {
+    const { loaded, virtual } = virtualModules(threw)
+    const host = markerHost(virtual)
     const reached = gate()
     const proceed = gate()
     let once = true
@@ -1208,43 +1213,9 @@ describe("a virtual module's marker read as missing, and the module loading", ()
       host,
     )
     proceed.open()
-    expect(messages(await compiling)).toEqual(LOADED_MARKER)
+    expect(messagesOf(await compiling)).toEqual(LOADED_MARKER)
     expect(
-      messages(await host.compile('/app/page.ts', [markerReader()])),
-    ).toEqual(LOADED_MARKER)
-  })
-
-  it("its change event during the importer's compile reaches the importer", async () => {
-    const virtual: Record<string, string> = {}
-    const host = new MemoryHost({
-      files,
-      recognizer: RECOGNIZER,
-      virtual,
-      markerSpecifiers,
-    })
-    const reached = gate()
-    const proceed = gate()
-    let once = true
-    const compiling = host.compile('/app/page.ts', [
-      markerReader(async () => {
-        if (once) {
-          once = false
-          reached.open()
-          await proceed.opened
-        }
-      }),
-    ])
-    await reached.opened
-    virtual['virtual:generated'] = LOADED
-    await invalidate(
-      host.caches,
-      { path: 'virtual:generated', kind: 'change' },
-      host,
-    )
-    proceed.open()
-    expect(messages(await compiling)).toEqual(LOADED_MARKER)
-    expect(
-      messages(await host.compile('/app/page.ts', [markerReader()])),
+      messagesOf(await host.compile('/app/page.ts', [markerReader()])),
     ).toEqual(LOADED_MARKER)
   })
 })
@@ -1260,21 +1231,9 @@ describe("a virtual module's exports read when its load threw", () => {
       '/app/other.ts': 'export const o = 1\n',
     }
     const { loaded, virtual } = throwingOnce()
-    const reader = (): Planner => ({
-      name: 'toy',
-      tier: 1,
-      gate: () => true,
-      async prefetch(_t0, ctx) {
-        const found = await ctx.resolver.resolve('virtual:foo', 'make')
-        ctx.set(found.k === 'found' ? found.value : found.k)
-      },
-      plan(ctx) {
-        ctx.setFacts('toy', ctx.prefetched.get('toy') ?? null)
-      },
-    })
     const host = new MemoryHost({ files, recognizer: RECOGNIZER, virtual })
     expect(
-      (await host.compile('/app/a.ts', [reader()]))!.facts.planners,
+      (await host.compile('/app/a.ts', [virtualReader()]))!.facts.planners,
     ).toEqual({ toy: 'absent' })
     loaded['virtual:foo'] = SERVER_ONLY
     host.write('/app/other.ts', 'export const o = 2\n')
@@ -1283,7 +1242,7 @@ describe("a virtual module's exports read when its load threw", () => {
       { path: '/app/other.ts', kind: 'change' },
       host,
     )
-    const out = await host.compile('/app/a.ts', [reader()])
+    const out = await host.compile('/app/a.ts', [virtualReader()])
     expect(out!.facts.planners).toEqual({ toy: SERVER_ONLY_MAKE })
   })
 })
@@ -1371,9 +1330,6 @@ function saveInPlace(host: MemoryHost, path: string, text: string) {
   host.write(path, '')
   setTimeout(() => host.write(path, text), 12)
 }
-
-const messagesOf = (out: CompileOutput | null) =>
-  out!.diagnostics.map((d) => d.message)
 
 // A dependency saved in place (truncated, then written) while a compile
 // that resolved it is in flight: the watcher reports one change, at the

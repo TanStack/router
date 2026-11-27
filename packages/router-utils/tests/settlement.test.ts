@@ -70,6 +70,26 @@ const PLAIN = 'export const use = 1\n'
 const memoryHost = (files: Record<string, string>) =>
   new MemoryHost({ files, recognizer: RECOGNIZER })
 
+/** A host whose first resolution of `./b` waits, before its answer, until `release()`; `holding` opens then. */
+function holdingB(files: Record<string, string>) {
+  let hold: (() => void) | null = null
+  const holding = gate()
+  const host = new MemoryHost({
+    files,
+    recognizer: RECOGNIZER,
+    onResolve: (specifier) => {
+      if (specifier === './b' && hold === null) {
+        return new Promise<void>((r) => {
+          hold = r
+          holding.open()
+        })
+      }
+      return undefined
+    },
+  })
+  return { host, holding: holding.opened, release: () => hold!() }
+}
+
 describe('a settlement while its request is open', () => {
   it('an answer nothing newer overtook is current', async () => {
     const host = memoryHost({
@@ -146,29 +166,15 @@ describe('a settlement while its request is open: the generation it was taken at
   // is no longer the latest (the old `superseded` case).
   // Source: Fable's review of settlement step 1, P4.
   it('an answer of a text a newer request arrived for while it compiled is not current', async () => {
-    let hold: (() => void) | null = null
-    const holding = gate()
-    const host = new MemoryHost({
-      files: {
-        '/app/a.ts': A,
-        '/app/b.ts': 'export const make = 1\n',
-        '/app/c.ts': 'export const make = 2\n',
-      },
-      recognizer: RECOGNIZER,
-      onResolve: (specifier) => {
-        if (specifier === './b' && hold === null) {
-          return new Promise<void>((r) => {
-            hold = r
-            holding.open()
-          })
-        }
-        return undefined
-      },
+    const { host, holding, release } = holdingB({
+      '/app/a.ts': A,
+      '/app/b.ts': 'export const make = 1\n',
+      '/app/c.ts': 'export const make = 2\n',
     })
     const older = host.settle('/app/a.ts', planners(), (s) => s.current())
-    await holding.opened
+    await holding
     expect(await currentNow(host, '/app/a.ts', B)).toBe(true)
-    hold!()
+    release()
     expect(await older).toBe(false)
   })
 
@@ -228,23 +234,9 @@ describe('a settlement while its request is open: the generation it was taken at
   // the same pre-eviction answer: not current.
   // Source: Astra's review of settlement step 1, finding 1.
   it('a request sharing a compile whose plan an earlier sharer saw evicted is not current', async () => {
-    let hold: (() => void) | null = null
-    const holding = gate()
-    const host = new MemoryHost({
-      files: {
-        '/app/a.ts': A,
-        '/app/b.ts': 'export const make = 1\n',
-      },
-      recognizer: RECOGNIZER,
-      onResolve: (specifier) => {
-        if (specifier === './b' && hold === null) {
-          return new Promise<void>((r) => {
-            hold = r
-            holding.open()
-          })
-        }
-        return undefined
-      },
+    const { host, holding, release } = holdingB({
+      '/app/a.ts': A,
+      '/app/b.ts': 'export const make = 1\n',
     })
     const evicted = gate()
     const first = host.settle('/app/a.ts', planners(), async (s) => {
@@ -259,12 +251,12 @@ describe('a settlement while its request is open: the generation it was taken at
       await event
       return current
     })
-    await holding.opened
+    await holding
     const second = host.settle('/app/a.ts', planners(), async (s) => {
       await evicted.opened
       return s.current()
     })
-    hold!()
+    release()
     expect(await Promise.all([first, second])).toEqual([true, false])
   })
 })
