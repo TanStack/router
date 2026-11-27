@@ -31,6 +31,57 @@ function createEntryNode(
 }
 
 describe('collectDevStyles', () => {
+  test('registers route entries and their CSS as safe modules', async () => {
+    const entry = createEntryNode('/src/entry.tsx', '/src/app.css')
+    const style = createCssNode('/src/app.css', '.app {}')
+    style.id = '/app/src/app.css'
+
+    // Mimics Vite's `server.fs.strict: 'extended'` with an empty allow list,
+    // where each environment keeps its own safe modules.
+    function createStrictEnvironment(nodes: Array<EnvironmentModuleNode>) {
+      const modules = new Map<string, EnvironmentModuleNode>()
+      const safeModules = new Set<string>()
+      return {
+        moduleGraph: {
+          async getModuleByUrl(url: string) {
+            return modules.get(url)
+          },
+        },
+        async transformRequest(url: string) {
+          if (!safeModules.has(`/app${url}`)) {
+            throw new Error(`Denied ID /app${url}`)
+          }
+          const node = nodes.find((n) => n.url === url)!
+          modules.set(url, node)
+          // Vite adds a module's imports to the graph while transforming it.
+          for (const dep of node.transformResult!.deps ?? []) {
+            modules.set(
+              dep,
+              nodes.find((n) => n.url === dep)!,
+            )
+          }
+          return node.transformResult
+        },
+        addSafeModule(id: string) {
+          safeModules.add(id)
+        },
+      }
+    }
+
+    const serverEnvironment = createStrictEnvironment([entry, style])
+    const clientEnvironment = createStrictEnvironment([style])
+
+    const css = await collectDevStyles({
+      serverEnvironment,
+      rootDirectory: '/app',
+      entries: ['/app/src/entry.tsx'],
+      loadCssContents: (url, id) =>
+        fetchCssFromModule(clientEnvironment, url, id),
+    })
+
+    expect(css).toContain('.app {}')
+  })
+
   test('recognizes virtual Vue style blocks by URL', async () => {
     const styleUrl = '/src/App.vue?vue&type=style&index=0&lang.css'
     const entry = createEntryNode('/src/entry.tsx', styleUrl)

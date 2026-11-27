@@ -60,13 +60,18 @@ function resolveDevUrl(rootDirectory: string, filePath: string): string {
 
 export type DevStylesEnvironment = Pick<DevEnvironment, 'transformRequest'> & {
   moduleGraph: Pick<DevEnvironment['moduleGraph'], 'getModuleByUrl'>
+  // Only available in Vite >= 8.4
+  addSafeModule?: (id: string) => void
 }
 
 export interface CollectDevStylesOptions {
   serverEnvironment: DevStylesEnvironment
   rootDirectory: string
   entries: Array<string>
-  loadCssContents: (url: string) => Promise<string | undefined>
+  loadCssContents: (
+    url: string,
+    id: string | null,
+  ) => Promise<string | undefined>
 }
 
 /**
@@ -77,6 +82,13 @@ export async function collectDevStyles(
 ): Promise<string | undefined> {
   const { serverEnvironment, rootDirectory, entries, loadCssContents } = opts
 
+  // With `server.fs.strict: 'extended'`, Vite rejects `transformRequest` for
+  // files outside the allow list unless the environment has them registered as
+  // safe.
+  for (const entry of entries) {
+    serverEnvironment.addSafeModule?.(entry.replace(/\\/g, '/'))
+  }
+
   const orderedCssNodes = await collectCssNodes(
     serverEnvironment,
     entries.map((entry) => resolveDevUrl(rootDirectory, entry)),
@@ -84,7 +96,7 @@ export async function collectDevStyles(
 
   // Promise.all keeps graph order while loading the CSS concurrently.
   const cssResults = await Promise.all(
-    orderedCssNodes.map((node) => loadCssContents(node.url)),
+    orderedCssNodes.map((node) => loadCssContents(node.url, node.id)),
   )
 
   return formatCss(
@@ -251,6 +263,7 @@ async function resolveModuleDeps(
 export async function fetchCssFromModule(
   environment: DevStylesEnvironment,
   url: string,
+  id?: string | null,
 ): Promise<string | undefined> {
   // Vite embeds the CSS text in the client environment's transform result.
   // The SSR environment is only used for dependency discovery.
@@ -260,7 +273,12 @@ export async function fetchCssFromModule(
     return extractCssFromTransform(cachedTransform)
   }
 
-  // Otherwise request a fresh transform
+  // Otherwise request a fresh transform. The stylesheet is imported by a route
+  // module, but only the server environment has seen that import.
+  if (id) {
+    environment.addSafeModule?.(id)
+  }
+
   try {
     const transformResult = await environment.transformRequest(url)
     if (!transformResult?.code) {

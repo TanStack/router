@@ -143,12 +143,13 @@ export function devServerPlugin({
                         ],
                       rootDirectory: viteDevServer.config.root,
                       entries,
-                      loadCssContents: (url) =>
+                      loadCssContents: (url, id) =>
                         fetchCssFromModule(
                           viteDevServer.environments[
                             VITE_ENVIRONMENT_NAMES.client
                           ],
                           url,
+                          id,
                         ),
                     })) ?? ''
                 }
