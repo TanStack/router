@@ -197,12 +197,10 @@ function computeDynamicImports(chunk: RspackCompilationChunk): Array<string> {
 
   for (const group of chunk.groupsIterable) {
     for (const childGroup of group.childrenIterable) {
-      for (const childChunk of childGroup.chunks) {
-        for (const file of childChunk.files) {
-          if (isManifestJsAsset(file) && !seen.has(file)) {
-            seen.add(file)
-            dynamicImportFiles.push(file)
-          }
+      for (const file of childGroup.getFiles()) {
+        if (isManifestJsAsset(file) && !seen.has(file)) {
+          seen.add(file)
+          dynamicImportFiles.push(file)
         }
       }
     }
