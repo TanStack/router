@@ -280,10 +280,9 @@ export const read = () => secret()
       .join('')
   const failed: Partial<Record<'client' | 'server', Promise<StartBuildError>>> =
     {}
-  /** The failed build's violations of case `name` (and its error output). */
-  async function failureOf(name: Case) {
-    const { environment } = failing[name]
-    const error = await (failed[environment] ??= rejection(
+  /** The failed build of the cases of `environment`. */
+  const failedApp = (environment: 'client' | 'server') =>
+    (failed[environment] ??= rejection(
       buildStart({
         bundler,
         files: {
@@ -310,6 +309,9 @@ export const read = () => secret()
             : { client: 'src/client.ts', ssr: 'src/server.ts' },
       }),
     ))
+  /** The failed build's violations of case `name` (and its error output). */
+  async function failureOf(name: Case) {
+    const error = await failedApp(failing[name].environment)
     const own = error.violations.filter((v) =>
       v.importer.includes(`/src/cases/${name}/`),
     )
@@ -322,6 +324,29 @@ export const read = () => secret()
   }
   const at = (name: Case, file: string, position = '') =>
     `src/cases/${name}/${file}${position}`
+
+  // (the rows read their own case's violation; the app as a whole fails
+  // with one violation per case, of its environment, and no other)
+  test.each(['client', 'server'] as const)(
+    'the failing %s app reports one violation per case, and nothing else',
+    async (environment) => {
+      const error = await failedApp(environment)
+      expect(
+        violationsOf(error)
+          .map(
+            ({ environment: env, importer }) =>
+              `${env} ${/^src\/cases\/([^/]+)\//.exec(importer)?.[1] ?? importer}`,
+          )
+          .sort(),
+      ).toEqual(
+        names
+          .filter((name) => failing[name].environment === environment)
+          .map((name) => `${environment} ${name}`)
+          .sort(),
+      )
+    },
+    timeout,
+  )
 
   // Each violation carries the rule that matched (the file pattern, or the
   // denied specifier; SPEC J6.5).

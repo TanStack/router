@@ -130,40 +130,54 @@ export const inCase = (name: string, file: string) =>
     .replace(/^node_modules\/dep\//, `node_modules/dep-${caseDir(name)}/`)
 
 /**
- * `outcome` of each of `cases` (none `verbatim`) from one app per protection
- * state: a case in `src/<case>/` with its package as `dep-<case>`
- * (`inCase`) and its initializer `MARK_DB_<i>_`, the entry re-exporting each
- * case's entry as a namespace, each case's `late` code added to its own
- * `src/<case>/late.js`. Three builds: protection on in error mode (`failedAt`:
+ * `outcome` of each of `cases` (none `verbatim`; `on`: the case's refused
+ * importers, null when its error-mode build succeeds) from shared apps: a
+ * case in `src/<case>/` with its package as `dep-<case>` (`inCase`) and its
+ * initializer `MARK_DB_<i>_`, an app's entry re-exporting each of its cases'
+ * entries as a namespace, each case's `late` code added to its own
+ * `src/<case>/late.js`. Protection on in error mode, two apps (a build's
+ * success or failure is the whole app's): the refused cases' (`failedAt`:
  * the case's own client violations, root-relative, position cut; null when
- * it has none), on in mock mode (what ships with protection on, and the
- * case's own client reports) and off (what the bundler itself keeps).
+ * it has none; `refused`: every client violation of that app) and the
+ * allowed cases' (`failedAt`: null when it builds, else every client
+ * violation of the app). Protection on in mock mode (what ships with
+ * protection on, and the case's own client reports) and off (what the
+ * bundler itself keeps): one app of every case each.
  */
 export async function outcomesOfCases(
   bundler: StartBundler,
-  cases: Array<KeptCase>,
-): Promise<
-  (i: number) => {
+  cases: Array<KeptCase & { on: Array<string> | null }>,
+): Promise<{
+  of: (i: number) => {
     failedAt: Array<string> | null
     mocked: { reported: Array<string>; shipped: boolean }
     offShipped: boolean
   }
-> {
-  const files: Record<string, string> = {
-    'src/entry.ts': cases
-      .map((c, i) => `export * as c${i} from './${caseDir(c.name)}/entry'\n`)
-      .join(''),
-  }
-  for (const [i, c] of cases.entries()) {
+  refused: Array<string>
+}> {
+  const caseFiles = (i: number) => {
+    const c = cases[i]!
     if (c.verbatim) {
       throw new Error(`${c.name}: a verbatim case needs an app of its own`)
     }
-    for (const [file, text] of Object.entries(c.files)) {
-      files[inCase(c.name, file)] = text
-        .replaceAll('MARK_DB', `MARK_DB_${i}_`)
-        .replace(/(['"])dep\1/g, `$1dep-${caseDir(c.name)}$1`)
-    }
+    return Object.fromEntries(
+      Object.entries(c.files).map(([file, text]) => [
+        inCase(c.name, file),
+        text
+          .replaceAll('MARK_DB', `MARK_DB_${i}_`)
+          .replace(/(['"])dep\1/g, `$1dep-${caseDir(c.name)}$1`),
+      ]),
+    )
   }
+  /** The app of the cases `of` (indexes). */
+  const appOf = (of: Array<number>): Record<string, string> => ({
+    ...Object.assign({}, ...of.map(caseFiles)),
+    'src/entry.ts': of
+      .map(
+        (i) => `export * as c${i} from './${caseDir(cases[i]!.name)}/entry'\n`,
+      )
+      .join(''),
+  })
   const late = lateImport(
     Object.fromEntries(
       cases.flatMap((c) =>
@@ -171,10 +185,13 @@ export async function outcomesOfCases(
       ),
     ),
   )
-  const build = (importProtection: Record<string, unknown>) =>
+  const build = (
+    of: Array<number>,
+    importProtection: Record<string, unknown>,
+  ) =>
     buildStart({
       bundler,
-      files,
+      files: appOf(of),
       entry: 'src/entry.ts',
       start: { importProtection },
       ...(bundler === 'vite'
@@ -183,34 +200,54 @@ export async function outcomesOfCases(
     })
   const clientImporters = (
     violations: Parameters<typeof reportedViolations>[0],
-  ) =>
-    reportedViolations(violations)
-      .filter((v) => v.environment === 'client')
-      .map((v) => v.importer.replace(/:\d+(:\d+)?$/, ''))
-  const failed = await build({ behavior: 'error' }).then(
-    () => [] as Array<string>,
-    (error: unknown) => {
-      if (!(error instanceof StartBuildError)) {
-        throw error
-      }
-      return clientImporters(error)
-    },
-  )
-  const mocked = await build({ behavior: 'mock', mockAccess: 'off' })
+  ) => [
+    ...new Set(
+      reportedViolations(violations)
+        .filter((v) => v.environment === 'client')
+        .map((v) => v.importer.replace(/:\d+(:\d+)?$/, '')),
+    ),
+  ]
+  /** The client violations an error-mode build of `of` failed with; null when it built. */
+  const errorBuild = (of: Array<number>) =>
+    of.length === 0
+      ? Promise.resolve(null)
+      : build(of, { behavior: 'error' }).then(
+          () => null,
+          (error: unknown) => {
+            if (!(error instanceof StartBuildError)) {
+              throw error
+            }
+            return clientImporters(error).sort()
+          },
+        )
+  const all = cases.map((_, i) => i)
+  const refusing = all.filter((i) => cases[i]!.on !== null)
+  const allowed = all.filter((i) => cases[i]!.on === null)
+  const refused = (await errorBuild(refusing)) ?? []
+  const allowedFailure = await errorBuild(allowed)
+  const mocked = await build(all, { behavior: 'mock', mockAccess: 'off' })
   const mockReported = clientImporters(mocked)
-  const off = await build({ enabled: false })
+  const off = await build(all, { enabled: false })
   const own = (i: number) => (file: string) =>
     file.startsWith(`src/${caseDir(cases[i]!.name)}/`) ||
     file.startsWith(`node_modules/dep-${caseDir(cases[i]!.name)}/`)
-  return (i) => {
-    const failedAt = [...new Set(failed.filter(own(i)))]
-    return {
-      failedAt: failedAt.length > 0 ? failedAt : null,
-      mocked: {
-        reported: [...new Set(mockReported.filter(own(i)))],
-        shipped: mocked.client.where(`MARK_DB_${i}_`) !== 'nowhere',
-      },
-      offShipped: off.client.where(`MARK_DB_${i}_`) !== 'nowhere',
-    }
+  return {
+    of: (i) => {
+      const failedAt = refused.filter(own(i))
+      return {
+        failedAt:
+          cases[i]!.on === null
+            ? allowedFailure
+            : failedAt.length > 0
+              ? failedAt
+              : null,
+        mocked: {
+          reported: mockReported.filter(own(i)),
+          shipped: mocked.client.where(`MARK_DB_${i}_`) !== 'nowhere',
+        },
+        offShipped: off.client.where(`MARK_DB_${i}_`) !== 'nowhere',
+      }
+    },
+    refused,
   }
 }

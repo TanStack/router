@@ -11,6 +11,7 @@ import { buildStart } from '../../build-harness'
 import {
   distinct,
   locationIn,
+  locationParts,
   reportedViolations,
   startProtectedDevServer,
 } from '../../importProtection/start-apps'
@@ -88,10 +89,16 @@ export const fn = myServerFn.handler(async () => secret())
     ),
   )(
     '$channel: $name',
-    async ({ channel, name }) => {
-      const reports = await reportsOf(channel)
-      expect(reports.of(caseOf(name))).toEqual([])
-      expect(reports.otherErrors).toEqual([])
+    async ({ channel }) => {
+      // (an absence is a property of the whole app, of safe uses only: no
+      // callback at all, and a build succeeds; the row's case is part of
+      // that app)
+      const { importers, failed, otherErrors } = await reportsOf(channel)
+      expect({ importers, failed, otherErrors }).toEqual({
+        importers: [],
+        failed: false,
+        otherErrors: [],
+      })
     },
     timeout,
   )
@@ -128,17 +135,33 @@ export const readServer = createIsomorphicFn().server(() => widget())
     insideOnly,
   }
   type CaseName = keyof typeof cases
+  /**
+   * The apps of the cases: those with a use the server keeps, and the
+   * safe-only one (an absence is checked on a whole app).
+   */
+  const groups = {
+    kept: ['insideAndOutside', 'isomorphic'],
+    safe: ['insideOnly'],
+  } satisfies Record<string, Array<CaseName>>
+  type Group = keyof typeof groups
 
   /**
    * `<environment> <importer>` of each violation reported for an app in
    * which each case `name` is `src/<name>/a.ts` (the server entry
    * re-exports each as a namespace) and imports a client-only
-   * `src/<name>/widget.client.ts` of its own, by case: one app per channel.
+   * `src/<name>/widget.client.ts` of its own, by case (`of`), and whole
+   * (`all`), and whether the build failed: one app per channel and group.
    */
   async function serverReportsOfCases(
     channel: ServerChannel,
-  ): Promise<(name: CaseName) => Array<string>> {
-    const names = Object.keys(cases) as Array<CaseName>
+    group: Group,
+  ): Promise<{
+    of: (name: CaseName) => Array<string>
+    all: Array<string>
+    failed: boolean
+  }> {
+    const names: Array<CaseName> = groups[group]
+    let failed = false
     const files = {
       ...Object.fromEntries(
         names.flatMap((name) => [
@@ -171,6 +194,7 @@ export const readServer = createIsomorphicFn().server(() => widget())
           if (reportedViolations(error).length === 0) {
             throw error
           }
+          failed = true
           return error
         },
       )
@@ -180,24 +204,31 @@ export const readServer = createIsomorphicFn().server(() => widget())
         ({ environment, importer }) => `${environment} ${importer}`,
       ),
     )
-    return (name) =>
-      reports.filter((report) =>
-        report.split(' ')[1]!.startsWith(`src/${name}/a.ts`),
-      )
+    return {
+      of: (name) =>
+        reports.filter((report) =>
+          report.split(' ')[1]!.startsWith(`src/${name}/a.ts`),
+        ),
+      all: reports,
+      failed,
+    }
   }
   const serverReportsOn = new Map<
-    ServerChannel,
+    string,
     ReturnType<typeof serverReportsOfCases>
   >()
-  /** The reports of `name` on `channel` (the channel's app is built once). */
-  async function serverReports(channel: ServerChannel, name: CaseName) {
-    let reports = serverReportsOn.get(channel)
+  /** What the app of `group` reports on `channel` (each app built once). */
+  function groupReports(channel: ServerChannel, group: Group) {
+    let reports = serverReportsOn.get(`${channel} ${group}`)
     if (!reports) {
-      reports = serverReportsOfCases(channel)
-      serverReportsOn.set(channel, reports)
+      reports = serverReportsOfCases(channel, group)
+      serverReportsOn.set(`${channel} ${group}`, reports)
     }
-    return (await reports)(name)
+    return reports
   }
+  /** The reports of the kept-use case `name` on `channel`. */
+  const serverReports = async (channel: ServerChannel, name: CaseName) =>
+    (await groupReports(channel, 'kept')).of(name)
 
   test.each(serverChannels)(
     '%s: a use outside createClientOnlyFn is reported on the server at the use or the import; the use inside is not',
@@ -237,9 +268,22 @@ export const readServer = createIsomorphicFn().server(() => widget())
   )
 
   test.each(serverChannels)(
+    '%s: the app of the kept uses reports each case once, and nothing else',
+    async (channel) => {
+      const { all } = await groupReports(channel, 'kept')
+      expect(
+        all.map((report) => locationParts(report.split(' ')[1]!).file).sort(),
+      ).toEqual(groups.kept.map((name) => `src/${name}/a.ts`).sort())
+    },
+    timeout,
+  )
+
+  test.each(serverChannels)(
     '%s: a use only inside createClientOnlyFn is not reported',
     async (channel) => {
-      expect(await serverReports(channel, 'insideOnly')).toEqual([])
+      // (the whole safe-only app: no report, and a build succeeds)
+      const { all, failed } = await groupReports(channel, 'safe')
+      expect({ all, failed }).toEqual({ all: [], failed: false })
     },
     timeout,
   )

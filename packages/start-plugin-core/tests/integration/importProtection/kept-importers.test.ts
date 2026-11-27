@@ -115,7 +115,9 @@ describe.each(startBundlers)('%s build', (bundler) => {
   test.each(cases.map((c, i) => ({ ...c, i })))(
     '$name: protection on and off',
     async ({ i, name, on, off }) => {
-      const outcome = (await (outcomes ??= outcomesOfCases(bundler, cases)))(i)
+      const outcome = (await (outcomes ??= outcomesOfCases(bundler, cases))).of(
+        i,
+      )
       const expectedOn = on?.map((file) => inCase(name, file)) ?? null
       expect({
         on: { failedAt: outcome.failedAt, shipped: outcome.mocked.shipped },
@@ -126,6 +128,24 @@ describe.each(startBundlers)('%s build', (bundler) => {
         mockReported: expectedOn ?? [],
         off: { shipped: off },
       })
+    },
+    timeout,
+  )
+
+  // (a build's failure is the whole app's: the refusing cases' app fails
+  // with exactly their importers)
+  test(
+    "the refusing cases' error-mode build fails with their importers, and no other",
+    async () => {
+      expect(
+        (await (outcomes ??= outcomesOfCases(bundler, cases))).refused,
+      ).toEqual(
+        cases
+          .flatMap(({ name, on }) =>
+            (on ?? []).map((file) => inCase(name, file)),
+          )
+          .sort(),
+      )
     },
     timeout,
   )

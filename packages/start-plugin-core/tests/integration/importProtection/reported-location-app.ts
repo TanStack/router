@@ -51,11 +51,16 @@ async function reportsOf(
   channel: Channel,
   files: Record<string, string>,
   { sourcemap = false }: { sourcemap?: boolean },
-): Promise<{ output: Recorded; diagnostics: Array<Diagnostic> }> {
+): Promise<{
+  output: Recorded
+  diagnostics: Array<Diagnostic>
+  /** A build that failed (on its violations). */
+  failed: boolean
+}> {
   if (channel === 'vite dev') {
     const server = await startProtectedDevServer(files)
     await server.load('/src/entry.ts')
-    return { output: server, diagnostics: [] }
+    return { output: server, diagnostics: [], failed: false }
   }
   if (channel === 'rsbuild dev') {
     const recorder = violationRecorder({ behavior: 'error' })
@@ -68,26 +73,26 @@ async function reportsOf(
     return {
       output: { root: server.root, violations: recorder.violations },
       diagnostics: server.diagnostics,
+      failed: false,
     }
   }
   const bundler = channel === 'vite build' ? 'vite' : 'rsbuild'
   // (a build without any violation succeeds)
-  const output = await buildStart({
+  return buildStart({
     bundler,
     files,
     entry: 'src/entry.ts',
     sourcemap,
   }).then(
-    (build) => build,
+    (build) => ({ output: build, diagnostics: [], failed: false }),
     (error: StartBuildError) => {
       // (a build that fails for another reason fails the test)
       if (reportedViolations(error).length === 0) {
         throw error
       }
-      return error
+      return { output: error, diagnostics: [], failed: true }
     },
   )
-  return { output, diagnostics: [] }
 }
 
 /**
@@ -124,8 +129,10 @@ export const caseFile = (name: string) => `src/${name}/a.tsx`
  * `src/<name>/secret.server.ts` of its own, and the entry re-exports each
  * as a namespace. The importer locations reported, by case (a case that
  * fails to compile for another reason has none); the other errors of a dev
- * server's channels (`otherErrors`, `expectNoOtherErrors`); and every file a
- * report names (`files`).
+ * server's channels (`otherErrors`, `expectNoOtherErrors`); every file a
+ * report names (`files`); every importer location the app reported, whole
+ * (`importers`: what an absence is checked on); and whether a build failed
+ * (`failed`).
  */
 export async function reportedLocationsOfCases(
   channel: Channel,
@@ -134,9 +141,11 @@ export async function reportedLocationsOfCases(
   of: (name: string) => Array<string>
   otherErrors: Array<string>
   files: Array<string>
+  importers: Array<string>
+  failed: boolean
 }> {
   const names = Object.keys(codes)
-  const { output, diagnostics } = await reportsOf(
+  const { output, diagnostics, failed } = await reportsOf(
     channel,
     {
       ...Object.fromEntries(
@@ -161,6 +170,8 @@ export async function reportedLocationsOfCases(
       importers.filter((importer) => fileOf(importer) === caseFile(name)),
     otherErrors: otherErrorsOf({ ...output, diagnostics }),
     files: distinct(importers.map(fileOf)).sort(),
+    importers,
+    failed,
   }
 }
 
