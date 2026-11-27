@@ -225,3 +225,129 @@ export const frameworkCases: Array<Case> = [
   pagesApp('react'),
   pagesApp('solid'),
 ]
+
+/**
+ * A pathless layout without child routes yet next to the index route
+ * (route-paths.test.ts; its types: integration/route-types.test.ts).
+ */
+export const childlessLayouts = [
+  {
+    name: '_auth.tsx',
+    file: '_auth.tsx',
+    id: '/_auth',
+    constructor: 'createFileRoute',
+  },
+  {
+    name: '_auth.lazy.tsx',
+    file: '_auth.lazy.tsx',
+    id: '/_auth',
+    constructor: 'createLazyFileRoute',
+  },
+  {
+    name: '(group)/_layout.tsx',
+    file: '(group)/_layout.tsx',
+    id: '/(group)/_layout',
+    constructor: 'createFileRoute',
+  },
+  {
+    name: '(marketing)/route.tsx',
+    file: '(marketing)/route.tsx',
+    id: '/(marketing)',
+    constructor: 'createFileRoute',
+  },
+]
+
+export const childlessLayoutCase = ({
+  file,
+  id,
+  constructor,
+}: (typeof childlessLayouts)[number]): Case => ({
+  name: `a childless ${file} next to the index route`,
+  files: {
+    'src/routes/__root.tsx': page('react', 'createRootRoute', 'root', true),
+    'src/routes/index.tsx': page('react', 'createFileRoute', 'home'),
+    [`src/routes/${file}`]: page('react', constructor, 'auth', true),
+  },
+  expected: {
+    __root__: ['/', null],
+    '/': ['/', '__root__'],
+    [id]: ['/', '__root__'],
+  },
+  visits: { '/': '/' },
+  pages: { '/': ['root', 'home'] },
+})
+
+/**
+ * A pathless layout in a directory under a route with only a lazy route file
+ * (route-paths.test.ts, with the bug it pins; its types:
+ * integration/route-types.test.ts).
+ */
+export const lazyOnlyAnchorLayoutInDirectory: Case = {
+  name: 'a pathless layout in a directory under a lazy-only route',
+  files: {
+    'src/routes/__root.tsx': page('react', 'createRootRoute', 'root', true),
+    'src/routes/app.tsx': page('react', 'createFileRoute', 'app', true),
+    'src/routes/app/posts.lazy.tsx': page(
+      'react',
+      'createLazyFileRoute',
+      'posts',
+      true,
+    ),
+    'src/routes/app/posts/drafts/_layout.tsx': page(
+      'react',
+      'createFileRoute',
+      'layout',
+      true,
+    ),
+    'src/routes/app/posts/drafts/_layout/child.tsx': page(
+      'react',
+      'createFileRoute',
+      'child',
+    ),
+  },
+  expected: {
+    __root__: ['/', null],
+    '/app': ['/app', '__root__'],
+    '/app/posts': ['/app/posts', '/app'],
+    '/app/posts/drafts/_layout': ['/app/posts/drafts', '/app/posts'],
+    '/app/posts/drafts/_layout/child': [
+      '/app/posts/drafts/child',
+      '/app/posts/drafts/_layout',
+    ],
+  },
+  visits: {
+    '/app/posts/drafts/child': '/app/posts/drafts/_layout/child',
+  },
+  pages: {
+    '/app/posts/drafts/child': ['root', 'app', 'posts', 'layout', 'child'],
+  },
+}
+
+/**
+ * A pathless layout with only a lazy route file (real-router.test.ts, with
+ * the bug it pins; its types: integration/route-types.test.ts).
+ */
+export const lazyOnlyPathlessLayout: Case = {
+  name: 'a lazy-only pathless layout',
+  files: {
+    'src/routes/__root.tsx': page('react', 'createRootRoute', 'root', true),
+    'src/routes/settings/_layout.lazy.tsx': page(
+      'react',
+      'createLazyFileRoute',
+      'settings',
+      true,
+    ),
+    'src/routes/settings/_layout/profile.tsx': page(
+      'react',
+      'createFileRoute',
+      'profile',
+    ),
+  },
+  expected: {
+    __root__: ['/', null],
+    '/settings/_layout': ['/settings', '__root__'],
+    '/settings/_layout/profile': ['/settings/profile', '/settings/_layout'],
+  },
+  visits: { '/settings/profile': '/settings/_layout/profile' },
+  pages: { '/settings/profile': ['root', 'settings', 'profile'] },
+}

@@ -15,7 +15,15 @@ import {
   rootRoute,
 } from '../app'
 import { checkApp } from '../real-router'
-import { frameworkCases, groupLayout, shapeCases } from '../real-router-cases'
+import {
+  childlessLayoutCase,
+  childlessLayouts,
+  frameworkCases,
+  groupLayout,
+  lazyOnlyAnchorLayoutInDirectory,
+  lazyOnlyPathlessLayout,
+  shapeCases,
+} from '../real-router-cases'
 import { typeAssertions, typeErrorsOf } from '../type-check'
 
 /** An app with a root route and a route file for each of `files`. */
@@ -49,6 +57,20 @@ describe('route tree types agree with the router', () => {
   test(
     'the layout route of a route group directory has the full path of the router in the types',
     () => checkApp(groupLayout, { runtime: false }),
+    60_000,
+  )
+
+  // (the routes of these cases: route-paths.test.ts and real-router.test.ts,
+  // with the bugs the last two pin)
+  test.each(childlessLayouts)(
+    'a pathless layout without child routes yet ($name) next to the index route has the routes of the router in the types',
+    (layout) => checkApp(childlessLayoutCase(layout), { runtime: false }),
+    60_000,
+  )
+
+  test.each([lazyOnlyAnchorLayoutInDirectory, lazyOnlyPathlessLayout])(
+    '$name has the routes of the router in the types',
+    (testCase) => checkApp(testCase, { runtime: false }),
     60_000,
   )
 })

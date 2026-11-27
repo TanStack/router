@@ -19,6 +19,11 @@ import {
 } from '@tanstack/virtual-file-routes'
 import { createApp, fileRoute, generate, read, rootRoute } from './app'
 import { checkApp, page } from './real-router'
+import {
+  childlessLayoutCase,
+  childlessLayouts,
+  lazyOnlyAnchorLayoutInDirectory,
+} from './real-router-cases'
 import { matchesOf, routesOf, urlsOf } from './route-tree'
 import type { Config } from '../src'
 
@@ -281,54 +286,9 @@ describe('layouts and groups', () => {
   // generation for the whole app.
   // The same for a route group's layout without child routes yet
   // (`(group)/_layout.tsx`, `(marketing)/route.tsx`).
-  test.each([
-    {
-      name: '_auth.tsx',
-      file: '_auth.tsx',
-      id: '/_auth',
-      constructor: 'createFileRoute',
-    },
-    {
-      name: '_auth.lazy.tsx',
-      file: '_auth.lazy.tsx',
-      id: '/_auth',
-      constructor: 'createLazyFileRoute',
-    },
-    {
-      name: '(group)/_layout.tsx',
-      file: '(group)/_layout.tsx',
-      id: '/(group)/_layout',
-      constructor: 'createFileRoute',
-    },
-    {
-      name: '(marketing)/route.tsx',
-      file: '(marketing)/route.tsx',
-      id: '/(marketing)',
-      constructor: 'createFileRoute',
-    },
-  ])(
+  test.each(childlessLayouts)(
     'a pathless layout without child routes yet ($name) next to the index route is added to the route tree',
-    ({ file, id, constructor }) =>
-      checkApp({
-        name: `a childless ${file} next to the index route`,
-        files: {
-          'src/routes/__root.tsx': page(
-            'react',
-            'createRootRoute',
-            'root',
-            true,
-          ),
-          'src/routes/index.tsx': page('react', 'createFileRoute', 'home'),
-          [`src/routes/${file}`]: page('react', constructor, 'auth', true),
-        },
-        expected: {
-          __root__: ['/', null],
-          '/': ['/', '__root__'],
-          [id]: ['/', '__root__'],
-        },
-        visits: { '/': '/' },
-        pages: { '/': ['root', 'home'] },
-      }),
+    (layout) => checkApp(childlessLayoutCase(layout), { types: false }),
     60_000,
   )
 
@@ -397,58 +357,7 @@ describe('layouts and groups', () => {
   // not wrap the pages under such a layout.
   test(
     'a pathless layout in a directory under a route with only a lazy route file nests under that route',
-    () =>
-      checkApp({
-        name: 'a pathless layout in a directory under a lazy-only route',
-        files: {
-          'src/routes/__root.tsx': page(
-            'react',
-            'createRootRoute',
-            'root',
-            true,
-          ),
-          'src/routes/app.tsx': page('react', 'createFileRoute', 'app', true),
-          'src/routes/app/posts.lazy.tsx': page(
-            'react',
-            'createLazyFileRoute',
-            'posts',
-            true,
-          ),
-          'src/routes/app/posts/drafts/_layout.tsx': page(
-            'react',
-            'createFileRoute',
-            'layout',
-            true,
-          ),
-          'src/routes/app/posts/drafts/_layout/child.tsx': page(
-            'react',
-            'createFileRoute',
-            'child',
-          ),
-        },
-        expected: {
-          __root__: ['/', null],
-          '/app': ['/app', '__root__'],
-          '/app/posts': ['/app/posts', '/app'],
-          '/app/posts/drafts/_layout': ['/app/posts/drafts', '/app/posts'],
-          '/app/posts/drafts/_layout/child': [
-            '/app/posts/drafts/child',
-            '/app/posts/drafts/_layout',
-          ],
-        },
-        visits: {
-          '/app/posts/drafts/child': '/app/posts/drafts/_layout/child',
-        },
-        pages: {
-          '/app/posts/drafts/child': [
-            'root',
-            'app',
-            'posts',
-            'layout',
-            'child',
-          ],
-        },
-      }),
+    () => checkApp(lazyOnlyAnchorLayoutInDirectory, { types: false }),
     60_000,
   )
 

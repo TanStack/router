@@ -8,8 +8,12 @@
  * real-router.ts.
  */
 import { describe, test } from 'vitest'
-import { checkApp, page } from './real-router'
-import { groupLayout, shapeCases } from './real-router-cases'
+import { checkApp } from './real-router'
+import {
+  groupLayout,
+  lazyOnlyPathlessLayout,
+  shapeCases,
+} from './real-router-cases'
 
 // (the frameworks' pages: real-router-frameworks.test.ts)
 describe('the real router on a generated route tree', () => {
@@ -40,39 +44,7 @@ describe('the real router on a generated route tree', () => {
   // typed links to them lead nowhere.
   test(
     'a pathless layout with only a lazy route file keeps its directory path',
-    () =>
-      checkApp({
-        name: 'a lazy-only pathless layout',
-        files: {
-          'src/routes/__root.tsx': page(
-            'react',
-            'createRootRoute',
-            'root',
-            true,
-          ),
-          'src/routes/settings/_layout.lazy.tsx': page(
-            'react',
-            'createLazyFileRoute',
-            'settings',
-            true,
-          ),
-          'src/routes/settings/_layout/profile.tsx': page(
-            'react',
-            'createFileRoute',
-            'profile',
-          ),
-        },
-        expected: {
-          __root__: ['/', null],
-          '/settings/_layout': ['/settings', '__root__'],
-          '/settings/_layout/profile': [
-            '/settings/profile',
-            '/settings/_layout',
-          ],
-        },
-        visits: { '/settings/profile': '/settings/_layout/profile' },
-        pages: { '/settings/profile': ['root', 'settings', 'profile'] },
-      }),
+    () => checkApp(lazyOnlyPathlessLayout, { types: false }),
     60_000,
   )
 })
