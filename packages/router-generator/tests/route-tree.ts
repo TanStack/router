@@ -285,6 +285,18 @@ async function withModule<T>(
   }
 }
 
+/**
+ * Whether the app module at `file` exports a `Route` a route tree can use
+ * (one with `update`, which the tree calls), loaded in its app: false when
+ * it does not load or its `Route` is no route.
+ */
+export function exportsRoute(file: string): Promise<boolean> {
+  return withModule(
+    file,
+    ({ exports }) => typeof exports.Route?.update === 'function',
+  ).catch(() => false)
+}
+
 export async function evaluateModule(code: string, fileName = 'route.tsx') {
   const root = await mkdtemp(path.join(runDirectory(), 'tsr-module-'))
   try {

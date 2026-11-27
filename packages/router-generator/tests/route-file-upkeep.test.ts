@@ -26,7 +26,12 @@ import {
 import { createApp, generate, read, rootRoute } from './app'
 import { expectOnlyOwnedEdits } from './owned-edits'
 import { routeCallOf } from './route-id'
-import { evaluateModule, routesOf, withRouteTree } from './route-tree'
+import {
+  evaluateModule,
+  exportsRoute,
+  routesOf,
+  withRouteTree,
+} from './route-tree'
 import type { Config } from '../src'
 
 afterEach(() => {
@@ -41,10 +46,13 @@ const router = `'${routerPackage}'`
  * holding `source` and `otherFiles` (paths relative to the app root). The
  * run must succeed, unless `reportAllowed`: a failed run is then returned
  * (`error`, for `expectReported`). A run that succeeds is followed by a
- * load of its route tree with the real router, which must succeed too, but
- * with `reportAllowed`: a file the generator reports as no route is
- * imported as written, so its tree may not load; such a load leaves
- * `routes` undefined, and only the report can pass (`expectReported`).
+ * load of its route tree with the real router, which must succeed too. One
+ * exception, with `reportAllowed`: the tree imports a reported file as
+ * written, so when that file exports no route the tree can use (its `Route`,
+ * loaded in the app, has no `update`), the tree cannot load. Such a load
+ * leaves `routes` undefined, and only the report can pass
+ * (`expectReported`). A file that exports a route must leave a tree that
+ * loads, warning or not.
  * Returns the file as the generator left it, the warnings (the load's
  * included) and `routes`, the tree's routes (route id to file).
  */
@@ -60,6 +68,7 @@ async function upkeep(
     [`src/routes/${file}`]: source,
     ...otherFiles,
   })
+  const routeFile = path.join(root, 'src/routes', file)
   let error: unknown
   let routes: Record<string, string | null> | undefined
   const { diagnostics } = await captureDiagnostics(async () => {
@@ -74,16 +83,16 @@ async function upkeep(
       error = e
       return
     }
-    routes = await routesOf(tree).catch((e: unknown) => {
-      if (!reportAllowed) {
-        throw e
+    routes = await routesOf(tree).catch(async (e: unknown) => {
+      if (reportAllowed && !(await exportsRoute(routeFile))) {
+        return undefined
       }
-      return undefined
+      throw e
     })
   })
   return {
     root,
-    file: path.join(root, 'src/routes', file),
+    file: routeFile,
     written: await read(root, `src/routes/${file}`),
     diagnostics,
     error,
