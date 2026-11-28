@@ -444,10 +444,11 @@ async function contextualize(
     }
 
     const previousStatus = match.status
-    if (index >= retainedEnd) {
+    const offer = index >= retainedEnd ? options[7 /* onReady */] : undefined
+    if (offer) {
       match.status = 'pending'
-      options[7 /* onReady */]?.()
     }
+    let isAsync = false
     try {
       setFetching(router, match, 'beforeLoad', options[0 /* controller */])
       const value = beforeLoad({
@@ -456,11 +457,13 @@ async function contextualize(
         context: match.context,
         ...router.options.additionalContext,
       })
+      isAsync = typeof value?.then === 'function'
+      if (isAsync) {
+        offer?.()
+      }
       // Always await to give a queued replacement navigation one microtask to
       // kick in before checking cancellation, even for synchronous context.
-      const result = await (typeof value?.then === 'function'
-        ? waitFor(value, signal)
-        : value)
+      const result = await (isAsync ? waitFor(value, signal) : value)
       if (signal.aborted) {
         return [index, CANCELED_OUTCOME]
       }
@@ -472,6 +475,9 @@ async function contextualize(
         options,
       )
       if (outcome[0 /* kind */] !== SUCCESS) {
+        if (!isAsync) {
+          offer?.()
+        }
         releaseFlight(router, match)
         return [index, outcome]
       }
@@ -479,7 +485,13 @@ async function contextualize(
         ...match.context,
         ...result,
       }
+      if (!isAsync) {
+        offer?.()
+      }
     } catch (cause) {
+      if (!isAsync && !signal.aborted) {
+        offer?.()
+      }
       releaseFlight(router, match)
       return [index, normalizeLaneError(router, lane, route, cause, options)]
     } finally {
