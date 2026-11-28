@@ -70,6 +70,14 @@ export type CodeSplittingOptions = {
    * @default true
    */
   addHmr?: boolean
+
+  /**
+   * Also deletes `deleteNodes` from a module that calls a route factory but is
+   * unknown to the route generator. Nothing is split out of such a module.
+   * For a plugin that embeds the code splitter, such as TanStack Start.
+   * @internal
+   */
+  deleteNodesInUnknownRoutes?: boolean
 }
 
 const codeSplittingOptionsSchema = z.object({
@@ -81,6 +89,7 @@ const codeSplittingOptionsSchema = z.object({
   defaultBehavior: splitGroupingsSchema.optional(),
   deleteNodes: z.array(z.string()).optional(),
   addHmr: z.boolean().optional().default(true),
+  deleteNodesInUnknownRoutes: z.boolean().optional(),
 })
 
 type FileRouteKeys = keyof (Parameters<

@@ -3,12 +3,15 @@
  * or served the way `vite build`, `vite dev` and `rsbuild build` do, with
  * `tanstackStart()` of the built `@tanstack/react-start` package (its
  * `plugin/vite` and `plugin/rsbuild` entries, which run this package's built
- * `dist`). The `test:integration` target builds both packages first.
+ * `dist`). The `test:integration` target builds both packages first. An app
+ * can use `@tanstack/vue-start` instead (`createStartApp`'s `framework`).
  *
  * The app links the workspace's `@tanstack/react-start` and the
  * `@tanstack/react-router`, `react` and `react-dom` it uses, as an installed
- * app would.
+ * app would. A package that only uses Start's compile-time APIs links fewer
+ * (`dependencies` of `createStartApp`).
  */
+import { execFile } from 'node:child_process'
 import { realpathSync } from 'node:fs'
 import {
   mkdir,
@@ -30,9 +33,12 @@ import type { ViteDevServer } from 'vite'
 /** The options of `tanstackStart()`. */
 export type StartOptions = Record<string, unknown>
 
-const reactStartDir = fileURLToPath(
-  new URL('../../../react-start', import.meta.url),
-)
+/** The frameworks an app can use Start with in these tests. */
+export type StartFramework = 'react' | 'vue'
+
+function startPackageDir(framework: StartFramework) {
+  return fileURLToPath(new URL(`../../../${framework}-start`, import.meta.url))
+}
 
 const routerEntry = `import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
@@ -54,6 +60,7 @@ export function appFiles(files: Record<string, string> = {}) {
 
 export interface StartApp {
   root: string
+  framework: StartFramework
   read: (file: string) => Promise<string>
   write: (files: Record<string, string>) => Promise<void>
 }
@@ -64,10 +71,21 @@ export interface StartApp {
  * `vite` or `rsbuild` in the app's directory does (the generator and
  * Rsbuild's virtual modules write under it). Both are undone when the test
  * finishes.
+ *
+ * `dependencies` are the packages the app depends on besides the Start
+ * package of its `framework`: only these resolve from the app's directory.
  */
 export async function createStartApp(
   files: Record<string, string>,
-  prefix = 'start-app-',
+  {
+    prefix = 'start-app-',
+    dependencies = ['@tanstack/react-router', 'react', 'react-dom'],
+    framework = 'react',
+  }: {
+    prefix?: string
+    dependencies?: Array<string>
+    framework?: StartFramework
+  } = {},
 ): Promise<StartApp> {
   const root = realpathSync(await mkdtemp(path.join(os.tmpdir(), prefix)))
   const cwd = process.cwd()
@@ -76,11 +94,12 @@ export async function createStartApp(
     process.chdir(cwd)
     await rm(root, { recursive: true, force: true })
   })
+  const startDir = startPackageDir(framework)
   const links: Record<string, string> = {
-    '@tanstack/react-start': reactStartDir,
+    [`@tanstack/${framework}-start`]: startDir,
   }
-  for (const name of ['@tanstack/react-router', 'react', 'react-dom']) {
-    links[name] = realpathSync(path.join(reactStartDir, 'node_modules', name))
+  for (const name of dependencies) {
+    links[name] = realpathSync(path.join(startDir, 'node_modules', name))
   }
   for (const [name, target] of Object.entries(links)) {
     const link = path.join(root, 'node_modules', name)
@@ -101,15 +120,33 @@ export async function createStartApp(
   })
   return {
     root,
+    framework,
     read: (file) => readFile(path.join(root, file), 'utf8'),
     write,
   }
 }
 
-async function startPlugin(bundler: 'vite' | 'rsbuild', options: StartOptions) {
-  const entry = path.join(reactStartDir, 'dist/esm/plugin', `${bundler}.js`)
+async function startPlugin(
+  app: StartApp,
+  bundler: 'vite' | 'rsbuild',
+  options: StartOptions,
+) {
+  const entry = path.join(
+    startPackageDir(app.framework),
+    'dist/esm/plugin',
+    `${bundler}.js`,
+  )
   const { tanstackStart } = await import(pathToFileURL(entry).href)
   return tanstackStart(options)
+}
+
+/** A Vite logger that keeps the warnings instead of printing them. */
+function warningCollector() {
+  const warnings: Array<string> = []
+  const customLogger = createLogger('error')
+  customLogger.warn = (message) => warnings.push(message)
+  customLogger.warnOnce = customLogger.warn
+  return { customLogger, warnings }
 }
 
 /** The JavaScript a build emitted under `dir` (of the app), concatenated. */
@@ -139,12 +176,9 @@ export async function buildStartApp(
   bundler: 'vite' | 'rsbuild',
   options: StartOptions = {},
 ): Promise<StartBuild> {
-  const plugin = await startPlugin(bundler, options)
-  const warnings: Array<string> = []
+  const plugin = await startPlugin(app, bundler, options)
+  const { customLogger, warnings } = warningCollector()
   if (bundler === 'vite') {
-    const customLogger = createLogger('error')
-    customLogger.warn = (message) => warnings.push(message)
-    customLogger.warnOnce = customLogger.warn
     const builder = await createBuilder({
       root: app.root,
       configFile: false,
@@ -167,20 +201,112 @@ export async function buildStartApp(
   }
 }
 
-/** Starts the app's Vite dev server (middleware mode); closed when the test finishes. */
+/**
+ * Starts the app's Vite dev server; closed when the test finishes. It is in
+ * middleware mode unless `listen` is set: it then takes requests on a free
+ * port (`server.resolvedUrls`).
+ */
 export async function startViteDevServer(
   app: StartApp,
   options: StartOptions = {},
+  { mode, listen = false }: { mode?: string; listen?: boolean } = {},
 ): Promise<ViteDevServer> {
   const server = await createServer({
     root: app.root,
     configFile: false,
     logLevel: 'error',
-    server: { middlewareMode: true },
-    plugins: [await startPlugin('vite', options)],
+    mode,
+    server: listen ? { port: 0 } : { middlewareMode: true },
+    plugins: [await startPlugin(app, 'vite', options)],
   })
   onTestFinished(() => server.close())
+  if (listen) {
+    await server.listen()
+  }
   return server
+}
+
+export interface ViteTestServer {
+  server: ViteDevServer
+  /** The warnings Vite logged while the server started. */
+  warnings: Array<string>
+}
+
+/**
+ * Starts the Vite server a test runner creates to run a project's tests: the
+ * `serve` command and the `test` mode, as Vitest resolves its config, without
+ * HMR. These tests run in a Vitest worker themselves (`process.env.VITEST`),
+ * so Start's plugin sees what it sees in a user's Vitest run. Closed when
+ * the test finishes.
+ *
+ * `browser`: as for tests that run in a browser, the server pre-bundles the
+ * dependencies of the client.
+ */
+export async function startViteTestServer(
+  app: StartApp,
+  { browser = false }: { browser?: boolean } = {},
+): Promise<ViteTestServer> {
+  const { customLogger, warnings } = warningCollector()
+  const server = await createServer({
+    root: app.root,
+    configFile: false,
+    mode: 'test',
+    customLogger,
+    // (Vite starts pre-bundling when the server takes requests, which a
+    // server in middleware mode does at once)
+    server: { middlewareMode: browser, hmr: false },
+    // (the pre-bundle is written when it is ready, not when a page has loaded)
+    optimizeDeps: { holdUntilCrawlEnd: false },
+    plugins: [await startPlugin(app, 'vite', {})],
+  })
+  onTestFinished(async () => {
+    // Closing the server does not wait for a pre-bundle in progress, which
+    // would then be written into the removed app directory.
+    const optimizer = server.environments.client.depsOptimizer
+    if (browser && optimizer) {
+      await optimizer.scanProcessing
+      await Promise.all(
+        optimizer.metadata.depInfoList.map((dep) => dep.processing),
+      )
+    }
+    await server.close()
+  })
+  return { server, warnings }
+}
+
+export interface VitestRun {
+  exitCode: number
+  /** What Vitest printed. */
+  output: string
+}
+
+/**
+ * Runs the app's tests once with the Vitest CLI in a process of its own, as
+ * `vitest run` in the app's directory does. Unlike `startViteTestServer`
+ * this is Vitest itself, with its module cache on disk; a second run starts
+ * a new process that finds the cache of the first.
+ *
+ * The app needs `vitest` among its `dependencies` and a Vitest config.
+ */
+export function runVitest(app: StartApp): Promise<VitestRun> {
+  // (these tests run in a Vitest worker, whose own settings are not passed on)
+  const env = Object.fromEntries(
+    Object.entries(process.env).filter(([name]) => !name.startsWith('VITEST')),
+  )
+  return new Promise((resolve) => {
+    execFile(
+      process.execPath,
+      [path.join(app.root, 'node_modules/vitest/vitest.mjs'), 'run'],
+      { cwd: app.root, env },
+      (error, stdout, stderr) => {
+        resolve({
+          exitCode:
+            typeof error?.code === 'number' ? error.code : error ? 1 : 0,
+          output: stdout + stderr,
+        })
+      },
+    )
+  })
 }
 
 /**

@@ -25,6 +25,11 @@ export function createStartConfigContext<TInputConfig>(opts: {
     core: { framework: TanStackStartCoreOptions['framework'] },
     root: string,
   ) => TanStackStartOutputConfig
+  /**
+   * Whether the bundler runs for a test runner. A router entry is then not
+   * required: `routerFilePath` is an empty string when the project has none.
+   */
+  isTestRun?: () => boolean
 }): StartConfigContext {
   const resolvedStartConfig: ResolvedStartConfig = {
     root: '',
@@ -78,6 +83,7 @@ export function createStartConfigContext<TInputConfig>(opts: {
       root: requireRoot(),
       startConfig: getStartConfig(),
       defaultEntryPaths: opts.corePluginOpts.defaultEntryPaths,
+      routerEntryOptional: opts.isTestRun?.(),
     })
 
     Object.assign(resolvedStartConfig, {

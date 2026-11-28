@@ -50,7 +50,8 @@
           "build",
           {
             "projects": [
-              "@tanstack/react-start"
+              "@tanstack/react-start",
+              "@tanstack/vue-start"
             ],
             "target": "build"
           }

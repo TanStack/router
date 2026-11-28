@@ -7,6 +7,7 @@ import {
   createStartConfigContext,
 } from '../config-context'
 import { START_ENVIRONMENT_NAMES } from '../constants'
+import { isVitestRun } from '../test-mode'
 import {
   createServerFnBasePath,
   normalizePublicBase,
@@ -20,6 +21,7 @@ import {
   createViteConfigPlan,
   createViteDefineConfig,
   createViteResolvedEntryAliases,
+  createViteTestConfigPlan,
 } from './planning'
 import { devServerPlugin } from './dev-server-plugin/plugin'
 import { previewServerPlugin } from './preview-server-plugin/plugin'
@@ -37,6 +39,7 @@ import {
 } from './output-directory'
 import { postServerBuild } from './post-server-build'
 import { serializationAdaptersPlugin } from './serialization-adapters-plugin'
+import { excludeFromTestRuns, testRunRouterEntryPlugin } from './test-run'
 import type {
   TanStackStartVitePluginCoreOptions,
   ViteRscForwardSsrResolverStrategy,
@@ -50,10 +53,17 @@ export function tanStackStartVite(
 ): Array<PluginOption> {
   const normalizedStartPluginOpts = startPluginOpts ?? {}
 
+  // Whether Vitest resolves this config to run tests. The plugins below then
+  // compile code as in the app, but none of them serves or builds the app,
+  // and a project without a router entry or without routes is fine.
+  let testRun = false
+  const isTestRun = () => testRun
+
   const configContext = createStartConfigContext({
     corePluginOpts,
     startPluginOpts: normalizedStartPluginOpts,
     parseConfig: parseStartConfig,
+    isTestRun,
   })
   const { getConfig, resolvedStartConfig } = configContext
   const serverFnProviderEnv = corePluginOpts.providerEnvironmentName
@@ -91,7 +101,9 @@ export function tanStackStartVite(
     {
       name: 'tanstack-start-core:config',
       enforce: 'pre',
-      async config(viteConfig, { command }) {
+      async config(viteConfig, env) {
+        const { command } = env
+        testRun = isVitestRun(env)
         const publicBase = normalizePublicBase(viteConfig.base)
         applyResolvedBaseAndOutput({
           resolvedStartConfig,
@@ -126,12 +138,6 @@ export function tanStackStartVite(
           routerBasepath,
           serverFnBase: startConfig.serverFns.base,
         })
-        const resolvedEntryPlan = configContext.resolveEntries()
-
-        const entryAliases = createViteResolvedEntryAliases({
-          entryPaths: resolvedEntryPlan.entryPaths,
-        })
-
         const startPackageName =
           `@tanstack/${corePluginOpts.framework}-start` as const
 
@@ -164,6 +170,45 @@ export function tanStackStartVite(
           },
         })
 
+        const define = createViteDefineConfig({
+          command,
+          mode: viteConfig.mode,
+          serverFnBase: TSS_SERVER_FN_BASE,
+          routerBasepath,
+          spaEnabled: startConfig.spa?.enabled,
+          // The dev server that serves these styles does not exist in a test run.
+          devSsrStylesEnabled: !testRun && startConfig.dev.ssrStyles.enabled,
+          devSsrStylesBasepath:
+            startConfig.dev.ssrStyles.basepath ??
+            resolvedStartConfig.basePaths.publicBase,
+          inlineCssEnabled:
+            command === 'build' && startConfig.server.build.inlineCss.enabled,
+          staticNodeEnv: startConfig.server.build.staticNodeEnv,
+          disableCsrfMiddlewareWarning:
+            startConfig.serverFns.disableCsrfMiddlewareWarning,
+        })
+
+        if (testRun) {
+          const testConfigPlan = createViteTestConfigPlan({
+            framework: corePluginOpts.framework,
+            entryPaths: configContext.resolveEntries().entryPaths,
+            optimizeDepsExclude: crawlFrameworkPkgsResult.optimizeDeps.exclude,
+            noExternal: crawlFrameworkPkgsResult.ssr.noExternal.sort(),
+          })
+
+          return {
+            environments: testConfigPlan.environments,
+            resolve: testConfigPlan.resolve,
+            define,
+          }
+        }
+
+        const resolvedEntryPlan = configContext.resolveEntries()
+
+        const entryAliases = createViteResolvedEntryAliases({
+          entryPaths: resolvedEntryPlan.entryPaths,
+        })
+
         const viteConfigPlan = createViteConfigPlan({
           viteConfig,
           command,
@@ -182,22 +227,7 @@ export function tanStackStartVite(
           appType: viteConfig.appType ?? 'custom',
           environments: viteConfigPlan.environments,
           resolve: viteConfigPlan.resolve,
-          define: createViteDefineConfig({
-            command,
-            mode: viteConfig.mode,
-            serverFnBase: TSS_SERVER_FN_BASE,
-            routerBasepath,
-            spaEnabled: startConfig.spa?.enabled,
-            devSsrStylesEnabled: startConfig.dev.ssrStyles.enabled,
-            devSsrStylesBasepath:
-              startConfig.dev.ssrStyles.basepath ??
-              resolvedStartConfig.basePaths.publicBase,
-            inlineCssEnabled:
-              command === 'build' && startConfig.server.build.inlineCss.enabled,
-            staticNodeEnv: startConfig.server.build.staticNodeEnv,
-            disableCsrfMiddlewareWarning:
-              startConfig.serverFns.disableCsrfMiddlewareWarning,
-          }),
+          define,
           builder: {
             sharedPlugins: true,
             async buildApp(builder) {
@@ -237,8 +267,14 @@ export function tanStackStartVite(
       environments,
       providerEnvName: serverFnProviderEnv,
     }),
-    tanStackStartRouter(normalizedStartPluginOpts, getConfig, corePluginOpts),
+    tanStackStartRouter(
+      normalizedStartPluginOpts,
+      getConfig,
+      corePluginOpts,
+      isTestRun,
+    ),
     loadEnvPlugin(),
+    testRunRouterEntryPlugin(),
     createDevClientEntryPlugin({
       framework: corePluginOpts.framework,
       getClientEntry: () => configContext.resolveEntries().entryPaths.client,
@@ -252,17 +288,19 @@ export function tanStackStartVite(
     // before passing to the SSR handler.
     // Registered BEFORE devServerPlugin so this middleware is added to the Connect stack first,
     // ensuring all subsequent middlewares (CSS, SSR, etc.) see the rewritten URL.
-    createDevBaseRewritePlugin({
-      shouldRewriteDevBase: () => needsDevBaseRewrite,
-      resolvedStartConfig,
-    }),
-    devServerPlugin({
-      getConfig,
-      devSsrStylesEnabled:
-        normalizedStartPluginOpts.dev?.ssrStyles?.enabled ?? true,
-      installDevServerMiddleware:
-        normalizedStartPluginOpts.vite?.installDevServerMiddleware,
-    }),
+    excludeFromTestRuns([
+      createDevBaseRewritePlugin({
+        shouldRewriteDevBase: () => needsDevBaseRewrite,
+        resolvedStartConfig,
+      }),
+      devServerPlugin({
+        getConfig,
+        devSsrStylesEnabled:
+          normalizedStartPluginOpts.dev?.ssrStyles?.enabled ?? true,
+        installDevServerMiddleware:
+          normalizedStartPluginOpts.vite?.installDevServerMiddleware,
+      }),
+    ]),
     previewServerPlugin(),
     ...(corePluginOpts.serializationAdapters?.length
       ? [

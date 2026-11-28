@@ -86,10 +86,9 @@ describe('vite build', () => {
   test(
     'of an app whose path has characters a regular expression reads: the client route tree leaves out the server-only route',
     async () => {
-      const app = await createStartApp(
-        appFiles(routes),
-        'start-app my app (2)+-',
-      )
+      const app = await createStartApp(appFiles(routes), {
+        prefix: 'start-app my app (2)+-',
+      })
       const build = await buildStartApp(app, 'vite')
       expect(build.client).toContain('MARK_INDEX')
       expect(build.client).not.toMatch(/["'`]\/api["'`]/)

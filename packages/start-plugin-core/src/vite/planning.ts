@@ -114,16 +114,61 @@ export function createViteConfigPlan(opts: {
       }),
     },
     resolve: {
-      noExternal: [
-        '@tanstack/start**',
-        `@tanstack/${opts.framework}-start**`,
-        ...opts.noExternal,
-      ],
+      noExternal: createNoExternal(opts),
       alias: {
         ...opts.entryAliases.alias,
       },
     },
   } satisfies Pick<vite.UserConfig, 'environments' | 'resolve'>
+}
+
+/**
+ * The part of the Vite config that code needs when Vitest runs it: Start's
+ * packages go through the compiler instead of being pre-bundled or
+ * externalized, and the entries that exist can be imported. Nothing here
+ * plans a build or a dev server of the app.
+ */
+export function createViteTestConfigPlan(opts: {
+  framework: CompileStartFrameworkOptions
+  entryPaths: ResolvedStartEntryPlan['entryPaths']
+  optimizeDepsExclude: Array<string>
+  noExternal: Array<string>
+}) {
+  const alias: Record<string, string> = {
+    [ENTRY_POINTS.client]: normalizePath(opts.entryPaths.client),
+    [ENTRY_POINTS.server]: normalizePath(opts.entryPaths.server),
+    [ENTRY_POINTS.start]: normalizePath(opts.entryPaths.start),
+  }
+  // Without a router entry the alias stays unset, and the placeholder of
+  // `testRunRouterEntryPlugin` answers the import.
+  if (opts.entryPaths.router) {
+    alias[ENTRY_POINTS.router] = normalizePath(opts.entryPaths.router)
+  }
+
+  return {
+    environments: {
+      [START_ENVIRONMENT_NAMES.client]: {
+        optimizeDeps: {
+          exclude: opts.optimizeDepsExclude,
+        },
+      },
+    },
+    resolve: {
+      noExternal: createNoExternal(opts),
+      alias,
+    },
+  } satisfies Pick<vite.UserConfig, 'environments' | 'resolve'>
+}
+
+function createNoExternal(opts: {
+  framework: CompileStartFrameworkOptions
+  noExternal: Array<string>
+}) {
+  return [
+    '@tanstack/start**',
+    `@tanstack/${opts.framework}-start**`,
+    ...opts.noExternal,
+  ]
 }
 
 export function createViteDefineConfig(opts: {

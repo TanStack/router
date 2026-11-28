@@ -1,0 +1,41 @@
+{
+  "name": "tanstack-react-start-e2e-vitest-library",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "test:e2e": "pnpm run test:e2e:types && pnpm run test:e2e:installed",
+    "test:e2e:types": "tsc --noEmit",
+    "test:e2e:installed": "node ../../../scripts/e2e/run-as-installed.mjs test:e2e:cold-then-cached",
+    "test:e2e:cold-then-cached": "vitest run && vitest run"
+  },
+  "dependencies": {
+    "@tanstack/react-start": "workspace:^",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "@vitest/browser-playwright": "catalog:",
+    "jsdom": "catalog:",
+    "playwright": "^1.63.0",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  },
+  "nx": {
+    "targets": {
+      "test:e2e": {
+        "inputs": [
+          "buildProduction",
+          "^production",
+          "dependentTaskOutputs",
+          "{workspaceRoot}/scripts/e2e/run-as-installed.mjs"
+        ]
+      }
+    }
+  }
+}

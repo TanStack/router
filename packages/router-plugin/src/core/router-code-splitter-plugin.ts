@@ -209,6 +209,35 @@ export function createRouterCodeSplitterPlugin(
     return compiledReferenceRoute
   }
 
+  const handleDeletingNodesInUnknownRoute = (
+    code: string,
+    id: string,
+  ): UnpluginTransformResult => {
+    const deleteNodes = userConfig.codeSplittingOptions?.deleteNodes
+    // (a route option to delete is named in the code: nothing to parse otherwise)
+    if (!deleteNodes?.some((name) => code.includes(name))) {
+      return null
+    }
+
+    if (debug) {
+      console.info('Deleting nodes in route unknown to the generator: ', id)
+    }
+
+    // Without split groupings the reference compiler only removes the listed
+    // route options and the code that nothing else uses anymore.
+    return compileCodeSplitReferenceRoute({
+      code,
+      codeSplitGroupings: [],
+      targetFramework: userConfig.target,
+      filename: id,
+      id,
+      isProduction,
+      deleteNodes: new Set(deleteNodes),
+      addHmr: false,
+      hmrStyle,
+    })
+  }
+
   const handleCompilingVirtualFile = (
     code: string,
     id: string,
@@ -275,6 +304,10 @@ export function createRouterCodeSplitterPlugin(
               normalizedId,
               generatorFileInfo,
             )
+          }
+
+          if (userConfig.codeSplittingOptions?.deleteNodesInUnknownRoutes) {
+            return handleDeletingNodesInUnknownRoute(code, normalizedId)
           }
 
           return null

@@ -93,6 +93,11 @@ export function resolveStartEntryPlan(opts: {
   root: string
   startConfig: TanStackStartOutputConfig
   defaultEntryPaths: TanStackStartCoreOptions['defaultEntryPaths']
+  /**
+   * A project whose code runs under a test runner may be a package that only
+   * uses Start's compile-time APIs. Its router entry is then an empty string.
+   */
+  routerEntryOptional?: boolean
 }): ResolvedStartEntryPlan {
   const srcDirectory = join(opts.root, opts.startConfig.srcDirectory)
 
@@ -104,13 +109,16 @@ export function resolveStartEntryPlan(opts: {
     required: false,
   })
 
-  const routerFilePath = resolveEntry({
-    type: 'router entry',
-    configuredEntry: opts.startConfig.router.entry,
-    defaultEntry: 'router',
-    resolvedSrcDirectory: srcDirectory,
-    required: true,
-  })
+  const routerFilePath =
+    resolveEntry({
+      type: 'router entry',
+      configuredEntry: opts.startConfig.router.entry,
+      defaultEntry: 'router',
+      resolvedSrcDirectory: srcDirectory,
+      // (a configured entry has to exist: a typo in the config is not a
+      // project without a router)
+      required: !opts.routerEntryOptional || !!opts.startConfig.router.entry,
+    }) ?? ''
 
   const clientEntryPath = resolveEntry({
     type: 'client entry',

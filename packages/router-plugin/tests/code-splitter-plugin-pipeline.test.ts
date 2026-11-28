@@ -189,6 +189,66 @@ export const Route = createFileRoute('/unshared')({
   })
 })
 
+describe('a route module the route generator does not know', () => {
+  const file = routeFile('unknown')
+  const code = `
+import { createFileRoute } from '@tanstack/react-router'
+import { secret } from './server-only'
+export const Route = createFileRoute('/unknown')({
+  server: { handlers: { GET: () => new Response(secret) } },
+  component: () => <p>unknown</p>,
+})
+`
+  const options: Partial<Config> = {
+    codeSplittingOptions: { deleteNodes: ['server'] },
+  }
+  const hostOptions: Partial<Config> = {
+    codeSplittingOptions: {
+      deleteNodes: ['server'],
+      deleteNodesInUnknownRoutes: true,
+    },
+  }
+
+  it('is left as it is', async () => {
+    const splitter = await createCodeSplitterTransforms(options, {})
+
+    expect(splitter.reference(code, file)).toBeNull()
+  })
+
+  // A plugin that embeds the code splitter can run where no generator does,
+  // e.g. TanStack Start for the tests of a package without routes.
+  it('loses the route options to delete, and nothing else, when the host plugin asks for it', async () => {
+    const splitter = await createCodeSplitterTransforms(hostOptions, {})
+
+    const reference = splitter.reference(code, file)!
+    // (the import only the deleted option used goes with it)
+    expect(reference).not.toContain('server')
+    expect(importSources(reference)).toEqual(['@tanstack/react-router'])
+    expect(reference).toContain('<p>unknown</p>')
+    expect(reference).not.toContain('tsr-split')
+    await expectValidModules({ reference })
+  })
+
+  it('is left as it is when the host plugin asks for it and there are no route options to delete', async () => {
+    const splitter = await createCodeSplitterTransforms(
+      { codeSplittingOptions: { deleteNodesInUnknownRoutes: true } },
+      {},
+    )
+
+    expect(splitter.reference(code, file)).toBeNull()
+  })
+
+  it('does not change how a route module the generator knows is split', async () => {
+    const routes = { [file]: '/unknown' }
+    const hosted = await createCodeSplitterTransforms(hostOptions, routes)
+    const standalone = await createCodeSplitterTransforms(options, routes)
+
+    const reference = hosted.reference(code, file)
+    expect(reference).toContain('tsr-split=component')
+    expect(reference).toBe(standalone.reference(code, file))
+  })
+})
+
 describe('route HMR plugin without code splitting', () => {
   function transformWith(
     options: Partial<Config> & { target: 'solid' | 'vue' },

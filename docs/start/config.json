@@ -129,6 +129,10 @@
             {
               "label": "Server Routes",
               "to": "framework/react/guide/server-routes"
+            },
+            {
+              "label": "Testing",
+              "to": "framework/react/guide/testing"
             }
           ]
         },

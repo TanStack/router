@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import { createRouterPluginContext } from '@tanstack/router-plugin/context'
 import {
   tanStackRouterCodeSplitter,
@@ -17,7 +18,10 @@ import type {
   GeneratorPlugin,
   RouteNode,
 } from '@tanstack/router-generator'
-import type { DevEnvironment, Plugin, PluginOption } from 'vite'
+import type { CodeSplittingOptions } from '@tanstack/router-plugin/vite'
+import type { DevEnvironment, PluginOption } from 'vite'
+// (Vite's `Plugin` with the `configureVitest` hook that Vitest adds to it)
+import type { Plugin } from 'vitest/config'
 import type { TanStackStartInputConfig } from '../../schema'
 
 function isServerOnlyNode(node: RouteNode | undefined) {
@@ -34,6 +38,13 @@ export function tanStackStartRouter(
   startPluginOpts: TanStackStartInputConfig,
   getConfig: GetConfigFn,
   corePluginOpts: TanStackStartVitePluginCoreOptions,
+  /**
+   * Whether Vitest resolves the config to run tests. The route tree is then
+   * generated once, at startup, and only for a project that has routes; route
+   * files are never written; and a route file does not have to be known to
+   * the generator to lose its server-only options in client code.
+   */
+  isTestRun: () => boolean,
 ): Array<PluginOption> {
   const routerPluginContext = createRouterPluginContext()
 
@@ -72,12 +83,31 @@ export function tanStackStartRouter(
   }
 
   let resolvedGeneratedRouteTreePath: string | null = null
+  const isGeneratedRouteTree = (id: string) =>
+    normalizePath(id.replace(/\?.*$/, '')) === resolvedGeneratedRouteTreePath
   const clientTreePlugin: Plugin = {
     name: 'tanstack-start:route-tree-client-plugin',
     enforce: 'pre',
     applyToEnvironment: (env) => env.name === VITE_ENVIRONMENT_NAMES.client,
     configureServer(server) {
       clientEnvironment = server.environments[VITE_ENVIRONMENT_NAMES.client]
+    },
+    // Vitest stores compiled modules on disk and keys this one by the
+    // generated file. What `load` returns for it also depends on the other
+    // route files: the routes that only the server uses are left out. A
+    // route that got its first client option leaves the generated file as it
+    // is, so the key would still fit the route tree without that route.
+    configureVitest({ defineCacheKeyGenerator }) {
+      defineCacheKeyGenerator(({ environment, id }) => {
+        if (
+          environment.name === VITE_ENVIRONMENT_NAMES.client &&
+          isGeneratedRouteTree(id)
+        ) {
+          // Not cached: `load` builds it in every run.
+          return false
+        }
+        return undefined
+      })
     },
     config() {
       type LoadObjectHook = Extract<
@@ -102,13 +132,14 @@ export function tanStackStartRouter(
         // this will be set in the config hook above since it relies on `config` hook being called first
       },
       async handler(id) {
-        if (
-          normalizePath(id.replace(/\?.*$/, '')) !==
-          resolvedGeneratedRouteTreePath
-        ) {
+        if (!isGeneratedRouteTree(id)) {
           return null
         }
         if (!generatorInstance) {
+          if (isTestRun()) {
+            // No generator runs for a project without routes.
+            return null
+          }
           throw new Error('Generator instance not initialized')
         }
         const crawlingResult = await generatorInstance.getCrawlingResult()
@@ -147,6 +178,19 @@ export function tanStackStartRouter(
           clientRouteTree: clientTreeGeneratorPlugin,
         }),
       routerPluginContext,
+      (config) =>
+        isTestRun()
+          ? {
+              // A package that only uses Start's compile-time APIs has no
+              // router entry and no routes: nothing to generate.
+              enabled:
+                !!getConfig().resolvedStartConfig.routerFilePath &&
+                (!!config.virtualRouteConfig ||
+                  existsSync(config.routesDirectory)),
+              watch: false,
+              writeRouteFiles: false,
+            }
+          : {},
     ),
     tanStackRouterCodeSplitter(() => {
       const routerConfig = getConfig().startConfig.router
@@ -155,8 +199,13 @@ export function tanStackStartRouter(
         codeSplittingOptions: {
           ...routerConfig.codeSplittingOptions,
           deleteNodes: ['ssr', 'server', 'headers'],
-          addHmr: true,
-        },
+          // Vitest has no HMR.
+          addHmr: !isTestRun(),
+          // In a test run a route file does not have to be known to the
+          // generator to lose these options. (The option is internal to
+          // the code splitter and not in its published types.)
+          deleteNodesInUnknownRoutes: isTestRun(),
+        } as CodeSplittingOptions,
         plugin: {
           vite: { environmentName: VITE_ENVIRONMENT_NAMES.client },
         },

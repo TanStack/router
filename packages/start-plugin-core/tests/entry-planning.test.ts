@@ -21,11 +21,13 @@ const defaultEntryPaths = {
 }
 const roots = new Set<string>()
 
-function createRoot() {
+function createRoot({ router = true } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'tanstack-start-entry-'))
   roots.add(root)
   mkdirSync(join(root, 'src'))
-  writeFileSync(join(root, 'src', 'router.ts'), 'export {}\n')
+  if (router) {
+    writeFileSync(join(root, 'src', 'router.ts'), 'export {}\n')
+  }
   return root
 }
 
@@ -113,4 +115,41 @@ describe('server entry planning', () => {
       expect(plan.entryPaths.server).toBe(normalize(realpathSync(serverEntry)))
     },
   )
+})
+
+describe('entry planning for a project under a test runner', () => {
+  // A package that only uses Start's compile-time APIs has no router.
+  test('plans a project without a router entry', () => {
+    const root = createRoot({ router: false })
+    const startConfig = parseViteStartConfig({}, corePluginOpts, root)
+
+    const plan = resolveStartEntryPlan({
+      root,
+      startConfig,
+      defaultEntryPaths,
+      routerEntryOptional: true,
+    })
+
+    expect(plan.routerFilePath).toBe('')
+    expect(plan.entryPaths).toEqual({ ...defaultEntryPaths, router: '' })
+  })
+
+  // A typo in the config is not a project without a router.
+  test('fails for a configured router entry that does not exist', () => {
+    const root = createRoot()
+    const startConfig = parseViteStartConfig(
+      { router: { entry: './missing-router.ts' } },
+      corePluginOpts,
+      root,
+    )
+
+    expect(() =>
+      resolveStartEntryPlan({
+        root,
+        startConfig,
+        defaultEntryPaths,
+        routerEntryOptional: true,
+      }),
+    ).toThrow('missing-router.ts')
+  })
 })

@@ -45,7 +45,11 @@ export function tanstackStart(
                     // crawling, it imports `vue` and re-chunks the already
                     // optimized `vue`, which forces a full page reload on
                     // every cold start (and loses an in-flight page load).
-                    '@tanstack/vue-router > @tanstack/vue-store',
+                    // The path starts at `@tanstack/vue-start`, because a
+                    // package that only uses Start's compile-time APIs may
+                    // not depend on `@tanstack/vue-router` itself, and Vite
+                    // resolves the path from the project.
+                    '@tanstack/vue-start > @tanstack/vue-router > @tanstack/vue-store',
                   ],
                 }
               : undefined,
