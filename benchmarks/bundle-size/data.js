@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795787432749,
+  "lastUpdate": 1795891951261,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -89,132 +89,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Bundle Size (gzip)": [
-      {
-        "commit": {
-          "author": {
-            "email": "me@florianpellet.com",
-            "name": "Flo",
-            "username": "Sheraff"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "ea3a665d81cbb5074c2d77ec953255ab534e7db9",
-          "message": "fix(router): retain mounted UI during revalidation (#7992)\n\n* fix(router): retain mounted UI during revalidation\n\n* fix(router): preserve initial pending presentation\n\n* changeset\n\n* test(router): make retained pending tests deterministic\n\n* complete solid/vue suite",
-          "timestamp": "2026-08-07T11:57:59+02:00",
-          "tree_id": "2f745dc52ef4680b336ab072c4a6339832c36663",
-          "url": "https://github.com/TanStack/router/commit/ea3a665d81cbb5074c2d77ec953255ab534e7db9"
-        },
-        "date": 1786096920957,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "react-router.minimal",
-            "value": 89057,
-            "unit": "bytes",
-            "extra": "raw=274208; brotli=77524; initial_gzip=88916"
-          },
-          {
-            "name": "react-router.full",
-            "value": 92902,
-            "unit": "bytes",
-            "extra": "raw=286454; brotli=80900; initial_gzip=92763"
-          },
-          {
-            "name": "solid-router.minimal",
-            "value": 35479,
-            "unit": "bytes",
-            "extra": "raw=100926; brotli=31984; initial_gzip=35350"
-          },
-          {
-            "name": "solid-router.full",
-            "value": 40661,
-            "unit": "bytes",
-            "extra": "raw=116456; brotli=36634; initial_gzip=40535"
-          },
-          {
-            "name": "vue-router.minimal",
-            "value": 53122,
-            "unit": "bytes",
-            "extra": "raw=144966; brotli=47855; initial_gzip=52991"
-          },
-          {
-            "name": "vue-router.full",
-            "value": 59181,
-            "unit": "bytes",
-            "extra": "raw=163988; brotli=53196; initial_gzip=59049"
-          },
-          {
-            "name": "react-start.minimal",
-            "value": 102808,
-            "unit": "bytes",
-            "extra": "raw=318341; brotli=89194; initial_gzip=102668"
-          },
-          {
-            "name": "react-start.deferred-hydration",
-            "value": 103565,
-            "unit": "bytes",
-            "extra": "raw=319749; brotli=89888; initial_gzip=102691"
-          },
-          {
-            "name": "react-start.full",
-            "value": 106239,
-            "unit": "bytes",
-            "extra": "raw=328530; brotli=92245; initial_gzip=106102"
-          },
-          {
-            "name": "react-start.rsbuild.minimal",
-            "value": 102388,
-            "unit": "bytes",
-            "extra": "raw=322940; brotli=88272; initial_gzip=102213"
-          },
-          {
-            "name": "react-start.rsbuild.minimal-iife",
-            "value": 102806,
-            "unit": "bytes",
-            "extra": "raw=323899; brotli=88714; initial_gzip=102637"
-          },
-          {
-            "name": "react-start.rsbuild.full",
-            "value": 105774,
-            "unit": "bytes",
-            "extra": "raw=333278; brotli=91005; initial_gzip=105599"
-          },
-          {
-            "name": "solid-start.minimal",
-            "value": 49114,
-            "unit": "bytes",
-            "extra": "raw=144027; brotli=43678; initial_gzip=48983"
-          },
-          {
-            "name": "solid-start.deferred-hydration",
-            "value": 52461,
-            "unit": "bytes",
-            "extra": "raw=152259; brotli=46781; initial_gzip=49046"
-          },
-          {
-            "name": "solid-start.full",
-            "value": 54518,
-            "unit": "bytes",
-            "extra": "raw=160127; brotli=48458; initial_gzip=54386"
-          },
-          {
-            "name": "vue-start.minimal",
-            "value": 70289,
-            "unit": "bytes",
-            "extra": "raw=198063; brotli=62630; initial_gzip=70157"
-          },
-          {
-            "name": "vue-start.full",
-            "value": 74395,
-            "unit": "bytes",
-            "extra": "raw=210866; brotli=66119; initial_gzip=74262"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -26125,6 +25999,138 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/10b22c276ea785fcc9cc051011a4a1541ec2d0b4"
         },
         "date": 1795787430928,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 86065,
+            "unit": "bytes",
+            "extra": "raw=267805; brotli=75054; initial_gzip=85925"
+          },
+          {
+            "name": "react-router.full",
+            "value": 89702,
+            "unit": "bytes",
+            "extra": "raw=279988; brotli=78281; initial_gzip=89563"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 34181,
+            "unit": "bytes",
+            "extra": "raw=97578; brotli=30918; initial_gzip=34054"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 39191,
+            "unit": "bytes",
+            "extra": "raw=112740; brotli=35392; initial_gzip=39064"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 50656,
+            "unit": "bytes",
+            "extra": "raw=139776; brotli=45864; initial_gzip=50529"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 56379,
+            "unit": "bytes",
+            "extra": "raw=158387; brotli=50871; initial_gzip=56254"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 99119,
+            "unit": "bytes",
+            "extra": "raw=309703; brotli=86171; initial_gzip=98979"
+          },
+          {
+            "name": "react-start.query-integration",
+            "value": 106720,
+            "unit": "bytes",
+            "extra": "raw=336925; brotli=92648; initial_gzip=106580"
+          },
+          {
+            "name": "react-start.deferred-hydration",
+            "value": 99862,
+            "unit": "bytes",
+            "extra": "raw=311090; brotli=86853; initial_gzip=99000"
+          },
+          {
+            "name": "react-start.full",
+            "value": 102260,
+            "unit": "bytes",
+            "extra": "raw=319192; brotli=88777; initial_gzip=102121"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 99001,
+            "unit": "bytes",
+            "extra": "raw=305450; brotli=85440; initial_gzip=98839"
+          },
+          {
+            "name": "react-start.rsbuild.minimal-iife",
+            "value": 99402,
+            "unit": "bytes",
+            "extra": "raw=306428; brotli=85823; initial_gzip=99241"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 102369,
+            "unit": "bytes",
+            "extra": "raw=315323; brotli=88118; initial_gzip=102207"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 47340,
+            "unit": "bytes",
+            "extra": "raw=138363; brotli=42181; initial_gzip=47211"
+          },
+          {
+            "name": "solid-start.deferred-hydration",
+            "value": 50439,
+            "unit": "bytes",
+            "extra": "raw=145859; brotli=44999; initial_gzip=47267"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 52470,
+            "unit": "bytes",
+            "extra": "raw=153685; brotli=46504; initial_gzip=52340"
+          },
+          {
+            "name": "vue-start.minimal",
+            "value": 67001,
+            "unit": "bytes",
+            "extra": "raw=190191; brotli=59776; initial_gzip=66872"
+          },
+          {
+            "name": "vue-start.full",
+            "value": 70830,
+            "unit": "bytes",
+            "extra": "raw=202341; brotli=63141; initial_gzip=70703"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "6340397+schiller-manuel@users.noreply.github.com",
+            "name": "Manuel Schiller",
+            "username": "schiller-manuel"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "611b364f8ddaa42da11f3506c14c5e2521810ba9",
+          "message": "feat(start): run Start's Vite plugin in Vitest test runs (#8965)\n\n* feat(start): run Start's Vite plugin in Vitest test runs\n\nWith `tanstackStart()` in a config that Vitest loads, test files are\ncompiled as the app's code is: for the client in browser mode, jsdom and\nhappy-dom, for the server in Node. A test run sets up no dev server,\npreview server or build.\n\n- A test run is the `serve` command in mode `test` with `VITEST` set. The\n  plugins that serve or build the app are left out.\n- A project needs no router entry and no routes. A configured router entry\n  still has to exist. Without one, a placeholder answers the import of the\n  router entry, so that Start's server code loads in a server test.\n- The route tree is generated once, when Vitest starts, and only for a\n  project with a router entry and a root route. Route files are never\n  written: `Generator` takes `writeRouteFiles: false`, and an outdated or\n  empty route file gets a warning. `tanstackRouterGenerator` and\n  `tanStackRouterCodeSplitter` take options for a plugin that embeds them.\n- A route module that the generator does not know still loses `server`,\n  `ssr` and `headers` in client code.\n- Vitest 5.1.1 or later: earlier versions' translation of the wildcards in\n  `resolve.noExternal` misses Start's package names with a dash.\n- A browser test run pre-bundles Router Core's browser dependencies up\n  front; Vite found them late and reloaded the page.\n- `@tanstack/react-start` pre-bundles `@tanstack/react-store` by a path that\n  also resolves from a project that depends on Start only.\n- `scripts/e2e/run-as-installed.mjs` runs an e2e project from a\n  `pnpm deploy` copy, where `@tanstack/*` are installed as in a user's\n  project. `postcss` resolves to one version, so that `deploy` works.\n- `e2e/react-start/vitest-library` (Start only) and `vitest-app` run in\n  browser mode, jsdom and Node, with an empty and a warm Vitest cache and\n  as installed. They include module mocks of server functions.\n- Docs: a Testing guide for React Start, marked experimental.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* chore(start): declare Vitest 5.1.1 as an optional peer\n\nTest runs need Vitest 5.1.1 or later. `@tanstack/start-plugin-core`,\n`@tanstack/react-start`, `@tanstack/solid-start` and `@tanstack/vue-start`\ndeclare it as an optional peer dependency next to `vite`, so a project with\nan older Vitest gets a peer warning at install.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(router-plugin): apply the watch host option to new files under webpack and rspack\n\nThe chokidar `add` listeners of the webpack and rspack plugins called the\ngenerator without the check that `watchChange` had. The check now sits in\nthe generator call for file events, so it covers all three.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* docs(e2e): drop the installed type-check claim\n\nThe Vitest projects type-check in the workspace here.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* chore(start): drop the Vitest optional peer\n\nAn optional peer is enforced when the package is installed, so a project\nwith an older Vitest that never uses Start in its tests would have been\nasked to upgrade.\n\nCo-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>\n\n* chore(e2e): take @vitest/browser-playwright from the catalog\n\nIt was pinned to 5.1.1 next to a `vitest` from the catalog, so the two\nwould have drifted apart on the next Vitest bump.\n\nCo-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>\n\n* fix(vue-start): pre-bundle the store by a path that resolves from a project with Start only\n\n`@tanstack/vue-router > @tanstack/vue-store` only resolves from a project\nthat depends on the router. Vite warned, found the store late and reloaded\nthe page. The integration harness takes the framework of the app for the\nregression test.\n\nCo-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>\n\n* fix(e2e): quote arguments with a space for the Windows shell in run-as-installed\n\nNode joins the arguments of a shell command without quoting them, so a\ntemporary directory with a space in its path broke `pnpm deploy`.\n\nCo-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>\n\n* fix(start-plugin-core): keep the client route tree out of Vitest's module cache\n\nIn client code Start serves a route tree without the routes that only the\nserver uses, built from all route files. Vitest keys a cached module by its\nown file, and the generated route tree lists every route: when a route got\nits first client option, jsdom and happy-dom tests kept the route tree of\nan earlier run without that route, until the cache was cleared.\n\nThe plugin's `configureVitest` hook now excludes the module from the cache.\nThe integration test runs the Vitest CLI twice on a temporary app.\n\nCo-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>\n\n* refactor(start): run the Vitest e2e projects only as installed and drop the Router Core pre-bundle list\n\nThe list of Router Core's dependencies in the test-run config only served\nthe run of `vitest-app` inside this repository, where Start's packages are\nlinks and Vite finds what they import late. In an installed project Vite\npre-bundles nothing late, with or without the list.\n\nBoth projects now run their tests only in the installed copy, twice: with\nan empty Vitest cache and from the warm cache.\n\nCo-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>\n\n* docs(e2e): explain how to run the vitest-app tests and why a first run in place fails\n\nCo-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>\n\n* refactor(start): simplify the test-run support\n\n- One entry plan: a test run makes the router entry optional through an\n  option, and an absent entry is an empty string everywhere.\n- `excludeFromTestRuns` only wraps the dev server plugins. The post-build,\n  preview and dev client entry plugins have no hook a test run calls.\n- The client route tree plugin tests a module id in one place.\n- An unknown route module that names no route option to delete is not parsed.\n- The integration harness takes options instead of positional arguments.\n- `run-as-installed.mjs` runs a script of the project.\n- Removed: tests of the generator's host options under webpack and rspack,\n  which no entry point can pass them to, and the Vitest cache path of the\n  e2e projects, which is the default in the installed copy.\n\nCo-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>\n\n* refactor(start): one host options function for the route generator, no root route lookup\n\nThe plugin that embeds the route generator passes one function that gets the\ngenerator's config and returns `enabled`, `watch` and `writeRouteFiles`,\ninstead of three callbacks.\n\nIn a test run Start generates a route tree for a project with a router entry\nand a routes directory (or a virtual route config). It no longer looks for\nthe root route file itself, which repeated a part of the generator's rules.\nA project with a routes directory and no root route now gets the generator's\nerror, as in the dev server.\n\nCo-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>\n\n* refactor(router-plugin): make deleting nodes in unknown routes an internal code splitting option\n\n`deleteNodesInUnknownRoutes` is a field of `codeSplittingOptions` marked\n`@internal`, which `stripInternal` leaves out of the published types. The\ncode splitter no longer takes host options as a fourth argument, and\n`tanStackRouterCodeSplitter` has its two arguments again. Start sets the\nfield with a type assertion, since it compiles against the published types.\n\nCo-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>\n\n* fix(start-plugin-core): serve the dev server in the test mode\n\nThe dev server plugin installed no middleware when Vite's mode was `test`,\nso `vite dev --mode test` answered \"404 Cannot GET /\". The check kept\nStart's dev middleware out of a Vitest server. A Vitest run now leaves the\ndev server plugins out as a whole, so the check only broke the dev server.\n\nSame change as #8654, #5181 and #4642.\n\nFixes #4620\n\nCo-Authored-By: Claude Fable 5.2 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>",
+          "timestamp": "2026-11-28T19:50:12+01:00",
+          "tree_id": "a8496a535e04aeacdfba09c496dadaf2614cf2ce",
+          "url": "https://github.com/TanStack/router/commit/611b364f8ddaa42da11f3506c14c5e2521810ba9"
+        },
+        "date": 1795891948905,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
