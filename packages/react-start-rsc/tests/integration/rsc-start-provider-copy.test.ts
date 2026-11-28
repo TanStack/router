@@ -7,7 +7,8 @@
  * `src/rows/`, each a button of the page.
  */
 import { aroundAll, describe, expect, test } from 'vitest'
-import { openRscBuild, openRscPage, waitForHydration } from './rsc-app'
+import { openRscBuild, waitForHydration } from './rsc-app'
+import { openRscPage } from './rsc-serial'
 import type { RscPreviewServer } from './rsc-app'
 
 /** Each row: a module of `src/rows/`, what its server fn answers the page, and what its `ssr()` renders. */

@@ -29,7 +29,7 @@ import {
   recorder,
   summary,
 } from './rsc-environments-app'
-import { startRscDevServer, startRscRsbuildDevServer } from './rsc-app'
+import { startRscDevServer, startRscRsbuildDevServer } from './rsc-serial'
 
 const timeout = 60_000
 

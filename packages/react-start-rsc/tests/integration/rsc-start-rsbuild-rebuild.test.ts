@@ -8,11 +8,8 @@
  * handoff (fails when the rebuild runs before it).
  */
 import { expect, test } from 'vitest'
-import {
-  openRscPage,
-  startRscRsbuildPreviewServer,
-  waitForHydration,
-} from './rsc-app'
+import { waitForHydration } from './rsc-app'
+import { openRscPage, startRscRsbuildPreviewServer } from './rsc-serial'
 
 const timeout = 120_000
 

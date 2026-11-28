@@ -28,7 +28,7 @@ import {
   rendered,
   summary,
 } from './rsc-environments-app'
-import { openRscPage, startRscRsbuildPreviewServer } from './rsc-app'
+import { openRscPage, startRscRsbuildPreviewServer } from './rsc-serial'
 
 const timeout = 60_000
 

@@ -1,5 +1,5 @@
 import { test } from 'vitest'
-import { startRscDevServer } from './rsc-app'
+import { startRscDevServer } from './rsc-serial'
 /**
  * The server-fn reach gate (`rsc-reach-app.ts`) on a Vite dev server with
  * RSC: every button clicked after a fresh start, after a restart (`vite

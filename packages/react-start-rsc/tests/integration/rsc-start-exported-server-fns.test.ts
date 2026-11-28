@@ -9,7 +9,8 @@
  * route), whose builds failed the compiler's self-checks.
  */
 import { aroundAll, describe, test } from 'vitest'
-import { openRscBuild, openRscPage, waitForHydration } from './rsc-app'
+import { openRscBuild, waitForHydration } from './rsc-app'
+import { openRscPage } from './rsc-serial'
 import type { RscPreviewServer } from './rsc-app'
 
 const files = {

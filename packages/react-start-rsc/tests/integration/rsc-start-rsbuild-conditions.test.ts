@@ -22,7 +22,7 @@ import {
   startRscDevServer,
   startRscRsbuildDevServer,
   startRscRsbuildPreviewServer,
-} from './rsc-app'
+} from './rsc-serial'
 
 const timeout = 60_000
 

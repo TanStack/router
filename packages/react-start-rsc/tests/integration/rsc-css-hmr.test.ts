@@ -6,14 +6,8 @@
  * rsc-css-rsbuild.test.ts.
  */
 import { expect, test } from 'vitest'
-import {
-  blankPage,
-  errorsOf,
-  startRscDevServer,
-  visit,
-  waitForHydration,
-  waitForStyle,
-} from './rsc-app'
+import { errorsOf, visit, waitForHydration, waitForStyle } from './rsc-app'
+import { blankPage, startRscDevServer } from './rsc-serial'
 
 const card = (
   css: boolean,

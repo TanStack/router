@@ -10,13 +10,12 @@
  */
 import { aroundAll, describe, expect, test } from 'vitest'
 import {
-  blankPage,
   errorsOf,
-  openRscPage,
   openRscRsbuildDevServer,
   visit,
   waitForHydration,
 } from './rsc-app'
+import { blankPage, openRscPage } from './rsc-serial'
 import type { Page } from '@tanstack/compiler-test-utils/test'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 

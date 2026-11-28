@@ -30,7 +30,7 @@
  */
 import { describe, expect, test } from 'vitest'
 import { recorder, summary } from './rsc-environments-app'
-import { startRscRsbuildDevServer } from './rsc-app'
+import { startRscRsbuildDevServer } from './rsc-serial'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
 const timeout = 90_000

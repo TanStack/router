@@ -25,7 +25,7 @@ import {
   ucRoute,
   ucServer,
 } from './rsc-dual-layer-app'
-import { startRscRsbuildDevServer } from './rsc-app'
+import { startRscRsbuildDevServer } from './rsc-serial'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
 const timeout = 60_000

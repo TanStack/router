@@ -1,5 +1,5 @@
 import { test } from 'vitest'
-import { startRscRsbuildDevServer } from './rsc-app'
+import { startRscRsbuildDevServer } from './rsc-serial'
 /**
  * The server-fn reach gate (`rsc-reach-app.ts`) on an Rsbuild dev server
  * with RSC and the persistent cache (`performance.buildCache`; without it:

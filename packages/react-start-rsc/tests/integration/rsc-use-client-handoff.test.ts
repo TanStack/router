@@ -21,7 +21,7 @@
  */
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { describe, expect, test } from 'vitest'
-import { serveRscBuild } from './rsc-app'
+import { serveRscBuild } from './rsc-serial'
 
 const timeout = 120_000
 

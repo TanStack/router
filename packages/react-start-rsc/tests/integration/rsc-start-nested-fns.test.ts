@@ -11,13 +11,12 @@ import {
   diagnosticsOf,
   expectDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
+import { errorsOf, waitForHydration } from './rsc-app'
 import {
-  errorsOf,
   openRscPage,
   startRscDevServer,
   startRscRsbuildDevServer,
-  waitForHydration,
-} from './rsc-app'
+} from './rsc-serial'
 
 /** `fns.make` is a server fn whose chain reads module bindings only. */
 const hoistable = `import { createServerFn } from '@tanstack/react-start'

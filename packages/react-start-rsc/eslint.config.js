@@ -5,9 +5,47 @@ import pluginReactHooks from 'eslint-plugin-react-hooks'
 import rootConfig from '../../eslint.config.js'
 import concurrentTests from './tests/concurrent-tests.json' with { type: 'json' }
 
-/** What a concurrent test must not call: closes registered on whichever test runs (Vitest's global hooks). */
+/**
+ * Serial only (TEST-TOOLS-DESIGN.md, Decision B): what registers a close with
+ * Vitest's global hooks, on whichever test runs. The concurrent files, and
+ * every helper module (any of them may be imported by a concurrent file), use
+ * none of it: Vitest's global `test`, `it` and hooks, `rsc-serial.ts`, and the
+ * suite of `rsc-css-rsbuild-rows.ts`, by any spelling or dynamic import.
+ */
+const serialModules = [
+  'tests/integration/rsc-serial.ts',
+  'tests/integration/rsc-css-rsbuild-rows.ts',
+]
 const serialOnly =
-  "Serial only: registers its close with Vitest's global onTestFinished. Concurrent files use the fixtures of ./test and the open* openers."
+  "Serial only: registers its close with Vitest's global onTestFinished. Concurrent files use the fixtures of ./test; helper modules open with the open* openers of ./rsc-app."
+const noSerialImports = [
+  'error',
+  {
+    paths: [
+      {
+        name: 'vitest',
+        importNames: ['it', 'onTestFailed', 'onTestFinished', 'test'],
+        message: serialOnly,
+      },
+    ],
+    patterns: [
+      {
+        group: [
+          '**/rsc-serial',
+          '**/rsc-serial.*',
+          '**/rsc-css-rsbuild-rows',
+          '**/rsc-css-rsbuild-rows.*',
+        ],
+        message: serialOnly,
+      },
+    ],
+  },
+]
+const serialImportExpression = {
+  selector:
+    'ImportExpression[source.value=/vitest|rsc-serial|rsc-css-rsbuild-rows/]',
+  message: serialOnly,
+}
 
 export default [
   ...rootConfig,
@@ -55,39 +93,23 @@ export default [
     },
   },
   {
+    name: 'react-start-rsc/no-serial-openers',
+    files: ['tests/integration/!(*.test).ts'],
+    ignores: serialModules,
+    rules: {
+      'no-restricted-imports': noSerialImports,
+      'no-restricted-syntax': ['error', serialImportExpression],
+    },
+  },
+  {
+    // (static imports only: what a dynamic one loads is not checked)
     name: 'react-start-rsc/concurrent-tests',
     files: concurrentTests,
     rules: {
-      'no-restricted-imports': [
+      'no-restricted-imports': noSerialImports,
+      'no-restricted-syntax': [
         'error',
-        {
-          paths: [
-            {
-              name: 'vitest',
-              importNames: ['onTestFinished', 'onTestFailed', 'test'],
-              message: serialOnly,
-            },
-            {
-              name: './rsc-app',
-              importNames: [
-                'blankPage',
-                'errorsOf',
-                'openRscPage',
-                'serveRscBuild',
-                'startRscDevServer',
-                'startRscPreviewServer',
-                'startRscRsbuildDevServer',
-                'startRscRsbuildPreviewServer',
-              ],
-              message: serialOnly,
-            },
-            {
-              name: './rsc-reach-app',
-              importNames: ['everyOutcome', 'expectReachHistory'],
-              message: serialOnly,
-            },
-          ],
-        },
+        { selector: 'ImportExpression', message: serialOnly },
       ],
     },
   },

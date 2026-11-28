@@ -1,10 +1,6 @@
 import { expect, test } from 'vitest'
-import {
-  blankPage,
-  errorsOf,
-  startRscRsbuildDevServer,
-  waitForStyle,
-} from './rsc-app'
+import { errorsOf, waitForStyle } from './rsc-app'
+import { blankPage, startRscRsbuildDevServer } from './rsc-serial'
 import { CARD_BACKGROUND, appFiles, rows, show } from './rsc-css-rsbuild-app'
 
 // SPEC J7.5 on Rsbuild: editing a server component's CSS updates the open

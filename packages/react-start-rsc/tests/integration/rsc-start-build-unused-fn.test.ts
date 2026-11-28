@@ -12,13 +12,12 @@
 import path from 'node:path'
 import { readFile, readdir } from 'node:fs/promises'
 import { describe, expect, test } from 'vitest'
+import { visit, waitForHydration } from './rsc-app'
 import {
   blankPage,
   startRscPreviewServer,
   startRscRsbuildPreviewServer,
-  visit,
-  waitForHydration,
-} from './rsc-app'
+} from './rsc-serial'
 import type { RscPreviewServer } from './rsc-app'
 import type { Page } from '@tanstack/compiler-test-utils/test'
 

@@ -9,7 +9,8 @@
  */
 import { describe, test } from 'vitest'
 import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
-import { openRscPage, serveRscBuild, waitForHydration } from './rsc-app'
+import { waitForHydration } from './rsc-app'
+import { openRscPage, serveRscBuild } from './rsc-serial'
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 

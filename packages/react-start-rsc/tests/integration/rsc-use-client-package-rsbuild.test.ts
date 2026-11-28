@@ -21,7 +21,7 @@ import {
   openRscPage,
   startRscRsbuildDevServer,
   startRscRsbuildPreviewServer,
-} from './rsc-app'
+} from './rsc-serial'
 import type { Violation } from './rsc-use-client-app'
 
 const timeout = 60_000

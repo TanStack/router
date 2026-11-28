@@ -21,10 +21,10 @@ import {
 import {
   computedStyle,
   errorsOf,
-  openRscPage,
   settledValue,
   waitForHydration,
 } from './rsc-app'
+import { openRscPage } from './rsc-serial'
 import type { Row, RscCssApp } from './rsc-css-app'
 
 const rows = {

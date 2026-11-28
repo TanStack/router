@@ -9,12 +9,8 @@
  * it and both clicks answer.
  */
 import { expect, test } from 'vitest'
-import {
-  answeredText,
-  openRscPage,
-  startRscRsbuildPreviewServer,
-  waitForHydration,
-} from './rsc-app'
+import { answeredText, waitForHydration } from './rsc-app'
+import { openRscPage, startRscRsbuildPreviewServer } from './rsc-serial'
 
 const timeout = 60_000
 

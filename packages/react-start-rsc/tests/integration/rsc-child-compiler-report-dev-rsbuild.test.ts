@@ -13,7 +13,7 @@
  */
 import { describe, expect, test } from 'vitest'
 import { recorder, summary } from './rsc-environments-app'
-import { startRscRsbuildDevServer } from './rsc-app'
+import { startRscRsbuildDevServer } from './rsc-serial'
 
 const timeout = 60_000
 

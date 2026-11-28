@@ -17,7 +17,7 @@ import {
   recorder,
   summary,
 } from './rsc-use-client-app'
-import { openRscPage, startRscPreviewServer } from './rsc-app'
+import { openRscPage, startRscPreviewServer } from './rsc-serial'
 
 const timeout = 60_000
 

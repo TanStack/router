@@ -1,10 +1,6 @@
 import { describe, expect, test } from 'vitest'
-import {
-  answeredText,
-  openRscPage,
-  startRscDevServer,
-  waitForHydration,
-} from './rsc-app'
+import { answeredText, waitForHydration } from './rsc-app'
+import { openRscPage, startRscDevServer } from './rsc-serial'
 
 describe('Vite dev: a separate RSC provider', () => {
   // SPEC J4.2 / #7943: a server function declared in a `'use client'`

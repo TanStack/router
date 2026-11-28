@@ -1,12 +1,7 @@
 import { pluginReact } from '@rsbuild/plugin-react'
 import { describe, expect, test } from 'vitest'
-import {
-  blankPage,
-  errorsOf,
-  startRscRsbuildDevServer,
-  visit,
-  waitForHydration,
-} from './rsc-app'
+import { errorsOf, visit, waitForHydration } from './rsc-app'
+import { blankPage, startRscRsbuildDevServer } from './rsc-serial'
 import { callFromPage } from './rsc-start-page'
 import { route } from './rsc-start-hmr-page'
 

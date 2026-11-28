@@ -4,6 +4,6 @@
  * `rsbuild preview` (`rsc-app.ts`). The rows: `describeRscCssRows`
  * (rsc-css-rsbuild-app.ts).
  */
-import { describeRscCssRows } from './rsc-css-rsbuild-app'
+import { describeRscCssRows } from './rsc-css-rsbuild-rows'
 
 describeRscCssRows('build')

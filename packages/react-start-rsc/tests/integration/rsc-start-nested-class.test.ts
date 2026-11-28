@@ -7,7 +7,8 @@
  * binding while the modules load, on the server or in the browser.
  */
 import { aroundAll, describe, test } from 'vitest'
-import { openRscBuild, openRscPage, waitForHydration } from './rsc-app'
+import { openRscBuild, waitForHydration } from './rsc-app'
+import { openRscPage } from './rsc-serial'
 import type { RscPreviewServer } from './rsc-app'
 
 const page = (fn: string) => `export const Route = createFileRoute(ROUTE)({

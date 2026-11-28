@@ -15,7 +15,7 @@ import {
   reportOf,
 } from './rsc-use-client-fix-cases'
 import { recorder } from './rsc-use-client-app'
-import { openRscPage, startRscPreviewServer } from './rsc-app'
+import { openRscPage, startRscPreviewServer } from './rsc-serial'
 
 const timeout = 120_000
 

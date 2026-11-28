@@ -13,7 +13,8 @@ import {
   expectNoDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { openRscPage, serveRscBuild, waitForHydration } from './rsc-app'
+import { waitForHydration } from './rsc-app'
+import { openRscPage, serveRscBuild } from './rsc-serial'
 
 const files = {
   'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'

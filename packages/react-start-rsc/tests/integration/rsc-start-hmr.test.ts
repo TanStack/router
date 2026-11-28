@@ -9,13 +9,8 @@
  */
 import { describe, expect, test } from 'vitest'
 import { describeHmr } from '@tanstack/compiler-test-utils/dev-server'
-import {
-  blankPage,
-  errorsOf,
-  startRscDevServer,
-  visit,
-  waitForHydration,
-} from './rsc-app'
+import { errorsOf, visit, waitForHydration } from './rsc-app'
+import { blankPage, startRscDevServer } from './rsc-serial'
 import { callFromPage } from './rsc-start-page'
 import { route } from './rsc-start-hmr-page'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'

@@ -10,7 +10,8 @@
  * browser's file (main built, and the call answered 500).
  */
 import { describe, expect, test } from 'vitest'
-import { failedRscBuild, openRscPage, startRscPreviewServer } from './rsc-app'
+import { failedRscBuild } from './rsc-app'
+import { openRscPage, startRscPreviewServer } from './rsc-serial'
 
 const timeout = 60_000
 

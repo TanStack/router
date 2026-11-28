@@ -8,11 +8,8 @@
  * Vite's.
  */
 import { describe, expect, test } from 'vitest'
-import {
-  rscStreams,
-  startRscDevServer,
-  startRscRsbuildDevServer,
-} from './rsc-app'
+import { rscStreams } from './rsc-app'
+import { startRscDevServer, startRscRsbuildDevServer } from './rsc-serial'
 import { clientHelperApp, recorder, summary } from './rsc-use-client-app'
 
 const timeout = 60_000

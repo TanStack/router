@@ -210,6 +210,13 @@ function info not found` when one of them calls it, and the build says nothing, 
 
 ## Accepted limits
 
+- **A serial test that timed out may still open what its body opens afterwards** (TEST-TOOLS-DESIGN.md, Decision B):
+  a serial file's openers register their close with Vitest's global `onTestFinished` when called, so a start already
+  called is closed when its test ends (the close waits for it), but the body of a test that timed out goes on, and what
+  it opens next registers on whichever test is current: it is closed when the next test ends, and at the end of the
+  file the registration throws. A timed-out `restart()` of an Rsbuild dev server resumes the body too (its server is
+  closed with the first). Source: the chunk 4 reviews of react-start-rsc (Astra, Gemini, 11-28). No test.
+  Workaround: none needed; a concurrent file's fixtures check the test's signal and open nothing after a timeout.
 - **An export that starts as a builder and is later replaced by an ordinary object is still read as a builder**
   (`export let base = make(); base = { inputValidator(fn) { return fn } }`, also an assignment through Solid's
   `ref={base}`): a summary describes an export's initial value, so another module's `base.inputValidator(…)` fails

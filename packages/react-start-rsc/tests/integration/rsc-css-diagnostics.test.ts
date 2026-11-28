@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
-import { startRscDevServer, startRscRsbuildDevServer } from './rsc-app'
+import { startRscDevServer, startRscRsbuildDevServer } from './rsc-serial'
 
 const files = {
   'src/stream.tsx': `import { createServerFn } from '@tanstack/react-start'

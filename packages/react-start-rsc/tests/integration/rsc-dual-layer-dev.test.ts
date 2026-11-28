@@ -19,7 +19,7 @@ import {
   ucServer,
   ucServerWithLabel,
 } from './rsc-dual-layer-app'
-import { startRscDevServer } from './rsc-app'
+import { startRscDevServer } from './rsc-serial'
 
 const timeout = 60_000
 

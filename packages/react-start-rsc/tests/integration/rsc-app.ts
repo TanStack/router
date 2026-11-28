@@ -21,11 +21,8 @@
  * The `open*` openers take the directory to make their app in (a file's
  * `fileRoot`; none: the run's directory) and return what they opened with
  * its `close()`, for a hook to close (`aroundAll`, a `beforeAll`'s returned
- * close) or a concurrent file's fixtures (`./test`). The others
- * (`startRsc*`, `serveRscBuild`, `blankPage`, `openRscPage`) are for the
- * tests of serial files: they register their close with Vitest's
- * `onTestFinished` once open (KNOWN-BUGS: a test that timed out may open
- * more meanwhile, closed with the next test).
+ * close) or a concurrent file's fixtures (`./test`). The openers of serial
+ * tests are `rsc-serial.ts`'s.
  */
 import { writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
@@ -46,10 +43,9 @@ import {
   stripAnsi,
   withBuildEnvironment,
 } from '@tanstack/compiler-test-utils/build-harness'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createBuilder, mergeConfig, preview } from 'vite'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
-import { expect, onTestFinished } from 'vitest'
+import { expect } from 'vitest'
 import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import type { Page } from '@tanstack/compiler-test-utils/test'
 import type {
@@ -303,7 +299,11 @@ export async function openRscPreviewServer(
         // another process can take meanwhile).
         preview: { host: '127.0.0.1' },
       }),
-  )
+  ).catch(async (error: unknown) => {
+    // (a plugin's preview hook threw: the app goes as the server would)
+    await app.dispose()
+    throw error
+  })
   const close = async () => {
     try {
       await server.close()
@@ -786,46 +786,6 @@ export async function visit(
 
 /** The errors of a page since its first `visit`. */
 export const errorsOf = (page: Page) => networks.get(page)?.errors ?? []
-
-/**
- * Closes what `open` opened (in the run's directory) when the current test
- * finishes: an opener for the tests of serial files.
- */
-function closedAfterTest<
-  TOptions,
-  TOpened extends { close: () => Promise<void> },
->(open: (options: TOptions) => Promise<TOpened>) {
-  return async (options: TOptions): Promise<TOpened> => {
-    const opened = await open(options)
-    onTestFinished(() => opened.close())
-    return opened
-  }
-}
-
-export const startRscDevServer = closedAfterTest(openRscDevServer)
-export const startRscRsbuildDevServer = closedAfterTest(openRscRsbuildDevServer)
-export const startRscPreviewServer = closedAfterTest(openRscPreviewServer)
-export const startRscRsbuildPreviewServer = closedAfterTest(
-  openRscRsbuildPreviewServer,
-)
-export const serveRscBuild = closedAfterTest(openRscBuild)
-
-/**
- * A blank page in a browser context of its own, closed when the current
- * test finishes (serial tests).
- */
-export async function blankPage(): Promise<Page> {
-  return (await openPage('about:blank', { registerCleanup: onTestFinished }))
-    .page
-}
-
-/** Opens `pathname` of `server` in a new page (`blankPage`). */
-export async function openRscPage(
-  server: { url?: string },
-  pathname: string,
-): Promise<Page> {
-  return visit(await blankPage(), server, pathname)
-}
 
 /**
  * Reads `read()` until `accept` takes its value, or until the page's

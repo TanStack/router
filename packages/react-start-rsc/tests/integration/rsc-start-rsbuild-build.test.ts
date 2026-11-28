@@ -15,13 +15,15 @@ import {
 } from './client-only-reach-app'
 import {
   answeredText,
-  blankPage,
-  openRscPage,
   openRscRsbuildPreviewServer,
-  startRscRsbuildPreviewServer,
   visit,
   waitForHydration,
 } from './rsc-app'
+import {
+  blankPage,
+  openRscPage,
+  startRscRsbuildPreviewServer,
+} from './rsc-serial'
 import { answer } from './rsc-reach-app'
 import type { RscPreviewServer } from './rsc-app'
 import type { Page } from '@tanstack/compiler-test-utils/test'

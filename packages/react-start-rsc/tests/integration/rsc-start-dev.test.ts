@@ -7,13 +7,8 @@
  * are in rsc-start-hmr.test.ts.
  */
 import { describe, expect, test } from 'vitest'
-import {
-  blankPage,
-  errorsOf,
-  startRscDevServer,
-  visit,
-  waitForHydration,
-} from './rsc-app'
+import { errorsOf, visit, waitForHydration } from './rsc-app'
+import { blankPage, startRscDevServer } from './rsc-serial'
 import { callFromPage, envMarkerPackage } from './rsc-start-page'
 
 describe('Vite dev: a separate RSC provider', () => {

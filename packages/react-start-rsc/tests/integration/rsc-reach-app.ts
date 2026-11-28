@@ -116,12 +116,17 @@ export async function everyOutcome(
   for (const name of buttons) {
     signal.throwIfAborted()
     const opened = await openPage('about:blank')
+    // (a timeout mid-click closes the page: its waits end there)
+    const close = () => opened.close()
+    signal.addEventListener('abort', close)
     try {
+      signal.throwIfAborted()
       outcomes[name] = await clickOutcome(opened.page, server, name).catch(
         (error: Error) => error,
       )
     } finally {
-      await opened.close()
+      signal.removeEventListener('abort', close)
+      await close()
     }
   }
   return outcomes

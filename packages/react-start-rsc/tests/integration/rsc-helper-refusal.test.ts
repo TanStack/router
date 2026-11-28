@@ -17,15 +17,14 @@ import {
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
+import { errorsOf, waitForHydration } from './rsc-app'
 import {
-  errorsOf,
   openRscPage,
   startRscDevServer,
   startRscPreviewServer,
   startRscRsbuildDevServer,
   startRscRsbuildPreviewServer,
-  waitForHydration,
-} from './rsc-app'
+} from './rsc-serial'
 
 const timeout = 120_000
 /**

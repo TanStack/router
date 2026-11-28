@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest'
 import { appFiles, rows, show } from './rsc-css-rsbuild-app'
-import { blankPage, errorsOf, startRscRsbuildDevServer } from './rsc-app'
+import { errorsOf } from './rsc-app'
+import { blankPage, startRscRsbuildDevServer } from './rsc-serial'
 
 // SPEC J4.16: discovery and wiring use the configured root, not the process
 // working directory.
