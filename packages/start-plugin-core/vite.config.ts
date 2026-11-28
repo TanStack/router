@@ -40,6 +40,30 @@ const aloneTests = [
  */
 const unitAloneTests = ['start-compiler-rsc-import-protection.test.ts']
 
+/**
+ * Slow-tier files whose tests run concurrently (project
+ * `integration-concurrent`): each file builds its apps once, before its
+ * tests (`beforeAll`), and every test only reads those finished builds:
+ * it runs them in a page and an HTTP server of its own (a client run) or
+ * a Node process of its own (an SSR run), and reads their files. No test
+ * builds, edits a file, uses a dev or preview server, or reads what the
+ * build or the process printed. Every other project runs one test at a
+ * time. Paths relative to `tests/`.
+ */
+const concurrentTests = [
+  'integration/hydrate-pages.test.ts',
+  'integration/hydrate-pages-rsbuild.test.ts',
+  'integration/hydrate-pages-solid.test.ts',
+  'integration/hydrate-pages-solid-rsbuild.test.ts',
+  'integration/clientOnlyJSX.test.ts',
+  'integration/start-build-side-effect-hints.test.ts',
+  'integration/start-build-erased-handler-reads.test.ts',
+  'integration/start-build-jsx-and-builders.test.ts',
+  'integration/start-build-route-option-keys.test.ts',
+  'integration/start-compose-project-path.test.ts',
+  'integration/rsbuild/vue-tools-rspack.test.ts',
+]
+
 /** This package's build output (`dist`), as its `exports` name it. */
 const builtPackage = new RegExp(
   `^${path.join(path.dirname(fileURLToPath(import.meta.url)), 'dist').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/`,
@@ -69,11 +93,16 @@ if (process.env.VITEST) {
     path.dirname(fileURLToPath(import.meta.url)),
     'tests',
   )
-  for (const file of smokeTests) {
-    if (!existsSync(path.join(testsDir, file))) {
-      throw new Error(
-        `vite.config.ts: the smoke test file tests/${file} does not exist; update \`smokeTests\``,
-      )
+  for (const [list, files] of Object.entries({
+    smokeTests,
+    concurrentTests,
+  })) {
+    for (const file of files) {
+      if (!existsSync(path.join(testsDir, file))) {
+        throw new Error(
+          `vite.config.ts: the test file tests/${file} does not exist; update \`${list}\``,
+        )
+      }
     }
   }
 }
@@ -93,6 +122,7 @@ const integrationProject = {
       'integration/pages/**',
       'integration/perf-guards/**',
       ...aloneTests,
+      ...concurrentTests,
     ],
     testTimeout: 30_000,
     hookTimeout: 30_000,
@@ -160,6 +190,23 @@ const config = defineConfig({
         },
       },
       integrationProject,
+      {
+        // Slow tier too (`test:integration`): `concurrentTests`, the tests of
+        // a file at once, at most 4. `NODE_ENV` is `vite build`'s value
+        // (`production`) for the whole run; a build holds its own mode's
+        // value while it runs (`node-env`), and an SSR run passes its build's
+        // mode to its process.
+        ...integrationProject,
+        test: {
+          ...integrationProject.test,
+          name: 'integration-concurrent',
+          include: concurrentTests,
+          exclude: [...configDefaults.exclude],
+          sequence: { concurrent: true },
+          maxConcurrency: 4,
+          env: { NODE_ENV: 'production' },
+        },
+      },
       {
         // `smokeTests` alone, as the slow tier runs them
         ...integrationProject,
