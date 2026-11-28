@@ -15,4 +15,4 @@ Start's Vite plugin can be used in a Vitest config. When Vitest resolves the con
 - A module that calls `createFileRoute`, `createRootRoute` or `createRootRouteWithContext` loses its `server`, `ssr` and `headers` options in client code even when the route generator does not know the module.
 - It needs Vitest 5.1.1 or later. Before, Vitest's translation of the wildcards in `resolve.noExternal` missed a package name with a dash, so in a project that installs Start from the registry, jsdom, happy-dom and Node tests ran `@tanstack/start-client-core` without the Start compiler.
 
-For this, `Generator` of `@tanstack/router-generator` takes `writeRouteFiles: false`, and `tanstackRouterGenerator` and `tanStackRouterCodeSplitter` of `@tanstack/router-plugin/vite` take options for the plugin that embeds them.
+For this, `Generator` of `@tanstack/router-generator` takes `writeRouteFiles: false`, and `tanstackRouterGenerator` of `@tanstack/router-plugin/vite` takes options for the plugin that embeds it.

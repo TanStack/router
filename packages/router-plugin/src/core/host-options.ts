@@ -14,16 +14,3 @@ export type RouterGeneratorHostOptions = (config: Config) => {
   /** `false` keeps the generator from writing route files. */
   writeRouteFiles?: boolean
 }
-
-/**
- * Lets a plugin that embeds the code splitter, such as TanStack Start, change
- * what it handles. The function is called for each module.
- */
-export interface RouterCodeSplitterHostOptions {
-  /**
-   * Return `true` to also handle a module that calls a route factory but is
-   * unknown to the route generator. Nothing is split out of such a module;
-   * only the route options listed in `deleteNodes` are removed from it.
-   */
-  deleteNodesInUnknownRoutes?: () => boolean
-}

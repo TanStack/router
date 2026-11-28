@@ -202,6 +202,12 @@ export const Route = createFileRoute('/unknown')({
   const options: Partial<Config> = {
     codeSplittingOptions: { deleteNodes: ['server'] },
   }
+  const hostOptions: Partial<Config> = {
+    codeSplittingOptions: {
+      deleteNodes: ['server'],
+      deleteNodesInUnknownRoutes: true,
+    },
+  }
 
   it('is left as it is', async () => {
     const splitter = await createCodeSplitterTransforms(options, {})
@@ -212,12 +218,7 @@ export const Route = createFileRoute('/unknown')({
   // A plugin that embeds the code splitter can run where no generator does,
   // e.g. TanStack Start for the tests of a package without routes.
   it('loses the route options to delete, and nothing else, when the host plugin asks for it', async () => {
-    const splitter = await createCodeSplitterTransforms(
-      options,
-      {},
-      undefined,
-      { deleteNodesInUnknownRoutes: () => true },
-    )
+    const splitter = await createCodeSplitterTransforms(hostOptions, {})
 
     const reference = splitter.reference(code, file)!
     // (the import only the deleted option used goes with it)
@@ -229,21 +230,17 @@ export const Route = createFileRoute('/unknown')({
   })
 
   it('is left as it is when the host plugin asks for it and there are no route options to delete', async () => {
-    const splitter = await createCodeSplitterTransforms({}, {}, undefined, {
-      deleteNodesInUnknownRoutes: () => true,
-    })
+    const splitter = await createCodeSplitterTransforms(
+      { codeSplittingOptions: { deleteNodesInUnknownRoutes: true } },
+      {},
+    )
 
     expect(splitter.reference(code, file)).toBeNull()
   })
 
   it('does not change how a route module the generator knows is split', async () => {
     const routes = { [file]: '/unknown' }
-    const hosted = await createCodeSplitterTransforms(
-      options,
-      routes,
-      undefined,
-      { deleteNodesInUnknownRoutes: () => true },
-    )
+    const hosted = await createCodeSplitterTransforms(hostOptions, routes)
     const standalone = await createCodeSplitterTransforms(options, routes)
 
     const reference = hosted.reference(code, file)

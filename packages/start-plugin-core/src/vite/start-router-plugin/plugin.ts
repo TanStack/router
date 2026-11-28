@@ -18,6 +18,7 @@ import type {
   GeneratorPlugin,
   RouteNode,
 } from '@tanstack/router-generator'
+import type { CodeSplittingOptions } from '@tanstack/router-plugin/vite'
 import type { DevEnvironment, PluginOption } from 'vite'
 // (Vite's `Plugin` with the `configureVitest` hook that Vitest adds to it)
 import type { Plugin } from 'vitest/config'
@@ -191,27 +192,25 @@ export function tanStackStartRouter(
             }
           : {},
     ),
-    tanStackRouterCodeSplitter(
-      () => {
-        const routerConfig = getConfig().startConfig.router
-        return {
-          ...routerConfig,
-          codeSplittingOptions: {
-            ...routerConfig.codeSplittingOptions,
-            deleteNodes: ['ssr', 'server', 'headers'],
-            // Vitest has no HMR.
-            addHmr: !isTestRun(),
-          },
-          plugin: {
-            vite: { environmentName: VITE_ENVIRONMENT_NAMES.client },
-          },
-        }
-      },
-      routerPluginContext,
-      {
-        deleteNodesInUnknownRoutes: isTestRun,
-      },
-    ),
+    tanStackRouterCodeSplitter(() => {
+      const routerConfig = getConfig().startConfig.router
+      return {
+        ...routerConfig,
+        codeSplittingOptions: {
+          ...routerConfig.codeSplittingOptions,
+          deleteNodes: ['ssr', 'server', 'headers'],
+          // Vitest has no HMR.
+          addHmr: !isTestRun(),
+          // In a test run a route file does not have to be known to the
+          // generator to lose these options. (The option is internal to
+          // the code splitter and not in its published types.)
+          deleteNodesInUnknownRoutes: isTestRun(),
+        } as CodeSplittingOptions,
+        plugin: {
+          vite: { environmentName: VITE_ENVIRONMENT_NAMES.client },
+        },
+      }
+    }, routerPluginContext),
     tanStackRouterCodeSplitter(() => {
       const routerConfig = getConfig().startConfig.router
       return {

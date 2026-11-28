@@ -26,7 +26,6 @@ import type { GetRoutesByFileMapResultValue } from '@tanstack/router-generator'
 import type { CodeSplitCompilerPlugin } from './code-splitter/plugins'
 import type { Config } from './config'
 import type { HmrStyle } from './hmr'
-import type { RouterCodeSplitterHostOptions } from './host-options'
 import type { RouterPluginContext } from './router-plugin-context'
 import type {
   UnpluginFactory,
@@ -83,7 +82,6 @@ export function createRouterCodeSplitterPlugin(
   options: Partial<Config | (() => Config)> | undefined = {},
   routerPluginContext: RouterPluginContext,
   hmrStyle: HmrStyle = 'vite',
-  hostOptions: RouterCodeSplitterHostOptions = {},
 ): ReturnType<UnpluginFactory<Partial<Config | (() => Config)> | undefined>> {
   let ROOT: string = process.cwd()
   let userConfig: Config
@@ -308,7 +306,7 @@ export function createRouterCodeSplitterPlugin(
             )
           }
 
-          if (hostOptions.deleteNodesInUnknownRoutes?.()) {
+          if (userConfig.codeSplittingOptions?.deleteNodesInUnknownRoutes) {
             return handleDeletingNodesInUnknownRoute(code, normalizedId)
           }
 

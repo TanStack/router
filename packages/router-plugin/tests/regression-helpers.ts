@@ -26,7 +26,6 @@ import { getModuleErrors } from './validate-module'
 import type { Config } from '../src/core/config'
 import type { CodeSplitGroupings } from '../src/core/constants'
 import type { HmrStyle } from '../src/core/hmr'
-import type { RouterCodeSplitterHostOptions } from '../src/core/host-options'
 import type { TransformResult, UnpluginOptions } from 'unplugin'
 import type { ESTree } from 'vite'
 
@@ -190,14 +189,12 @@ const sharedPluginName = 'tanstack-router:code-splitter:compile-shared-file'
  * Drives the three code-splitter transforms the way a bundler does, for the
  * given route files (absolute path to route id). `configPlugins` are the
  * plugins of the resolved Vite config; by default the code splitter itself,
- * so its plugin-order check runs. `hostOptions` are those of a plugin that
- * embeds the code splitter.
+ * so its plugin-order check runs.
  */
 export async function createCodeSplitterTransforms(
   options: Partial<Config>,
   routes: Record<string, string>,
   configPlugins: Array<{ name: string }> = [{ name: referencePluginName }],
-  hostOptions?: RouterCodeSplitterHostOptions,
 ) {
   const context = createRouterPluginContext()
   for (const [file, routeId] of Object.entries(routes)) {
@@ -206,8 +203,6 @@ export async function createCodeSplitterTransforms(
   const plugins = createRouterCodeSplitterPlugin(
     { target: 'react', autoCodeSplitting: true, ...options },
     context,
-    undefined,
-    hostOptions,
   )
   const pluginArray = Array.isArray(plugins) ? plugins : [plugins]
   const byName = (name: string) => {
