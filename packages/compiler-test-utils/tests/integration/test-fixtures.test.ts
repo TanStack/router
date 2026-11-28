@@ -150,9 +150,19 @@ test('a failed start', async ({ appRoot, devServer, rsbuildServer }) => {
     rsbuildServer({ dir, files: app, plugins: [{ name: 'fails', setup() { throw new Error('MARK_RSBUILD') } }] }),
   ).rejects.toThrow('MARK_RSBUILD')
 })
-test('after a failed start', async () => {
+test('after a failed start', async ({ devServer }) => {
   survived('a failed start')
-  // (an edit the failed server's watcher would report)
+  // An edit the failed server's watcher would report, and a live server's
+  // watcher does (the observation works)
+  const watching = {
+    name: 'watches',
+    configureServer(server) {
+      server.watcher.add(outside)
+      server.watcher.on('change', (file) => file === outside && log({ watched: 'live vite' }))
+    },
+  }
+  await devServer({ dir, files: app, plugins: [watching] })
+  await new Promise((resolve) => setTimeout(resolve, 300))
   writeFileSync(outside, 'v2')
   await new Promise((resolve) => setTimeout(resolve, 1000))
 })
@@ -415,18 +425,12 @@ run(
   },
 )
 
-// Bug (upstream, Vite 8.3.8): a server whose plugin throws from
-// `configureServer` keeps its file watcher: `createServer` creates the
-// watcher before it awaits the hook, and rejects without closing it. The
-// harness gets no server to close (bare Vite reproduces it).
-// Source: vite/dist/node/chunks/node.js `_createServer` (the watcher is set up
-// before `configureServer` hooks run).
-// Impact: each such failed start leaves a watcher, and its edits' events, in
-// the process for good.
-run.fails(
+run(
   'a Vite start whose plugin throws from configureServer leaves no file watcher',
   ({ probe }) => {
-    // (the edit after the test reached no watcher)
+    // (the edit after the test reached a live server's watcher, and no
+    // watcher of the failed one)
+    expect(probe.events).toContainEqual({ watched: 'live vite' })
     expect(probe.events).not.toContainEqual({ watched: 'failed vite' })
   },
 )
