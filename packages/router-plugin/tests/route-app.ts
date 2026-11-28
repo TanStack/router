@@ -46,7 +46,7 @@ import vueJsx from '@vitejs/plugin-vue-jsx'
 import solid from 'vite-plugin-solid'
 import { parseSync, transformWithOxc } from 'vite'
 import { expect } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { openPage, runOnPage } from '@tanstack/compiler-test-utils/browser'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import { DanglingNameError } from '@tanstack/compiler-test-utils/build-harness'
 import { readNames } from '@tanstack/compiler-test-utils/free-names'
@@ -60,7 +60,7 @@ import type {
 } from '@tanstack/compiler-test-utils/browser'
 import type { BuildResult } from '@tanstack/compiler-test-utils/build-harness'
 import type { PluginHost } from '@tanstack/compiler-test-utils/plugin-host'
-import type { ConsoleMessage, Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import type { ESTree, Plugin, PluginOption, ViteDevServer } from 'vite'
 import type { Config, DeletableNodes } from '../src'
 
@@ -679,8 +679,7 @@ interface HostState {
   /** Files the current route wrote (other than the fixed ones), by path. */
   current: Record<string, string>
   /** The route whose files the app holds now. */
-  owner: object | undefined
-  used: boolean
+  owner: object
 }
 
 /** The shared hosts of the running file, by configuration (`hostKey`). */
@@ -729,78 +728,44 @@ export const pageHtml = `<!doctype html>
 
 /**
  * Imports the client module `url` of `host` (an app with an `index.html`,
- * `pageHtml`) in a fresh document of its page, in `page`, as the browser
- * imports a module of the page (real ES module linking), and runs `script`:
- * an async function body with the module's namespace as `module`; its JSON
- * value is the result, with the run's errors and console. The page leaves
- * the document when the run ends (a page that cannot fails the run).
+ * `pageHtml`) in a fresh document of `page` and runs `script`, as
+ * `runOnPage` of compiler-test-utils/browser does; with `clearStorage`, the
+ * origin's cookies and storage of every kind go first. The page leaves the
+ * document when the run ends (a page that cannot fails the run).
  */
 export async function runInPage<T = unknown>(
   page: Page,
   host: PluginHost,
   url: string,
   script = '',
-  /** Clears the origin's `localStorage` first (`sessionStorage` always). */
   clearStorage = false,
 ): Promise<PageRun<T>> {
-  const errors: Array<string> = []
-  const messages: Array<string> = []
-  const onError = (error: Error) => {
-    errors.push(error.stack ?? error.message)
-  }
-  const onConsole = (message: ConsoleMessage) => {
-    messages.push(`${message.type()}: ${message.text()}`)
-    // (the browser's own `/favicon.ico` request, which no app serves)
-    if (
-      message.type() === 'error' &&
-      new URL(message.location().url || 'about:blank').pathname !==
-        '/favicon.ico'
-    ) {
-      errors.push(message.text())
-    }
-  }
-  page.on('pageerror', onError)
-  page.on('console', onConsole)
-  let timer: ReturnType<typeof setTimeout> | undefined
+  const session = clearStorage
+    ? await page.context().newCDPSession(page)
+    : undefined
   let run: PageRun<T>
   try {
-    await page.goto(host.dev.url!, { timeout: pageRunLimit })
-    // A string, run as the page's own code: a function would be serialised
-    // from this module as the test runner transformed it
-    const evaluated = page.evaluate(
-      `(async () => {\nsessionStorage.clear()\n${clearStorage ? 'localStorage.clear()\n' : ''}const module = await import(${JSON.stringify(new URL(url, host.dev.url).href)})\n${script}\n})()`,
-    )
-    evaluated.catch(() => {})
-    // (an import or a script that never settles fails the run, as the run
-    // pages of compiler-test-utils/browser bounded it)
-    const result = (await Promise.race([
-      evaluated,
-      new Promise<never>((_, reject) => {
-        timer = setTimeout(
-          () =>
-            reject(
-              new Error(
-                `the import and script did not settle within ${pageRunLimit} ms`,
-              ),
-            ),
-          pageRunLimit,
-        )
-      }),
-    ])) as T
-    run = { result, errors, console: messages }
-  } catch (error) {
-    throw new Error(
-      [
-        `the page run of ${url} failed: ${(error as Error).message}`,
-        `errors:\n${errors.join('\n') || '(none)'}`,
-        `console:\n${messages.join('\n') || '(none)'}`,
-      ].join('\n'),
-      { cause: error },
-    )
+    if (session) {
+      await page.context().clearCookies()
+      await session.send('Storage.clearDataForOrigin', {
+        origin: new URL(host.dev.url!).origin,
+        storageTypes: 'all',
+      })
+      // (`sessionStorage` is the page's, not the origin's: cleared before
+      // the document's own scripts, for this run only)
+      await session.send('Page.enable')
+      await session.send('Page.addScriptToEvaluateOnNewDocument', {
+        source: 'sessionStorage.clear()',
+      })
+    }
+    run = await runOnPage<T>(page, {
+      pageUrl: host.dev.url!,
+      moduleUrl: new URL(url, host.dev.url).href,
+      script,
+      timeout: pageRunLimit,
+    })
   } finally {
-    clearTimeout(timer)
-    page.off('pageerror', onError)
-    page.off('console', onConsole)
+    await session?.detach()
   }
   // Out of the app's document: it no longer follows the dev server (an edit
   // of the next route would reach it)
@@ -888,6 +853,7 @@ async function startHost(
   options: RouteAppOptions,
   root: boolean,
   files: Record<string, string>,
+  owner: object,
 ): Promise<HostState> {
   const target = options.targetFramework ?? 'react'
   const emitted: EmittedModules = new Map()
@@ -925,8 +891,7 @@ async function startHost(
   return {
     host,
     current: files,
-    owner: undefined,
-    used: false,
+    owner,
   }
 }
 
@@ -942,26 +907,23 @@ async function writeRoute(
   if (state.owner === owner) {
     return
   }
-  if (state.owner !== undefined || state.used) {
-    const edit: Record<string, string | null> = {}
-    // Package stubs are the host's own (see `hostKey`)
-    for (const file of Object.keys(state.current)) {
-      if (!(file in files) && !isPackageFile(file)) {
-        edit[file] = null
-      }
+  const edit: Record<string, string | null> = {}
+  // Package stubs are the host's own (see `hostKey`)
+  for (const file of Object.keys(state.current)) {
+    if (!(file in files) && !isPackageFile(file)) {
+      edit[file] = null
     }
-    for (const [file, code] of Object.entries(files)) {
-      if (state.current[file] !== code && !isPackageFile(file)) {
-        edit[file] = code
-      }
+  }
+  for (const [file, code] of Object.entries(files)) {
+    if (state.current[file] !== code && !isPackageFile(file)) {
+      edit[file] = code
     }
-    if (Object.keys(edit).length > 0) {
-      await state.host.edit(edit)
-    }
+  }
+  if (Object.keys(edit).length > 0) {
+    await state.host.edit(edit)
   }
   state.current = files
   state.owner = owner
-  state.used = true
 }
 
 /** The page-side names a script runs with (see `RouteApp.run`). */
@@ -1121,10 +1083,10 @@ export async function loadRoute(
   const created = shared === undefined
   const starting = custom
     ? closeAtEnd(
-        () => startHost(options, root, files),
+        () => startHost(options, root, files, owner),
         ({ host }) => host.close(),
       )
-    : (shared ?? startHost(options, root, files))
+    : (shared ?? startHost(options, root, files, owner))
   if (!custom && created) {
     hosts.set(key, starting)
     // (a start that failed is not reused)
@@ -1132,13 +1094,7 @@ export async function loadRoute(
   }
   const state = await starting
   const mark = created ? 0 : state.host.diagnostics.length
-  if (created) {
-    state.current = files
-    state.owner = owner
-    state.used = true
-  } else {
-    await writeRoute(state, owner, files)
-  }
+  await writeRoute(state, owner, files)
 
   /**
    * A route's first run starts without the cookies and the origin's
@@ -1164,9 +1120,6 @@ export async function loadRoute(
       const clear = fresh
       fresh = false
       const { page } = await opened
-      if (clear) {
-        await page.context().clearCookies()
-      }
       const run = await runInPage<T>(
         page,
         state.host,

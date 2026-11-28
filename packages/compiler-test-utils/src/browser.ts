@@ -232,7 +232,25 @@ export interface PageRun<T = unknown> {
  * (`./plugin-host`); a test of a whole page across reloads opens its own
  * page (`openPage`).
  */
-export async function runInPage<T = unknown>(input: {
+export async function runInPage<T = unknown>(
+  input: PageRunInput,
+): Promise<PageRun<T>> {
+  const release = await runSlot()
+  let page: Page | undefined
+  try {
+    page = await takeRunPage()
+    return await runOnPage<T>(page, input)
+  } finally {
+    // The run returns once its page left the run's document (see
+    // `leaveRunDocument`); then another run may have it
+    if (page && (await leaveRunDocument(page))) {
+      idlePages.push(page)
+    }
+    release()
+  }
+}
+
+export interface PageRunInput {
   pageUrl: string
   moduleUrl?: string
   script?: string
@@ -241,9 +259,16 @@ export async function runInPage<T = unknown>(input: {
    * each to this long (default 15 000 ms).
    */
   timeout?: number
-}): Promise<PageRun<T>> {
-  const release = await runSlot()
-  let page: Page | undefined
+}
+
+/**
+ * A run of `runInPage` on a page the caller holds, which leaves the run's
+ * document itself.
+ */
+export async function runOnPage<T = unknown>(
+  page: Page,
+  input: PageRunInput,
+): Promise<PageRun<T>> {
   const errors: Array<string> = []
   const messages: Array<string> = []
   const onError = (error: Error) => {
@@ -257,10 +282,9 @@ export async function runInPage<T = unknown>(input: {
   }
   const timeout = input.timeout ?? 15_000
   let timer: ReturnType<typeof setTimeout> | undefined
+  page.on('pageerror', onError)
+  page.on('console', onConsole)
   try {
-    page = await takeRunPage()
-    page.on('pageerror', onError)
-    page.on('console', onConsole)
     await load(page, input.pageUrl, timeout)
     // A string, run as the page's own code: a function would be
     // serialised from this module as the test runner transformed it
@@ -302,16 +326,8 @@ export async function runInPage<T = unknown>(input: {
     )
   } finally {
     clearTimeout(timer)
-    if (page) {
-      page.off('pageerror', onError)
-      page.off('console', onConsole)
-      // The run returns once its page left the run's document (see
-      // `leaveRunDocument`); then another run may have it
-      if (await leaveRunDocument(page)) {
-        idlePages.push(page)
-      }
-    }
-    release()
+    page.off('pageerror', onError)
+    page.off('console', onConsole)
   }
 }
 

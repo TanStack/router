@@ -65,24 +65,6 @@ const serialImportExpressions = [
     message: `${message} (A dynamic import names its module as a string.)`,
   },
 ]
-/**
- * No test of a file runs at once with another but in `integration-concurrent`
- * (a project setting, not a test's): a serial file's openers register on
- * whichever test runs.
- */
-const noConcurrentTests = [
-  {
-    selector: "MemberExpression[property.name='concurrent']",
-    message:
-      'Tests run concurrently only in integration-concurrent (concurrent-tests.js), as a project.',
-  },
-  {
-    selector:
-      "CallExpression > ObjectExpression > Property[key.name='concurrent']",
-    message:
-      'Tests run concurrently only in integration-concurrent (concurrent-tests.js), as a project.',
-  },
-]
 const tests = (/** @type {Array<string>} */ names) =>
   names.map((name) => `tests/${name}.{ts,tsx}`)
 
@@ -95,21 +77,12 @@ export default [
     ignores: ['tests/**/test-files/**'],
   },
   {
-    name: 'router-plugin/no-concurrent-tests',
-    files: ['tests/**/*.{ts,tsx}'],
-    rules: { 'no-restricted-syntax': ['error', ...noConcurrentTests] },
-  },
-  {
     name: 'router-plugin/no-serial-openers',
     files: ['tests/**/!(*.test).{ts,tsx}'],
     ignores: tests([...serialModules, ...Object.keys(serialExports)]),
     rules: {
       'no-restricted-imports': noSerialImports,
-      'no-restricted-syntax': [
-        'error',
-        ...serialImportExpressions,
-        ...noConcurrentTests,
-      ],
+      'no-restricted-syntax': ['error', ...serialImportExpressions],
     },
   },
   {
@@ -117,11 +90,7 @@ export default [
     files: concurrentTests.map((file) => `tests/${file}`),
     rules: {
       'no-restricted-imports': noSerialImports,
-      'no-restricted-syntax': [
-        'error',
-        ...serialImportExpressions,
-        ...noConcurrentTests,
-      ],
+      'no-restricted-syntax': ['error', ...serialImportExpressions],
     },
   },
 ]
