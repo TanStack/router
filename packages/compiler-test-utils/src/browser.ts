@@ -432,7 +432,9 @@ export async function openPage(
       }
     })
     await page.exposeFunction('__harnessInFlight', () => inFlight.size)
-    await load(page, url)
+    // (within the projects' 30 s test timeout: a stalled load fails, and the
+    // page closes, before the test times out)
+    await load(page, url, 20_000)
   } catch (error) {
     await close().catch(() => {})
     throw error

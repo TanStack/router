@@ -224,6 +224,12 @@ function info not found` when one of them calls it, and the build says nothing, 
   timeout closes with it. Decision B (TEST-TOOLS-DESIGN.md, 2026-11-28); source: Astra's and
   Gemini's probes (`check-option-b-astra.md`). No test. The concurrent files open through the fixtures of
   `tests/test.ts` instead (ESLint `no-restricted-imports`).
+- **A start that never settles keeps its app directory until the run ends** (serial openers, `closeAtEnd` of
+  `compiler-test-utils/src/test-end.ts`): the close waits for the start, then closes what it opened, so a slow start is
+  closed when it ends; a start that never settles (a plugin hook that never returns) is never closed, and its app
+  directory, in the run directory, goes when the run ends. A hang fails its test anyway. A page load is bounded below
+  the test timeout instead (`openPage`: 20 s), so a stalled navigation fails and its page closes with the test.
+  Source: Astra's review of the chunk 4 leftovers (11-28). No test.
 - **An export that starts as a builder and is later replaced by an ordinary object is still read as a builder**
   (`export let base = make(); base = { inputValidator(fn) { return fn } }`, also an assignment through Solid's
   `ref={base}`): a summary describes an export's initial value, so another module's `base.inputValidator(…)` fails
