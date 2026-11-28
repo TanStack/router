@@ -23,8 +23,7 @@ import { pluginReact } from '@rsbuild/plugin-react'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
-import { onTestFinished } from 'vitest'
-import { closedOnFailure } from '../build-harness'
+import { closedOnFailure, closedWithTest } from '../test-close'
 import {
   rscDependency,
   rscPluginFactory,
@@ -76,21 +75,23 @@ const appLinks = () => ({
 })
 
 /** A Vite dev server on the RSC app of `files` (over `rscAppFiles`). */
-export async function startViteRscApp(
+export function startViteRscApp(
   files: Record<string, string>,
 ): Promise<DevServer> {
-  const start = await startPluginFactory('react')
-  const rsc = await rscPluginFactory()
-  return createDevServer({
-    dir: appsDir,
-    prefix: '.start-rsc-warnings-vite-',
-    registerCleanup: onTestFinished,
-    listen: true,
-    files: { ...rscAppFiles, ...files },
-    symlinks: appLinks(),
-    // Start serves the pages (SSR through its dev middleware)
-    config: { appType: 'custom' },
-    plugins: [start({ rsc: { enabled: true } }), rsc(), react()],
+  return closedWithTest(async (registerCleanup) => {
+    const start = await startPluginFactory('react')
+    const rsc = await rscPluginFactory()
+    return createDevServer({
+      dir: appsDir,
+      prefix: '.start-rsc-warnings-vite-',
+      registerCleanup,
+      listen: true,
+      files: { ...rscAppFiles, ...files },
+      symlinks: appLinks(),
+      // Start serves the pages (SSR through its dev middleware)
+      config: { appType: 'custom' },
+      plugins: [start({ rsc: { enabled: true } }), rsc(), react()],
+    })
   })
 }
 
@@ -99,7 +100,9 @@ export function startRsbuildRscApp(
   files: Record<string, string>,
   options: RsbuildRscAppOptions = {},
 ): Promise<RsbuildDevServer> {
-  return openRsbuildRscApp(files, options, onTestFinished)
+  return closedWithTest((register) =>
+    openRsbuildRscApp(files, options, register),
+  )
 }
 
 /** `startRsbuildRscApp` for a server several tests share: the caller closes it. */

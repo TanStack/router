@@ -8,9 +8,9 @@
  * dev servers, and every server fn answers its own client's call.
  */
 import { pluginReact } from '@rsbuild/plugin-react'
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { openTestPage } from '../test-close'
 import {
   buildStart,
   callByIdExports,
@@ -177,9 +177,7 @@ export const Route = createFileRoute('/')({ component: () => null })`,
       for (const file of barrels) {
         expectNoDiagnostic(server.diagnostics, { file, root: server.root })
       }
-      const page = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const page = await openTestPage(server.url!)
       await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
       const result = await page.page.evaluate(async () => {
         const fns = (globalThis as any).fns as Record<string, () => unknown>

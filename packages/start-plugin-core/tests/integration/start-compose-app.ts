@@ -19,9 +19,8 @@ import { pathToFileURL } from 'node:url'
 import { serve } from 'srvx/node'
 import { staticMiddleware } from 'srvx/static'
 import ts from 'typescript'
-import { onTestFinished } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { callByIdExports } from '../build-harness'
+import { closedWithTest, openTestPage } from '../test-close'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { StartBuild } from '../build-harness'
 
@@ -145,12 +144,8 @@ async function serverFetch(build: StartBuild) {
  * file of the client output directory for a request whose path names one,
  * the server entry for every other request.
  */
-export async function serveStartBuild(
-  build: StartBuild,
-): Promise<ServedStartBuild> {
-  const served = await serveStartBuildShared(build)
-  onTestFinished(served.close)
-  return served
+export function serveStartBuild(build: StartBuild): Promise<ServedStartBuild> {
+  return closedWithTest(() => serveStartBuildShared(build))
 }
 
 /** `serveStartBuild` for a server several tests share: the caller closes it. */
@@ -202,9 +197,7 @@ export async function openAppPage(
 ): Promise<AppPage> {
   const serverFnRequests: Array<string> = []
   const scriptRequests: Array<string> = []
-  const page = await openPage(new URL(pathname, served.url).href, {
-    registerCleanup: onTestFinished,
-  })
+  const page = await openTestPage(new URL(pathname, served.url).href)
   page.page.on('request', (request) => {
     const url = new URL(request.url())
     if (url.pathname.startsWith('/_serverFn/')) {

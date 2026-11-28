@@ -8,13 +8,13 @@
  * route hot-updates.
  */
 import react from '@vitejs/plugin-react'
-import { describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { describe, expect, test } from 'vitest'
 import {
   hmrSyncModule,
   settlePage,
   trackRequests,
 } from '@tanstack/compiler-test-utils/hmr-sync'
+import { openTestPage } from '../test-close'
 import { startDevServer } from '../dev-server'
 import {
   pageBeforeTheClientLoadedTheTree,
@@ -155,9 +155,7 @@ export const Route = createRootRoute()
           'src/routes/index.tsx': page('loader v1', 'Page v1'),
         },
       })
-      const browser = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const browser = await openTestPage(server.url!)
       const inFlight = trackRequests(browser)
       /** Waits until the page took in what the server sent (a reload too). */
       const settled = () => settlePage(server, browser, inFlight)

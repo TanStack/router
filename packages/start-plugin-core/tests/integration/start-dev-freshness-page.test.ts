@@ -6,8 +6,7 @@
  * start-dev-freshness.test.ts, whose tests run without a browser, so that
  * file runs on the macOS and Windows smoke list.)
  */
-import { describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { describe, expect, test } from 'vitest'
 import {
   expectNoDiagnostic,
   findDiagnostics,
@@ -18,6 +17,7 @@ import {
   trackRequests,
 } from '@tanstack/compiler-test-utils/hmr-sync'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
+import { openTestPage } from '../test-close'
 import { startBrowserStartDevServer } from './importProtection/client-pages'
 
 const timeout = 60_000
@@ -56,7 +56,7 @@ export { fn, base }
       })
       const url = new URL('/__ip-fixture.html', server.url)
       url.searchParams.set('entry', '/src/main.ts')
-      const page = await openPage(url.href, { registerCleanup: onTestFinished })
+      const page = await openTestPage(url.href)
       const loaded = await page.page.waitForFunction(() => {
         const w = window as { __ipEntry?: unknown; __ipLoadError?: string }
         return w.__ipEntry ? 'loaded' : (w.__ipLoadError ?? false)
@@ -128,9 +128,7 @@ document.getElementById('root')!.append(input)
       })
       const url = new URL('/__ip-fixture.html', server.url)
       url.searchParams.set('entry', '/src/probe.ts')
-      const browser = await openPage(url.href, {
-        registerCleanup: onTestFinished,
-      })
+      const browser = await openTestPage(url.href)
       const inFlight = trackRequests(browser)
       const input = browser.page.locator('#root input')
       await input.waitFor()

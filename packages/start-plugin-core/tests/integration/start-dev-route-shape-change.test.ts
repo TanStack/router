@@ -15,8 +15,8 @@
  *
  * Rsbuild: rsbuild/start-dev-route-shape-change.test.ts.
  */
-import { describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { describe, expect, test } from 'vitest'
+import { openTestPage } from '../test-close'
 import { startDevServer } from '../dev-server'
 import { apps } from './route-error-apps'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
@@ -96,9 +96,7 @@ describe.each([true, false])(
             'src/routes/index.tsx': index(framework, 1, errorComponent),
           },
         })
-        const browser = await openPage(server.url!, {
-          registerCleanup: onTestFinished,
-        })
+        const browser = await openTestPage(server.url!)
         await shows(browser, 1)
         await server.idle()
         for (const n of [2, 3, 4, 5]) {

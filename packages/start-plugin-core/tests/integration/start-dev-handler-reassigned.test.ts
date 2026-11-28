@@ -14,13 +14,13 @@
  *   implementation), the page hydrates, no script holds the marker, the
  *   module never ran in the page, and a call runs the chosen handler.
  */
-import { describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { describe, expect, test } from 'vitest'
 import {
   expectDiagnostic,
   expectNoDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { pluginReact } from '@rsbuild/plugin-react'
+import { openTestPage } from '../test-close'
 import { startDevServer } from '../dev-server'
 import { startRsbuildStartDevServer } from '../rsbuild-dev-server'
 import { rootDocument, routerFile } from './start-compose-app'
@@ -123,9 +123,7 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
     'a handler held in a reassigned `let` is refused at the argument, and no server code reaches the page',
     async () => {
       const server = await servers[bundler]!(reassigned)
-      const page = await openPage(server.url, {
-        registerCleanup: onTestFinished,
-      })
+      const page = await openTestPage(server.url)
       // what the page got once the dev server answered and compiled
       await page.page.waitForLoadState('networkidle')
       expectDiagnostic(server.diagnostics, {
@@ -144,9 +142,7 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
     'the `const` the error suggests serves no server code and calls the chosen handler',
     async () => {
       const server = await servers[bundler]!(rewritten)
-      const page = await openPage(server.url, {
-        registerCleanup: onTestFinished,
-      })
+      const page = await openTestPage(server.url)
       await page.waitForText('hydrated', {
         selector: '[data-testid=hydrated]',
       })

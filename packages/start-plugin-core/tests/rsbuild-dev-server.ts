@@ -20,8 +20,8 @@ import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { pluginNames } from '@tanstack/compiler-test-utils/build-harness'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { pluginReact } from '@rsbuild/plugin-react'
-import { onTestFinished } from 'vitest'
-import { closedOnFailure, startRuntimeLinks } from './build-harness'
+import { startRuntimeLinks } from './build-harness'
+import { closedOnFailure, closedWithTest } from './test-close'
 import { startRsbuildPluginFactory, withHarnessEntries } from './start-plugins'
 import type { StartFramework } from './start-plugins'
 import type { TanStackStartInputConfig } from '../src'
@@ -153,7 +153,9 @@ function recordClientEntry(entry: ClientEntry): RsbuildPlugin {
 export function startRsbuildStartDevServer(
   options: RsbuildStartDevServerOptions,
 ): Promise<RsbuildDevServer> {
-  return openRsbuildStartDevServer(options, onTestFinished)
+  return closedWithTest((register) =>
+    openRsbuildStartDevServer(options, register),
+  )
 }
 
 /** `startRsbuildStartDevServer` for a server several tests share: the caller closes it. */

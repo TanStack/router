@@ -20,13 +20,13 @@
  * review of the restored-import fix (the edit of the restored file, the
  * component in another file).
  */
-import { describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { describe, expect, test } from 'vitest'
 import {
   hmrSyncModule,
   settlePage,
   trackRequests,
 } from '@tanstack/compiler-test-utils/hmr-sync'
+import { openTestPage } from '../test-close'
 import { startDevServer } from '../dev-server'
 import { apps } from './route-error-apps'
 import type { Framework } from './route-error-apps'
@@ -80,9 +80,7 @@ const open = async (framework: 'react' | 'solid', shape: 'kept' | 'erased') => {
       'src/routes/index.tsx': route(framework, shape, 1),
     },
   })
-  const browser = await openPage(server.url!, {
-    registerCleanup: onTestFinished,
-  })
+  const browser = await openTestPage(server.url!)
   const inFlight = trackRequests(browser)
   await browser.waitForText('step-1', { selector: '[data-probe=home]' })
   await settlePage(server, browser, inFlight)
@@ -199,9 +197,7 @@ export const Route = createFileRoute('/')({ ssr: false, component: Home })
 `,
         },
       })
-      const browser = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const browser = await openTestPage(server.url!)
       const inFlight = trackRequests(browser)
       await browser.waitForText('DEP_FIRST', { selector: '[data-probe=home]' })
       const settle = () => settlePage(server, browser, inFlight)

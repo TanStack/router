@@ -10,13 +10,13 @@
  * violations and only those.
  */
 import react from '@vitejs/plugin-react'
-import { describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { describe, expect, test } from 'vitest'
 import {
   hmrSyncModule,
   settlePage,
   trackRequests,
 } from '@tanstack/compiler-test-utils/hmr-sync'
+import { openTestPage } from '../../test-close'
 import { startDevServer } from '../../dev-server'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import { violationRecorder } from '../../importProtection/start-apps'
@@ -79,9 +79,7 @@ const run = () =>
         'src/hmr-sync.ts': hmrSyncModule,
       },
     })
-    const browser = await openPage(new URL('/', server.url).href, {
-      registerCleanup: onTestFinished,
-    })
+    const browser = await openTestPage(new URL('/', server.url).href)
     const inFlight = trackRequests(browser)
     const result: Array<StepOutcome> = []
     for (const { step, live } of pageSteps) {

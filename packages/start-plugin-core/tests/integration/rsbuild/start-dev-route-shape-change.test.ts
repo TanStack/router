@@ -8,8 +8,8 @@
  * ../start-dev-route-shape-change.test.ts.
  */
 import { pluginReact } from '@rsbuild/plugin-react'
-import { describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { describe, expect, test } from 'vitest'
+import { openTestPage } from '../../test-close'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 import { reactApp } from '../hydrate-dev-edits'
 
@@ -41,9 +41,7 @@ describe.each([true, false])(
             'src/routes/index.tsx': index(1, errorComponent),
           },
         })
-        const browser = await openPage(server.url!, {
-          registerCleanup: onTestFinished,
-        })
+        const browser = await openTestPage(server.url!)
         const shows = async (n: number) => {
           await browser.waitForText(`home-v${n}`, {
             selector: '[data-probe=home]',

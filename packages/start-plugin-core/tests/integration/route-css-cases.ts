@@ -11,8 +11,8 @@
  * route, and, for two routes that share a module, after a reload there (the
  * page the server renders at the route).
  */
-import { beforeAll, describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { beforeAll, describe, expect, test } from 'vitest'
+import { openTestPage } from '../test-close'
 import { buildStartShared } from '../build-harness'
 import { startDevServerShared } from '../dev-server'
 import { startRsbuildStartDevServerShared } from '../rsbuild-dev-server'
@@ -227,9 +227,7 @@ export function routeCssSuite(
 
       /** A page of the app at `/`, hydrated, everything it loads loaded. */
       const openHome = async () => {
-        const page = await openPage(new URL('/', url).href, {
-          registerCleanup: onTestFinished,
-        })
+        const page = await openTestPage(new URL('/', url).href)
         await page.waitForText('hydrated', {
           selector: '[data-testid=hydrated]',
         })

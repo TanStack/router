@@ -11,9 +11,9 @@ import path from 'node:path'
 import react from '@vitejs/plugin-react'
 import { normalizePath } from 'vite'
 import { describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import { describeHmr } from '@tanstack/compiler-test-utils/dev-server'
+import { openTestPage } from '../test-close'
 import { requestsOfPrelude } from '../build-harness'
 import {
   callServerFn,
@@ -589,9 +589,7 @@ function Page() {
           'src/routes/index.tsx': route('../a'),
         },
       })
-      const browser = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const browser = await openTestPage(server.url!)
       await browser.waitForText('hydrated', {
         selector: '[data-testid=hydrated]',
       })

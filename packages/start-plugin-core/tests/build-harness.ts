@@ -85,9 +85,9 @@ import {
 } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import react from '@vitejs/plugin-react'
 import { pluginReact } from '@rsbuild/plugin-react'
-import { onTestFinished } from 'vitest'
 import { inProbeRequest, requestFiles } from './request-probe'
 import { startPlugins, startRsbuildPlugin } from './start-plugins'
+import { closedWithTest } from './test-close'
 import type { StartFramework } from './start-plugins'
 import type {
   BuildMode,
@@ -596,20 +596,8 @@ const harnessEntries = (root: string) => ({
  * console messages; warnings are per environment. The app is closed when
  * the current test finishes (`StartBuild.close`).
  */
-export async function buildStart(
-  options: StartBuildOptions,
-): Promise<StartBuild> {
-  const app = await createBuildApp(options)
-  const built = buildAt(
-    app,
-    options.bundler ?? 'vite',
-    app.target,
-    options.builds ?? 1,
-  )
-  // (after a timeout, the build still running: removing its app while it
-  // writes would leave what it writes next)
-  onTestFinished(() => built.then(app.close, app.close))
-  return built
+export function buildStart(options: StartBuildOptions): Promise<StartBuild> {
+  return closedWithTest(() => buildStartShared(options))
 }
 
 /**
@@ -1836,22 +1824,4 @@ function checkOutputs(outputs: Partial<Outputs>): Outputs {
     )
   }
   return outputs as Outputs
-}
-
-/**
- * What `open` opens, closed when opening fails (a shared resource: no test
- * closes it), with the close `open` registers.
- */
-export async function closedOnFailure<T>(
-  open: (register: (close: () => Promise<void>) => void) => Promise<T>,
-): Promise<T> {
-  let close: (() => Promise<void>) | undefined
-  try {
-    return await open((registered) => {
-      close = registered
-    })
-  } catch (error) {
-    await close?.()
-    throw error
-  }
 }

@@ -22,7 +22,8 @@
  * compiles them in parallel and the outcome below depended on their timing:
  * the "export * diamonds" row failed in about 1 of 10 runs.)
  */
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
+import { closedWithTest } from '../test-close'
 import { callFromClient, createStartHost } from '../regression-helpers'
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
@@ -41,8 +42,7 @@ async function expectImportersThroughRpc(reExports: Record<string, string>) {
   const [first, ...others] = Object.keys(reExports).map((file) =>
     file.replace(/\.ts$/, ''),
   )
-  const host = await createStartHost({ serve: false })
-  onTestFinished(() => host.close())
+  const host = await closedWithTest(() => createStartHost({ serve: false }))
   const startCase = await host.case({
     'd.ts': `${head}export const base = createServerFn()`,
     'db.server.ts': `export const db = { x: () => 'from the server' }\n`,

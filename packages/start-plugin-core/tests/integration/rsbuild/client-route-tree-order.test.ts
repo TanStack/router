@@ -10,8 +10,8 @@
  * Source: external review of #8817 (D-d4, design-routeset-v5.md §2.3 and
  * v5.1 item 3).
  */
-import { describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { describe, expect, test } from 'vitest'
+import { openTestPage } from '../../test-close'
 import { buildStart } from '../../build-harness'
 import { rsbuildEntries } from '../route-css-cases'
 import {
@@ -97,11 +97,7 @@ describe.each(['one level', 'nested'] as const)('%s', (fixture) => {
         files: { ...rsbuildEntries, ...appFiles(fixture) },
       })
       const { url } = await build.preview()
-      await homeIsTheIndex(
-        await openPage(new URL('/', url).href, {
-          registerCleanup: onTestFinished,
-        }),
-      )
+      await homeIsTheIndex(await openTestPage(new URL('/', url).href))
     },
     timeout,
   )

@@ -7,9 +7,9 @@
  * own update; Solid after a reload by Rsbuild's client at the return (no
  * router reload; not asserted either way).
  */
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { pluginReact } from '@rsbuild/plugin-react'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { openTestPage } from '../../test-close'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 import { reactApp, solidApp } from '../hydrate-dev-edits'
 import { solidAppConfig } from '../hydrate-pages'
@@ -49,7 +49,7 @@ async function open(fw: Fw) {
       'src/routes/index.tsx': route(fw, 1),
     },
   })
-  const page = await openPage(server.url!, { registerCleanup: onTestFinished })
+  const page = await openTestPage(server.url!)
   await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
   await page.waitForText('DEP_FIRST step-1', { selector: '[data-probe=home]' })
   return { server, page }

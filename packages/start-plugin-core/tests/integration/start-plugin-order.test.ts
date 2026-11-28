@@ -23,8 +23,7 @@ import react from '@vitejs/plugin-react'
 import solid from 'vite-plugin-solid'
 import { pluginBabel } from '@rsbuild/plugin-babel'
 import { pluginSolid } from '@rsbuild/plugin-solid'
-import { describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { describe, expect, test } from 'vitest'
 import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   hmrSyncModule,
@@ -35,6 +34,7 @@ import {
   loadMarker,
   loadedModulesExpression,
 } from '@tanstack/compiler-test-utils/importers'
+import { closedWithTest, openTestPage } from '../test-close'
 import { startDevServer } from '../dev-server'
 import {
   reportedErrors,
@@ -231,9 +231,7 @@ const loaded = (page: BrowserPage) =>
 
 /** `/other` of the app: the index route's component has not loaded. */
 async function expectSplitOnOther(url: string) {
-  const page = await openPage(new URL('/other', url).href, {
-    registerCleanup: onTestFinished,
-  })
+  const page = await openTestPage(new URL('/other', url).href)
   await page.waitForText('other', { selector: '[data-probe=other]' })
   await page.page.waitForFunction(
     () => (window as any).__TSR_ROUTER__ !== undefined,
@@ -244,7 +242,7 @@ async function expectSplitOnOther(url: string) {
 
 /** `/` of the app: the page hydrated, so the click calls the server fn and shows its answer. */
 async function expectHydratedHome(url: string, text: string) {
-  const page = await openPage(url, { registerCleanup: onTestFinished })
+  const page = await openTestPage(url)
   await page.waitForText(`${text}:dep`, { selector: '[data-probe=home]' })
   await expect
     .poll(
@@ -277,16 +275,17 @@ const devServer = (framework: StartFramework, startLast: boolean) =>
 
 /** A host building `framework`'s app, Start listed first or last. */
 const buildHost = async (framework: StartFramework, startLast: boolean) => {
-  const host = await createStartHost({
-    framework,
-    serve: false,
-    startLast,
-    files: {
-      ...routeFiles(framework),
-      'src/routes/index.tsx': indexRoute(framework, 'home-v1'),
-    },
-  })
-  onTestFinished(() => host.close())
+  const host = await closedWithTest(() =>
+    createStartHost({
+      framework,
+      serve: false,
+      startLast,
+      files: {
+        ...routeFiles(framework),
+        'src/routes/index.tsx': indexRoute(framework, 'home-v1'),
+      },
+    }),
+  )
   return host
 }
 

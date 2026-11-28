@@ -9,10 +9,10 @@
  * handler calls and requests it twice with the exposed fn's own request
  * envelope: both answer; the dev server warned once, naming the file.
  */
-import { describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { describe, expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { pluginReact } from '@rsbuild/plugin-react'
+import { openTestPage } from '../test-close'
 import { startDevServer } from '../dev-server'
 import { startRsbuildStartDevServer } from '../rsbuild-dev-server'
 import { rootDocument, routerFile } from './start-compose-app'
@@ -89,9 +89,7 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
     'a server fn no client module references answers a client call, with one warning naming it',
     async () => {
       const server = await servers[bundler]!()
-      const page = await openPage(server.url, {
-        registerCleanup: onTestFinished,
-      })
+      const page = await openTestPage(server.url)
       await page.waitForText('hydrated', {
         selector: '[data-testid=hydrated]',
       })
@@ -166,9 +164,7 @@ function Page() {
           },
         ],
       })
-      const page = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const page = await openTestPage(server.url!)
       await page.waitForText('hydrated', {
         selector: '[data-testid=hydrated]',
       })

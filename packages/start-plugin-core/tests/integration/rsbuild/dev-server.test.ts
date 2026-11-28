@@ -2,9 +2,9 @@
  * The Start compiler on a running Rsbuild dev server: editing a factory
  * module rebuilds every client module compiled against it.
  */
-import { describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { describe, expect, test } from 'vitest'
 import { pluginReact } from '@rsbuild/plugin-react'
+import { openTestPage } from '../../test-close'
 import {
   runInClient,
   startRsbuildStartDevServer,
@@ -68,9 +68,7 @@ import { fn2 } from './a2'
 
     await server.edit({ 'src/b.ts': toFactory ? factory : plain })
     expect(server.errors).toEqual([])
-    const page = await openPage(server.url!, {
-      registerCleanup: onTestFinished,
-    })
+    const page = await openTestPage(server.url!)
     await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
     const sent: Array<{ url: string; method: string }> = []
     page.page.on('request', (request) => {
@@ -228,9 +226,7 @@ function Page() {
         },
       })
       expect(server.errors).toEqual([])
-      const page = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const page = await openTestPage(server.url!)
       await page.waitForText('MARK_LABEL_V1 MARK_HANDLER_V1', {
         selector: '[data-testid=label]',
       })
@@ -312,9 +308,7 @@ function Page() {
         },
       })
       expect(server.errors).toEqual([])
-      const page = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const page = await openTestPage(server.url!)
       const result = (text: string) =>
         page.waitForText(`result ${text}`, { selector: '[data-testid=result]' })
       // The page's SSR ran the loader: the module defining the fns is
@@ -402,9 +396,7 @@ export { getData as b } from './b'
 `,
         },
       })
-      const page = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const page = await openTestPage(server.url!)
       await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
       // A server fn's identity is the URL its calls fetch (`fn.url`, which
       // carries its id; the metadata object holding the id is Start's own)

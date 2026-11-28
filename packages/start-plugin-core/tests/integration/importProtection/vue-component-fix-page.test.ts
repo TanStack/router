@@ -18,9 +18,9 @@
  */
 import vue from '@vitejs/plugin-vue'
 import { pluginVue } from '@rsbuild/plugin-vue'
-import { afterAll, describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { afterAll, describe, expect, test } from 'vitest'
 import { diagnosticPosition } from '@tanstack/compiler-test-utils/diagnostics'
+import { openTestPage } from '../../test-close'
 import { buildStartShared, startBundlers } from '../../build-harness'
 import { createStartHost } from '../../start-host'
 import {
@@ -222,7 +222,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
     return `${file}:${line}:${column}`
   }
   const open = async (url: string, route: string) =>
-    openPage(new URL(route, url).href, { registerCleanup: onTestFinished })
+    openTestPage(new URL(route, url).href)
 
   test(
     "the fix of a named import of a *.client.* component hydrates that component, not the module's default",

@@ -7,9 +7,9 @@
  * dev servers (the server renders the page first, so it compiles the file
  * before the client) and in their builds, served like a deployed app.
  */
-import { beforeAll, describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { beforeAll, describe, expect, test } from 'vitest'
 import { pluginReact } from '@rsbuild/plugin-react'
+import { openTestPage } from '../test-close'
 import { buildStartShared } from '../build-harness'
 import { startDevServer } from '../dev-server'
 import { startRsbuildStartDevServer } from '../rsbuild-dev-server'
@@ -84,7 +84,7 @@ describe.each(Object.keys(devServers))('%s dev', (bundler) => {
     'the client calls the top-level server fn, not the hoisted one the provider named alike',
     async () => {
       const url = await devServers[bundler]!()
-      const page = await openPage(url, { registerCleanup: onTestFinished })
+      const page = await openTestPage(url)
       await page.waitForText('hydrated', {
         selector: '[data-testid=hydrated]',
       })

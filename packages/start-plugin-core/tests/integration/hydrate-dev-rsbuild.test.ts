@@ -6,9 +6,9 @@
  * Solid Start app, `solidAppConfig`). Its own file so that each bundler's
  * dev servers run in a worker of their own.
  */
-import { describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { describe, expect, test } from 'vitest'
 import { pluginReact } from '@rsbuild/plugin-react'
+import { openTestPage } from '../test-close'
 import {
   reportedErrors,
   startRsbuildStartDevServer,
@@ -46,9 +46,7 @@ export const Route = createFileRoute('/')({ component: Widgets })
         },
       })
       expect(reportedErrors(server)).toEqual([])
-      const browser = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const browser = await openTestPage(server.url!)
       await browser.waitForText('hydrated', {
         selector: '[data-testid=hydrated]',
       })
@@ -78,9 +76,7 @@ export const Route = createFileRoute('/')({ component: Widgets })
         },
       })
       expect(reportedErrors(server)).toEqual([])
-      const browser = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const browser = await openTestPage(server.url!)
       await browser.waitForText('hydrated', {
         selector: '[data-testid=hydrated]',
       })
@@ -122,9 +118,7 @@ function Home() {
         files: { ...reactApp, 'src/routes/index.tsx': route('deferred-v1') },
       })
       expect(reportedErrors(server)).toEqual([])
-      const browser = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const browser = await openTestPage(server.url!)
       await browser.waitForText('hydrated', {
         selector: '[data-testid=hydrated]',
       })
@@ -166,9 +160,7 @@ function Home() {
         files: { ...solidApp, ...solidRouteWithBoundary },
       })
       expect(reportedErrors(server)).toEqual([])
-      const browser = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const browser = await openTestPage(server.url!)
       await expectRouteBoundaryCounts(browser)
       expect(reportedErrors(server)).toEqual([])
     },

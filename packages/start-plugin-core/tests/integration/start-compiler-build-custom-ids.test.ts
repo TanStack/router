@@ -13,15 +13,9 @@
  * - the same project at another root builds correctly (relocation is
  *   correctness, not id equality: G4).
  */
-import {
-  afterAll,
-  beforeAll,
-  describe,
-  expect,
-  onTestFinished,
-  test,
-} from 'vitest'
+import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { expectRelocatable } from '@tanstack/compiler-test-utils/determinism'
+import { closedWithTest } from '../test-close'
 import {
   callFromClient,
   callOnServer,
@@ -216,8 +210,9 @@ describe('relocation', () => {
     await expectRelocatable(
       ['first root', 'second root'],
       async () => {
-        const host = await createStartHost({ ...hostDefaults, serve: false })
-        onTestFinished(() => host.close())
+        const host = await closedWithTest(() =>
+          createStartHost({ ...hostDefaults, serve: false }),
+        )
         const startCase = await host.case({
           'fns.ts': serverFnModule('fn', 'from the server'),
         })

@@ -6,13 +6,13 @@
  * broken, landed on the dev server's error page, and the fix never showed.
  */
 import react from '@vitejs/plugin-react'
-import { describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { describe, expect, test } from 'vitest'
 import {
   hmrSyncModule,
   settlePage,
   trackRequests,
 } from '@tanstack/compiler-test-utils/hmr-sync'
+import { openTestPage } from '../test-close'
 import { startDevServer } from '../dev-server'
 import { reactApp } from './hydrate-dev-edits'
 
@@ -74,9 +74,7 @@ describe('Vite dev, Start: a route file that stops parsing, then parses again', 
         plugins: [react()],
         files: app,
       })
-      const page = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const page = await openTestPage(server.url!)
       const inFlight = trackRequests(page)
       await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
       await page.waitForText('root-v1', { selector: '[data-probe=root]' })
@@ -109,9 +107,7 @@ describe('Vite dev, Start: a route file that stops parsing, then parses again', 
         plugins: [react()],
         files: app,
       })
-      const page = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const page = await openTestPage(server.url!)
       const inFlight = trackRequests(page)
       await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
       await page.waitForText('index-v1', { selector: '[data-probe=index]' })
@@ -158,9 +154,7 @@ describe('Vite dev, Start: a route file that stops parsing, then parses again', 
         plugins: [react()],
         files: app,
       })
-      const page = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const page = await openTestPage(server.url!)
       const inFlight = trackRequests(page)
       await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
       await page.waitForText('index-v1', { selector: '[data-probe=index]' })

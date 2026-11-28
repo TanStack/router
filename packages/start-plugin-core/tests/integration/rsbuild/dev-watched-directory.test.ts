@@ -11,8 +11,8 @@
  * compile).
  */
 import path from 'node:path'
-import { describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { describe, expect, test } from 'vitest'
+import { openTestPage } from '../../test-close'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 import { rootDocument, routerFile } from '../start-compose-app'
 import type { RsbuildPlugin, Rspack } from '@rsbuild/core'
@@ -96,9 +96,7 @@ describe('Rsbuild dev with HMR: an app that watches its source directory', () =>
         },
       })
       expect(server.errors).toEqual([])
-      const page = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const page = await openTestPage(server.url!)
       await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
       await page.page.locator('[data-testid=count]').click()
       await page.waitForText('count 1', { selector: '[data-testid=count]' })

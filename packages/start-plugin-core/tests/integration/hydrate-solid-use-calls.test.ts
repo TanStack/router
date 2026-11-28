@@ -9,8 +9,8 @@
  * route's param, count a click, and follow a client-side navigation to
  * another param.
  */
-import { beforeAll, describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { beforeAll, describe, expect, test } from 'vitest'
+import { openTestPage } from '../test-close'
 import { buildStartShared } from '../build-harness'
 import { createStartHost } from '../start-host'
 import { solidAppConfig } from './hydrate-pages'
@@ -102,9 +102,7 @@ describe.each(['vite', 'rsbuild'] as const)('%s build', (bundler) => {
   test(
     'split children calling use* primitives keep their owner, context and route match',
     async () => {
-      const page = await openPage(new URL('/items/abc', url).href, {
-        registerCleanup: onTestFinished,
-      })
+      const page = await openTestPage(new URL('/items/abc', url).href)
       await page.page.locator('button[data-count]').click()
       await page.waitForText('clicks:1', { selector: 'button[data-count]' })
       expect({

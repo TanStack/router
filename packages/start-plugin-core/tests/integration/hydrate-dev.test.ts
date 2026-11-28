@@ -19,9 +19,9 @@
  * The Rsbuild counterparts of the edit rows: hydrate-dev-rsbuild.test.ts.
  */
 import react from '@vitejs/plugin-react'
-import { describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { describe, expect, test } from 'vitest'
 import { describeHmr } from '@tanstack/compiler-test-utils/dev-server'
+import { openTestPage } from '../test-close'
 import { startDevServer } from '../dev-server'
 import {
   editLoadedChild,
@@ -63,9 +63,7 @@ export const Route = createFileRoute('/')({ component: Widgets })
           'src/widgets.tsx': reactWidgets('<i>v1</i>', 'capture-v1'),
         },
       })
-      const browser = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const browser = await openTestPage(server.url!)
       await browser.waitForText('hydrated', {
         selector: '[data-testid=hydrated]',
       })
@@ -116,9 +114,7 @@ function Page() {
 `,
         },
       })
-      const browser = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const browser = await openTestPage(server.url!)
       await browser.waitForText('hydrated', {
         selector: '[data-testid=hydrated]',
       })
@@ -190,9 +186,7 @@ function Page() {
       })
       /** Whether a fresh page, hydrated, loaded the child's module before any interaction. */
       const childLoaded = async () => {
-        const browser = await openPage(server.url!, {
-          registerCleanup: onTestFinished,
-        })
+        const browser = await openTestPage(server.url!)
         await browser.waitForText('hydrated', {
           selector: '[data-testid=hydrated]',
         })

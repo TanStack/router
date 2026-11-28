@@ -17,11 +17,11 @@
  * implementation reviews (Fable p1, p1b, p2, p3; Astra 1, 2, 3; Gemini
  * P0-1, P1-1).
  */
-import { describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { describe, expect, test } from 'vitest'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
+import { openTestPage } from '../test-close'
 import { startDevServer } from '../dev-server'
 import { appManifest, installPackage } from '../package-layouts'
 import {
@@ -431,9 +431,7 @@ function Page() {
 `,
         },
       })
-      const page = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const page = await openTestPage(server.url!)
       await page.waitForText('hydrated', {
         selector: '[data-testid=hydrated]',
       })

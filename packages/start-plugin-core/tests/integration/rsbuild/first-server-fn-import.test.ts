@@ -14,10 +14,10 @@
  * when the client entry already imports a server fn (the runtime is in the
  * entry chunk: no new chunk) are the controls.
  */
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { pluginReact } from '@rsbuild/plugin-react'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
+import { openTestPage } from '../../test-close'
 import {
   reportedErrors,
   startRsbuildStartDevServer,
@@ -102,9 +102,7 @@ export const Route = createFileRoute('/')({ component: () => <p>index</p> })
     },
   })
   expect(reportedErrors(server)).toEqual([])
-  const page = await openPage(`${server.url}/with-loader`, {
-    registerCleanup: onTestFinished,
-  })
+  const page = await openTestPage(`${server.url}/with-loader`)
   await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
   await page.waitForText('probe-v0', { selector: '[data-probe=loader]' })
 

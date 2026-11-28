@@ -10,8 +10,8 @@
  * Where the framework cannot recover in place (the global boundary of the
  * hydrated root replaced the document), route HMR reloads the page. After a loader failed: start-dev-route-loader-error.
  */
-import { describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { describe, expect, test } from 'vitest'
+import { openTestPage } from '../test-close'
 import { startDevServer } from '../dev-server'
 import { apps, index, rootRendersDocument } from './route-error-apps'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
@@ -50,9 +50,7 @@ describe('Vite dev, Start with a document shell: a route edit after a component 
           'src/routes/index.tsx': index(framework, 'home-v1', true),
         },
       })
-      const browser = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const browser = await openTestPage(server.url!)
       await waitForThrow(browser)
       await server.idle()
 
@@ -80,9 +78,7 @@ describe('Vite dev, Start with a document shell: a route edit after a component 
           'src/routes/index.tsx': index(framework, 'home-v1', false),
         },
       })
-      const browser = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const browser = await openTestPage(server.url!)
       await browser.waitForText('home-v1', { selector: '[data-probe=home]' })
       // the client router is on the page (hydration ran)
       await browser.page.waitForFunction(
@@ -132,9 +128,7 @@ describe('Vite dev, Start with a document shell: a route edit after a component 
           'src/routes/index.tsx': index(framework, 'home-v1', false, true),
         },
       })
-      const browser = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const browser = await openTestPage(server.url!)
       await browser.waitForText('home-v1', { selector: '[data-probe=home]' })
       await browser.page.waitForFunction(
         () => (window as any).__TSR_ROUTER__ !== undefined,
@@ -180,9 +174,7 @@ describe('Vite dev, Start with a document shell: a route edit after a component 
           'src/routes/index.tsx': index(framework, 'home-v1', true),
         },
       })
-      const browser = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const browser = await openTestPage(server.url!)
       // the root route's boundary caught the throw (Solid's blanks the
       // document it replaced)
       await expect

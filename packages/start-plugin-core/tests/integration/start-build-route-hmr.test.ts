@@ -16,8 +16,8 @@
  * where it belongs.
  */
 import react from '@vitejs/plugin-react'
-import { describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { describe, expect, test } from 'vitest'
+import { openTestPage } from '../test-close'
 import { buildStart, startBundlers } from '../build-harness'
 import { startDevServer } from '../dev-server'
 import {
@@ -118,9 +118,7 @@ createRoot(document.getElementById('app')!).render(<RouterProvider router={getRo
           'src/routes/index.tsx': pageRoute(),
         },
       })
-      const page = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const page = await openTestPage(server.url!)
       await page.waitForText('MARK_PAGE MARK_LOADER', { selector: '#app' })
       await server.edit({ 'src/routes/index.tsx': pageRoute('_V2') })
       await page.waitForText('MARK_PAGE MARK_LOADER_V2', { selector: '#app' })
@@ -184,9 +182,7 @@ function Root() {
         },
       })
       expect(reportedErrors(server)).toEqual([])
-      const page = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const page = await openTestPage(server.url!)
       await page.waitForText('MARK_PAGE MARK_LOADER', { selector: '#app' })
       await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
       await server.write({ 'src/routes/index.tsx': pageRoute('_V2') })

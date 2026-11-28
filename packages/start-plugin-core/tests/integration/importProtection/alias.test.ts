@@ -21,8 +21,9 @@ import {
   captureConsole,
   expectNoDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { buildStart, startRuntimeLinks } from '../../build-harness'
+import { closedWithTest } from '../../test-close'
 import { startPlugin, startPluginFiles } from '../../dev-server'
 import { probeMockPrelude, safeMock } from '../../importProtection/mock-helpers'
 import {
@@ -155,27 +156,29 @@ export default { plugins: [tsconfigPaths()] }
  * passes it) and the alias resolver of `alias`, in the order the app lists
  * them.
  */
-async function startAliasDevServer(
+function startAliasDevServer(
   alias: (typeof viteAliases)[number],
   importProtection: ImportProtectionOptions,
 ) {
-  const recorder = violationRecorder(importProtection)
-  const server = await createDevServer({
-    dir: testsDir,
-    prefix: '.start-dev-server-',
-    registerCleanup: onTestFinished,
-    files: { ...startPluginFiles, ...aliasApp },
-    browser: true,
-    symlinks: startRuntimeLinks(),
-    config: alias.devConfig,
-    plugins: ({ root }) => [
-      clientFixturePlugin,
-      ...alias.devPlugins(
-        startPlugin(root, { importProtection: recorder.importProtection }),
-      ),
-    ],
+  return closedWithTest(async (registerCleanup) => {
+    const recorder = violationRecorder(importProtection)
+    const server = await createDevServer({
+      dir: testsDir,
+      prefix: '.start-dev-server-',
+      registerCleanup,
+      files: { ...startPluginFiles, ...aliasApp },
+      browser: true,
+      symlinks: startRuntimeLinks(),
+      config: alias.devConfig,
+      plugins: ({ root }) => [
+        clientFixturePlugin,
+        ...alias.devPlugins(
+          startPlugin(root, { importProtection: recorder.importProtection }),
+        ),
+      ],
+    })
+    return Object.assign(server, { violations: recorder.violations })
   })
-  return Object.assign(server, { violations: recorder.violations })
 }
 
 /**

@@ -13,8 +13,8 @@
  * compiled when `base` was no server fn builder (`RESULT=undefined`). Main
  * serves both pages.
  */
-import { expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { expect, test } from 'vitest'
+import { openTestPage } from '../../test-close'
 import { buildStart } from '../../build-harness'
 import { rsbuildEntries } from '../route-css-cases'
 import { workerPlugin } from './worker-plugin'
@@ -88,7 +88,7 @@ self.onmessage = () => self.postMessage(Object.keys(routeTree.children ?? {}))
 `,
     })
     const { url } = await warm.preview()
-    const page = await openPage(url, { registerCleanup: onTestFinished })
+    const page = await openTestPage(url)
     await page.page.locator('main[data-hydrated="true"]').waitFor()
     // a client-side navigation: the client's route tree matches the route
     await page.page.getByRole('link', { name: 'go to review' }).click()
@@ -145,7 +145,7 @@ self.onmessage = async () => self.postMessage(await getGreeting())
 `,
     })
     const { url } = await warm.preview()
-    const page = await openPage(url, { registerCleanup: onTestFinished })
+    const page = await openTestPage(url)
     await page.waitForText(/^(RESULT|ERROR)=/, { selector: 'p[data-result]' })
     expect(await page.page.locator('p[data-result]').textContent()).toBe(
       'RESULT=MARK_GREETING',

@@ -20,13 +20,14 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
-import { expect, onTestFinished } from 'vitest'
+import { expect } from 'vitest'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import {
   expectDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
+import { closedWithTest } from '../test-close'
 import { startDevServer } from '../dev-server'
 import {
   rscDependency,
@@ -375,42 +376,44 @@ export async function startProtectedDevServer(
  * `@tanstack/react-start-rsc` and `@vitejs/plugin-rsc` are linked into the
  * app (it imports them, as an installed app does).
  */
-export async function startRscProtectedDevServer(
+export function startRscProtectedDevServer(
   files: Record<string, string>,
 ): Promise<ProtectedDevServer> {
-  const recorder = violationRecorder({})
-  const tanstackStart = await startPluginFactory('react')
-  const rsc = await rscPluginFactory()
-  const server = await createDevServer({
-    dir: path.dirname(path.dirname(fileURLToPath(import.meta.url))),
-    prefix: '.start-rsc-dev-server-',
-    registerCleanup: onTestFinished,
-    files: {
-      'src/router.tsx': `export const getRouter = () => undefined\n`,
-      'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+  return closedWithTest(async (registerCleanup) => {
+    const recorder = violationRecorder({})
+    const tanstackStart = await startPluginFactory('react')
+    const rsc = await rscPluginFactory()
+    const server = await createDevServer({
+      dir: path.dirname(path.dirname(fileURLToPath(import.meta.url))),
+      prefix: '.start-rsc-dev-server-',
+      registerCleanup,
+      files: {
+        'src/router.tsx': `export const getRouter = () => undefined\n`,
+        'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute()
 `,
-      ...files,
-    },
-    symlinks: {
-      ...workspacePackageLinks([
-        '@tanstack/react-start',
-        '@tanstack/react-start-rsc',
-      ]),
-      'node_modules/@vitejs/plugin-rsc': rscDependency('@vitejs/plugin-rsc'),
-    },
-    config: { appType: 'custom' },
-    plugins: [
-      tanstackStart({
-        rsc: { enabled: true },
-        importProtection: recorder.importProtection,
-        router: { entry: 'entry.ts' },
-      }),
-      rsc(),
-      react(),
-    ],
+        ...files,
+      },
+      symlinks: {
+        ...workspacePackageLinks([
+          '@tanstack/react-start',
+          '@tanstack/react-start-rsc',
+        ]),
+        'node_modules/@vitejs/plugin-rsc': rscDependency('@vitejs/plugin-rsc'),
+      },
+      config: { appType: 'custom' },
+      plugins: [
+        tanstackStart({
+          rsc: { enabled: true },
+          importProtection: recorder.importProtection,
+          router: { entry: 'entry.ts' },
+        }),
+        rsc(),
+        react(),
+      ],
+    })
+    return Object.assign(server, { violations: recorder.violations })
   })
-  return Object.assign(server, { violations: recorder.violations })
 }
 
 /**

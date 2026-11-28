@@ -19,8 +19,8 @@ import { fileURLToPath } from 'node:url'
 import { pluginNames } from '@tanstack/compiler-test-utils/build-harness'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import react from '@vitejs/plugin-react'
-import { onTestFinished } from 'vitest'
-import { closedOnFailure, startRuntimeLinks } from './build-harness'
+import { startRuntimeLinks } from './build-harness'
+import { closedOnFailure, closedWithTest } from './test-close'
 import { inProbeRequest, requestFiles } from './request-probe'
 import { startPlugins } from './start-plugins'
 import type { StartFramework } from './start-plugins'
@@ -200,7 +200,7 @@ export function startPlugin(
 export function startDevServer(
   options: StartDevServerOptions,
 ): Promise<DevServer> {
-  return openDevServer(options, onTestFinished)
+  return closedWithTest((register) => openDevServer(options, register))
 }
 
 /** `startDevServer` for a server several tests share: the caller closes it. */

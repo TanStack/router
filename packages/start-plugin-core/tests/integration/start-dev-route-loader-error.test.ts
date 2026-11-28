@@ -6,8 +6,8 @@
  * after it update in place, but for Vue's global boundary, which replaced
  * the document shell (`router._hmrReload`).
  */
-import { describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { describe, expect, test } from 'vitest'
+import { openTestPage } from '../test-close'
 import { startDevServer } from '../dev-server'
 import { apps, index } from './route-error-apps'
 import type { Framework } from './route-error-apps'
@@ -80,9 +80,7 @@ async function editAfterLoaderFailure(
       ),
     },
   })
-  const browser = await openPage(server.url!, {
-    registerCleanup: onTestFinished,
-  })
+  const browser = await openTestPage(server.url!)
   await browser.waitForText('home-v1', {
     selector: '[data-probe=home]',
   })

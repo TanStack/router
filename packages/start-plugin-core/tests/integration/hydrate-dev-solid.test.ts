@@ -1,6 +1,6 @@
 import solid from 'vite-plugin-solid'
-import { describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { describe, expect, test } from 'vitest'
+import { openTestPage } from '../test-close'
 import { startDevServer } from '../dev-server'
 import {
   editLoadedChild,
@@ -30,9 +30,7 @@ describe('Vite dev, Solid', () => {
           'src/widgets.tsx': solidWidgets('<i>v1</i>', 'capture-v1'),
         },
       })
-      const browser = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const browser = await openTestPage(server.url!)
       await browser.waitForText('hydrated', {
         selector: '[data-testid=hydrated]',
       })
@@ -56,9 +54,7 @@ describe('Vite dev, Solid', () => {
         plugins: [solid({ ssr: true })],
         files: { ...solidApp, ...solidRouteWithBoundary },
       })
-      const browser = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const browser = await openTestPage(server.url!)
       await expectRouteBoundaryCounts(browser)
     },
     timeout,

@@ -3,9 +3,9 @@
  * route HMR, whatever `codeSplittingOptions.addHmr` says (as Start on Vite,
  * `start-router-dev-server.test.ts`, and as main on both bundlers).
  */
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { pluginReact } from '@rsbuild/plugin-react'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { openTestPage } from '../../test-close'
 import {
   reportedErrors,
   startRsbuildStartDevServer,
@@ -27,9 +27,7 @@ describe('Rsbuild dev: route HMR and the router options', () => {
         start: { router: { codeSplittingOptions: { addHmr: false } } },
       })
       expect(reportedErrors(server)).toEqual([])
-      const page = await openPage(`${server.url}/with-loader`, {
-        registerCleanup: onTestFinished,
-      })
+      const page = await openTestPage(`${server.url}/with-loader`)
       await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
       await page.waitForText('probe-loader-v0', {
         selector: '[data-probe=loader]',

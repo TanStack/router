@@ -6,6 +6,7 @@ import { servedDirectories } from '@tanstack/compiler-test-utils/app-directory'
 import { runAsDevCommand } from '@tanstack/compiler-test-utils/dev-command'
 import { closeViteServer } from '@tanstack/compiler-test-utils/dev-server'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { openTestPage } from '../test-close'
 import {
   clientEntryFiles,
   reportedErrors,
@@ -127,9 +128,7 @@ createRoot(document.getElementById('root')!).render(<Page />)
         restarted.resolvedUrls!.local[0],
       )
       restartedUrl.searchParams.set('entry', '/src/main.tsx')
-      const browser = await openPage(restartedUrl.href, {
-        registerCleanup: onTestFinished,
-      })
+      const browser = await openTestPage(restartedUrl.href)
       await browser.waitForText('MARK_OLD', { selector: '#root' })
 
       await writeFile(server.file('src/page.tsx'), page('MARK_NEW'))

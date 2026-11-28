@@ -9,13 +9,13 @@
  * only updated the first evaluation of the route module, while the rebuilt
  * tree held the module's current export as the live route).
  */
-import { expect, onTestFinished } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { expect } from 'vitest'
 import {
   errorsOutsideReloads,
   hmrSyncModule,
   trackRequests,
 } from '@tanstack/compiler-test-utils/hmr-sync'
+import { openTestPage } from '../test-close'
 import { reactApp } from './hydrate-dev-edits'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 
@@ -79,9 +79,7 @@ export async function editLoaderAroundTreeRebuilds(
   server: TreeRebuildServer,
 ): Promise<{ loader: BrowserPage; visit: BrowserPage }> {
   const open = async (url: string) => {
-    const page = await openPage(`${server.url}${url}`, {
-      registerCleanup: onTestFinished,
-    })
+    const page = await openTestPage(`${server.url}${url}`)
     await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
     return page
   }

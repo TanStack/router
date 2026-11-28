@@ -26,9 +26,9 @@
  * component edit: each holds the edited module alone, and neither runs the
  * loader or resets the component's state.
  */
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { pluginReact } from '@rsbuild/plugin-react'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { openTestPage } from '../../test-close'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 import { reactApp, solidApp } from '../hydrate-dev-edits'
 import { solidAppConfig } from '../hydrate-pages'
@@ -165,7 +165,7 @@ async function open(fw: Fw, files: Record<string, string>) {
         }),
     files: { ...(fw === 'react' ? reactApp : solidApp), ...files },
   })
-  const page = await openPage(server.url!, { registerCleanup: onTestFinished })
+  const page = await openTestPage(server.url!)
   await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
   return { server, page }
 }

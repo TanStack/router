@@ -8,8 +8,8 @@
  * generates.
  */
 import react from '@vitejs/plugin-react'
-import { describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { describe, expect, test } from 'vitest'
+import { openTestPage } from '../../test-close'
 import { startDevServer, startServerEntryFiles } from '../../dev-server'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import {
@@ -95,9 +95,7 @@ async function openApp(files: Record<string, string>) {
     files,
   })
   const server = Object.assign(started, { violations: recorder.violations })
-  const browser = await openPage(new URL('/', server.url).href, {
-    registerCleanup: onTestFinished,
-  })
+  const browser = await openTestPage(new URL('/', server.url).href)
   await browser.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
   return { server, browser }
 }

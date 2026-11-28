@@ -24,8 +24,8 @@
  * Source: fact-check of the Astra review round 4 of #8817, import
  * protection N1, B1 and B2.
  */
-import { describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { describe, expect, test } from 'vitest'
+import { closedWithTest, openTestPage } from '../../test-close'
 import { buildStart, startBundlers } from '../../build-harness'
 import { createStartHost } from '../../start-host'
 import { rejection } from '../../importProtection/start-apps'
@@ -156,12 +156,13 @@ async function previewFixed(
   files: Record<string, string>,
 ) {
   if (bundler === 'vite') {
-    const host = await createStartHost({
-      serve: false,
-      files,
-      start: { importProtection: { enabled: true } },
-    })
-    onTestFinished(() => host.close())
+    const host = await closedWithTest(() =>
+      createStartHost({
+        serve: false,
+        files,
+        start: { importProtection: { enabled: true } },
+      }),
+    )
     return (await host.preview()).url
   }
   const build = await buildStart({
@@ -217,7 +218,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
         expect(html, name).toContain('data-testid="fallback"')
         expect(html, name).not.toContain('data-testid="chart"')
         expect(html, name).not.toContain('data-testid="oops"')
-        const page = await openPage(href, { registerCleanup: onTestFinished })
+        const page = await openTestPage(href)
         await page.waitForText('hydrated', {
           selector: '[data-testid=hydrated]',
         })

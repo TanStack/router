@@ -18,10 +18,10 @@
  */
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import { beforeAll, describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { beforeAll, describe, expect, test } from 'vitest'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import { pluginReact } from '@rsbuild/plugin-react'
+import { openTestPage } from '../test-close'
 import { startDevServerShared } from '../dev-server'
 import { startRsbuildStartDevServerShared } from '../rsbuild-dev-server'
 import { rootDocument, routerFile } from './start-compose-app'
@@ -381,7 +381,7 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
  * texts it showed, joined by a space. The page is closed before it returns.
  */
 async function clientCall(url: string, testid: string, clicks = 1) {
-  const page = await openPage(url, { registerCleanup: onTestFinished })
+  const page = await openTestPage(url)
   try {
     await page.waitForText('hydrated', {
       selector: '[data-testid=hydrated]',

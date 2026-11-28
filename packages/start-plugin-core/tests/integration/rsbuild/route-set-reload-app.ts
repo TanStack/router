@@ -10,11 +10,10 @@
  */
 import path from 'node:path'
 import { pluginReact } from '@rsbuild/plugin-react'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { trackRequests } from '@tanstack/compiler-test-utils/hmr-sync'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import { workspacePackage } from '@tanstack/compiler-test-utils/workspace-packages'
-import { onTestFinished } from 'vitest'
+import { openTestPage } from '../../test-close'
 import { startServerEntryFiles } from '../../dev-server'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 import type { RsbuildConfig, RsbuildPlugin } from '@rsbuild/core'
@@ -238,9 +237,7 @@ export interface Tab {
 /** Opens `path` in a tab of `reload`'s server and waits for its hydration. */
 export async function openTab(reload: ReloadServer, path: string) {
   const documents: Array<Promise<TabDocument>> = []
-  const browser = await openPage(new URL(path, reload.url).href, {
-    registerCleanup: onTestFinished,
-  })
+  const browser = await openTestPage(new URL(path, reload.url).href)
   // (listening after the first document: the tab's first answer is pushed below)
   browser.page.on('response', (response) => {
     if (

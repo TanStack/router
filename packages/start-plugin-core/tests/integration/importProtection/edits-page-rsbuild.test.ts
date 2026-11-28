@@ -11,8 +11,8 @@
  * violations and only those.
  */
 import { pluginReact } from '@rsbuild/plugin-react'
-import { describe, expect, onTestFinished, test } from 'vitest'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { describe, expect, test } from 'vitest'
+import { openTestPage } from '../../test-close'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 import { violationRecorder } from '../../importProtection/start-apps'
@@ -58,9 +58,7 @@ const run = () =>
       start: { importProtection: recorder.importProtection },
       files: pageApp,
     })
-    const browser = await openPage(server.url!, {
-      registerCleanup: onTestFinished,
-    })
+    const browser = await openTestPage(server.url!)
     const result: Array<StepOutcome> = []
     for (const { step, live } of pageSteps) {
       let since = 0
