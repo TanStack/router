@@ -6,9 +6,8 @@
  * `quoteStyle` and `semicolons`.
  */
 import { describe, expect } from 'vitest'
-import { createApp, generate, read } from './app'
+import { generate, read } from './app'
 import { codeStyle, routeCallOf, routeCallSpansOf } from './route-id'
-import { withRouteTree } from './route-tree'
 import { test } from './test'
 
 /** The text of server-rendered `html`: its text nodes, joined. */
@@ -26,10 +25,10 @@ describe.each(['react', 'solid', 'vue'] as const)(
   'scaffolded %s routes',
   (target) => {
     test('empty root, route and lazy route files become routes whose components render', async ({
-      appRoot,
-      routeTreeHost,
+      createApp,
+      withRouteTree,
     }) => {
-      const root = await createApp(appRoot, {
+      const root = await createApp({
         'src/routes/__root.tsx': '',
         'src/routes/posts.tsx': '',
         'src/routes/about.lazy.tsx': '',
@@ -57,7 +56,7 @@ describe.each(['react', 'solid', 'vue'] as const)(
       for (const [file, id, constructor] of Object.values(pages)) {
         expect(await scaffolded(file)).toEqual({ constructor, id })
       }
-      await withRouteTree(routeTreeHost, generatedRouteTree, async (tree) => {
+      await withRouteTree(generatedRouteTree, async (tree) => {
         expect(tree.routeFiles()).toEqual({
           __root__: 'routes/__root.tsx',
           '/posts': 'routes/posts.tsx',
@@ -89,10 +88,9 @@ describe.each(['react', 'solid', 'vue'] as const)(
       { quoteStyle: 'double', semicolons: true },
     ] as const)(
       'scaffolded files follow quoteStyle $quoteStyle and semicolons $semicolons',
-      async ({ quoteStyle, semicolons }, { appRoot }) => {
+      async ({ quoteStyle, semicolons }, { createApp }) => {
         const files = ['__root.tsx', 'posts.tsx', 'about.lazy.tsx']
         const root = await createApp(
-          appRoot,
           Object.fromEntries(files.map((file) => [`src/routes/${file}`, ''])),
         )
         await generate(root, { target, quoteStyle, semicolons })

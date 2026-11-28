@@ -24,14 +24,17 @@ import {
   logging,
   replaceBackslash,
 } from '../src'
-import {
-  configOf,
-  createApp,
-  fileRoute,
-  rootRoute as rootRouteFile,
-} from './app'
-import { test } from './test'
+import { configOf, fileRoute, rootRoute as rootRouteFile } from './app'
+import { test as base } from './test'
 import type { Logger } from '../src'
+
+/** The app most tests start from: a root route and a `/posts` route file. */
+const test = base.extend('postsRoot', ({ createApp }) =>
+  createApp({
+    'src/routes/__root.tsx': rootRouteFile(),
+    'src/routes/posts.tsx': fileRoute('/posts'),
+  }),
+)
 
 /** The route files the generator knows: `/`-separated on every platform. */
 function routeFiles(generator: Generator) {
@@ -40,12 +43,8 @@ function routeFiles(generator: Generator) {
 
 // Main's `run()` rejected naming the file (`tsr generate` exited 1).
 test('a cold generation with a route file that does not parse fails naming the file', async ({
-  appRoot,
+  postsRoot: root,
 }) => {
-  const root = await createApp(appRoot, {
-    'src/routes/__root.tsx': rootRouteFile(),
-    'src/routes/posts.tsx': fileRoute('/posts'),
-  })
   const posts = path.join(root, 'src/routes/posts.tsx')
   // The committed tree lists `/posts`
   await new Generator({ config: configOf(root), root }).run()
@@ -59,12 +58,8 @@ test('a cold generation with a route file that does not parse fails naming the f
 })
 
 test('a route file an edit breaks in a running generator keeps its route and is reported', async ({
-  appRoot,
+  postsRoot: root,
 }) => {
-  const root = await createApp(appRoot, {
-    'src/routes/__root.tsx': rootRouteFile(),
-    'src/routes/posts.tsx': fileRoute('/posts'),
-  })
   // (the warning is a log: `disableLogging` silences it)
   const config = configOf(root, { disableLogging: false })
   const posts = path.join(root, 'src/routes/posts.tsx')
@@ -92,12 +87,8 @@ test('a route file an edit breaks in a running generator keeps its route and is 
 // a route file that does not parse: the server goes on, the failure names
 // the file and the committed tree keeps the route, as on main.
 test('a dev server starting with a route file that does not parse reports it and keeps the committed tree', async ({
-  appRoot,
+  postsRoot: root,
 }) => {
-  const root = await createApp(appRoot, {
-    'src/routes/__root.tsx': rootRouteFile(),
-    'src/routes/posts.tsx': fileRoute('/posts'),
-  })
   const config = configOf(root)
   await new Generator({ config, root }).run()
   const committed = await readFile(config.generatedRouteTree, 'utf8')
@@ -117,9 +108,9 @@ test('a dev server starting with a route file that does not parse reports it and
 // A build that does not watch runs the generator through the same session:
 // there the failure fails the build.
 test('a build starting with a route file that does not parse fails, naming the file', async ({
-  appRoot,
+  createApp,
 }) => {
-  const root = await createApp(appRoot, {
+  const root = await createApp({
     'src/routes/__root.tsx': rootRouteFile(),
     'src/routes/posts.tsx': 'export const Route = (',
   })
@@ -154,8 +145,8 @@ const brokenTrees: Array<[string, Record<string, string>, string]> = [
 
 test.for(brokenTrees)(
   'a build whose route tree cannot be generated (%s) fails, naming the files',
-  async ([_, files, named], { appRoot }) => {
-    const root = await createApp(appRoot, {
+  async ([_, files, named], { createApp }) => {
+    const root = await createApp({
       'src/routes/__root.tsx': rootRouteFile(),
       ...files,
     })
@@ -176,8 +167,8 @@ test.for(brokenTrees)(
 // tree of the last good generation stay.
 test.for(brokenTrees)(
   'a dev run whose route tree cannot be generated (%s) reports it and keeps the last good tree',
-  async ([_, files, named], { appRoot }) => {
-    const root = await createApp(appRoot, {
+  async ([_, files, named], { createApp }) => {
+    const root = await createApp({
       'src/routes/__root.tsx': rootRouteFile(),
     })
     const config = configOf(root)
@@ -230,12 +221,8 @@ function whileReading(file: string, onWarning: () => void): Logger {
 
 // The root route file too: a cold run reads every route file.
 test('a cold generation with a root route file that does not parse fails naming the file', async ({
-  appRoot,
+  postsRoot: root,
 }) => {
-  const root = await createApp(appRoot, {
-    'src/routes/__root.tsx': rootRoute,
-    'src/routes/posts.tsx': postsRoute,
-  })
   const config = configOf(root)
   await new Generator({ config, root }).run()
   const committed = await readFile(config.generatedRouteTree, 'utf8')
@@ -251,12 +238,8 @@ test('a cold generation with a root route file that does not parse fails naming 
 })
 
 test('a root route file an edit breaks in a running generator keeps the tree and is reported', async ({
-  appRoot,
+  postsRoot: root,
 }) => {
-  const root = await createApp(appRoot, {
-    'src/routes/__root.tsx': rootRoute,
-    'src/routes/posts.tsx': postsRoute,
-  })
   // (the warning is a log: `disableLogging` silences it)
   const config = configOf(root, { disableLogging: false })
   const rootFile = path.join(root, 'src/routes/__root.tsx')
@@ -281,12 +264,8 @@ test('a root route file an edit breaks in a running generator keeps the tree and
 // `run()` called again, a programmatic build repeated): each build is a
 // run that does not watch, whatever an earlier one read.
 test('a build of a generator that built before fails when a route file no longer parses, naming the file', async ({
-  appRoot,
+  postsRoot: root,
 }) => {
-  const root = await createApp(appRoot, {
-    'src/routes/__root.tsx': rootRoute,
-    'src/routes/posts.tsx': postsRoute,
-  })
   const config = configOf(root)
   const generator = new Generator({ config, root })
   const session = createGeneratorSession({ generator: () => generator })
@@ -303,12 +282,8 @@ test('a build of a generator that built before fails when a route file no longer
 
 // The route a watch run kept for a broken file is no route of a build.
 test('a build after a watch run that kept the route of a broken file fails, naming the file', async ({
-  appRoot,
+  postsRoot: root,
 }) => {
-  const root = await createApp(appRoot, {
-    'src/routes/__root.tsx': rootRoute,
-    'src/routes/posts.tsx': postsRoute,
-  })
   const config = configOf(root)
   const posts = path.join(root, 'src/routes/posts.tsx')
   const generator = new Generator({ config, root })
@@ -328,12 +303,8 @@ test('a build after a watch run that kept the route of a broken file fails, nami
 // as the build's batch reads the broken file) is a build too, so it fails on
 // the broken file rather than keep its last good route.
 test('a build fails on a route file that does not parse when another event arrives while it generates', async ({
-  appRoot,
+  postsRoot: root,
 }) => {
-  const root = await createApp(appRoot, {
-    'src/routes/__root.tsx': rootRoute,
-    'src/routes/posts.tsx': postsRoute,
-  })
   const config = configOf(root)
   const posts = path.join(root, 'src/routes/posts.tsx')
   let later: Promise<void> | undefined
@@ -364,12 +335,8 @@ test('a build fails on a route file that does not parse when another event arriv
 // A build arriving while a dev batch generates: the drain's last batch is the
 // build's, whatever the first waiter asked for.
 test('a build arriving during a dev batch fails on a route file that does not parse', async ({
-  appRoot,
+  postsRoot: root,
 }) => {
-  const root = await createApp(appRoot, {
-    'src/routes/__root.tsx': rootRoute,
-    'src/routes/posts.tsx': postsRoute,
-  })
   const posts = path.join(root, 'src/routes/posts.tsx')
   // (the build arrives as the dev batch reads the broken file)
   let built: Promise<void> | undefined
@@ -395,12 +362,8 @@ test('a build arriving during a dev batch fails on a route file that does not pa
 // (the fix lands, and its event arrives, as the build's batch reads the
 // broken file)
 test('a build resolves when an event arriving while it generates fixes the route file', async ({
-  appRoot,
+  postsRoot: root,
 }) => {
-  const root = await createApp(appRoot, {
-    'src/routes/__root.tsx': rootRoute,
-    'src/routes/posts.tsx': postsRoute,
-  })
   const posts = path.join(root, 'src/routes/posts.tsx')
   let building = false
   let fixed: Promise<void> | undefined
@@ -430,9 +393,9 @@ test('a build resolves when an event arriving while it generates fixes the route
 // A build batch that fails before publishing still read what changed: the
 // next batch publishes it, though the file that broke it is all it reads.
 test('a route change a failed build read reaches the tree once the broken file is fixed', async ({
-  appRoot,
+  createApp,
 }) => {
-  const root = await createApp(appRoot, {
+  const root = await createApp({
     'src/routes/__root.tsx': rootRoute,
     'src/routes/posts.tsx': postsRoute,
     'src/routes/about.tsx': fileRoute('/about'),
@@ -479,12 +442,8 @@ test('a route change a failed build read reaches the tree once the broken file i
 // parse fails the build: a failure of another kind is only reported, and
 // would otherwise win by arriving first.
 test('a build fails on a route file known not to parse when the root route is gone too', async ({
-  appRoot,
+  postsRoot: root,
 }) => {
-  const root = await createApp(appRoot, {
-    'src/routes/__root.tsx': rootRoute,
-    'src/routes/posts.tsx': postsRoute,
-  })
   const posts = path.join(root, 'src/routes/posts.tsx')
   const generator = new Generator({ config: configOf(root), root })
   const session = createGeneratorSession({
@@ -506,11 +465,7 @@ test.for([
   ['deleted', (posts: string) => rm(posts)],
 ] as const)(
   'a build fails on a gone root route when the route file known not to parse was %s',
-  async ([_, change], { appRoot }) => {
-    const root = await createApp(appRoot, {
-      'src/routes/__root.tsx': rootRoute,
-      'src/routes/posts.tsx': postsRoute,
-    })
+  async ([_, change], { postsRoot: root }) => {
     const posts = path.join(root, 'src/routes/posts.tsx')
     const reports: Array<unknown> = []
     const generator = new Generator({ config: configOf(root), root })
@@ -534,12 +489,8 @@ test.for([
 )
 
 test('a build names a route file known not to parse and one that never did', async ({
-  appRoot,
+  postsRoot: root,
 }) => {
-  const root = await createApp(appRoot, {
-    'src/routes/__root.tsx': rootRoute,
-    'src/routes/posts.tsx': postsRoute,
-  })
   const posts = path.join(root, 'src/routes/posts.tsx')
   const generator = new Generator({ config: configOf(root), root })
   const session = createGeneratorSession({
@@ -561,8 +512,8 @@ test('a build names a route file known not to parse and one that never did', asy
 // (A symbolic link to itself: no read of it succeeds, for any user.)
 test.for(['a-unreadable.tsx', 'z-unreadable.tsx'])(
   'a cold build fails on a route file that does not parse next to an unreadable one (%s)',
-  async (unreadable, { appRoot }) => {
-    const root = await createApp(appRoot, {
+  async (unreadable, { createApp }) => {
+    const root = await createApp({
       'src/routes/__root.tsx': rootRoute,
       'src/routes/posts.tsx': 'export const Route = (',
     })
@@ -579,12 +530,8 @@ test.for(['a-unreadable.tsx', 'z-unreadable.tsx'])(
 )
 
 test('a build fails on a route file known not to parse next to an unreadable one', async ({
-  appRoot,
+  postsRoot: root,
 }) => {
-  const root = await createApp(appRoot, {
-    'src/routes/__root.tsx': rootRoute,
-    'src/routes/posts.tsx': postsRoute,
-  })
   const posts = path.join(root, 'src/routes/posts.tsx')
   const generator = new Generator({ config: configOf(root), root })
   const session = createGeneratorSession({
@@ -600,9 +547,9 @@ test('a build fails on a route file known not to parse next to an unreadable one
 })
 
 test('a cold build names every route file that does not parse', async ({
-  appRoot,
+  createApp,
 }) => {
-  const root = await createApp(appRoot, {
+  const root = await createApp({
     'src/routes/__root.tsx': rootRoute,
     'src/routes/about.tsx': 'export const Route = (',
     'src/routes/posts.tsx': 'export const Route = (',
@@ -619,12 +566,8 @@ test('a cold build names every route file that does not parse', async ({
 // A build reads what it builds: a file whose size and modification time did
 // not change (an overwrite within the file system's clock tick) is read too.
 test('a build fails on a route file an overwrite of the same size and time broke', async ({
-  appRoot,
+  postsRoot: root,
 }) => {
-  const root = await createApp(appRoot, {
-    'src/routes/__root.tsx': rootRoute,
-    'src/routes/posts.tsx': postsRoute,
-  })
   const posts = path.join(root, 'src/routes/posts.tsx')
   const generator = new Generator({ config: configOf(root), root })
   const session = createGeneratorSession({
@@ -645,8 +588,8 @@ test('a build fails on a route file an overwrite of the same size and time broke
 // route: the run fails as for any route file that does not parse.
 test.for([['import { createFileRo'], ['export const = (']] as const)(
   'a cold generation and a build with a route file `%s` that names no Route fail naming the file',
-  async ([content], { appRoot }) => {
-    const root = await createApp(appRoot, {
+  async ([content], { createApp }) => {
+    const root = await createApp({
       'src/routes/__root.tsx': rootRoute,
       'src/routes/posts.tsx': content,
     })
@@ -661,8 +604,8 @@ test.for([['import { createFileRo'], ['export const = (']] as const)(
 
 // A Vue root is a single-file component, which the generator never parses
 // (its script is not the file's text).
-test('a Vue root route file generates', async ({ appRoot }) => {
-  const root = await createApp(appRoot, {
+test('a Vue root route file generates', async ({ createApp }) => {
+  const root = await createApp({
     'src/routes/__root.vue': `<script lang="ts">
 import { createRootRoute } from '@tanstack/vue-router'
 export const Route = createRootRoute()
@@ -682,9 +625,9 @@ export const Route = createRootRoute()
 // root) that a dev server's first generation could not read: an event of it
 // generates once it parses.
 test('a virtual root route outside the routes directory that did not parse at dev start generates once fixed', async ({
-  appRoot,
+  createApp,
 }) => {
-  const root = await createApp(appRoot, {
+  const root = await createApp({
     'src/layouts/root.tsx': 'export const Route = (',
     'src/routes/posts.tsx': postsRoute,
   })

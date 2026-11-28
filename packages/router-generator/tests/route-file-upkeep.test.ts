@@ -23,12 +23,11 @@ import {
   captureDiagnostics,
   expectNoProblems,
 } from '@tanstack/compiler-test-utils/diagnostic-channel'
-import { createApp, generate, read, rootRoute } from './app'
+import { generate, read, rootRoute } from './app'
 import { expectOnlyOwnedEdits } from './owned-edits'
 import { routeCallOf } from './route-id'
-import { evaluateModule, routesOf, withRouteTree } from './route-tree'
-import { test } from './test'
-import type { RouteTreeHost } from './route-tree'
+import { test as base } from './test'
+import type { Fixtures } from './test'
 import type { Config } from '../src'
 
 afterEach(() => {
@@ -55,76 +54,62 @@ type TreeLoad = 'loads' | { fails: string }
  * (`routes` undefined). Returns the file as the generator left it, the
  * warnings (the load's included), `error` and `routes`.
  */
-async function upkeep(
-  appRoot: string,
-  routeTreeHost: RouteTreeHost,
-  file: string,
-  source: string,
-  config: Partial<Config> = {},
-  otherFiles: Record<string, string> = {},
-  { reportAllowed = false, tree = 'loads' as TreeLoad } = {},
-) {
-  const root = await createApp(appRoot, {
-    'src/routes/__root.tsx': rootRoute(),
-    [`src/routes/${file}`]: source,
-    ...otherFiles,
-  })
-  let error: unknown
-  let routes: Record<string, string | null> | undefined
-  const { diagnostics } = await captureDiagnostics(async () => {
-    let treeFile: string
-    try {
-      treeFile = (await generate(root, { disableLogging: false, ...config }))
-        .generatedRouteTree
-    } catch (e) {
-      // (a tree expected to fail is a tree: its run must succeed)
-      if (!reportAllowed || tree !== 'loads') {
-        throw e
+const upkeeper =
+  ({ createApp, routesOf }: Pick<Fixtures, 'createApp' | 'routesOf'>) =>
+  async (
+    file: string,
+    source: string,
+    config: Partial<Config> = {},
+    otherFiles: Record<string, string> = {},
+    { reportAllowed = false, tree = 'loads' as TreeLoad } = {},
+  ) => {
+    const root = await createApp({
+      'src/routes/__root.tsx': rootRoute(),
+      [`src/routes/${file}`]: source,
+      ...otherFiles,
+    })
+    let error: unknown
+    let routes: Record<string, string | null> | undefined
+    const { diagnostics } = await captureDiagnostics(async () => {
+      let treeFile: string
+      try {
+        treeFile = (await generate(root, { disableLogging: false, ...config }))
+          .generatedRouteTree
+      } catch (e) {
+        // (a tree expected to fail is a tree: its run must succeed)
+        if (!reportAllowed || tree !== 'loads') {
+          throw e
+        }
+        error = e
+        return
       }
-      error = e
-      return
+      if (tree === 'loads') {
+        routes = await routesOf(treeFile)
+      } else {
+        await expect(routesOf(treeFile)).rejects.toThrow(tree.fails)
+      }
+    })
+    return {
+      root,
+      file: path.join(root, 'src/routes', file),
+      written: await read(root, `src/routes/${file}`),
+      diagnostics,
+      error,
+      routes,
     }
-    if (tree === 'loads') {
-      routes = await routesOf(routeTreeHost, treeFile)
-    } else {
-      await expect(routesOf(routeTreeHost, treeFile)).rejects.toThrow(
-        tree.fails,
-      )
-    }
-  })
-  return {
-    root,
-    file: path.join(root, 'src/routes', file),
-    written: await read(root, `src/routes/${file}`),
-    diagnostics,
-    error,
-    routes,
   }
-}
-
-/**
- * `upkeep` of a file the generator may report instead of keeping up, whose
- * tree goes as `tree` says.
- */
-const upkeepOrReport = (
-  appRoot: string,
-  routeTreeHost: RouteTreeHost,
-  file: string,
-  source: string,
-  tree: TreeLoad,
-  otherFiles: Record<string, string> = {},
-) =>
-  upkeep(appRoot, routeTreeHost, file, source, {}, otherFiles, {
-    reportAllowed: true,
-    tree,
-  })
 
 /**
  * Asserts that the generator reported the file by name: the run failed
  * naming it, or it succeeded with a warning naming it.
  */
 function expectReported(
-  { root, file, error, diagnostics }: Awaited<ReturnType<typeof upkeep>>,
+  {
+    root,
+    file,
+    error,
+    diagnostics,
+  }: Awaited<ReturnType<ReturnType<typeof upkeeper>>>,
   at?: { position: ReturnType<typeof diagnosticPosition> },
 ) {
   expectDiagnostic(error === undefined ? diagnostics : diagnosticsOf(error), {
@@ -143,40 +128,57 @@ function expectReported(
  * through a namespace import) and `id`, and it changed only where the
  * generator may edit it (owned-edits.ts). Returns its exports.
  */
-async function expectRouteFile(
-  appRoot: string,
-  routeTreeHost: RouteTreeHost,
-  written: string,
-  {
-    id,
-    createdWith = 'createFileRoute',
-    source,
-    fileName,
-  }: {
-    id: string
-    createdWith?: 'createFileRoute' | 'createLazyFileRoute'
-    source: string
-    fileName?: string
-  },
-) {
-  const { exports, router: routerExports } = await evaluateModule(
-    routeTreeHost,
-    appRoot,
-    written,
-    fileName,
+const routeFileCheck =
+  ({ evaluateModule }: Pick<Fixtures, 'evaluateModule'>) =>
+  async (
+    written: string,
+    {
+      id,
+      createdWith = 'createFileRoute',
+      source,
+      fileName,
+    }: {
+      id: string
+      createdWith?: 'createFileRoute' | 'createLazyFileRoute'
+      source: string
+      fileName?: string
+    },
+  ) => {
+    const { exports, router: routerExports } = await evaluateModule(
+      written,
+      fileName,
+    )
+    expect(exports.Route).toBeInstanceOf(
+      createdWith === 'createLazyFileRoute'
+        ? routerExports.LazyRoute
+        : routerExports.Route,
+    )
+    expect(routeCallOf(written, fileName)).toEqual({
+      constructor: createdWith,
+      id,
+    })
+    expectOnlyOwnedEdits(source, written, fileName)
+    return exports
+  }
+
+const test = base
+  .extend('upkeep', upkeeper)
+  /**
+   * `upkeep` of a file the generator may report instead of keeping up, whose
+   * tree goes as `tree` says.
+   */
+  .extend(
+    'upkeepOrReport',
+    ({ upkeep }) =>
+      (
+        file: string,
+        source: string,
+        tree: TreeLoad,
+        otherFiles: Record<string, string> = {},
+      ) =>
+        upkeep(file, source, {}, otherFiles, { reportAllowed: true, tree }),
   )
-  expect(exports.Route).toBeInstanceOf(
-    createdWith === 'createLazyFileRoute'
-      ? routerExports.LazyRoute
-      : routerExports.Route,
-  )
-  expect(routeCallOf(written, fileName)).toEqual({
-    constructor: createdWith,
-    id,
-  })
-  expectOnlyOwnedEdits(source, written, fileName)
-  return exports
-}
+  .extend('expectRouteFile', routeFileCheck)
 
 describe('route ids the generator fixes', () => {
   test.for([
@@ -195,20 +197,15 @@ describe('route ids the generator fixes', () => {
     // (a template literal id: replaced or reported, below)
   ])(
     'a route file with $name gets its id fixed',
-    async ({ call }, { appRoot, routeTreeHost }) => {
+    async ({ call }, { expectRouteFile, upkeep }) => {
       const source = `import { createFileRoute } from ${router}
 
 const Page = () => null
 export const Route = ${call}
 `
-      const { written, routes } = await upkeep(
-        appRoot,
-        routeTreeHost,
-        'new.tsx',
-        source,
-      )
+      const { written, routes } = await upkeep('new.tsx', source)
 
-      await expectRouteFile(appRoot, routeTreeHost, written, {
+      await expectRouteFile(written, {
         id: '/new',
         source,
       })
@@ -243,16 +240,11 @@ export const other = otherPath
     },
   ])(
     'a route file with $name gets the id of its Route fixed',
-    async ({ body }, { appRoot, routeTreeHost }) => {
+    async ({ body }, { expectRouteFile, upkeep }) => {
       const source = `import { createFileRoute } from ${router}\n\n${body}`
-      const { written } = await upkeep(
-        appRoot,
-        routeTreeHost,
-        'new.tsx',
-        source,
-      )
+      const { written } = await upkeep('new.tsx', source)
 
-      await expectRouteFile(appRoot, routeTreeHost, written, {
+      await expectRouteFile(written, {
         id: '/new',
         source,
       })
@@ -262,8 +254,8 @@ export const other = otherPath
   // Source: TanStack/router#7341. In a `.ts` file, `<T>value` is a type
   // assertion and `<T>(value: T) => value` a generic arrow function, not JSX.
   test('a .ts route file with angle-bracket type assertions gets its id fixed', async ({
-    appRoot,
-    routeTreeHost,
+    expectRouteFile,
+    upkeep,
   }) => {
     const source = `import { createFileRoute } from ${router}
 const identity = <T>(value: T) => value
@@ -271,14 +263,9 @@ export const Route = createFileRoute('/old')({
   loader: () => <number>identity(<unknown>1),
 })
 `
-    const { written, routes } = await upkeep(
-      appRoot,
-      routeTreeHost,
-      'new.ts',
-      source,
-    )
+    const { written, routes } = await upkeep('new.ts', source)
 
-    await expectRouteFile(appRoot, routeTreeHost, written, {
+    await expectRouteFile(written, {
       id: '/new',
       source,
       fileName: 'new.ts',
@@ -338,11 +325,11 @@ export const Route = Router.createFileRoute('/old')({})
     'a route file with $name gets its id and constructor',
     async (
       { file, source, createdWith, withId },
-      { appRoot, routeTreeHost },
+      { expectRouteFile, upkeep },
     ) => {
-      const { written } = await upkeep(appRoot, routeTreeHost, file, source)
+      const { written } = await upkeep(file, source)
 
-      await expectRouteFile(appRoot, routeTreeHost, written, {
+      await expectRouteFile(written, {
         id: '/new',
         createdWith,
         source: withId ? withId(source) : source,
@@ -382,12 +369,12 @@ export { Route }
     },
   ])(
     'a root route file created with $name is left as it is',
-    async ({ source }, { appRoot, routeTreeHost }) => {
-      const root = await createApp(appRoot, { 'src/routes/__root.tsx': source })
+    async ({ source }, { createApp, routesOf }) => {
+      const root = await createApp({ 'src/routes/__root.tsx': source })
       const { generatedRouteTree } = await generate(root)
 
       expect(await read(root, 'src/routes/__root.tsx')).toBe(source)
-      expect(await routesOf(routeTreeHost, generatedRouteTree)).toEqual({
+      expect(await routesOf(generatedRouteTree)).toEqual({
         __root__: 'routes/__root.tsx',
       })
     },
@@ -420,16 +407,11 @@ export const Route = createLazyFileRoute('/old')({})
     },
   ])(
     'a route file created with createLazyFileRoute gets createFileRoute, with $name',
-    async ({ source }, { appRoot, routeTreeHost }) => {
-      const { written } = await upkeep(
-        appRoot,
-        routeTreeHost,
-        'new.tsx',
-        source,
-      )
+    async ({ source }, { expectRouteFile, upkeep }) => {
+      const { written } = await upkeep('new.tsx', source)
 
       // (a type import stays a type import: expectOnlyOwnedEdits)
-      await expectRouteFile(appRoot, routeTreeHost, written, {
+      await expectRouteFile(written, {
         id: '/new',
         source,
       })
@@ -437,8 +419,8 @@ export const Route = createLazyFileRoute('/old')({})
   )
 
   test('a lazy route file with a multi-line import of createFileRoute gets createLazyFileRoute', async ({
-    appRoot,
-    routeTreeHost,
+    expectRouteFile,
+    upkeep,
   }) => {
     const source = `import {
   Link,
@@ -449,14 +431,9 @@ export const Route = createFileRoute('/new')({
   component: () => Link,
 })
 `
-    const { written } = await upkeep(
-      appRoot,
-      routeTreeHost,
-      'new.lazy.tsx',
-      source,
-    )
+    const { written } = await upkeep('new.lazy.tsx', source)
 
-    await expectRouteFile(appRoot, routeTreeHost, written, {
+    await expectRouteFile(written, {
       id: '/new',
       createdWith: 'createLazyFileRoute',
       source,
@@ -501,16 +478,14 @@ export const Route = createFileRoute('/new')({})
     },
   ])(
     'a route file whose id is right gets the right constructor, with $name',
-    async ({ lazy, source }, { appRoot, routeTreeHost }) => {
+    async ({ lazy, source }, { expectRouteFile, upkeep }) => {
       const createdWith = lazy ? 'createLazyFileRoute' : 'createFileRoute'
       const { written } = await upkeep(
-        appRoot,
-        routeTreeHost,
         lazy ? 'new.lazy.tsx' : 'new.tsx',
         source,
       )
 
-      await expectRouteFile(appRoot, routeTreeHost, written, {
+      await expectRouteFile(written, {
         id: '/new',
         createdWith,
         source,
@@ -550,15 +525,10 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     },
   ])(
     'a route file created with $name gets createFileRoute with its id',
-    async ({ source, call }, { appRoot, routeTreeHost }) => {
-      const { written, routes } = await upkeep(
-        appRoot,
-        routeTreeHost,
-        'new.tsx',
-        source,
-      )
+    async ({ source, call }, { expectRouteFile, upkeep }) => {
+      const { written, routes } = await upkeep('new.tsx', source)
 
-      const exports = await expectRouteFile(appRoot, routeTreeHost, written, {
+      const exports = await expectRouteFile(written, {
         id: '/new',
         // (the same file with the file route's call, as far as the
         // generator's edits go)
@@ -598,16 +568,12 @@ export const Route = createLazyFileRoute('/__root')({
     },
   ])(
     'a root route file created with $name gets createRootRoute',
-    async ({ source, call }, { appRoot, routeTreeHost }) => {
-      const root = await createApp(appRoot, { 'src/routes/__root.tsx': source })
+    async ({ source, call }, { createApp, evaluateModule, routesOf }) => {
+      const root = await createApp({ 'src/routes/__root.tsx': source })
       const { generatedRouteTree } = await generate(root)
       const written = await read(root, 'src/routes/__root.tsx')
 
-      const { exports, router: routerExports } = await evaluateModule(
-        routeTreeHost,
-        appRoot,
-        written,
-      )
+      const { exports, router: routerExports } = await evaluateModule(written)
       expect(exports.Route).toBeInstanceOf(routerExports.RootRoute)
       expect(exports.Route.options.component()).toBe('root page')
       expect(routeCallOf(written)).toEqual({
@@ -615,7 +581,7 @@ export const Route = createLazyFileRoute('/__root')({
         id: undefined,
       })
       expectOnlyOwnedEdits(source.replace(call, 'createRootRoute'), written)
-      expect(await routesOf(routeTreeHost, generatedRouteTree)).toEqual({
+      expect(await routesOf(generatedRouteTree)).toEqual({
         __root__: 'routes/__root.tsx',
       })
     },
@@ -643,22 +609,18 @@ describe('a constructor of the other kind with an id that is not a string litera
     },
   ] as const)(
     '$name gets the constructor of its kind, and its id is reported once, at its position',
-    async ({ fileName, from, to }, { appRoot, routeTreeHost }) => {
+    async ({ fileName, from, to }, { evaluateModule, upkeep }) => {
       const source = `import { ${from} } from ${router}
 
 const routeId = '/new'
 export const Route = ${from}(routeId)({ component: () => 'new page' })
 `
       const { root, file, written, diagnostics } = await upkeep(
-        appRoot,
-        routeTreeHost,
         fileName,
         source,
       )
 
       const { exports, router: routerExports } = await evaluateModule(
-        routeTreeHost,
-        appRoot,
         written,
         fileName,
       )
@@ -708,15 +670,10 @@ export const Route = createFileRoute('/old')({})
     },
   ])(
     'a route file without the constructor import gets it, with $name',
-    async ({ source }, { appRoot, routeTreeHost }) => {
-      const { written } = await upkeep(
-        appRoot,
-        routeTreeHost,
-        'new.tsx',
-        source,
-      )
+    async ({ source }, { expectRouteFile, upkeep }) => {
+      const { written } = await upkeep('new.tsx', source)
 
-      await expectRouteFile(appRoot, routeTreeHost, written, {
+      await expectRouteFile(written, {
         id: '/new',
         source,
       })
@@ -751,19 +708,14 @@ import { Link } from ${router}`,
     },
   ])(
     'a route file calling createFileRoute next to $name gets it bound once',
-    async ({ imports, uses }, { appRoot, routeTreeHost }) => {
+    async ({ imports, uses }, { expectRouteFile, upkeep }) => {
       const source = `${imports}
 export const uses = [${uses}]
 export const Route = createFileRoute('/old')({})
 `
-      const { written } = await upkeep(
-        appRoot,
-        routeTreeHost,
-        'new.tsx',
-        source,
-      )
+      const { written } = await upkeep('new.tsx', source)
 
-      await expectRouteFile(appRoot, routeTreeHost, written, {
+      await expectRouteFile(written, {
         id: '/new',
         source,
       })
@@ -788,16 +740,11 @@ export const Route = createFileRoute('/old')({})
     },
   ])(
     'type imports stay type-only: $name',
-    async ({ source }, { appRoot, routeTreeHost }) => {
-      const { written } = await upkeep(
-        appRoot,
-        routeTreeHost,
-        'new.tsx',
-        source,
-      )
+    async ({ source }, { expectRouteFile, upkeep }) => {
+      const { written } = await upkeep('new.tsx', source)
 
       // (expectOnlyOwnedEdits: `LinkProps` is still imported as a type)
-      await expectRouteFile(appRoot, routeTreeHost, written, {
+      await expectRouteFile(written, {
         id: '/new',
         source,
       })
@@ -887,15 +834,10 @@ export const Route = createFileRoute('/old')({})
     },
   ])(
     'a route file starting with $name keeps it in place when it gets the constructor import',
-    async ({ source, head, attached }, { appRoot, routeTreeHost }) => {
-      const { written } = await upkeep(
-        appRoot,
-        routeTreeHost,
-        'new.tsx',
-        source,
-      )
+    async ({ source, head, attached }, { expectRouteFile, upkeep }) => {
+      const { written } = await upkeep('new.tsx', source)
 
-      await expectRouteFile(appRoot, routeTreeHost, written, {
+      await expectRouteFile(written, {
         id: '/new',
         source,
       })
@@ -917,10 +859,8 @@ export const Route = createFileRoute('/old')({})
     },
   ])(
     'a route file starting with $name and a blank line keeps it in place when it gets the constructor import',
-    async ({ directive }, { appRoot, routeTreeHost }) => {
+    async ({ directive }, { upkeep }) => {
       const { written } = await upkeep(
-        appRoot,
-        routeTreeHost,
         'new.tsx',
         `${directive}\n\nexport const Route = createFileRoute('/old')({})\n`,
       )
@@ -988,15 +928,10 @@ export const Route = createFileRoute('/old')({})`,
     },
   ])(
     'a route file with $name gets its id fixed',
-    async ({ source }, { appRoot, routeTreeHost }) => {
-      const { written } = await upkeep(
-        appRoot,
-        routeTreeHost,
-        'new.tsx',
-        source,
-      )
+    async ({ source }, { expectRouteFile, upkeep }) => {
+      const { written } = await upkeep('new.tsx', source)
 
-      await expectRouteFile(appRoot, routeTreeHost, written, {
+      await expectRouteFile(written, {
         id: '/new',
         source,
       })
@@ -1052,24 +987,16 @@ export const Route = createFileRoute('/old')({})
     },
   ])(
     'a createFileRoute $name keeps its meaning: the file is left as it is, or reported',
-    async ({ source, tree }, { routeTreeHost, appRoot }) => {
-      const outcome = await upkeepOrReport(
-        appRoot,
-        routeTreeHost,
-        'new.tsx',
-        source,
-        tree,
-        {
-          'src/routes/-factory.ts': factory,
-        },
-      )
+    async ({ source, tree }, { upkeepOrReport, withRouteTree }) => {
+      const outcome = await upkeepOrReport('new.tsx', source, tree, {
+        'src/routes/-factory.ts': factory,
+      })
       const { root, written } = outcome
 
       expect(written).toBe(source)
       if (outcome.routes?.['/new'] === 'routes/new.tsx') {
         // (the route is the app's constructor's: with its pending component)
         await withRouteTree(
-          routeTreeHost,
           path.join(root, 'src/routeTree.gen.ts'),
           ({ router: liveRouter }) => {
             expect(
@@ -1084,8 +1011,8 @@ export const Route = createFileRoute('/old')({})
   )
 
   test('a createFileRoute shadowing the router one in an inner scope is left alone while the Route is kept up', async ({
-    appRoot,
-    routeTreeHost,
+    expectRouteFile,
+    upkeep,
   }) => {
     const source = `import { createFileRoute } from ${router}
 
@@ -1096,10 +1023,10 @@ function localRoute() {
 export const local = localRoute()
 export const Route = createFileRoute('/old')({})
 `
-    const { written } = await upkeep(appRoot, routeTreeHost, 'new.tsx', source)
+    const { written } = await upkeep('new.tsx', source)
 
     // (the inner call keeps its bytes: expectOnlyOwnedEdits)
-    const exports = await expectRouteFile(appRoot, routeTreeHost, written, {
+    const exports = await expectRouteFile(written, {
       id: '/new',
       source,
     })
@@ -1146,25 +1073,17 @@ export const makeRoute = () => createFileRoute('/new')
     '$name is left as it is and registered, or reported by name',
     async (
       { source, tree, helper: [helperFile, helperSource] },
-      { routeTreeHost, appRoot },
+      { upkeepOrReport, withRouteTree },
     ) => {
-      const outcome = await upkeepOrReport(
-        appRoot,
-        routeTreeHost,
-        'new.tsx',
-        source,
-        tree,
-        {
-          [helperFile]: helperSource,
-        },
-      )
+      const outcome = await upkeepOrReport('new.tsx', source, tree, {
+        [helperFile]: helperSource,
+      })
       const { root, written } = outcome
 
       expect(written).toBe(source)
       expect(await read(root, helperFile)).toBe(helperSource)
       if (outcome.routes?.['/new'] === 'routes/new.tsx') {
         await withRouteTree(
-          routeTreeHost,
           path.join(root, 'src/routeTree.gen.ts'),
           async ({ renderAt }) => {
             expect(await renderAt('/new')).toContain('new page')
@@ -1207,19 +1126,13 @@ export const Route = createFileRoute(\`/\${x}\`)({})
     },
   ])(
     'a route file with $name gets the literal id or is reported by name',
-    async ({ source, tree }, { appRoot, routeTreeHost }) => {
-      const outcome = await upkeepOrReport(
-        appRoot,
-        routeTreeHost,
-        'new.tsx',
-        source,
-        tree,
-      )
+    async ({ source, tree }, { expectRouteFile, upkeepOrReport }) => {
+      const outcome = await upkeepOrReport('new.tsx', source, tree)
       const { written } = outcome
 
       if (routeCallOf(written).id === '/new') {
         expect(outcome.error).toBeUndefined()
-        await expectRouteFile(appRoot, routeTreeHost, written, {
+        await expectRouteFile(written, {
           id: '/new',
           source,
         })
@@ -1254,13 +1167,8 @@ export const Route = createFileRoute(('/old' as const))({})
     },
   ])(
     'a route id $name gets the id of its path, nothing reported',
-    async ({ source, kept }, { appRoot, routeTreeHost }) => {
-      const { written, routes, diagnostics } = await upkeep(
-        appRoot,
-        routeTreeHost,
-        'new.tsx',
-        source,
-      )
+    async ({ source, kept }, { upkeep }) => {
+      const { written, routes, diagnostics } = await upkeep('new.tsx', source)
       expectNoProblems(diagnostics)
       expect(written).toBe(
         source.replace(/createFileRoute\(.*\)\(\{\}\)/, kept),
@@ -1275,12 +1183,9 @@ export const Route = createFileRoute(('/old' as const))({})
   // The stale id of a call without the options
   // call is named in parentheses too.
   test('a parenthesised stale id of a call without the options call is reported by name', async ({
-    appRoot,
-    routeTreeHost,
+    upkeepOrReport,
   }) => {
     const outcome = await upkeepOrReport(
-      appRoot,
-      routeTreeHost,
       'new.tsx',
       `import { createFileRoute } from ${router}
 export const Route = createFileRoute(('/old'))
@@ -1313,18 +1218,12 @@ export const Route = createFileRoute(('/old'))
     },
   ])(
     '$name of a call without the options call is reported at the id and kept',
-    async ({ id, tree }, { appRoot, routeTreeHost }) => {
+    async ({ id, tree }, { upkeepOrReport }) => {
       const source = `import { createFileRoute } from ${router}
 const segment = 'old'
 export const Route = createFileRoute(${id})
 `
-      const outcome = await upkeepOrReport(
-        appRoot,
-        routeTreeHost,
-        'new.tsx',
-        source,
-        tree,
-      )
+      const outcome = await upkeepOrReport('new.tsx', source, tree)
       expect(outcome.written).toBe(source)
       expectReported(outcome, { position: diagnosticPosition(source, id) })
     },
@@ -1357,10 +1256,8 @@ export const Route = fileRoute('/old')
     },
   ])(
     'a route file with $name is reported by name',
-    async ({ source, tree }, { appRoot, routeTreeHost }) => {
-      expectReported(
-        await upkeepOrReport(appRoot, routeTreeHost, 'new.tsx', source, tree),
-      )
+    async ({ source, tree }, { upkeepOrReport }) => {
+      expectReported(await upkeepOrReport('new.tsx', source, tree))
     },
   )
 
@@ -1368,15 +1265,12 @@ export const Route = fileRoute('/old')
   // helper is named (REVIEW-design5-final finding 3: the generator decided
   // "the router's constructor" by the callee's name).
   test('an app helper named createFileRoute called without an options call is left alone, nothing reported', async ({
-    appRoot,
-    routeTreeHost,
+    upkeep,
   }) => {
     const source = `import { createFileRoute } from './-route-helper'
 export const Route = createFileRoute('/old')
 `
     const { root, file, written, diagnostics } = await upkeep(
-      appRoot,
-      routeTreeHost,
       'new.tsx',
       source,
       {},
@@ -1423,21 +1317,15 @@ export const Route = createLazyFileRoute({ component: () => null })
     'a route file with $name is reported by name or repaired',
     async (
       { source, constructor, tree, fileName = 'new.tsx' },
-      { appRoot, routeTreeHost },
+      { expectRouteFile, upkeepOrReport },
     ) => {
-      const outcome = await upkeepOrReport(
-        appRoot,
-        routeTreeHost,
-        fileName,
-        source,
-        tree,
-      )
+      const outcome = await upkeepOrReport(fileName, source, tree)
       const { written } = outcome
 
       if (outcome.error === undefined && written !== source) {
         // (repaired: the same file with the curried call, as far as the
         // generator's edits go)
-        const exports = await expectRouteFile(appRoot, routeTreeHost, written, {
+        const exports = await expectRouteFile(written, {
           id: '/new',
           createdWith: constructor,
           source: source.replace(

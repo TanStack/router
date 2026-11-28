@@ -8,14 +8,14 @@
 import path from 'node:path'
 import { expect } from 'vitest'
 import { Generator } from '../../src'
-import { copyFixture, fixtureConfig } from '../generator-fixture'
+import { fixtureConfig } from '../generator-fixture'
 import { typeErrorsOfModules } from '../type-check'
 import { test } from '../test'
 
 test('the "nested" route tree types the router APIs of its type tests', async ({
-  appRoot,
+  copyFixture,
 }) => {
-  const dir = await copyFixture(appRoot, 'nested')
+  const dir = await copyFixture('nested')
   // (temporary files on the copy's filesystem)
   const config = {
     ...fixtureConfig('nested', dir),

@@ -29,7 +29,7 @@ export const Route = createFileRoute('/')({
 // shapes of shapeCases render none)
 test.for([...frameworkCases, groupLayout])(
   'the browser renders $name',
-  (testCase, { appRoot, clientHost, page, pageErrors }) =>
+  (testCase, { clientHost, page, pageErrors, appRoot }) =>
     checkClientPages(
       { appRoot, client: { host: clientHost, page, pageErrors } },
       testCase,
@@ -39,11 +39,11 @@ test.for([...frameworkCases, groupLayout])(
 // (its routes and server-rendered page are checked here too: no other case
 // has them)
 test('the browser renders a Vue route using the framework async-component API', ({
-  appRoot,
-  routeTreeHost,
   clientHost,
   page,
   pageErrors,
+  appRoot,
+  routeTreeHost,
 }) =>
   checkApp(
     {

@@ -17,23 +17,15 @@ import {
   rootRoute as virtualRootRoute,
   route as virtualRoute,
 } from '@tanstack/virtual-file-routes'
-import {
-  appWithRoutes,
-  createApp,
-  fileRoute,
-  generate,
-  read,
-  rootRoute,
-} from './app'
+import { fileRoute, generate, read, rootRoute } from './app'
 import { checkApp, page } from './real-router'
 import {
   childlessLayoutCase,
   childlessLayouts,
   lazyOnlyAnchorLayoutInDirectory,
 } from './real-router-cases'
-import { matchesOf, routesOf, urlsOf, withRouteTree } from './route-tree'
 import { test } from './test'
-import type { RouteTreeHost } from './route-tree'
+import type { Fixtures } from './test'
 import type { Config } from '../src'
 
 /**
@@ -41,8 +33,11 @@ import type { Config } from '../src'
  * `treeFile`, by the file whose `Route` it is (relative to the tree), read in
  * one load of the tree.
  */
-function pathByFile(routeTreeHost: RouteTreeHost, treeFile: string) {
-  return withRouteTree(routeTreeHost, treeFile, ({ router, fileOf }) =>
+function pathByFile(
+  withRouteTree: Fixtures['withRouteTree'],
+  treeFile: string,
+) {
+  return withRouteTree(treeFile, ({ router, fileOf }) =>
     Object.fromEntries(
       Object.values(router.routesById).map((route) => [
         fileOf(route.id),
@@ -54,17 +49,17 @@ function pathByFile(routeTreeHost: RouteTreeHost, treeFile: string) {
 
 describe('underscores', () => {
   test('an escaped leading underscore after the first segment of a flat route file name stays in the URL', async ({
-    appRoot,
-    routeTreeHost,
+    appWithRoutes,
+    urlsOf,
   }) => {
-    const root = await appWithRoutes(appRoot, [
+    const root = await appWithRoutes([
       'foo.[_]bar.tsx',
       'posts.tsx',
       'posts.a.[_]b.tsx',
     ])
     const { generatedRouteTree } = await generate(root)
 
-    expect(await urlsOf(routeTreeHost, generatedRouteTree)).toEqual({
+    expect(await urlsOf(generatedRouteTree)).toEqual({
       __root__: '/',
       '/foo/_bar': '/foo/_bar',
       '/posts': '/posts',
@@ -73,10 +68,10 @@ describe('underscores', () => {
   })
 
   test('a virtual route path with an underscore after its first segment keeps it in the URL', async ({
-    appRoot,
-    routeTreeHost,
+    appWithRoutes,
+    urlsOf,
   }) => {
-    const root = await appWithRoutes(appRoot, [
+    const root = await appWithRoutes([
       'foobar.tsx',
       'deep.tsx',
       'sub/index.tsx',
@@ -89,7 +84,7 @@ describe('underscores', () => {
       ]),
     })
 
-    expect(await urlsOf(routeTreeHost, generatedRouteTree)).toEqual({
+    expect(await urlsOf(generatedRouteTree)).toEqual({
       __root__: '/',
       '/foo/_bar': '/foo/_bar',
       '/x/y/_z': '/x/y/_z',
@@ -98,10 +93,10 @@ describe('underscores', () => {
   })
 
   test('escaped underscores in a physical directory mounted under a virtual route with a literal underscore stay in the URLs', async ({
-    appRoot,
-    routeTreeHost,
+    appWithRoutes,
+    withRouteTree,
   }) => {
-    const root = await appWithRoutes(appRoot, [
+    const root = await appWithRoutes([
       'foo.tsx',
       'phys/[_]hello.tsx',
       'phys/blog[_].tsx',
@@ -114,7 +109,7 @@ describe('underscores', () => {
       ]),
     })
 
-    expect(await pathByFile(routeTreeHost, generatedRouteTree)).toEqual({
+    expect(await pathByFile(withRouteTree, generatedRouteTree)).toEqual({
       'routes/__root.tsx': '/',
       'routes/foo.tsx': '/_foo',
       'routes/phys/[_]hello.tsx': '/_foo/_p/_hello',
@@ -125,10 +120,10 @@ describe('underscores', () => {
   })
 
   test('virtual layouts and an index under a virtual route with a literal underscore', async ({
-    appRoot,
-    routeTreeHost,
+    appWithRoutes,
+    withRouteTree,
   }) => {
-    const root = await appWithRoutes(appRoot, [
+    const root = await appWithRoutes([
       'foo.tsx',
       'lay.tsx',
       'inner.tsx',
@@ -143,7 +138,7 @@ describe('underscores', () => {
       ]),
     })
 
-    expect(await pathByFile(routeTreeHost, generatedRouteTree)).toEqual({
+    expect(await pathByFile(withRouteTree, generatedRouteTree)).toEqual({
       'routes/__root.tsx': '/',
       'routes/foo.tsx': '/_foo',
       'routes/lay.tsx': '/_foo',
@@ -153,17 +148,17 @@ describe('underscores', () => {
   })
 
   test('a pathless layout under a route with an escaped leading underscore adds no path segment', async ({
-    appRoot,
-    routeTreeHost,
+    appWithRoutes,
+    urlsOf,
   }) => {
-    const root = await appWithRoutes(appRoot, [
+    const root = await appWithRoutes([
       '[_]api.tsx',
       '[_]api/_auth.tsx',
       '[_]api/_auth/users.tsx',
     ])
     const { generatedRouteTree } = await generate(root)
 
-    expect(await urlsOf(routeTreeHost, generatedRouteTree)).toEqual({
+    expect(await urlsOf(generatedRouteTree)).toEqual({
       __root__: '/',
       '/_api': '/_api',
       '/_api/_auth': '/_api',
@@ -175,10 +170,10 @@ describe('underscores', () => {
   // layouts (file-naming-conventions.md: `_` prefix pathless, `_` suffix
   // un-nesting, `[x]` escapes); ported from the helper tests of utils.ts.
   test('escaped and trailing underscores under pathless layouts keep or drop their underscores as escaped', async ({
-    appRoot,
-    routeTreeHost,
+    appWithRoutes,
+    withRouteTree,
   }) => {
-    const root = await appWithRoutes(appRoot, [
+    const root = await appWithRoutes([
       '_layout.tsx',
       '_layout/[_][_]foo.tsx',
       '_layout/bar_/index.tsx',
@@ -189,7 +184,7 @@ describe('underscores', () => {
     ])
     const { generatedRouteTree } = await generate(root)
 
-    expect(await pathByFile(routeTreeHost, generatedRouteTree)).toEqual({
+    expect(await pathByFile(withRouteTree, generatedRouteTree)).toEqual({
       'routes/__root.tsx': '/',
       'routes/_layout.tsx': '/',
       'routes/_layout/[_][_]foo.tsx': '/__foo',
@@ -204,10 +199,11 @@ describe('underscores', () => {
 
 describe('virtual route paths', () => {
   test('virtual route paths and physical mount prefixes without a leading slash get the same URLs', async ({
-    appRoot,
-    routeTreeHost,
+    appWithRoutes,
+    routesOf,
+    urlsOf,
   }) => {
-    const root = await appWithRoutes(appRoot, ['x.tsx', 'dir/index.tsx'])
+    const root = await appWithRoutes(['x.tsx', 'dir/index.tsx'])
     const { generatedRouteTree } = await generate(root, {
       virtualRouteConfig: virtualRootRoute('__root.tsx', [
         virtualRoute('docs/intro', 'x.tsx'),
@@ -215,12 +211,12 @@ describe('virtual route paths', () => {
       ]),
     })
 
-    expect(await routesOf(routeTreeHost, generatedRouteTree)).toEqual({
+    expect(await routesOf(generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/docs/intro': 'routes/x.tsx',
       '/api/v1/': 'routes/dir/index.tsx',
     })
-    expect(await urlsOf(routeTreeHost, generatedRouteTree)).toEqual({
+    expect(await urlsOf(generatedRouteTree)).toEqual({
       __root__: '/',
       '/docs/intro': '/docs/intro',
       '/api/v1/': '/api/v1/',
@@ -230,10 +226,10 @@ describe('virtual route paths', () => {
   // In a virtual route path a dot is a literal character, and a bracket
   // escape stands for its content (no file-route separators apply).
   test('dots and bracket escapes in virtual route paths are literal characters of the URL', async ({
-    appRoot,
-    routeTreeHost,
+    appWithRoutes,
+    withRouteTree,
   }) => {
-    const root = await appWithRoutes(appRoot, ['a.tsx', 'b.tsx'])
+    const root = await appWithRoutes(['a.tsx', 'b.tsx'])
     const { generatedRouteTree } = await generate(root, {
       virtualRouteConfig: virtualRootRoute('__root.tsx', [
         virtualRoute('/files.json', 'a.tsx'),
@@ -241,7 +237,7 @@ describe('virtual route paths', () => {
       ]),
     })
 
-    expect(await pathByFile(routeTreeHost, generatedRouteTree)).toEqual({
+    expect(await pathByFile(withRouteTree, generatedRouteTree)).toEqual({
       'routes/__root.tsx': '/',
       'routes/a.tsx': '/files.json',
       'routes/b.tsx': '/pathless.layout',
@@ -251,13 +247,10 @@ describe('virtual route paths', () => {
   // A virtual route config built with `path.join` on Windows has backslash
   // separators in its file paths.
   test('virtual route files given with Windows path separators are imported', async ({
-    appRoot,
-    routeTreeHost,
+    appWithRoutes,
+    routesOf,
   }) => {
-    const root = await appWithRoutes(appRoot, [
-      'docs/intro.tsx',
-      'docs/index.tsx',
-    ])
+    const root = await appWithRoutes(['docs/intro.tsx', 'docs/index.tsx'])
     const { generatedRouteTree } = await generate(root, {
       virtualRouteConfig: virtualRootRoute('__root.tsx', [
         virtualRoute('/intro', 'docs\\intro.tsx'),
@@ -265,7 +258,7 @@ describe('virtual route paths', () => {
       ]),
     })
 
-    expect(await routesOf(routeTreeHost, generatedRouteTree)).toEqual({
+    expect(await routesOf(generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/intro': 'routes/docs/intro.tsx',
       '/': 'routes/docs/index.tsx',
@@ -275,10 +268,10 @@ describe('virtual route paths', () => {
 
 describe('layouts and groups', () => {
   test('a route group layout adds no path segment', async ({
-    appRoot,
-    routeTreeHost,
+    appWithRoutes,
+    urlsOf,
   }) => {
-    const root = await appWithRoutes(appRoot, [
+    const root = await appWithRoutes([
       '(auth)/route.tsx',
       '(auth)/login.tsx',
       'shop.tsx',
@@ -287,7 +280,7 @@ describe('layouts and groups', () => {
     ])
     const { generatedRouteTree } = await generate(root)
 
-    expect(await urlsOf(routeTreeHost, generatedRouteTree)).toEqual({
+    expect(await urlsOf(generatedRouteTree)).toEqual({
       __root__: '/',
       '/(auth)': '/',
       '/(auth)/login': '/login',
@@ -395,10 +388,11 @@ describe('layouts and groups', () => {
   // segment, and is no page of its own (a layout given `path: '/'` makes the
   // router match the layout itself at `/`).
   test('a pathless layout with only a Vue component piece in a route group has no path', async ({
-    appRoot,
-    routeTreeHost,
+    createApp,
+    matchesOf,
+    urlsOf,
   }) => {
-    const root = await createApp(appRoot, {
+    const root = await createApp({
       'src/routes/__root.ts': rootRoute('vue'),
       'src/routes/(group)/_layout.component.vue': `<template><slot /></template>\n`,
       'src/routes/(group)/_layout/inner.ts': fileRoute(
@@ -409,15 +403,15 @@ describe('layouts and groups', () => {
     })
     const { generatedRouteTree } = await generate(root, { target: 'vue' })
 
-    expect(await urlsOf(routeTreeHost, generatedRouteTree)).toEqual({
+    expect(await urlsOf(generatedRouteTree)).toEqual({
       __root__: '/',
       '/(group)/_layout': '/',
       '/(group)/_layout/inner': '/inner',
     })
     // (the layout is no page: the router does not match it at `/`)
-    expect(
-      await matchesOf(routeTreeHost, generatedRouteTree, '/'),
-    ).not.toContain('/(group)/_layout')
+    expect(await matchesOf(generatedRouteTree, '/')).not.toContain(
+      '/(group)/_layout',
+    )
   })
 
   // Bug: a pathless layout with a lazy route file only (`foo/_auth.lazy.tsx`,
@@ -466,21 +460,19 @@ describe('layouts and groups', () => {
     },
   ])(
     'a pathless layout with only $name under a path keeps the path in the URLs of its children',
-    async ({ target, files, child }, { appRoot, routeTreeHost }) => {
-      const root = await createApp(appRoot, files)
+    async ({ target, files, child }, { createApp, urlsOf }) => {
+      const root = await createApp(files)
       const { generatedRouteTree } = await generate(root, { target })
 
-      expect((await urlsOf(routeTreeHost, generatedRouteTree))[child]).toBe(
-        '/foo/bar',
-      )
+      expect((await urlsOf(generatedRouteTree))[child]).toBe('/foo/bar')
     },
   )
 
   test('two sections with grandchildren give a valid route tree without formatting', async ({
-    appRoot,
-    routeTreeHost,
+    appWithRoutes,
+    urlsOf,
   }) => {
-    const root = await appWithRoutes(appRoot, [
+    const root = await appWithRoutes([
       'a.tsx',
       'a.b.tsx',
       'a.b.c.tsx',
@@ -492,7 +484,7 @@ describe('layouts and groups', () => {
       enableRouteTreeFormatting: false,
     })
 
-    expect(await urlsOf(routeTreeHost, generatedRouteTree)).toEqual({
+    expect(await urlsOf(generatedRouteTree)).toEqual({
       __root__: '/',
       '/a': '/a',
       '/a/b': '/a/b',
@@ -515,13 +507,13 @@ describe('the root route', () => {
   // name, and the directory `__root` sorts before `__root.tsx`).
   // Impact: the app silently loses its root route.
   test('a __root directory next to the root route file keeps __root.tsx the root route', async ({
-    appRoot,
-    routeTreeHost,
+    appWithRoutes,
+    routesOf,
   }) => {
-    const root = await appWithRoutes(appRoot, ['__root/route.tsx', 'about.tsx'])
+    const root = await appWithRoutes(['__root/route.tsx', 'about.tsx'])
     const { generatedRouteTree } = await generate(root)
 
-    expect((await routesOf(routeTreeHost, generatedRouteTree)).__root__).toBe(
+    expect((await routesOf(generatedRouteTree)).__root__).toBe(
       'routes/__root.tsx',
     )
   })
@@ -552,17 +544,17 @@ describe('the root route', () => {
     },
   ])(
     'the generator leaves $name alone: it is not part of the route tree',
-    async ({ file, content }, { appRoot, routeTreeHost }) => {
-      const root = await createApp(appRoot, {
+    async ({ file, content }, { createApp, routesOf }) => {
+      const root = await createApp({
         'src/routes/__root.tsx': rootRoute(),
         'src/routes/about.tsx': fileRoute('/about'),
         [`src/routes/${file}`]: content,
       })
       const { generatedRouteTree } = await generate(root)
 
-      expect(
-        Object.values(await routesOf(routeTreeHost, generatedRouteTree)),
-      ).not.toContain(`routes/${file}`)
+      expect(Object.values(await routesOf(generatedRouteTree))).not.toContain(
+        `routes/${file}`,
+      )
       expect(await read(root, `src/routes/${file}`)).toBe(content)
     },
   )
@@ -572,9 +564,9 @@ describe('conflicting routes', () => {
   // (Files are named absolute or project-relative, telling same-named files
   // apart, SPEC J1.7, §5.7.)
   test('routes with the same URL fail the generator with an error naming both files', async ({
-    appRoot,
+    appWithRoutes,
   }) => {
-    const root = await appWithRoutes(appRoot, ['index.tsx', '_auth/index.tsx'])
+    const root = await appWithRoutes(['index.tsx', '_auth/index.tsx'])
 
     const error = await captureThrow(() => generate(root))
     const files = ['src/routes/index.tsx', 'src/routes/_auth/index.tsx']
@@ -592,8 +584,8 @@ describe('conflicting routes', () => {
   // it conflicts with another route at `/foo`.
   test.for(['(group)/foo.tsx', 'foo_.tsx'])(
     'a pathless layout without child routes yet that adds a path conflicts with %s at the same URL, naming both files',
-    async (file, { appRoot }) => {
-      const root = await appWithRoutes(appRoot, ['foo/_layout.tsx', file])
+    async (file, { appWithRoutes }) => {
+      const root = await appWithRoutes(['foo/_layout.tsx', file])
 
       const error = await captureThrow(() => generate(root))
       for (const named of [
@@ -613,8 +605,8 @@ describe('conflicting routes', () => {
     { name: 'an empty path prefix', mount: physical('', 'features') },
   ])(
     'a physical directory mounted with $name merges its routes at the current level',
-    async ({ mount }, { appRoot, routeTreeHost }) => {
-      const root = await appWithRoutes(appRoot, [
+    async ({ mount }, { appWithRoutes, withRouteTree }) => {
+      const root = await appWithRoutes([
         'about.tsx',
         'features/index.tsx',
         'features/contact.tsx',
@@ -626,7 +618,7 @@ describe('conflicting routes', () => {
         ]),
       })
 
-      expect(await pathByFile(routeTreeHost, generatedRouteTree)).toEqual({
+      expect(await pathByFile(withRouteTree, generatedRouteTree)).toEqual({
         'routes/__root.tsx': '/',
         'routes/about.tsx': '/about',
         'routes/features/index.tsx': '/',
@@ -665,21 +657,21 @@ describe('conflicting routes', () => {
     },
   ])(
     'the root route file in a directory mounted by $name stays the root route only',
-    async ({ root: rootFile, mount, files }, { appRoot, routeTreeHost }) => {
+    async ({ root: rootFile, mount, files }, { createApp, withRouteTree }) => {
       const routeFiles: Record<string, string> = {
         [`src/routes/${rootFile}`]: rootRoute(),
       }
       for (const file of files) {
         routeFiles[`src/routes/${file}`] = fileRoute('/wrong')
       }
-      const root = await createApp(appRoot, routeFiles)
+      const root = await createApp(routeFiles)
       const { generatedRouteTree } = await generate(root, {
         virtualRouteConfig: virtualRootRoute(rootFile, [mount]),
       })
 
       const dir = path.posix.dirname(rootFile)
       const prefix = dir === '.' ? '' : `${dir}/`
-      expect(await pathByFile(routeTreeHost, generatedRouteTree)).toEqual({
+      expect(await pathByFile(withRouteTree, generatedRouteTree)).toEqual({
         [`routes/${rootFile}`]: '/',
         [`routes/${prefix}index.tsx`]: '/',
         [`routes/${prefix}posts/route.tsx`]: '/posts',
@@ -690,12 +682,9 @@ describe('conflicting routes', () => {
   )
 
   test('a route of a directory merged at the current level with the path of a virtual route fails the generator with an error naming both files', async ({
-    appRoot,
+    appWithRoutes,
   }) => {
-    const root = await appWithRoutes(appRoot, [
-      'about.tsx',
-      'features/about.tsx',
-    ])
+    const root = await appWithRoutes(['about.tsx', 'features/about.tsx'])
 
     const error = await captureThrow(() =>
       generate(root, {
@@ -731,12 +720,8 @@ describe('conflicting routes', () => {
     { name: 'a param route', child: 'posts/$id.tsx' },
   ])(
     'a route file and a layout route file of one route with $name under it fail the generator with an error naming both files',
-    async ({ child }, { appRoot }) => {
-      const root = await appWithRoutes(appRoot, [
-        'posts.tsx',
-        'posts/route.tsx',
-        child,
-      ])
+    async ({ child }, { appWithRoutes }) => {
+      const root = await appWithRoutes(['posts.tsx', 'posts/route.tsx', child])
 
       const error = await captureThrow(() => generate(root))
       for (const file of [
@@ -782,9 +767,9 @@ describe('conflicting routes', () => {
     },
   ])(
     'a route file used for two routes by $name fails the generator with an error naming it',
-    async ({ files, config, file }, { appRoot }) => {
+    async ({ files, config, file }, { createApp }) => {
       // (the file already has the first route's id: nothing writes it)
-      const root = await createApp(appRoot, {
+      const root = await createApp({
         'src/routes/__root.tsx': rootRoute(),
         ...files,
       })
@@ -804,9 +789,9 @@ describe('conflicting routes', () => {
   // file path with its extension; the tree's import specifiers drop it).
   // Impact: the app fails at startup with no hint which files clash.
   test('two routes of a virtual route config on files with one name and two extensions fail the generator with an error naming both files', async ({
-    appRoot,
+    createApp,
   }) => {
-    const root = await createApp(appRoot, {
+    const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/x.ts': fileRoute('/a'),
       'src/routes/x.tsx': fileRoute('/b'),
@@ -826,9 +811,9 @@ describe('conflicting routes', () => {
   })
 
   test('a route file a __virtual.ts subtree config uses while the directory scan also routes it fails the generator with an error naming it', async ({
-    appRoot,
+    createApp,
   }) => {
-    const root = await createApp(appRoot, {
+    const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/x.tsx': fileRoute('/x'),
       'src/routes/sub/__virtual.ts': `import { route } from '@tanstack/virtual-file-routes'
@@ -848,13 +833,13 @@ export default [route('/y', '../x.tsx')]
 
 describe('route names', () => {
   test('routes whose names differ only by a leading @ get their own routes', async ({
-    appRoot,
-    routeTreeHost,
+    appWithRoutes,
+    routesOf,
   }) => {
-    const root = await appWithRoutes(appRoot, ['@me.tsx', 'me.tsx'])
+    const root = await appWithRoutes(['@me.tsx', 'me.tsx'])
     const { generatedRouteTree } = await generate(root)
 
-    expect(await routesOf(routeTreeHost, generatedRouteTree)).toEqual({
+    expect(await routesOf(generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/@me': 'routes/@me.tsx',
       '/me': 'routes/me.tsx',
@@ -862,13 +847,13 @@ describe('route names', () => {
   })
 
   test('a route file name with a space gets a route with the space in its URL', async ({
-    appRoot,
-    routeTreeHost,
+    appWithRoutes,
+    urlsOf,
   }) => {
-    const root = await appWithRoutes(appRoot, ['about us.tsx'])
+    const root = await appWithRoutes(['about us.tsx'])
     const { generatedRouteTree } = await generate(root)
 
-    expect(await urlsOf(routeTreeHost, generatedRouteTree)).toEqual({
+    expect(await urlsOf(generatedRouteTree)).toEqual({
       __root__: '/',
       '/about us': '/about us',
     })
@@ -885,13 +870,13 @@ describe('route names', () => {
   // Impact: an app with, e.g., `what's-new.tsx` gets no route tree until
   // the file is renamed.
   test('a route file name with an apostrophe gets a route with it in its URL', async ({
-    appRoot,
-    routeTreeHost,
+    appWithRoutes,
+    urlsOf,
   }) => {
-    const root = await appWithRoutes(appRoot, ["what's-new.tsx"])
+    const root = await appWithRoutes(["what's-new.tsx"])
     const { generatedRouteTree } = await generate(root)
 
-    expect(await urlsOf(routeTreeHost, generatedRouteTree)).toEqual({
+    expect(await urlsOf(generatedRouteTree)).toEqual({
       __root__: '/',
       "/what's-new": "/what's-new",
     })
@@ -921,13 +906,13 @@ describe('route names', () => {
     { files: ['a b.tsx', 'ab.tsx'], ids: ['/a b', '/ab'] },
   ])(
     'routes $ids get their own routes',
-    async ({ files, ids }, { appRoot, routeTreeHost }) => {
-      const root = await appWithRoutes(appRoot, files)
+    async ({ files, ids }, { appWithRoutes, routesOf }) => {
+      const root = await appWithRoutes(files)
       const { generatedRouteTree } = await generate(root)
 
-      expect(
-        Object.keys(await routesOf(routeTreeHost, generatedRouteTree)).sort(),
-      ).toEqual(['__root__', ...ids].sort())
+      expect(Object.keys(await routesOf(generatedRouteTree)).sort()).toEqual(
+        ['__root__', ...ids].sort(),
+      )
     },
   )
 })
@@ -941,15 +926,15 @@ describe('token options', () => {
     { name: 'a RegExp with the g flag', routeToken: /layout/g },
   ] satisfies Array<Partial<Config> & { name: string }>)(
     'a routeToken that is $name matches every layout file',
-    async ({ name: _name, ...config }, { appRoot, routeTreeHost }) => {
+    async ({ name: _name, ...config }, { appWithRoutes, routesOf }) => {
       const files = ['a', 'b', 'c', 'd'].flatMap((dir) => [
         `${dir}/layout.tsx`,
         `${dir}/x.tsx`,
       ])
-      const root = await appWithRoutes(appRoot, files)
+      const root = await appWithRoutes(files)
       const { generatedRouteTree } = await generate(root, config)
 
-      expect(await routesOf(routeTreeHost, generatedRouteTree)).toEqual({
+      expect(await routesOf(generatedRouteTree)).toEqual({
         __root__: 'routes/__root.tsx',
         ...Object.fromEntries(
           ['a', 'b', 'c', 'd'].flatMap((dir) => [
@@ -962,19 +947,15 @@ describe('token options', () => {
   )
 
   test('an indexToken that is a JSON regex with the g flag matches every index file', async ({
-    appRoot,
-    routeTreeHost,
+    appWithRoutes,
+    routesOf,
   }) => {
-    const root = await appWithRoutes(appRoot, [
-      'a/home.tsx',
-      'b/home.tsx',
-      'c/home.tsx',
-    ])
+    const root = await appWithRoutes(['a/home.tsx', 'b/home.tsx', 'c/home.tsx'])
     const { generatedRouteTree } = await generate(root, {
       indexToken: { regex: 'home', flags: 'g' },
     })
 
-    expect(await routesOf(routeTreeHost, generatedRouteTree)).toEqual({
+    expect(await routesOf(generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/a/': 'routes/a/home.tsx',
       '/b/': 'routes/b/home.tsx',
@@ -990,11 +971,11 @@ describe('token options', () => {
     { name: 'a RegExp with the i flag', indexToken: /home/i },
   ] satisfies Array<Partial<Config> & { name: string }>)(
     'an indexToken that is $name matches index files whatever their case',
-    async ({ name: _name, ...config }, { appRoot, routeTreeHost }) => {
-      const root = await appWithRoutes(appRoot, ['a/Home.tsx', 'b/HOME.tsx'])
+    async ({ name: _name, ...config }, { appWithRoutes, routesOf }) => {
+      const root = await appWithRoutes(['a/Home.tsx', 'b/HOME.tsx'])
       const { generatedRouteTree } = await generate(root, config)
 
-      expect(await routesOf(routeTreeHost, generatedRouteTree)).toEqual({
+      expect(await routesOf(generatedRouteTree)).toEqual({
         __root__: 'routes/__root.tsx',
         '/a/': 'routes/a/Home.tsx',
         '/b/': 'routes/b/HOME.tsx',

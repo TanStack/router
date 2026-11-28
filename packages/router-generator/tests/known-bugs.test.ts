@@ -6,11 +6,10 @@
 import path from 'node:path'
 import { parseSync } from 'vite'
 import { describe, expect } from 'vitest'
-import { createApp, generate, read, rootRoute } from './app'
+import { generate, read, rootRoute } from './app'
 import { routeIdOf } from './route-id'
-import { routesOf } from './route-tree'
 import { test } from './test'
-import type { RouteTreeHost } from './route-tree'
+import type { Fixtures } from './test'
 
 /**
  * Runs the generator on an app with a root route and `routes/moved.tsx`
@@ -19,12 +18,12 @@ import type { RouteTreeHost } from './route-tree'
  * as the generator wrote it.
  */
 async function generateMovedRoute(
-  appRoot: string,
-  routeTreeHost: RouteTreeHost,
+  createApp: Fixtures['createApp'],
+  routesOf: Fixtures['routesOf'],
   source: string,
   otherFiles: Record<string, string> = {},
 ) {
-  const root = await createApp(appRoot, {
+  const root = await createApp({
     'routes/__root.tsx': rootRoute(),
     'routes/moved.tsx': source,
     ...otherFiles,
@@ -33,7 +32,7 @@ async function generateMovedRoute(
     routesDirectory: path.join(root, 'routes'),
     generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
   })
-  await routesOf(routeTreeHost, generatedRouteTree)
+  await routesOf(generatedRouteTree)
   return read(root, 'routes/moved.tsx')
 }
 
@@ -47,12 +46,12 @@ describe('route constructor imports', () => {
   // recognized.
   // Impact: the route keeps its old id when its file moves.
   test('a moved route with an aliased import of the constructor gets the id of its new path', async ({
-    appRoot,
-    routeTreeHost,
+    createApp,
+    routesOf,
   }) => {
     const written = await generateMovedRoute(
-      appRoot,
-      routeTreeHost,
+      createApp,
+      routesOf,
       `import { createFileRoute as route } from '@tanstack/react-router'
 export const Route = route('/old')({})`,
     )
@@ -69,12 +68,12 @@ export const Route = route('/old')({})`,
   // Impact: the written route file declares `createFileRoute` twice and no
   // longer parses, so the app fails to build.
   test('a moved route importing createFileRoute from a module of the app stays a valid module', async ({
-    appRoot,
-    routeTreeHost,
+    createApp,
+    routesOf,
   }) => {
     const written = await generateMovedRoute(
-      appRoot,
-      routeTreeHost,
+      createApp,
+      routesOf,
       `import { createFileRoute } from '../lib/router'
 export const Route = createFileRoute('/old')({})`,
       {

@@ -25,12 +25,12 @@ import {
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { captureDiagnostics } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { Generator } from '../src'
-import { configOf, createApp, fileRoute, read, rootRoute, save } from './app'
+import { configOf, fileRoute, read, rootRoute, save } from './app'
 import { expectOnlyOwnedEdits } from './owned-edits'
 import { routeIdOf } from './route-id'
-import { observeRouteTree, routesOf } from './route-tree'
 import { test } from './test'
-import type { ObservedRoute, RouteTreeHost } from './route-tree'
+import type { Fixtures } from './test'
+import type { ObservedRoute } from './route-tree'
 import type { Config } from '../src'
 
 /** A generator for the app at `root`, after its first run. */
@@ -53,7 +53,7 @@ async function startGenerator(
  * §5.5).
  */
 async function freshTree(
-  routeTreeHost: RouteTreeHost,
+  observeRouteTree: Fixtures['observeRouteTree'],
   root: string,
   config: Config,
 ) {
@@ -65,7 +65,7 @@ async function freshTree(
     config: { ...config, generatedRouteTree: fresh },
     root,
   }).run()
-  return observeRouteTree(routeTreeHost, fresh)
+  return observeRouteTree(fresh)
 }
 
 /** The route files of an observed tree by route id (`routesOf`, same load). */
@@ -83,10 +83,10 @@ async function remove(root: string, file: string) {
 
 describe('route edits', () => {
   test('adding a route next to nested routes gives the route tree of a fresh run', async ({
-    appRoot,
-    routeTreeHost,
+    createApp,
+    observeRouteTree,
   }) => {
-    const root = await createApp(appRoot, {
+    const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/posts.tsx': fileRoute('/posts'),
       'src/routes/posts.$id.tsx': fileRoute('/posts/$id'),
@@ -96,24 +96,21 @@ describe('route edits', () => {
     const about = await save(root, 'src/routes/about.tsx', fileRoute('/about'))
     await generator.run({ type: 'create', path: about })
 
-    const observed = await observeRouteTree(
-      routeTreeHost,
-      config.generatedRouteTree,
-    )
+    const observed = await observeRouteTree(config.generatedRouteTree)
     expect(filesOf(observed)).toEqual({
       __root__: 'routes/__root.tsx',
       '/about': 'routes/about.tsx',
       '/posts': 'routes/posts.tsx',
       '/posts/$id': 'routes/posts.$id.tsx',
     })
-    expect(observed).toEqual(await freshTree(routeTreeHost, root, config))
+    expect(observed).toEqual(await freshTree(observeRouteTree, root, config))
   })
 
   test('deleting a nested route gives the route tree of a fresh run', async ({
-    appRoot,
-    routeTreeHost,
+    createApp,
+    observeRouteTree,
   }) => {
-    const root = await createApp(appRoot, {
+    const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/posts.tsx': fileRoute('/posts'),
       'src/routes/posts.$id.tsx': fileRoute('/posts/$id'),
@@ -124,23 +121,20 @@ describe('route edits', () => {
     const deleted = await remove(root, 'src/routes/posts.$id.tsx')
     await generator.run({ type: 'delete', path: deleted })
 
-    const observed = await observeRouteTree(
-      routeTreeHost,
-      config.generatedRouteTree,
-    )
+    const observed = await observeRouteTree(config.generatedRouteTree)
     expect(filesOf(observed)).toEqual({
       __root__: 'routes/__root.tsx',
       '/posts': 'routes/posts.tsx',
       '/posts/new': 'routes/posts.new.tsx',
     })
-    expect(observed).toEqual(await freshTree(routeTreeHost, root, config))
+    expect(observed).toEqual(await freshTree(observeRouteTree, root, config))
   })
 
   test('a route deleted after an edit that changed no route leaves the route tree', async ({
-    appRoot,
-    routeTreeHost,
+    createApp,
+    routesOf,
   }) => {
-    const root = await createApp(appRoot, {
+    const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/index.tsx': fileRoute('/', "{ component: () => 'index' }"),
       'src/routes/bar.tsx': fileRoute('/bar'),
@@ -156,7 +150,7 @@ describe('route edits', () => {
     const deleted = await remove(root, 'src/routes/bar.tsx')
     await generator.run({ type: 'delete', path: deleted })
 
-    expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual({
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/': 'routes/index.tsx',
     })
@@ -166,10 +160,10 @@ describe('route edits', () => {
   // re-create), then an empty file at that path: it is scaffolded and in the
   // tree, as an empty route file always is.
   test('an empty route file re-created after an update read it missing is scaffolded', async ({
-    appRoot,
-    routeTreeHost,
+    createApp,
+    routesOf,
   }) => {
-    const root = await createApp(appRoot, {
+    const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/about.tsx': fileRoute('/about'),
     })
@@ -183,7 +177,7 @@ describe('route edits', () => {
     expect(await routeIdOf(await read(root, 'src/routes/about.tsx'))).toBe(
       '/about',
     )
-    expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual({
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/about': 'routes/about.tsx',
     })
@@ -193,10 +187,10 @@ describe('route edits', () => {
   // if the diagnostic names the file and the place of the problem (SPEC G5,
   // §5.7).
   test('a route file broken by an edit is reported with its location, and fixing it is processed', async ({
-    appRoot,
-    routeTreeHost,
+    createApp,
+    routesOf,
   }) => {
-    const root = await createApp(appRoot, {
+    const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/posts.tsx': fileRoute('/posts'),
     })
@@ -227,7 +221,7 @@ export const Route = (`
     const written = await read(root, 'src/routes/posts.tsx')
     expectOnlyOwnedEdits(fileRoute('/wrong'), written)
     expect(await routeIdOf(written)).toBe('/posts')
-    expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual({
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/posts': 'routes/posts.tsx',
     })
@@ -245,10 +239,10 @@ export const Route = (`
   // Impact: in dev, deleting `posts.tsx` while keeping `posts.$id.tsx`
   // removes `/posts/$id` from the app until the dev server restarts.
   test('deleting a layout route keeps its child routes in the route tree', async ({
-    appRoot,
-    routeTreeHost,
+    createApp,
+    routesOf,
   }) => {
-    const root = await createApp(appRoot, {
+    const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/posts.tsx': fileRoute('/posts'),
       'src/routes/posts.$id.tsx': fileRoute('/posts/$id'),
@@ -258,7 +252,7 @@ export const Route = (`
     const deleted = await remove(root, 'src/routes/posts.tsx')
     await generator.run({ type: 'delete', path: deleted })
 
-    expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual({
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/posts/$id': 'routes/posts.$id.tsx',
     })
@@ -305,8 +299,8 @@ describe.each([
 ])('renaming $name', ({ from, to, routes, id }) => {
   test.for(['delete', 'create'] as const)(
     'with the %s event first gives the route tree of a fresh run and fixes the route id',
-    async (first, { appRoot, routeTreeHost }) => {
-      const root = await createApp(appRoot, {
+    async (first, { createApp, observeRouteTree }) => {
+      const root = await createApp({
         'src/routes/__root.tsx': rootRoute(),
         'src/routes/about.tsx': fileRoute('/about'),
         'src/routes/posts.tsx': fileRoute('/posts'),
@@ -326,16 +320,13 @@ describe.each([
       }
       await Promise.all(events.map((event) => generator.run(event)))
 
-      const observed = await observeRouteTree(
-        routeTreeHost,
-        config.generatedRouteTree,
-      )
+      const observed = await observeRouteTree(config.generatedRouteTree)
       expect(filesOf(observed)).toEqual({
         __root__: 'routes/__root.tsx',
         ...routes,
       })
       expect(await routeIdOf(await read(root, to))).toBe(id)
-      expect(observed).toEqual(await freshTree(routeTreeHost, root, config))
+      expect(observed).toEqual(await freshTree(observeRouteTree, root, config))
     },
   )
 })
@@ -346,23 +337,20 @@ describe('route tree file events', () => {
     { name: 'corrupted', content: 'export const routeTree = (\n' },
   ])(
     'a $name route tree is regenerated on its update event',
-    async ({ content }, { appRoot, routeTreeHost }) => {
-      const root = await createApp(appRoot, {
+    async ({ content }, { createApp, observeRouteTree }) => {
+      const root = await createApp({
         'src/routes/__root.tsx': rootRoute(),
         'src/routes/index.tsx': fileRoute('/'),
       })
       const { config, generator } = await startGenerator(root)
-      const generated = await observeRouteTree(
-        routeTreeHost,
-        config.generatedRouteTree,
-      )
+      const generated = await observeRouteTree(config.generatedRouteTree)
 
       await save(root, 'src/routeTree.gen.ts', content)
       await generator.run({ type: 'update', path: config.generatedRouteTree })
 
-      expect(
-        await observeRouteTree(routeTreeHost, config.generatedRouteTree),
-      ).toEqual(generated)
+      expect(await observeRouteTree(config.generatedRouteTree)).toEqual(
+        generated,
+      )
     },
   )
 
@@ -375,33 +363,28 @@ describe('route tree file events', () => {
   // switch) leaves the app without a route tree until the dev server
   // restarts.
   test('a deleted route tree is written again on its delete event', async ({
-    appRoot,
-    routeTreeHost,
+    createApp,
+    observeRouteTree,
   }) => {
-    const root = await createApp(appRoot, {
+    const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/index.tsx': fileRoute('/'),
     })
     const { config, generator } = await startGenerator(root)
-    const generated = await observeRouteTree(
-      routeTreeHost,
-      config.generatedRouteTree,
-    )
+    const generated = await observeRouteTree(config.generatedRouteTree)
 
     await rm(config.generatedRouteTree)
     await generator.run({ type: 'delete', path: config.generatedRouteTree })
 
     expect(existsSync(config.generatedRouteTree)).toBe(true)
-    expect(
-      await observeRouteTree(routeTreeHost, config.generatedRouteTree),
-    ).toEqual(generated)
+    expect(await observeRouteTree(config.generatedRouteTree)).toEqual(generated)
   })
 
   test('after the route tree is deleted, adding a route writes the route tree', async ({
-    appRoot,
-    routeTreeHost,
+    createApp,
+    routesOf,
   }) => {
-    const root = await createApp(appRoot, {
+    const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/index.tsx': fileRoute('/'),
     })
@@ -412,7 +395,7 @@ describe('route tree file events', () => {
     const about = await save(root, 'src/routes/about.tsx', fileRoute('/about'))
     await generator.run({ type: 'create', path: about })
 
-    expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual({
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/': 'routes/index.tsx',
       '/about': 'routes/about.tsx',
@@ -425,8 +408,8 @@ describe('files no scan lists', () => {
    * An app whose `src/routes/blog/__virtual.ts` subtree appends a line to
    * `scans.log` on each evaluation: every scan evaluates it.
    */
-  async function countingApp(appRoot: string) {
-    const root = await createApp(appRoot, {
+  async function countingApp(createApp: Fixtures['createApp']) {
+    const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/index.tsx': fileRoute('/'),
       'src/routes/-components/Card.tsx': 'export const Card = () => null\n',
@@ -451,10 +434,10 @@ export default defineVirtualSubtreeConfig(() => {
   }
 
   test('saving or creating a file under an ignored directory, or a __virtual.ts outside the routes, scans nothing', async ({
-    routeTreeHost,
-    appRoot,
+    createApp,
+    observeRouteTree,
   }) => {
-    const { root, config, generator, scans } = await countingApp(appRoot)
+    const { root, config, generator, scans } = await countingApp(createApp)
     const tree = await read(root, 'src/routeTree.gen.ts')
     expect(await scans()).toBe(1)
 
@@ -498,17 +481,17 @@ export default defineVirtualSubtreeConfig(() => {
 
     expect(await scans()).toBe(1)
     expect(await read(root, 'src/routeTree.gen.ts')).toBe(tree)
-    expect(
-      await observeRouteTree(routeTreeHost, config.generatedRouteTree),
-    ).toEqual(await freshTree(routeTreeHost, root, config))
+    expect(await observeRouteTree(config.generatedRouteTree)).toEqual(
+      await freshTree(observeRouteTree, root, config),
+    )
   })
 
   test('a created route, a created __virtual.ts subtree and an edited one are scanned', async ({
-    routeTreeHost,
-    appRoot,
+    createApp,
+    routesOf,
   }) => {
     const { root, config, generator, scans, subtree } =
-      await countingApp(appRoot)
+      await countingApp(createApp)
 
     const about = await save(root, 'src/routes/about.tsx', fileRoute('/about'))
     await generator.run({ type: 'create', path: about })
@@ -534,7 +517,7 @@ export default defineVirtualSubtreeConfig([route('/start', 'intro.tsx')])
     await generator.run({ type: 'update', path: blog })
     expect(await scans()).toBe(4)
 
-    expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual({
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/': 'routes/index.tsx',
       '/about': 'routes/about.tsx',
@@ -544,15 +527,15 @@ export default defineVirtualSubtreeConfig([route('/start', 'intro.tsx')])
   })
 
   test('a __virtual.ts newly naming a missing file under an ignored name gets it once created', async ({
-    appRoot,
-    routeTreeHost,
+    createApp,
+    routesOf,
   }) => {
     const subtree = (file: string) =>
       `import { defineVirtualSubtreeConfig, route } from '@tanstack/virtual-file-routes'
 
 export default defineVirtualSubtreeConfig([route('/users', '${file}')])
 `
-    const root = await createApp(appRoot, {
+    const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/admin/users.tsx': fileRoute('/admin/users'),
       'src/routes/admin/__virtual.ts': subtree('users.tsx'),
@@ -577,7 +560,7 @@ export default defineVirtualSubtreeConfig([route('/users', '${file}')])
     )
     await generator.run({ type: 'create', path: users })
 
-    expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual({
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/admin/users': 'routes/admin/-users.tsx',
     })
@@ -585,13 +568,13 @@ export default defineVirtualSubtreeConfig([route('/users', '${file}')])
 
   test.for(['cold run', 'running session'])(
     'a physical() mount of a directory under an ignored name, created after the mount, joins the routes (%s)',
-    async (when, { appRoot, routeTreeHost }) => {
+    async (when, { createApp, routesOf }) => {
       const subtree = (mount: boolean) =>
         `import { defineVirtualSubtreeConfig, physical, route } from '@tanstack/virtual-file-routes'
 
 export default defineVirtualSubtreeConfig([route('/users', 'users.tsx')${mount ? ", physical('/shared', '-shared')" : ''}])
 `
-      const root = await createApp(appRoot, {
+      const root = await createApp({
         'src/routes/__root.tsx': rootRoute(),
         'src/routes/admin/users.tsx': fileRoute('/admin/users'),
         'src/routes/admin/__virtual.ts': subtree(when === 'cold run'),
@@ -619,7 +602,7 @@ export default defineVirtualSubtreeConfig([route('/users', 'users.tsx')${mount ?
       )
       await generator.run({ type: 'create', path: shared })
 
-      expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual({
+      expect(await routesOf(config.generatedRouteTree)).toEqual({
         __root__: 'routes/__root.tsx',
         '/admin/shared/': 'routes/admin/-shared/index.tsx',
         '/admin/users': 'routes/admin/users.tsx',
@@ -628,10 +611,10 @@ export default defineVirtualSubtreeConfig([route('/users', 'users.tsx')${mount ?
   )
 
   test('an inline virtualRouteConfig physical() mount of a directory not created yet joins the routes once it is', async ({
-    appRoot,
-    routeTreeHost,
+    createApp,
+    routesOf,
   }) => {
-    const root = await createApp(appRoot, {
+    const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/users.tsx': fileRoute('/users'),
     })
@@ -651,7 +634,7 @@ export default defineVirtualSubtreeConfig([route('/users', 'users.tsx')${mount ?
     )
     await generator.run({ type: 'create', path: shared })
 
-    expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual({
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/shared/': 'routes/-shared/index.tsx',
       '/users': 'routes/users.tsx',
@@ -659,10 +642,10 @@ export default defineVirtualSubtreeConfig([route('/users', 'users.tsx')${mount ?
   })
 
   test('a virtualRouteConfig module listing an ignored directory gets a route for a file created there', async ({
-    appRoot,
-    routeTreeHost,
+    createApp,
+    routesOf,
   }) => {
-    const root = await createApp(appRoot, {
+    const root = await createApp({
       'routes.ts': `import { readdirSync } from 'node:fs'
 import { rootRoute, route } from '@tanstack/virtual-file-routes'
 
@@ -682,7 +665,7 @@ export const routes = rootRoute(
     const page = await save(root, 'src/routes/-pages/b.tsx', fileRoute('/b'))
     await generator.run({ type: 'create', path: page })
 
-    expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual({
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/a': 'routes/-pages/a.tsx',
       '/b': 'routes/-pages/b.tsx',
@@ -690,10 +673,10 @@ export const routes = rootRoute(
   })
 
   test('a __virtual.ts listing an ignored directory gets a route for a file created there, and a save under -components/ elsewhere scans nothing', async ({
-    appRoot,
-    routeTreeHost,
+    createApp,
+    routesOf,
   }) => {
-    const root = await createApp(appRoot, {
+    const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/-components/Card.tsx': 'export const Card = () => null\n',
       'src/routes/blog/-pages/a.tsx': fileRoute('/blog/a'),
@@ -722,7 +705,7 @@ export default defineVirtualSubtreeConfig(() => {
       fileRoute('/blog/b'),
     )
     await generator.run({ type: 'create', path: page })
-    expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual({
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/blog/a': 'routes/blog/-pages/a.tsx',
       '/blog/b': 'routes/blog/-pages/b.tsx',
@@ -739,9 +722,9 @@ export default defineVirtualSubtreeConfig(() => {
   })
 
   test('with an inline virtualRouteConfig, a save under -components/ in its physical() mount scans nothing', async ({
-    appRoot,
+    createApp,
   }) => {
-    const root = await createApp(appRoot, {
+    const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/index.tsx': fileRoute('/'),
       'src/routes/-components/Card.tsx': 'export const Card = () => null\n',
@@ -787,11 +770,11 @@ describe('events that arrive together', () => {
   // file watcher reports a created route file: both events reach `run()`
   // before either run ends.
   const createdWith = async (
-    appRoot: string,
-    routeTreeHost: RouteTreeHost,
+    createApp: Fixtures['createApp'],
+    routesOf: Fixtures['routesOf'],
     together: boolean,
   ) => {
-    const root = await createApp(appRoot, {
+    const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/index.tsx': fileRoute('/'),
     })
@@ -805,7 +788,7 @@ describe('events that arrive together', () => {
       await generator.run(update)
       await generator.run(create)
     }
-    return routesOf(routeTreeHost, config.generatedRouteTree)
+    return routesOf(config.generatedRouteTree)
   }
   const withAbout = {
     __root__: 'routes/__root.tsx',
@@ -814,10 +797,10 @@ describe('events that arrive together', () => {
   }
 
   test('a route created after an update event that changed nothing joins the route tree', async ({
-    appRoot,
-    routeTreeHost,
+    createApp,
+    routesOf,
   }) => {
-    expect(await createdWith(appRoot, routeTreeHost, false)).toEqual(withAbout)
+    expect(await createdWith(createApp, routesOf, false)).toEqual(withAbout)
   })
 
   // Bug: an event that arrives while a run checks events that changed
@@ -830,18 +813,18 @@ describe('events that arrive together', () => {
   // wrote) is neither scaffolded nor routed until another route file
   // changes (router-plugin generator-watch-mode.test.ts hit it now and then).
   test('a route created while an update event that changed nothing is checked joins the route tree', async ({
-    appRoot,
-    routeTreeHost,
+    createApp,
+    routesOf,
   }) => {
-    expect(await createdWith(appRoot, routeTreeHost, true)).toEqual(withAbout)
+    expect(await createdWith(createApp, routesOf, true)).toEqual(withAbout)
   })
 })
 
 describe('first runs', () => {
   test('a routes directory without a root route fails with the root route file to add', async ({
-    appRoot,
+    createApp,
   }) => {
-    const root = await createApp(appRoot, {
+    const root = await createApp({
       'src/routes/index.tsx': fileRoute('/'),
     })
     const error = await new Generator({ config: configOf(root), root })
@@ -863,10 +846,10 @@ describe('route files outside the routes directory', () => {
   // created, edited and deleted under a physical() mount outside the routes
   // directory reaches the live routes".
   test('a route file created in a physical() directory outside the routes directory is added', async ({
-    appRoot,
-    routeTreeHost,
+    createApp,
+    routesOf,
   }) => {
-    const root = await createApp(appRoot, {
+    const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
       'src/features/a/index.tsx': fileRoute('/a/'),
       'src/other/b/index.tsx': fileRoute('/b/'),
@@ -885,7 +868,7 @@ describe('route files outside the routes directory', () => {
     )
     await generator.run({ type: 'create', path: created })
 
-    expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual({
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/a/': 'features/a/index.tsx',
       '/a/new': 'features/a/new.tsx',
@@ -897,9 +880,9 @@ describe('route files outside the routes directory', () => {
   })
 
   test('a virtual route file outside the routes directory gets its id fixed when edited', async ({
-    appRoot,
+    createApp,
   }) => {
-    const root = await createApp(appRoot, {
+    const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
       'src/features/posts.tsx': fileRoute('/posts'),
     })
@@ -928,13 +911,13 @@ describe('route files outside the routes directory', () => {
    * routes `posts.tsx` at `/posts`, told of an edit routing it at
    * `/articles` (the file itself unchanged).
    */
-  async function movePostsInConfigFile(appRoot: string) {
+  async function movePostsInConfigFile(createApp: Fixtures['createApp']) {
     const routes = (routePath: string) =>
       `import { rootRoute, route } from '@tanstack/virtual-file-routes'
 
 export const routes = rootRoute('__root.tsx', [route('${routePath}', 'posts.tsx')])
 `
-    const root = await createApp(appRoot, {
+    const root = await createApp({
       'routes.ts': routes('/posts'),
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/posts.tsx': fileRoute('/posts'),
@@ -956,12 +939,12 @@ export const routes = rootRoute('__root.tsx', [route('${routePath}', 'posts.tsx'
   // Impact: in dev, changing the virtual route config has no effect until
   // the dev server restarts.
   test('editing the virtualRouteConfig file updates the route tree', async ({
-    routeTreeHost,
-    appRoot,
+    createApp,
+    routesOf,
   }) => {
-    const { config } = await movePostsInConfigFile(appRoot)
+    const { config } = await movePostsInConfigFile(createApp)
 
-    expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual({
+    expect(await routesOf(config.generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/articles': 'routes/posts.tsx',
     })
@@ -976,8 +959,10 @@ export const routes = rootRoute('__root.tsx', [route('${routePath}', 'posts.tsx'
   // Impact: in dev, `FileRoutesByPath` and the file disagree after a virtual
   // route config edit until the file is touched or the server restarts.
   describe('a route file whose route the config moves without a content change gets its new id', () => {
-    test('route() path in the virtualRouteConfig file', async ({ appRoot }) => {
-      const { root } = await movePostsInConfigFile(appRoot)
+    test('route() path in the virtualRouteConfig file', async ({
+      createApp,
+    }) => {
+      const { root } = await movePostsInConfigFile(createApp)
 
       expect(await routeIdOf(await read(root, 'src/routes/posts.tsx'))).toBe(
         '/articles',
@@ -985,14 +970,14 @@ export const routes = rootRoute('__root.tsx', [route('${routePath}', 'posts.tsx'
     })
 
     test('physical() prefix in the virtualRouteConfig file', async ({
-      appRoot,
+      createApp,
     }) => {
       const routes = (prefix: string) =>
         `import { rootRoute, physical } from '@tanstack/virtual-file-routes'
 
 export const routes = rootRoute('__root.tsx', [physical('${prefix}', 'v')])
 `
-      const root = await createApp(appRoot, {
+      const root = await createApp({
         'routes.ts': routes('/v1'),
         'src/routes/__root.tsx': rootRoute(),
         'src/routes/v/users.tsx': fileRoute('/v1/users'),
@@ -1013,15 +998,15 @@ export const routes = rootRoute('__root.tsx', [physical('${prefix}', 'v')])
     })
 
     test('route() path in a __virtual.ts subtree config', async ({
-      appRoot,
-      routeTreeHost,
+      createApp,
+      routesOf,
     }) => {
       const subtree = (routePath: string) =>
         `import { route } from '@tanstack/virtual-file-routes'
 
 export default [route('${routePath}', 'x.tsx')]
 `
-      const root = await createApp(appRoot, {
+      const root = await createApp({
         'src/routes/__root.tsx': rootRoute(),
         'src/routes/sub/__virtual.ts': subtree('/a'),
         'src/routes/sub/x.tsx': fileRoute('/sub/a'),
@@ -1035,7 +1020,7 @@ export default [route('${routePath}', 'x.tsx')]
       )
       await generator.run({ type: 'update', path: subtreeFile })
 
-      expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual({
+      expect(await routesOf(config.generatedRouteTree)).toEqual({
         __root__: 'routes/__root.tsx',
         '/sub/b': 'routes/sub/x.tsx',
       })
@@ -1055,8 +1040,8 @@ describe('a batch whose read of another file fails', () => {
   // with `chmod`, which neither Windows nor root (CI containers) honours.
   test.skipIf(process.platform === 'win32' || process.getuid?.() === 0)(
     "a route file's change reaches the tree with the next batch",
-    async ({ appRoot, routeTreeHost }) => {
-      const root = await createApp(appRoot, {
+    async ({ createApp, observeRouteTree }) => {
+      const root = await createApp({
         'src/routes/__root.tsx': rootRoute(),
         'src/routes/index.tsx': fileRoute('/'),
         'src/routes/about.tsx': fileRoute('/about'),
@@ -1087,9 +1072,9 @@ describe('a batch whose read of another file fails', () => {
         await chmod(posts, 0o644)
       }
       await generator.run({ type: 'update', path: posts })
-      expect(
-        await observeRouteTree(routeTreeHost, config.generatedRouteTree),
-      ).toEqual(await freshTree(routeTreeHost, root, config))
+      expect(await observeRouteTree(config.generatedRouteTree)).toEqual(
+        await freshTree(observeRouteTree, root, config),
+      )
     },
   )
 })

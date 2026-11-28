@@ -22,19 +22,17 @@ import { Generator } from '../src'
 import { test } from './test'
 import {
   conflictingFiles,
-  copyFixture,
   customTemplates,
   fixtureConfig,
   fixtureNames,
   prepareFixture,
   unformattedFooter,
 } from './generator-fixture'
-import { createApp, generate, read } from './app'
+import { generate, read } from './app'
 import { fixtureRoutes } from './generator-fixtures'
 import { expectOnlyOwnedEdits } from './owned-edits'
 import { routeCallOf } from './route-id'
-import { observeRouteTree, withRouteTree } from './route-tree'
-import type { RouteTreeHost } from './route-tree'
+import type { Fixtures } from './test'
 import type { FixtureRoute } from './generator-fixtures'
 import type { Config } from '../src'
 
@@ -86,7 +84,7 @@ function fileModificationRoute(file: string) {
 
 /** Fixture-specific checks after the run, beyond the routes. */
 async function postprocess(
-  routeTreeHost: RouteTreeHost,
+  withRouteTree: Fixtures['withRouteTree'],
   name: string,
   config: Config,
   before: Record<string, string>,
@@ -103,13 +101,9 @@ async function postprocess(
         }
       }
       // (the lazy file switched to createLazyFileRoute gives the page)
-      await withRouteTree(
-        routeTreeHost,
-        config.generatedRouteTree,
-        async ({ renderAt }) => {
-          expect(await renderAt('/bar')).toContain('Bar from its lazy file')
-        },
-      )
+      await withRouteTree(config.generatedRouteTree, async ({ renderAt }) => {
+        expect(await renderAt('/bar')).toContain('Bar from its lazy file')
+      })
       break
     }
     case 'custom-scaffolding': {
@@ -127,44 +121,32 @@ async function postprocess(
         )
       }
       // (the scaffolds are routes whose components render)
-      await withRouteTree(
-        routeTreeHost,
-        config.generatedRouteTree,
-        async ({ renderAt }) => {
-          for (const url of ['/', '/api/bar', '/foo']) {
-            expect(await renderAt(url)).toContain(`Hello ${url}!`)
-          }
-        },
-      )
+      await withRouteTree(config.generatedRouteTree, async ({ renderAt }) => {
+        for (const url of ['/', '/api/bar', '/foo']) {
+          expect(await renderAt(url)).toContain(`Hello ${url}!`)
+        }
+      })
       break
     }
     case 'route-groups': {
       // (the `(bar)` group's pathless layout wraps its children's pages)
-      await withRouteTree(
-        routeTreeHost,
-        config.generatedRouteTree,
-        async ({ renderAt }) => {
-          for (const page of ['about', 'xyz']) {
-            const html = await renderAt(`/asdf/${page}`)
-            expect(html).toContain('Hello /(foo)/asdf/(bar)/_layout!')
-            expect(html).toContain(`Hello /(foo)/asdf/(bar)/_layout/${page}!`)
-          }
-        },
-      )
+      await withRouteTree(config.generatedRouteTree, async ({ renderAt }) => {
+        for (const page of ['about', 'xyz']) {
+          const html = await renderAt(`/asdf/${page}`)
+          expect(html).toContain('Hello /(foo)/asdf/(bar)/_layout!')
+          expect(html).toContain(`Hello /(foo)/asdf/(bar)/_layout/${page}!`)
+        }
+      })
       break
     }
     case 'add-extensions-custom': {
       // (addExtensions '.js': each route file is imported as `<name>.js`)
-      await withRouteTree(
-        routeTreeHost,
-        config.generatedRouteTree,
-        ({ imports }) => {
-          expect(new Set(imports.map(({ file }) => file)).size).toBe(3)
-          for (const { specifier } of imports) {
-            expect(specifier).toMatch(/[^.]\.js$/)
-          }
-        },
-      )
+      await withRouteTree(config.generatedRouteTree, ({ imports }) => {
+        expect(new Set(imports.map(({ file }) => file)).size).toBe(3)
+        for (const { specifier } of imports) {
+          expect(specifier).toMatch(/[^.]\.js$/)
+        }
+      })
       break
     }
     case 'no-formatted-route-tree': {
@@ -196,11 +178,11 @@ async function postprocess(
  * are free (SPEC J1.4, §5.3, §5.8).
  */
 async function expectFixtureRoutes(
-  routeTreeHost: RouteTreeHost,
+  withRouteTree: Fixtures['withRouteTree'],
   treeFile: string,
   expected: Record<string, FixtureRoute>,
 ) {
-  await withRouteTree(routeTreeHost, treeFile, async (tree) => {
+  await withRouteTree(treeFile, async (tree) => {
     const { router, fileOf, loadedFiles } = tree
     expect(
       Object.fromEntries(
@@ -252,9 +234,9 @@ async function expectFixtureRoutes(
 describe('generator fixtures', async () => {
   test.for(await fixtureNames())(
     'the "%s" fixture gets its routes',
-    async (name, { appRoot, routeTreeHost }) => {
+    async (name, { copyFixture, withRouteTree }) => {
       // A copy: the generator may edit the fixture's route files
-      const dir = await copyFixture(appRoot, name)
+      const dir = await copyFixture(name)
       // (temporary files on the copy's filesystem)
       const config = {
         ...fixtureConfig(name, dir),
@@ -278,11 +260,11 @@ describe('generator fixtures', async () => {
 
       expect(fixtureRoutes[name], 'the routes of the fixture').toBeDefined()
       await expectFixtureRoutes(
-        routeTreeHost,
+        withRouteTree,
         config.generatedRouteTree,
         fixtureRoutes[name]!,
       )
-      await postprocess(routeTreeHost, name, config, before)
+      await postprocess(withRouteTree, name, config, before)
     },
   )
 })
@@ -309,8 +291,8 @@ export const Route = createFileRoute('/posts/$postId')({
 
   /** The routes and the route files after each of two runs, with `newline` line endings. */
   async function generateTwice(
-    appRoot: string,
-    routeTreeHost: RouteTreeHost,
+    createApp: Fixtures['createApp'],
+    observeRouteTree: Fixtures['observeRouteTree'],
     newline: string,
   ) {
     const files = Object.fromEntries(
@@ -319,12 +301,12 @@ export const Route = createFileRoute('/posts/$postId')({
         code.replaceAll('\n', newline),
       ]),
     )
-    const root = await createApp(appRoot, files)
+    const root = await createApp(files)
     const runs = []
     for (const _run of [1, 2]) {
       const { generatedRouteTree } = await generate(root)
       runs.push({
-        observed: await observeRouteTree(routeTreeHost, generatedRouteTree),
+        observed: await observeRouteTree(generatedRouteTree),
         routes: await Promise.all(
           Object.keys(files).map((file) => read(root, file)),
         ),
@@ -334,11 +316,11 @@ export const Route = createFileRoute('/posts/$postId')({
   }
 
   test('gives the routes of LF sources, and a second run changes nothing', async ({
-    appRoot,
-    routeTreeHost,
+    createApp,
+    observeRouteTree,
   }) => {
-    const lf = await generateTwice(appRoot, routeTreeHost, '\n')
-    const crlf = await generateTwice(appRoot, routeTreeHost, '\r\n')
+    const lf = await generateTwice(createApp, observeRouteTree, '\n')
+    const crlf = await generateTwice(createApp, observeRouteTree, '\r\n')
     const [first, second] = crlf.runs
     expect(first!.observed).toEqual(lf.runs[0]!.observed)
     expect(second).toEqual(first)

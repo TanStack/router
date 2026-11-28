@@ -10,16 +10,9 @@ import { readFile, symlink } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect } from 'vitest'
 import { Generator, contentDigest, replaceBackslash } from '../src'
-import {
-  configOf,
-  createApp,
-  fileRoute,
-  lazyFileRoute,
-  rootRoute,
-  save,
-} from './app'
-import { matchesOf } from './route-tree'
+import { configOf, fileRoute, lazyFileRoute, rootRoute, save } from './app'
 import { test } from './test'
+import type { Fixtures } from './test'
 
 const app = {
   'src/routes/__root.tsx': rootRoute(),
@@ -28,8 +21,11 @@ const app = {
 }
 
 /** A generator that ran once on a new app of `files`. */
-async function generated(appRoot: string, files: Record<string, string>) {
-  const root = await createApp(appRoot, files)
+async function generated(
+  createApp: Fixtures['createApp'],
+  files: Record<string, string>,
+) {
+  const root = await createApp(files)
   const config = configOf(root)
   const generator = new Generator({ config, root })
   await generator.run()
@@ -39,9 +35,9 @@ async function generated(appRoot: string, files: Record<string, string>) {
 
 describe('sourceDigest', () => {
   test("a route file's digest is the digest of its text, and follows an edit the generator is told of", async ({
-    appRoot,
+    createApp,
   }) => {
-    const { root, generator, file } = await generated(appRoot, app)
+    const { root, generator, file } = await generated(createApp, app)
     const about = file('src/routes/about.tsx')
     expect(generator.sourceDigest(about)).toBe(
       contentDigest(await readFile(about, 'utf8')),
@@ -56,9 +52,9 @@ describe('sourceDigest', () => {
   })
 
   test('an empty route file the generator fills in answers the digest of the bytes it wrote', async ({
-    appRoot,
+    createApp,
   }) => {
-    const { root, generator, file } = await generated(appRoot, app)
+    const { root, generator, file } = await generated(createApp, app)
     const created = await save(root, 'src/routes/new.tsx', '')
     await generator.run({ type: 'create', path: created })
     const written = await readFile(created, 'utf8')
@@ -69,9 +65,9 @@ describe('sourceDigest', () => {
   })
 
   test('a route file behind a link answers under its path and under the real path', async ({
-    appRoot,
+    createApp,
   }) => {
-    const root = await createApp(appRoot, {
+    const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/index.tsx': fileRoute('/'),
       'src/shared/about.tsx': fileRoute('/about'),
@@ -89,9 +85,9 @@ describe('sourceDigest', () => {
   // Source: review of the route-set work (Gemini L3: the real path answered
   // the first scanned file linked to it, which the tree does not import).
   test('a real path two scanned files link to answers the one the route tree imports', async ({
-    appRoot,
+    createApp,
   }) => {
-    const root = await createApp(appRoot, {
+    const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/index.tsx': fileRoute('/'),
       'src/shared/target.tsx': fileRoute('/z'),
@@ -112,9 +108,9 @@ describe('sourceDigest', () => {
   })
 
   test('a scanned file the route tree does not import, and a file of no route, answer nothing', async ({
-    appRoot,
+    createApp,
   }) => {
-    const { generator, file } = await generated(appRoot, {
+    const { generator, file } = await generated(createApp, {
       ...app,
       'src/routes/__root.lazy.tsx': lazyFileRoute('__root__'),
       'src/other.ts': 'export {}\n',
@@ -129,9 +125,9 @@ describe('sourceDigest', () => {
 
 describe('treeDigest', () => {
   test('is undefined before the first generation, then the digest of the route tree file', async ({
-    appRoot,
+    createApp,
   }) => {
-    const root = await createApp(appRoot, app)
+    const root = await createApp(app)
     const config = configOf(root)
     const generator = new Generator({ config, root })
     expect(generator.treeDigest()).toBeUndefined()
@@ -159,16 +155,17 @@ describe('treeDigest', () => {
 // layouts at `/`.
 // Source: design-routeset-v5.1.md item 3 (recursive `ownersLast`).
 test('a pathless layout whose children are childless pathless layouts does not take `/` from the index route', async ({
-  routeTreeHost,
-  appRoot,
+  createApp,
+  matchesOf,
 }) => {
-  const { config } = await generated(appRoot, {
+  const { config } = await generated(createApp, {
     'src/routes/__root.tsx': rootRoute(),
     'src/routes/_a.tsx': fileRoute('/_a'),
     'src/routes/_a._b.tsx': fileRoute('/_a/_b'),
     'src/routes/index.tsx': fileRoute('/'),
   })
-  expect(
-    await matchesOf(routeTreeHost, config.generatedRouteTree, '/'),
-  ).toEqual(['__root__', '/'])
+  expect(await matchesOf(config.generatedRouteTree, '/')).toEqual([
+    '__root__',
+    '/',
+  ])
 })

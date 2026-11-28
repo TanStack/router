@@ -23,10 +23,9 @@ import {
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { captureDiagnostics } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { Generator } from '../src'
-import { configOf, createApp, fileRoute, rootRoute } from './app'
-import { withRouteTree } from './route-tree'
+import { configOf, fileRoute, rootRoute } from './app'
 import { test } from './test'
-import type { RouteTreeHost } from './route-tree'
+import type { Fixtures } from './test'
 
 /** A route file whose page renders `text`. */
 function page(text: string) {
@@ -39,11 +38,11 @@ function page(text: string) {
  * URL.
  */
 async function expectGroupRouting(
-  routeTreeHost: RouteTreeHost,
+  withRouteTree: Fixtures['withRouteTree'],
   treeFile: string,
   indexUrl: string,
 ) {
-  await withRouteTree(routeTreeHost, treeFile, async ({ router, renderAt }) => {
+  await withRouteTree(treeFile, async ({ router, renderAt }) => {
     expect(
       Object.values(router.routesById)
         .map((route) => route.fullPath)
@@ -60,8 +59,11 @@ async function expectGroupRouting(
  * root route and `about.tsx`). Returns the app, its config, the error of a
  * failed run and the console diagnostics.
  */
-async function generateApp(appRoot: string, files: Record<string, string>) {
-  const root = await createApp(appRoot, {
+async function generateApp(
+  createApp: Fixtures['createApp'],
+  files: Record<string, string>,
+) {
+  const root = await createApp({
     'src/routes/__root.tsx': rootRoute(),
     'src/routes/about.tsx': page('about page'),
     ...Object.fromEntries(
@@ -108,11 +110,14 @@ describe('route files named like a route group', () => {
   // guess where the file to rename is. Low: diagnostics only.
   test.for(testCases)(
     'a (group).tsx route file is reported by name or routes correctly: $name',
-    async ({ group, index }, { routeTreeHost, appRoot }) => {
-      const { root, config, error, diagnostics } = await generateApp(appRoot, {
-        [group]: page('group layout'),
-        [index]: page('group index page'),
-      })
+    async ({ group, index }, { createApp, withRouteTree }) => {
+      const { root, config, error, diagnostics } = await generateApp(
+        createApp,
+        {
+          [group]: page('group layout'),
+          [index]: page('group index page'),
+        },
+      )
       const file = path.join('src/routes', group)
       if (error) {
         expectDiagnostic(error, { file, root })
@@ -124,11 +129,11 @@ describe('route files named like a route group', () => {
         root,
       })
       if (reported.length > 0) {
-        await withRouteTree(routeTreeHost, config.generatedRouteTree, () => {})
+        await withRouteTree(config.generatedRouteTree, () => {})
         return
       }
       await expectGroupRouting(
-        routeTreeHost,
+        withRouteTree,
         config.generatedRouteTree,
         group.startsWith('nested/') ? '/nested/' : '/',
       )
@@ -137,16 +142,16 @@ describe('route files named like a route group', () => {
 
   // (control: the routing check accepts the documented group directory)
   test('a route group directory routes correctly', async ({
-    appRoot,
-    routeTreeHost,
+    createApp,
+    withRouteTree,
   }) => {
-    const { config, error, diagnostics } = await generateApp(appRoot, {
+    const { config, error, diagnostics } = await generateApp(createApp, {
       '(group)/index.tsx': page('group index page'),
     })
     expect(error).toBeUndefined()
     expect(
       diagnostics.filter((diagnostic) => diagnostic.severity !== 'info'),
     ).toEqual([])
-    await expectGroupRouting(routeTreeHost, config.generatedRouteTree, '/')
+    await expectGroupRouting(withRouteTree, config.generatedRouteTree, '/')
   })
 })

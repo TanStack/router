@@ -7,14 +7,7 @@
  * per app (each tree augments the router's types globally).
  */
 import { describe, expect } from 'vitest'
-import {
-  appWithRoutes,
-  createApp,
-  fileRoute,
-  generate,
-  lazyFileRoute,
-  rootRoute,
-} from '../app'
+import { fileRoute, generate, lazyFileRoute, rootRoute } from '../app'
 import { checkApp } from '../real-router'
 import {
   childlessLayoutCase,
@@ -78,9 +71,9 @@ describe('route tree types agree with the router', () => {
 // stands for the right route (its `id`).
 describe('FileRoutesByTo', () => {
   test('`to` of an index route is the index route, not a route under pathless layouts with the same path', async ({
-    appRoot,
+    appWithRoutes,
   }) => {
-    const root = await appWithRoutes(appRoot, [
+    const root = await appWithRoutes([
       'posts/index.tsx',
       '_a.tsx',
       '_a/_b.tsx',
@@ -101,9 +94,9 @@ export type Check = Expect<Equal<FileRoutesByTo['/posts']['id'], '/posts/'>>
   }, 30_000)
 
   test('`to` of a route is the route, not its own pathless layout', async ({
-    appRoot,
+    appWithRoutes,
   }) => {
-    const root = await appWithRoutes(appRoot, [
+    const root = await appWithRoutes([
       'foo.tsx',
       'foo/_auth.tsx',
       'foo/_auth/bar.tsx',
@@ -133,9 +126,9 @@ export type Check = Expect<Equal<FileRoutesByTo['/foo']['id'], '/foo'>>
 // Impact: a legal route name breaks the types of the tree's children.
 describe('the root route children', () => {
   test('a route named `root` with child routes is a child of the root route in the types', async ({
-    appRoot,
+    createApp,
   }) => {
-    const root = await createApp(appRoot, {
+    const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/root.tsx': fileRoute('/root'),
       'src/routes/root.settings.tsx': fileRoute('/root/settings'),
@@ -160,9 +153,9 @@ export type Check = Expect<Equal<NonNullable<Children>[keyof NonNullable<Childre
 // the tree's own type names are free.)
 describe('routes by full path', () => {
   test('the full path `/` is the index route, not a pathless layout with only a lazy file', async ({
-    appRoot,
+    createApp,
   }) => {
-    const root = await createApp(appRoot, {
+    const root = await createApp({
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/index.tsx': fileRoute('/'),
       'src/routes/_auth.lazy.tsx': lazyFileRoute('/_auth'),
