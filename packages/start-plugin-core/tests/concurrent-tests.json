@@ -1,0 +1,8 @@
+[
+  "integration/hydrate-pages.test.ts",
+  "integration/hydrate-pages-rsbuild.test.ts",
+  "integration/hydrate-pages-solid.test.ts",
+  "integration/hydrate-pages-solid-rsbuild.test.ts",
+  "integration/clientOnlyJSX.test.ts",
+  "integration/start-build-jsx-and-builders.test.ts"
+]

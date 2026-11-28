@@ -15,6 +15,22 @@ import packageJson from './package.json'
 import noncompilerTests from './tests/noncompiler-tests.json' with { type: 'json' }
 
 /**
+ * Slow-tier files whose tests run concurrently (project
+ * `integration-concurrent`): each file builds its one app once, before its
+ * tests (one `beforeAll`), and every test only reads that finished build:
+ * it runs it in a page and an HTTP server of its own (a client run) or a
+ * Node process of its own (an SSR run), and reads its files. No test
+ * builds, edits a file, uses a dev or preview server, or reads what the
+ * build or the process printed. A build changes process-wide state while
+ * it runs (the working directory, `unhandledRejection` listeners,
+ * `NODE_ENV`), so a file with sibling builds (`describe.each` over
+ * bundlers, each with its `beforeAll`) is not one: its hooks would build at
+ * once. Every other project runs one test at a time. Paths relative to
+ * `tests/`; eslint.config.js reads the same list.
+ */
+import concurrentTests from './tests/concurrent-tests.json' with { type: 'json' }
+
+/**
  * Slow-tier tests that read process-global state (the self-checks switch,
  * `TSR_COMPILER_VERIFY`, read once when the compiler loads; the compiler's
  * stats knob, `TSR_COMPILER_STATS`, in `perf-guards/`): each runs in a
@@ -39,29 +55,6 @@ const aloneTests = [
  * relative to `tests/`.
  */
 const unitAloneTests = ['start-compiler-rsc-import-protection.test.ts']
-
-/**
- * Slow-tier files whose tests run concurrently (project
- * `integration-concurrent`): each file builds its one app once, before its
- * tests (one `beforeAll`), and every test only reads that finished build:
- * it runs it in a page and an HTTP server of its own (a client run) or a
- * Node process of its own (an SSR run), and reads its files. No test
- * builds, edits a file, uses a dev or preview server, or reads what the
- * build or the process printed. A build changes process-wide state while
- * it runs (the working directory, `unhandledRejection` listeners,
- * `NODE_ENV`), so a file with sibling builds (`describe.each` over
- * bundlers, each with its `beforeAll`) is not one: its hooks would build at
- * once. Every other project runs one test at a time. Paths relative to
- * `tests/`.
- */
-const concurrentTests = [
-  'integration/hydrate-pages.test.ts',
-  'integration/hydrate-pages-rsbuild.test.ts',
-  'integration/hydrate-pages-solid.test.ts',
-  'integration/hydrate-pages-solid-rsbuild.test.ts',
-  'integration/clientOnlyJSX.test.ts',
-  'integration/start-build-jsx-and-builders.test.ts',
-]
 
 /** This package's build output (`dist`), as its `exports` name it. */
 const builtPackage = new RegExp(
@@ -246,8 +239,8 @@ const config = defineConfig({
         // cases rendered and hydrated in pages of the Start host
         // (`render.ts`), as the fast tier runs them, whose cost does not fit
         // the fast tier. Each case has its own directory of the file's host
-        // (`start-host.ts`). A test process keeps its browser and the hosts
-        // a file gives back for later files (`isolate: false`).
+        // (`start-host.ts`). A test process keeps its browser for later
+        // files (`isolate: false`).
         extends: true,
         test: {
           name: 'integration-pages',
