@@ -516,6 +516,48 @@ export function isModuleNotFoundError(error: any): boolean {
   )
 }
 
+/**
+ * Firefox and Safari cancel a pending dynamic import when the page starts to
+ * unload, and reject it with the same message as a missing module. Call this
+ * before an import, and the returned function after it settles: it stops
+ * watching and reports whether the page began unloading in between, in which
+ * case the failure says nothing about a stale deployment.
+ */
+export function watchPageUnload(): () => boolean {
+  if (typeof window === 'undefined') {
+    return () => false
+  }
+  let unloading = false
+  const onBeforeUnload = () => {
+    unloading = true
+  }
+  window.addEventListener('beforeunload', onBeforeUnload)
+  return () => {
+    window.removeEventListener('beforeunload', onBeforeUnload)
+    return unloading
+  }
+}
+
+/**
+ * Resolves on the first sign that the page is still in use after
+ * `beforeunload`. Some browsers fire it for `mailto:` or download links without
+ * leaving, and a page restored from the back/forward cache comes back too.
+ */
+export function waitForPageToStay(): Promise<void> {
+  return new Promise((resolve) => {
+    const events = ['pageshow', 'pointerdown', 'keydown'] as const
+    const stay = () => {
+      for (const event of events) {
+        window.removeEventListener(event, stay, true)
+      }
+      resolve()
+    }
+    for (const event of events) {
+      window.addEventListener(event, stay, true)
+    }
+  })
+}
+
 export function isPromise<T>(
   value: Promise<Awaited<T>> | T,
 ): value is Promise<Awaited<T>> {
