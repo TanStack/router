@@ -171,7 +171,13 @@ test('the published tree replaced on disk by an earlier one is printed again at 
   await server.environments.client.transformRequest(url)
   const earlier = await readFile(tree, 'utf8')
   await addRoute(server, path.join(root, 'src/routes/new.tsx'), '/new')
-  await serves(server, url, 'routes/new')
+  // (published: the served tree imports the route added)
+  await expect
+    .poll(
+      async () =>
+        (await server.environments.client.transformRequest(url))?.code,
+    )
+    .toContain('routes/new')
   const published = await readFile(tree, 'utf8')
   await writeFile(tree, earlier)
   const index = path.join(root, 'src/routes/index.tsx')

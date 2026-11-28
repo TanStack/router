@@ -10,8 +10,8 @@
  * query or registration.
  *
  * Client semantics run in a real browser: every check is a script run in
- * a page of its own in the file's browser context (`runInPage`), which
- * imports the route module from the dev server
+ * the file's page (`runInPage`: a fresh document of the app per run, one
+ * run at a time), which imports the route module from the dev server
  * with real ES module linking, the real Vite client and the framework's
  * refresh runtime, and renders with the real framework's client renderer
  * and the real router. The test's own modules (what the route file imports)
@@ -686,13 +686,10 @@ interface HostState {
 /** The shared hosts of the running file, by configuration (`hostKey`). */
 const hosts = new Map<string, Promise<HostState>>()
 
-/**
- * A page of the running file's browser context, and the pages of that
- * context no run holds now (each run takes one, or a new one when another
- * run holds them all).
- */
+/** The page the running file's routes run in (a browser context of its own). */
 let filePage: Promise<BrowserPage> | undefined
-const idlePages: Array<Page> = []
+/** Whether a run holds the file's page (two at once are refused). */
+let pageHeld = false
 
 /**
  * Closes the running file's browser context, then its shared hosts, one at a time,
@@ -701,7 +698,6 @@ const idlePages: Array<Page> = []
 export async function closeRouteHosts() {
   const page = filePage
   filePage = undefined
-  idlePages.length = 0
   await page?.then(
     (opened) => opened.close(),
     () => {},
@@ -1024,8 +1020,8 @@ export interface RouteApp {
   /** The route file as written. */
   code: string
   /**
-   * Runs `body` (an async function body) in a page of its own in the file's
-   * browser context and returns its JSON value. In scope: `exports` and `Route` (the
+   * Runs `body` (an async function body) in a fresh document of the file's
+   * page and returns its JSON value. In scope: `exports` and `Route` (the
    * route module and its route, imported from the dev server), `options`,
    * `trigger(option)`, `load(option)` (a component after `preload()`),
    * `render(option, props?)` and `renderComponent(component, props?)` (the
@@ -1157,15 +1153,20 @@ export async function loadRoute(
     const hmr = state.host.dev.hmr.length
     const clear = fresh
     fresh = false
-    // A page no other run holds, of the file's browser context
-    const context = (
-      await (filePage ??= openPage('about:blank'))
-    ).page.context()
-    if (clear) {
-      await context.clearCookies()
+    // The file's page, one run at a time (no test runs two at once: a
+    // second would replace the first one's document)
+    if (pageHeld) {
+      throw new Error(
+        `"${expect.getState().currentTestName}" starts a page run while another one runs: await the first run`,
+      )
     }
-    const page = idlePages.pop() ?? (await context.newPage())
+    pageHeld = true
+    const opened = (filePage ??= openPage('about:blank'))
     try {
+      const { page } = await opened
+      if (clear) {
+        await page.context().clearCookies()
+      }
       const run = await runInPage<T>(
         page,
         state.host,
@@ -1181,11 +1182,13 @@ ${body}
 ])`,
         clear,
       )
-      idlePages.push(page)
       return run
     } catch (error) {
       // (a page whose run failed goes: it may not have left the document)
-      await page.close().catch(() => {})
+      if (filePage === opened) {
+        filePage = undefined
+        await opened.then((page) => page.close()).catch(() => {})
+      }
       const sent = state.host.dev.hmr
         .slice(hmr)
         .map((message) => `${message.type} ${message.paths.join(', ')}`)
@@ -1193,6 +1196,8 @@ ${body}
         `${(error as Error).message}\nHMR messages the dev server sent meanwhile:\n${sent.join('\n') || '(none)'}`,
         { cause: error },
       )
+    } finally {
+      pageHeld = false
     }
   }
   const run = async <T>(body: string, runOptions?: { before?: string }) =>
