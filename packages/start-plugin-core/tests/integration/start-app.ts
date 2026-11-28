@@ -3,7 +3,8 @@
  * or served the way `vite build`, `vite dev` and `rsbuild build` do, with
  * `tanstackStart()` of the built `@tanstack/react-start` package (its
  * `plugin/vite` and `plugin/rsbuild` entries, which run this package's built
- * `dist`). The `test:integration` target builds both packages first.
+ * `dist`). The `test:integration` target builds both packages first. An app
+ * can use `@tanstack/vue-start` instead (`createStartApp`'s `framework`).
  *
  * The app links the workspace's `@tanstack/react-start` and the
  * `@tanstack/react-router`, `react` and `react-dom` it uses, as an installed
@@ -31,9 +32,12 @@ import type { ViteDevServer } from 'vite'
 /** The options of `tanstackStart()`. */
 export type StartOptions = Record<string, unknown>
 
-const reactStartDir = fileURLToPath(
-  new URL('../../../react-start', import.meta.url),
-)
+/** The frameworks an app can use Start with in these tests. */
+export type StartFramework = 'react' | 'vue'
+
+function startPackageDir(framework: StartFramework) {
+  return fileURLToPath(new URL(`../../../${framework}-start`, import.meta.url))
+}
 
 const routerEntry = `import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
@@ -55,6 +59,7 @@ export function appFiles(files: Record<string, string> = {}) {
 
 export interface StartApp {
   root: string
+  framework: StartFramework
   read: (file: string) => Promise<string>
   write: (files: Record<string, string>) => Promise<void>
 }
@@ -66,8 +71,8 @@ export interface StartApp {
  * Rsbuild's virtual modules write under it). Both are undone when the test
  * finishes.
  *
- * `dependencies` are the packages the app depends on besides
- * `@tanstack/react-start`: only these resolve from the app's directory.
+ * `dependencies` are the packages the app depends on besides the Start
+ * package of its `framework`: only these resolve from the app's directory.
  */
 export async function createStartApp(
   files: Record<string, string>,
@@ -77,6 +82,7 @@ export async function createStartApp(
     'react',
     'react-dom',
   ],
+  framework: StartFramework = 'react',
 ): Promise<StartApp> {
   const root = realpathSync(await mkdtemp(path.join(os.tmpdir(), prefix)))
   const cwd = process.cwd()
@@ -85,11 +91,12 @@ export async function createStartApp(
     process.chdir(cwd)
     await rm(root, { recursive: true, force: true })
   })
+  const startDir = startPackageDir(framework)
   const links: Record<string, string> = {
-    '@tanstack/react-start': reactStartDir,
+    [`@tanstack/${framework}-start`]: startDir,
   }
   for (const name of dependencies) {
-    links[name] = realpathSync(path.join(reactStartDir, 'node_modules', name))
+    links[name] = realpathSync(path.join(startDir, 'node_modules', name))
   }
   for (const [name, target] of Object.entries(links)) {
     const link = path.join(root, 'node_modules', name)
@@ -110,13 +117,22 @@ export async function createStartApp(
   })
   return {
     root,
+    framework,
     read: (file) => readFile(path.join(root, file), 'utf8'),
     write,
   }
 }
 
-async function startPlugin(bundler: 'vite' | 'rsbuild', options: StartOptions) {
-  const entry = path.join(reactStartDir, 'dist/esm/plugin', `${bundler}.js`)
+async function startPlugin(
+  app: StartApp,
+  bundler: 'vite' | 'rsbuild',
+  options: StartOptions,
+) {
+  const entry = path.join(
+    startPackageDir(app.framework),
+    'dist/esm/plugin',
+    `${bundler}.js`,
+  )
   const { tanstackStart } = await import(pathToFileURL(entry).href)
   return tanstackStart(options)
 }
@@ -148,7 +164,7 @@ export async function buildStartApp(
   bundler: 'vite' | 'rsbuild',
   options: StartOptions = {},
 ): Promise<StartBuild> {
-  const plugin = await startPlugin(bundler, options)
+  const plugin = await startPlugin(app, bundler, options)
   const warnings: Array<string> = []
   if (bundler === 'vite') {
     const customLogger = createLogger('error')
@@ -186,7 +202,7 @@ export async function startViteDevServer(
     configFile: false,
     logLevel: 'error',
     server: { middlewareMode: true },
-    plugins: [await startPlugin('vite', options)],
+    plugins: [await startPlugin(app, 'vite', options)],
   })
   onTestFinished(() => server.close())
   return server
@@ -227,7 +243,7 @@ export async function startViteTestServer(
     server: { middlewareMode: browser, hmr: false },
     // (the pre-bundle is written when it is ready, not when a page has loaded)
     optimizeDeps: { holdUntilCrawlEnd: false },
-    plugins: [await startPlugin('vite', options)],
+    plugins: [await startPlugin(app, 'vite', options)],
   })
   onTestFinished(async () => {
     // Closing the server does not wait for a pre-bundle in progress, which

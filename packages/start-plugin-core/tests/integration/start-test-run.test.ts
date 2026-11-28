@@ -180,6 +180,37 @@ export const readSession = () => getCookie('session')
     timeout,
   )
 
+  // Vue Start named `@tanstack/vue-store` by a path through
+  // `@tanstack/vue-router` too. Vite warned, found the store when a test first
+  // imported the router, pre-bundled it then and reloaded the page.
+  test(
+    'that depends on Vue Start only: Vite pre-bundles the store of the router Start uses',
+    async () => {
+      const app = await createStartApp(
+        {
+          'src/runtime.ts': `import { createIsomorphicFn } from '@tanstack/vue-start'
+export const where = createIsomorphicFn()
+  .server(() => 'MARK_SERVER')
+  .client(() => 'MARK_CLIENT')
+`,
+        },
+        'start-library-',
+        ['vue'],
+        'vue',
+      )
+      const { server, warnings } = await startViteTestServer(app, {}, true)
+
+      expect(warnings).toEqual([])
+      const preBundled = server.environments.client.depsOptimizer!.metadata
+      expect(
+        preBundled.depInfoList.filter((dep) =>
+          dep.id.endsWith('> @tanstack/vue-store'),
+        ),
+      ).toHaveLength(1)
+    },
+    timeout,
+  )
+
   // Only the modules the route generator found lost their server-only route
   // options in client code, and no generator runs for this package.
   test(
