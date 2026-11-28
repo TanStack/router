@@ -109,7 +109,7 @@ export function parseSegments<TRouteLike extends RouteLike>(
   route: TRouteLike,
   start: number,
   node: AnySegmentNode<TRouteLike>,
-  dynamicListsToSort?: Array<Array<DynamicSegmentNode<TRouteLike>>>,
+  dynamicListsToSort?: Array<Array<AnySegmentNode<TRouteLike>>>,
   parentInterpolation?: RouteInterpolation,
 ): ParsedRoute<TRouteLike>
 export function parseSegments<TRouteLike extends RouteLike>(
@@ -117,10 +117,11 @@ export function parseSegments<TRouteLike extends RouteLike>(
   route: TRouteLike,
   start: number,
   node?: AnySegmentNode<TRouteLike>,
-  /** Each dynamic sibling list is recorded once, when it first needs sorting. */
-  dynamicListsToSort?: Array<Array<DynamicSegmentNode<TRouteLike>>>,
+  /** Each dynamic or pathless sibling list is recorded once, when it first needs sorting. */
+  dynamicListsToSort?: Array<Array<AnySegmentNode<TRouteLike>>>,
   parentInterpolation?: RouteInterpolation,
 ): RouteInterpolation | ParsedRoute<TRouteLike> {
+  const parentNode = node
   let cursor = start
   const path = route.fullPath ?? route.from
   const options = route.options
@@ -261,33 +262,44 @@ export function parseSegments<TRouteLike extends RouteLike>(
     return segmentData!
   }
 
-  // create pathless node
+  const isLeaf = (route.path || !route.children) && !route.isRoot
+  const isIndex = isLeaf && literalEnd < length
+  // params.parse must sit on a node only this route's subtree reaches. A
+  // dynamic node with a parser is never shared, but static nodes, index slots
+  // and the parent's node (reached by pathless routes) can be.
   if (
     parseParams &&
-    route.children &&
-    !route.isRoot &&
-    route.id &&
-    route.id.charCodeAt(route.id.lastIndexOf('/') + 1) === 95 /* '_' */
+    (node === parentNode
+      ? route.children || isIndex
+      : node.kind === SEGMENT_TYPE_PATHNAME)
   ) {
     const pathlessNode = createSegmentNode(node, SEGMENT_TYPE_PATHLESS)
-    ;(node.pathless ??= []).push(pathlessNode)
+    if ((node.pathless ??= []).push(pathlessNode) === 2) {
+      dynamicListsToSort?.push(node.pathless)
+    }
     node = pathlessNode
   }
 
-  const isLeaf = (route.path || !route.children) && !route.isRoot
+  // a pathless leaf has nothing to guard
+  if (parseParams && node !== parentNode) {
+    node.parse = parseParams
+    node.priority = options?.params?.priority ?? 0
+    // params.parse reads param names from the node it sits on
+    node.data = segmentData
+  }
+
   // create index node
-  if (isLeaf && literalEnd < length) {
+  if (isIndex) {
     const indexNode = createSegmentNode(node, SEGMENT_TYPE_INDEX)
     node.index = indexNode
     node = indexNode
   }
 
-  node.parse = parseParams ?? null
-  node.priority = options?.params?.priority ?? 0
   // A shared candidate keeps the original names of its first terminal route.
   if (!node.route) {
     node.data = segmentData
-    if (isLeaf) {
+    // a pathless leaf never owns its parent's URL
+    if (isLeaf && node !== parentNode) {
       node.route = route
     }
   }
@@ -295,20 +307,14 @@ export function parseSegments<TRouteLike extends RouteLike>(
 }
 
 function sortDynamic(
-  a: {
-    prefix: string
-    suffix: string
-    caseSensitive: boolean
-    parse: null | ((params: Record<string, string>) => unknown)
-    priority: number
-  },
-  b: {
-    prefix: string
-    suffix: string
-    caseSensitive: boolean
-    parse: null | ((params: Record<string, string>) => unknown)
-    priority: number
-  },
+  a: Pick<
+    AnySegmentNode<any>,
+    'prefix' | 'suffix' | 'caseSensitive' | 'parse' | 'priority'
+  >,
+  b: Pick<
+    AnySegmentNode<any>,
+    'prefix' | 'suffix' | 'caseSensitive' | 'parse' | 'priority'
+  >,
 ) {
   if (a.parse && !b.parse) return -1
   if (!a.parse && b.parse) return 1
@@ -432,7 +438,7 @@ type SegmentNode<T extends RouteLike> = {
 
   depth: number
 
-  /** route.options.params.parse function, set on the last node of the route */
+  /** route.options.params.parse function, set on a node only that route's subtree reaches */
   parse: null | ((params: Record<string, string>) => unknown)
 
   /** route.options.params.priority ?? 0 */
@@ -485,7 +491,7 @@ export function processRouteMasks<
   processedTree: ProcessedTree<any, TRouteLike, any>,
 ) {
   const segmentTree = createSegmentNode<TRouteLike>()
-  const dynamicListsToSort: Array<Array<DynamicSegmentNode<TRouteLike>>> = []
+  const dynamicListsToSort: Array<Array<AnySegmentNode<TRouteLike>>> = []
   function visit(
     route: TRouteLike,
     start: number,
@@ -628,7 +634,7 @@ export function processRouteTree<
   caseSensitive: boolean = false,
 ): ProcessRouteTreeResult<TRouteLike> {
   const segmentTree = createSegmentNode<TRouteLike>()
-  const dynamicListsToSort: Array<Array<DynamicSegmentNode<TRouteLike>>> = []
+  const dynamicListsToSort: Array<Array<AnySegmentNode<TRouteLike>>> = []
   const routesById = {} as Record<string, TRouteLike>
   const routesByPath = {} as Record<string, TRouteLike>
   let index = 0
@@ -956,26 +962,19 @@ function getNodeMatch<T extends RouteLike>(
         extract,
         rawParams,
       }
-      let indexValid = true
-      if (node.index.parse) {
-        const result = validateParseParams(path, parts, indexFrame)
-        if (!result) indexValid = false
+      // perfect match, no need to continue
+      // this is an optimization, algorithm should work correctly without this block
+      if (
+        !dynamics &&
+        !optionals &&
+        !skipped &&
+        isPerfectStaticMatch(statics, partsLength)
+      ) {
+        return indexFrame
       }
-      if (indexValid) {
-        // perfect match, no need to continue
-        // this is an optimization, algorithm should work correctly without this block
-        if (
-          !dynamics &&
-          !optionals &&
-          !skipped &&
-          isPerfectStaticMatch(statics, partsLength)
-        ) {
-          return indexFrame
-        }
-        if (isFrameMoreSpecific(bestMatch, indexFrame)) {
-          // index matches skip the stack because they cannot have children
-          bestMatch = indexFrame
-        }
+      if (isFrameMoreSpecific(bestMatch, indexFrame)) {
+        // index matches skip the stack because they cannot have children
+        bestMatch = indexFrame
       }
     }
 
