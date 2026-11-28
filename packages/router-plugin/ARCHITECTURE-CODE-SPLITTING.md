@@ -114,7 +114,7 @@ flowchart TB
 returns an **array of 3 plugins** that share a closure containing:
 
 - `sharedBindingsMap: Map<string, Set<string>>` — maps normalized file paths
-  to their computed shared binding names
+  to their computed shared binding names (an empty set when a file has none)
 - `userConfig` — resolved plugin configuration
 - Helper functions for grouping resolution
 
@@ -155,7 +155,8 @@ Excludes file IDs that include `tsr-split` or `tsr-shared`.
 1. Extracts the grouping from the `?tsr-split=<encoded>` query parameter
 2. Decodes it via `decodeIdentifier()` to get the list of properties this
    virtual file should export (e.g., `['component']`)
-3. Reads shared bindings from `sharedBindingsMap` for the base file
+3. Reads shared bindings from `sharedBindingsMap` for the base file, computing
+   them from the file's code when the map has no entry
 4. Calls `compileCodeSplitVirtualRoute()` which:
    - Removes shared binding declarations before traversal (prevents scope
      collision crashes)
@@ -177,7 +178,8 @@ Excludes file IDs that include `tsr-split` or `tsr-shared`.
 **What it does:**
 
 1. Extracts the base file path from the ID
-2. Looks up shared bindings from `sharedBindingsMap`
+2. Looks up shared bindings from `sharedBindingsMap`, computing them from the
+   file's code when the map has no entry
 3. Calls `compileCodeSplitSharedRoute()` which:
    - Keeps only declarations of shared bindings and their transitive
      dependencies
@@ -415,15 +417,24 @@ imports `cache` (needed by `setCached`) from the shared module.
 The three plugins share a closure containing `sharedBindingsMap`:
 
 ```
-Plugin 1 (reference): computeSharedBindings() → sharedBindingsMap.set(id, bindings)
-Plugin 2 (virtual):   sharedBindingsMap.get(baseId) → pass to compileCodeSplitVirtualRoute()
-Plugin 3 (shared):    sharedBindingsMap.get(baseId) → pass to compileCodeSplitSharedRoute()
+Plugin 1 (reference): resolveSharedBindings() → sharedBindingsMap.set(id, bindings)
+Plugin 2 (virtual):   getSharedBindings() → pass to compileCodeSplitVirtualRoute()
+Plugin 3 (shared):    getSharedBindings() → pass to compileCodeSplitSharedRoute()
 ```
 
-This works because all three plugins run in the same JavaScript process and
-the map is captured by closure. In typical builds, the reference module is
-transformed first and then the bundler resolves the emitted dynamic imports,
-which triggers transformations for the virtual/shared module IDs.
+`resolveSharedBindings()` resolves the split groupings of a route file, calls
+`computeSharedBindings()` and stores the result. `getSharedBindings()` returns
+the stored set and calls `resolveSharedBindings()` when there is none.
+
+All three plugins run in the same JavaScript process and the map is captured
+by closure. In typical builds, the reference module is transformed first and
+then the bundler resolves the emitted dynamic imports, which triggers
+transformations for the virtual/shared module IDs. The map is a memo, not the
+only source: a tool with a persistent transform cache (Vitest's
+`fsModuleCache`) can restore a compiled reference module without running
+plugin 1 in the current process. Plugins 2 and 3 receive the code of the whole
+route file, so they compute the same shared bindings from it. For a file that
+is not in `routesByFile` they skip `splitBehavior`, which needs a route id.
 
 ---
 
@@ -844,8 +855,9 @@ useless).
 ### 8. Plugin Ordering in the Array Matters
 
 The 3 plugins must be returned in order: reference, virtual, shared. The
-reference plugin populates `sharedBindingsMap` before the other two consume
-it. Bundlers process transforms in plugin array order for a given module ID.
+reference plugin normally populates `sharedBindingsMap` before the other two
+consume it. Bundlers process transforms in plugin array order for a given
+module ID.
 
 ### 9. Imported Bindings Are Never Shared
 
