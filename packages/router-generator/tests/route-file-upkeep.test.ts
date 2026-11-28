@@ -104,12 +104,7 @@ const upkeeper =
  * naming it, or it succeeded with a warning naming it.
  */
 function expectReported(
-  {
-    root,
-    file,
-    error,
-    diagnostics,
-  }: Awaited<ReturnType<ReturnType<typeof upkeeper>>>,
+  { root, file, error, diagnostics }: Awaited<ReturnType<Upkeep>>,
   at?: { position: ReturnType<typeof diagnosticPosition> },
 ) {
   expectDiagnostic(error === undefined ? diagnostics : diagnosticsOf(error), {
@@ -161,24 +156,31 @@ const routeFileCheck =
     return exports
   }
 
-const test = base
-  .extend('upkeep', upkeeper)
+type Upkeep = ReturnType<typeof upkeeper>
+
+const test = base.extend<{
+  upkeep: Upkeep
   /**
    * `upkeep` of a file the generator may report instead of keeping up, whose
    * tree goes as `tree` says.
    */
-  .extend(
-    'upkeepOrReport',
-    ({ upkeep }) =>
-      (
-        file: string,
-        source: string,
-        tree: TreeLoad,
-        otherFiles: Record<string, string> = {},
-      ) =>
-        upkeep(file, source, {}, otherFiles, { reportAllowed: true, tree }),
-  )
-  .extend('expectRouteFile', routeFileCheck)
+  upkeepOrReport: (
+    file: string,
+    source: string,
+    tree: TreeLoad,
+    otherFiles?: Record<string, string>,
+  ) => ReturnType<Upkeep>
+  expectRouteFile: ReturnType<typeof routeFileCheck>
+}>({
+  upkeep: ({ createApp, routesOf }, use) =>
+    use(upkeeper({ createApp, routesOf })),
+  upkeepOrReport: ({ upkeep }, use) =>
+    use((file, source, tree, otherFiles = {}) =>
+      upkeep(file, source, {}, otherFiles, { reportAllowed: true, tree }),
+    ),
+  expectRouteFile: ({ evaluateModule }, use) =>
+    use(routeFileCheck({ evaluateModule })),
+})
 
 describe('route ids the generator fixes', () => {
   test.for([

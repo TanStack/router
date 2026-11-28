@@ -70,64 +70,59 @@ export const test = base
       }
     },
   )
-  .extend(
-    'createApp',
-    ({ appRoot }) =>
-      (files: Record<string, string>) =>
-        app.createApp(appRoot, files),
-  )
-  .extend(
-    'appWithRoutes',
-    ({ appRoot }) =>
-      (files: Array<string>) =>
-        app.appWithRoutes(appRoot, files),
-  )
-  .extend(
-    'copyFixture',
-    ({ appRoot }) =>
-      (name: string) =>
-        fixture.copyFixture(appRoot, name),
-  )
-  .extend(
-    'evaluateModule',
-    ({ appRoot, routeTreeHost }) =>
-      (code: string, fileName?: string) =>
+  // (one `extend` for the bound helpers: TypeScript before 5.9 loses the
+  // context's types along a longer chain of `extend` calls)
+  .extend<{
+    createApp: Bound<typeof app.createApp>
+    appWithRoutes: Bound<typeof app.appWithRoutes>
+    copyFixture: Bound<typeof fixture.copyFixture>
+    evaluateModule: (
+      code: string,
+      fileName?: string,
+    ) => ReturnType<typeof tree.evaluateModule>
+    withRouteTree: <T>(
+      treeFile: string,
+      use: (loaded: LoadedRouteTree) => Promise<T> | T,
+      client?: ClientPages,
+    ) => Promise<T>
+    routesOf: Bound<typeof tree.routesOf>
+    urlsOf: Bound<typeof tree.urlsOf>
+    matchesOf: Bound<typeof tree.matchesOf>
+    observeRouteTree: Bound<typeof tree.observeRouteTree>
+  }>({
+    createApp: ({ appRoot }, use) =>
+      use((files) => app.createApp(appRoot, files)),
+    appWithRoutes: ({ appRoot }, use) =>
+      use((files) => app.appWithRoutes(appRoot, files)),
+    copyFixture: ({ appRoot }, use) =>
+      use((name) => fixture.copyFixture(appRoot, name)),
+    evaluateModule: ({ appRoot, routeTreeHost }, use) =>
+      use((code, fileName) =>
         tree.evaluateModule(routeTreeHost, appRoot, code, fileName),
-  )
-  .extend(
-    'withRouteTree',
-    ({ routeTreeHost }) =>
-      <T>(
-        treeFile: string,
-        use: (loaded: LoadedRouteTree) => Promise<T> | T,
-        client?: ClientPages,
-      ) =>
-        tree.withRouteTree(routeTreeHost, treeFile, use, client),
-  )
-  .extend(
-    'routesOf',
-    ({ routeTreeHost }) =>
-      (treeFile: string) =>
-        tree.routesOf(routeTreeHost, treeFile),
-  )
-  .extend(
-    'urlsOf',
-    ({ routeTreeHost }) =>
-      (treeFile: string) =>
-        tree.urlsOf(routeTreeHost, treeFile),
-  )
-  .extend(
-    'matchesOf',
-    ({ routeTreeHost }) =>
-      (treeFile: string, pathname: string) =>
+      ),
+    withRouteTree: ({ routeTreeHost }, use) =>
+      use((treeFile, run, client) =>
+        tree.withRouteTree(routeTreeHost, treeFile, run, client),
+      ),
+    routesOf: ({ routeTreeHost }, use) =>
+      use((treeFile) => tree.routesOf(routeTreeHost, treeFile)),
+    urlsOf: ({ routeTreeHost }, use) =>
+      use((treeFile) => tree.urlsOf(routeTreeHost, treeFile)),
+    matchesOf: ({ routeTreeHost }, use) =>
+      use((treeFile, pathname) =>
         tree.matchesOf(routeTreeHost, treeFile, pathname),
-  )
-  .extend(
-    'observeRouteTree',
-    ({ routeTreeHost }) =>
-      (treeFile: string) =>
-        tree.observeRouteTree(routeTreeHost, treeFile),
-  )
+      ),
+    observeRouteTree: ({ routeTreeHost }, use) =>
+      use((treeFile) => tree.observeRouteTree(routeTreeHost, treeFile)),
+  })
+
+/** A helper with its first parameter (the directory or the host) given. */
+type Bound<TFunction> = TFunction extends (
+  first: any,
+  ...rest: infer A
+) => infer R
+  ? (...rest: A) => R
+  : never
 
 /** The fixtures of this package's tests, for the helpers a file builds on them. */
 export type Fixtures =
