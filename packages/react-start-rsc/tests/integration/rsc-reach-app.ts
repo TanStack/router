@@ -129,6 +129,7 @@ export async function everyOutcome(
       await close()
     }
   }
+  signal.throwIfAborted()
   return outcomes
 }
 
