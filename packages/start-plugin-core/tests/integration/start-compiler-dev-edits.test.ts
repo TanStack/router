@@ -113,7 +113,7 @@ describe('dev edits', () => {
         factoryEdits.reexportChain.edit,
       )
       expect(settle(after.myFn)).toEqual(throwsError)
-    }, 30_000)
+    })
   })
 
   // Control for the pin above (same harness, and the concept of
@@ -139,7 +139,7 @@ describe('dev edits', () => {
 
       await started.edit(inDir(dir, factoryEdits.aliasedEnvOnly.edit))
       expect(await callServerFn()).toEqual(throwsError)
-    }, 30_000)
+    })
   })
 
   /**
@@ -207,7 +207,7 @@ export const fn = base.handler(async () => db.x())`,
           { fresh: true },
         ),
       ).toEqual({ url: 'undefined', result: 'x' })
-    }, 30_000)
+    })
   })
 
   describe('an export * of the Start package', () => {
@@ -234,6 +234,6 @@ export const fn = createServerFn().handler(async () => 'secret-body')`
       expect(
         await inEditPage(started, `/${dir}/b.ts`, 'return await module.fn()'),
       ).toBe('secret-body')
-    }, 30_000)
+    })
   })
 })

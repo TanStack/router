@@ -25,8 +25,6 @@ import { buildStart } from '../build-start'
 import { workerResolveHook } from './worker-resolve-hook'
 import type { StartBundler } from '../build-harness'
 
-const timeout = 60_000
-
 const platform = `import { createMiddleware, createServerFn } from '@tanstack/react-start'
 import { env } from 'cloudflare:workers'
 import { existsSync } from 'node:fs'
@@ -164,6 +162,5 @@ return {
         externalRequests: expect.arrayContaining(['cloudflare:workers']),
       })
     },
-    timeout,
   )
 })

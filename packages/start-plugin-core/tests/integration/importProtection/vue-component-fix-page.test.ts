@@ -32,8 +32,6 @@ import {
 } from '../../importProtection/start-apps'
 import type { StartBuildError, StartBundler } from '../../build-harness'
 
-const timeout = 90_000
-
 /** The two cases' pages: a route each (`/named`, `/marked`). */
 const app = {
   'src/routes/__root.tsx': `import { defineComponent, h } from 'vue'
@@ -208,69 +206,57 @@ describe.each(startBundlers)('%s build', (bundler) => {
   const open = async (url: string, route: string) =>
     openTestPage(new URL(route, url).href)
 
-  test(
-    "the fix of a named import of a *.client.* component hydrates that component, not the module's default",
-    async () => {
-      const { error, url } = await both()
-      expectViolationsAt(reportsOf(error, 'src/Named.vue'), [
-        {
-          environment: 'server',
-          use: importAt('src/Named.vue', named, "'./ui.client'"),
-        },
-      ])
-      const browser = await open(url, '/named')
-      await browser.waitForText('VISIBLE CHART', { selector: '#chart' })
-      expect(await browser.text('main')).not.toContain('DIFFERENT WIDGET')
-      expect(await browser.text('main')).not.toContain('MARKED CHART')
-    },
-    timeout,
-  )
+  test("the fix of a named import of a *.client.* component hydrates that component, not the module's default", async () => {
+    const { error, url } = await both()
+    expectViolationsAt(reportsOf(error, 'src/Named.vue'), [
+      {
+        environment: 'server',
+        use: importAt('src/Named.vue', named, "'./ui.client'"),
+      },
+    ])
+    const browser = await open(url, '/named')
+    await browser.waitForText('VISIBLE CHART', { selector: '#chart' })
+    expect(await browser.text('main')).not.toContain('DIFFERENT WIDGET')
+    expect(await browser.text('main')).not.toContain('MARKED CHART')
+  })
 
-  test(
-    'a client-only SFC imported by hand is reported at its importer, and the fix hydrates it',
-    async () => {
-      const { error, url } = await both()
-      // (located at the import that names the marked file)
-      expectViolationsAt(reportsOf(error, 'src/Marked.vue'), [
-        {
-          environment: 'server',
-          use: importAt('src/Marked.vue', marked, "'./Chart.vue'"),
-        },
-      ])
-      const browser = await open(url, '/marked')
-      await browser.waitForText('MARKED CHART', { selector: '#marked-chart' })
-      expect(await browser.text('main')).not.toContain('VISIBLE CHART')
-    },
-    timeout,
-  )
+  test('a client-only SFC imported by hand is reported at its importer, and the fix hydrates it', async () => {
+    const { error, url } = await both()
+    // (located at the import that names the marked file)
+    expectViolationsAt(reportsOf(error, 'src/Marked.vue'), [
+      {
+        environment: 'server',
+        use: importAt('src/Marked.vue', marked, "'./Chart.vue'"),
+      },
+    ])
+    const browser = await open(url, '/marked')
+    await browser.waitForText('MARKED CHART', { selector: '#marked-chart' })
+    expect(await browser.text('main')).not.toContain('VISIBLE CHART')
+  })
 
   // (an absence is a property of the whole build: the rows above read
   // their own importer's report)
-  test(
-    'the failed build reports both importers, and nothing else',
-    async () => {
-      const { error } = await both()
-      // (every callback, duplicates kept: `expectViolationsAt` compares the
-      // distinct ones)
-      expect(
-        reportedViolations(error)
-          .map(
-            ({ environment, importer }) =>
-              `${environment} ${locationParts(importer).file}`,
-          )
-          .sort(),
-      ).toEqual(['server src/Marked.vue', 'server src/Named.vue'])
-      expectViolationsAt(error, [
-        {
-          environment: 'server',
-          use: importAt('src/Named.vue', named, "'./ui.client'"),
-        },
-        {
-          environment: 'server',
-          use: importAt('src/Marked.vue', marked, "'./Chart.vue'"),
-        },
-      ])
-    },
-    timeout,
-  )
+  test('the failed build reports both importers, and nothing else', async () => {
+    const { error } = await both()
+    // (every callback, duplicates kept: `expectViolationsAt` compares the
+    // distinct ones)
+    expect(
+      reportedViolations(error)
+        .map(
+          ({ environment, importer }) =>
+            `${environment} ${locationParts(importer).file}`,
+        )
+        .sort(),
+    ).toEqual(['server src/Marked.vue', 'server src/Named.vue'])
+    expectViolationsAt(error, [
+      {
+        environment: 'server',
+        use: importAt('src/Named.vue', named, "'./ui.client'"),
+      },
+      {
+        environment: 'server',
+        use: importAt('src/Marked.vue', marked, "'./Chart.vue'"),
+      },
+    ])
+  })
 })

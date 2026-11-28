@@ -16,8 +16,6 @@ import { buildStartShared } from '../build-harness'
 import { createStartHost } from '../start-host'
 import { solidAppConfig } from './hydrate-pages'
 
-const timeout = 90_000
-
 const routeFiles = {
   'src/tone.ts': `import { createContext } from 'solid-js'
 export const Tone = createContext('no-provider')
@@ -100,24 +98,20 @@ describe.each(['vite', 'rsbuild'] as const)('%s build', (bundler) => {
           }),
     )
     url = (await built.preview()).url
-  }, timeout)
+  }, 90_000)
 
-  test(
-    'split children calling use* primitives keep their owner, context and route match',
-    async () => {
-      const page = await openTestPage(new URL('/items/abc', url).href)
-      await page.page.locator('button[data-count]').click()
-      await page.waitForText('clicks:1', { selector: 'button[data-count]' })
-      expect({
-        tone: await page.page.locator('[data-tone]').textContent(),
-        param: await page.page.locator('[data-param]').textContent(),
-        pageErrors: page.errors,
-      }).toEqual({ tone: 'provided:owned', param: 'abc', pageErrors: [] })
-      // a client-side navigation to another param of the route
-      await page.page.locator('a[data-next]').click()
-      await page.waitForText('def', { selector: '[data-param]' })
-      expect(page.errors).toEqual([])
-    },
-    timeout,
-  )
+  test('split children calling use* primitives keep their owner, context and route match', async () => {
+    const page = await openTestPage(new URL('/items/abc', url).href)
+    await page.page.locator('button[data-count]').click()
+    await page.waitForText('clicks:1', { selector: 'button[data-count]' })
+    expect({
+      tone: await page.page.locator('[data-tone]').textContent(),
+      param: await page.page.locator('[data-param]').textContent(),
+      pageErrors: page.errors,
+    }).toEqual({ tone: 'provided:owned', param: 'abc', pageErrors: [] })
+    // a client-side navigation to another param of the route
+    await page.page.locator('a[data-next]').click()
+    await page.waitForText('def', { selector: '[data-param]' })
+    expect(page.errors).toEqual([])
+  })
 })

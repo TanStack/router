@@ -17,7 +17,7 @@ import {
 import { settledAcrossTurn } from './hosts'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'
 
-const timeout = 120_000
+const compileTimeout = 120_000
 
 /** A use of the denied file: the real value's text, or `mock`. */
 const importer = (label: string) => `import { secret } from './secret.server'
@@ -114,7 +114,7 @@ describe.each(['vite', 'rsbuild'] as const)('%s dev', (bundler) => {
       }
     }
     const server = await startRsbuildStartDevServer({
-      compileTimeout: timeout,
+      compileTimeout,
       browser: true,
       hmr: false,
       files,
@@ -133,59 +133,52 @@ describe.each(['vite', 'rsbuild'] as const)('%s dev', (bundler) => {
 
   // Source: perf pass item 14 (the ledger's reconciliation after each
   // compile asks only restored edge modules again).
-  test(
-    'allowImport answers hold after edits, a removed and re-added importer, and a callback that would answer otherwise',
-    async () => {
-      const { importProtection, asked, flip } = answering()
-      const { run, edit } = await serve(importProtection, files)
-      const seen: Record<string, unknown> = { first: await run() }
-      await edit(edited)
-      seen.edited = await run()
-      await edit(removed)
-      seen.removed = await run()
-      flip()
-      await edit(restored)
-      seen.restored = await run()
-      expect(seen).toEqual({
-        first: expected,
-        edited: expected,
-        removed: { plain: 'mock' },
-        restored: expected,
-      })
-      // once per import for the session (the denied file compiled under its
-      // own id once nothing allowed brings it is asked about itself)
-      expect(
-        asked.filter((file) => file !== 'secret.server.ts').sort(),
-      ).toEqual(['allowed.ts', 'plain.ts'])
-    },
-    timeout,
-  )
+  test('allowImport answers hold after edits, a removed and re-added importer, and a callback that would answer otherwise', async () => {
+    const { importProtection, asked, flip } = answering()
+    const { run, edit } = await serve(importProtection, files)
+    const seen: Record<string, unknown> = { first: await run() }
+    await edit(edited)
+    seen.edited = await run()
+    await edit(removed)
+    seen.removed = await run()
+    flip()
+    await edit(restored)
+    seen.restored = await run()
+    expect(seen).toEqual({
+      first: expected,
+      edited: expected,
+      removed: { plain: 'mock' },
+      restored: expected,
+    })
+    // once per import for the session (the denied file compiled under its
+    // own id once nothing allowed brings it is asked about itself)
+    expect(asked.filter((file) => file !== 'secret.server.ts').sort()).toEqual([
+      'allowed.ts',
+      'plain.ts',
+    ])
+  })
   // Source: research-allowimport-importer.md (dev `error` left an allowed
   // import unsubstituted: the denied file was asked about itself and failed).
-  test(
-    "behavior 'error': an import allowImport allows by its importer gets the real module, as in a build, and the denied file is not asked about itself",
-    async () => {
-      const asked: Array<string> = []
-      const importProtection: ImportProtectionOptions = {
-        behavior: 'error',
-        mockAccess: 'off',
-        allowImport: (info) => {
-          const file = info.importer.split('?')[0]!.split('/').pop()!
-          asked.push(file)
-          return file === 'allowed.ts'
-        },
-      }
-      const { run } = await serve(importProtection, {
-        'src/secret.server.ts': files['src/secret.server.ts'],
-        'src/allowed.ts': files['src/allowed.ts'],
-        'src/entry.ts': `import { use as allowed } from './allowed'
+  test("behavior 'error': an import allowImport allows by its importer gets the real module, as in a build, and the denied file is not asked about itself", async () => {
+    const asked: Array<string> = []
+    const importProtection: ImportProtectionOptions = {
+      behavior: 'error',
+      mockAccess: 'off',
+      allowImport: (info) => {
+        const file = info.importer.split('?')[0]!.split('/').pop()!
+        asked.push(file)
+        return file === 'allowed.ts'
+      },
+    }
+    const { run } = await serve(importProtection, {
+      'src/secret.server.ts': files['src/secret.server.ts'],
+      'src/allowed.ts': files['src/allowed.ts'],
+      'src/entry.ts': `import { use as allowed } from './allowed'
 ;(globalThis as any).uses = { allowed }
 `,
-        'src/router.ts': files['src/router.ts'],
-      })
-      expect(await run()).toEqual({ allowed: 'MARK_SECRET' })
-      expect(asked).toEqual(['allowed.ts'])
-    },
-    timeout,
-  )
+      'src/router.ts': files['src/router.ts'],
+    })
+    expect(await run()).toEqual({ allowed: 'MARK_SECRET' })
+    expect(asked).toEqual(['allowed.ts'])
+  })
 })

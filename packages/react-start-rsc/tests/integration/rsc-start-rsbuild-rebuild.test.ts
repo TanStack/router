@@ -11,8 +11,6 @@ import { expect, test } from 'vitest'
 import { waitForHydration } from './rsc-app'
 import { openRscPage, startRscRsbuildPreviewServer } from './rsc-serial'
 
-const timeout = 120_000
-
 const index = (
   marker: string,
 ) => `import { createFileRoute } from '@tanstack/react-router'
@@ -24,31 +22,27 @@ function Page() {
 }
 `
 
-test(
-  'the second build renders documents that load its own client files',
-  async () => {
-    const server = await startRscRsbuildPreviewServer({
-      files: { 'src/routes/index.tsx': index('MARK_BEFORE') },
-      rebuildWith: { 'src/routes/index.tsx': index('MARK_AFTER') },
-    })
-    const html = await (await fetch(new URL('/', server.url))).text()
-    const named = [
-      ...html.matchAll(/(?:src|href)="(\/[^"]+?\.(?:js|css))"/g),
-    ].map((m) => m[1]!)
-    expect(named.length).toBeGreaterThan(0)
-    const missing: Array<string> = []
-    for (const file of named) {
-      const response = await fetch(new URL(file, server.url))
-      if (!response.ok) {
-        missing.push(file)
-      }
+test('the second build renders documents that load its own client files', async () => {
+  const server = await startRscRsbuildPreviewServer({
+    files: { 'src/routes/index.tsx': index('MARK_BEFORE') },
+    rebuildWith: { 'src/routes/index.tsx': index('MARK_AFTER') },
+  })
+  const html = await (await fetch(new URL('/', server.url))).text()
+  const named = [
+    ...html.matchAll(/(?:src|href)="(\/[^"]+?\.(?:js|css))"/g),
+  ].map((m) => m[1]!)
+  expect(named.length).toBeGreaterThan(0)
+  const missing: Array<string> = []
+  for (const file of named) {
+    const response = await fetch(new URL(file, server.url))
+    if (!response.ok) {
+      missing.push(file)
     }
-    expect(missing).toEqual([])
-    const page = await openRscPage(server, '/')
-    await waitForHydration(page)
-    expect(await page.locator('[data-testid=page]').textContent()).toBe(
-      'MARK_AFTER 0',
-    )
-  },
-  timeout,
-)
+  }
+  expect(missing).toEqual([])
+  const page = await openRscPage(server, '/')
+  await waitForHydration(page)
+  expect(await page.locator('[data-testid=page]').textContent()).toBe(
+    'MARK_AFTER 0',
+  )
+})

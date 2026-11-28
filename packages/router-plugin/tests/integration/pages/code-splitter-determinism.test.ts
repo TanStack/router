@@ -83,7 +83,5 @@ describe('a route served under', () => {
         portable: (observation) => observation,
       })
     },
-    // Two dev servers of their own
-    30_000,
   )
 })

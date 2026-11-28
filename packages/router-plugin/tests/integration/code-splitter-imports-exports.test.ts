@@ -45,7 +45,7 @@ return globalThis.dbLoaded ?? null`,
         loaded: null,
         html: '<div id="root"><p>page</p></div>',
       })
-    }, 60_000)
+    })
   })
 
   // Source: real app statelyai/jevspresso (diff corpus): `import type { Bar }`
@@ -85,7 +85,7 @@ export const Route = createFileRoute('/')({ component: Page })
       )
       expect(run.html).toBe('<div id="root"><p>MARK_BADGE</p></div>')
       expect(app.where('MARK_BADGE')).toBe('lazy')
-    }, 60_000)
+    })
   })
 
   // Source: real app tanstack.com (`ds.typography.tsx`): `import type * as
@@ -124,7 +124,7 @@ export const Route = createFileRoute('/')({ component: Page })
           `await entry.mount(entry.Route.options.component)`,
         )
         expect(run.html).toBe('<div id="root"><p>MARK_NOTE</p></div>')
-      }, 60_000)
+      })
     },
   )
 
@@ -199,7 +199,7 @@ return globalThis.typesLoaded ?? null`,
           loaded: null,
           html: '<div id="root"><p><b>MARK_BADGE</b><i>MARK_CHIP</i><s>MARK_PILL</s></p></div>',
         })
-      }, 60_000)
+      })
     },
   )
 })

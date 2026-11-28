@@ -11,7 +11,6 @@ import { describe, expect, test } from 'vitest'
 import { startBundlers } from '../build-harness'
 import { buildStart } from '../build-start'
 
-const timeout = 60_000
 const RP = '@tanstack/react-router'
 
 describe.each(startBundlers)('a %s build', (bundler) => {
@@ -63,6 +62,5 @@ export const getRouter = () => createRouter({ routeTree })
       expect(build.client.where('MARK_API_MODULE')).toBe('nowhere')
       expect(build.client.where('MARK_HANDLER')).toBe('nowhere')
     },
-    timeout,
   )
 })

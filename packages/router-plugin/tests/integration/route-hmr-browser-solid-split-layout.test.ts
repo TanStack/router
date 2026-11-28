@@ -19,8 +19,6 @@ import { it } from '../test'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { RouterFixtures } from '../test'
 
-const timeout = 90_000
-
 type Bundler = 'vite' | 'rsbuild' | 'webpack'
 
 interface App {
@@ -93,86 +91,86 @@ async function sameDocumentOnce(
 describe.each(['vite', 'rsbuild', 'webpack'] as const)(
   '%s: a solid app',
   (bundler) => {
-    it(
-      'adds, edits and removes the error component of the open route in place',
-      { timeout },
-      async ({ expect, openRouteHmrPage, openWebpackHmrPage }) => {
-        const app = await open(
-          { openRouteHmrPage, openWebpackHmrPage },
-          bundler,
-          { 'routes/index.tsx': index(apart, 1, false) },
-          'page v1',
-        )
-        const saves = [true, true, false, false, true, true]
-        for (const [i, error] of saves.entries()) {
-          const v = i + 2
-          expect(
-            await app.edit(
-              { 'routes/index.tsx': index(apart, v, error) },
-              `page v${v}`,
-            ),
-            `save v${v}`,
-          ).toEqual({ reloaded: false, errors: [] })
-        }
-      },
-    )
+    it('adds, edits and removes the error component of the open route in place', async ({
+      expect,
+      openRouteHmrPage,
+      openWebpackHmrPage,
+    }) => {
+      const app = await open(
+        { openRouteHmrPage, openWebpackHmrPage },
+        bundler,
+        { 'routes/index.tsx': index(apart, 1, false) },
+        'page v1',
+      )
+      const saves = [true, true, false, false, true, true]
+      for (const [i, error] of saves.entries()) {
+        const v = i + 2
+        expect(
+          await app.edit(
+            { 'routes/index.tsx': index(apart, v, error) },
+            `page v${v}`,
+          ),
+          `save v${v}`,
+        ).toEqual({ reloaded: false, errors: [] })
+      }
+    })
 
-    it(
-      'adds and removes the error component of a route the page has not shown, in place',
-      { timeout },
-      async ({ expect, openRouteHmrPage, openWebpackHmrPage }) => {
-        const extra = (error: boolean) =>
-          `import { createFileRoute } from '@tanstack/solid-router'
+    it('adds and removes the error component of a route the page has not shown, in place', async ({
+      expect,
+      openRouteHmrPage,
+      openWebpackHmrPage,
+    }) => {
+      const extra = (error: boolean) =>
+        `import { createFileRoute } from '@tanstack/solid-router'
 export const Route = createFileRoute('/extra')({${error ? '\n  errorComponent: () => <p>oops</p>,' : ''}
   component: () => <p>extra</p>,
 })
 `
-        const app = await open(
-          { openRouteHmrPage, openWebpackHmrPage },
-          bundler,
-          {
-            'routes/index.tsx': `import { createFileRoute } from '@tanstack/solid-router'
+      const app = await open(
+        { openRouteHmrPage, openWebpackHmrPage },
+        bundler,
+        {
+          'routes/index.tsx': `import { createFileRoute } from '@tanstack/solid-router'
 export const Route = createFileRoute('/')({ component: () => <p>home</p> })
 `,
-            'routes/extra.tsx': extra(false),
-          },
-          'home',
-        )
-        await app.page.page.evaluate('window.__keptDocument = true')
-        const option = `window.__APP_ROUTER__.routesById['/extra'].options.errorComponent`
-        for (const error of [true, false]) {
-          await app.edit({ 'routes/extra.tsx': extra(error) }, 'home')
-          expect(
-            await sameDocumentOnce(app.page, error ? option : `!${option}`),
-            `errorComponent ${error ? 'added' : 'removed'}`,
-          ).toBe(true)
-        }
-      },
-    )
+          'routes/extra.tsx': extra(false),
+        },
+        'home',
+      )
+      await app.page.page.evaluate('window.__keptDocument = true')
+      const option = `window.__APP_ROUTER__.routesById['/extra'].options.errorComponent`
+      for (const error of [true, false]) {
+        await app.edit({ 'routes/extra.tsx': extra(error) }, 'home')
+        expect(
+          await sameDocumentOnce(app.page, error ? option : `!${option}`),
+          `errorComponent ${error ? 'added' : 'removed'}`,
+        ).toBe(true)
+      }
+    })
 
-    it(
-      'reloads once to remove the error component sharing the chunk of the open route component, then edits and adds it back in place',
-      { timeout },
-      async ({ expect, openRouteHmrPage, openWebpackHmrPage }) => {
-        const shared = `[['loader'], ['component', 'errorComponent']]`
-        const app = await open(
-          { openRouteHmrPage, openWebpackHmrPage },
-          bundler,
-          { 'routes/index.tsx': index(shared, 1, true) },
-          'page v1',
-        )
-        const saves = [false, false, true, true]
-        for (const [i, error] of saves.entries()) {
-          const v = i + 2
-          expect(
-            await app.edit(
-              { 'routes/index.tsx': index(shared, v, error) },
-              `page v${v}`,
-            ),
-            `save v${v}`,
-          ).toEqual({ reloaded: v === 2, errors: [] })
-        }
-      },
-    )
+    it('reloads once to remove the error component sharing the chunk of the open route component, then edits and adds it back in place', async ({
+      expect,
+      openRouteHmrPage,
+      openWebpackHmrPage,
+    }) => {
+      const shared = `[['loader'], ['component', 'errorComponent']]`
+      const app = await open(
+        { openRouteHmrPage, openWebpackHmrPage },
+        bundler,
+        { 'routes/index.tsx': index(shared, 1, true) },
+        'page v1',
+      )
+      const saves = [false, false, true, true]
+      for (const [i, error] of saves.entries()) {
+        const v = i + 2
+        expect(
+          await app.edit(
+            { 'routes/index.tsx': index(shared, v, error) },
+            `page v${v}`,
+          ),
+          `save v${v}`,
+        ).toEqual({ reloaded: v === 2, errors: [] })
+      }
+    })
   },
 )

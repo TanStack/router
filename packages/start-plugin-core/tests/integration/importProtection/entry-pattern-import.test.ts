@@ -10,8 +10,6 @@ import { startBundlers } from '../../build-harness'
 import { buildStart } from '../../build-start'
 import type { StartBundler } from '../../build-harness'
 
-const timeout = 60_000
-
 const patternImport: Record<StartBundler, string> = {
   vite: `const modules = import.meta.glob('./*.ts', { eager: true })
 ;(globalThis as any).modules = modules
@@ -22,32 +20,28 @@ const patternImport: Record<StartBundler, string> = {
 }
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  test(
-    'a pattern import of a client module reaching the *.server.ts server entry gets its mock, reported',
-    async () => {
-      const build = await buildStart({
-        bundler,
-        files: {
-          'src/entry.server.ts': `export default {
+  test('a pattern import of a client module reaching the *.server.ts server entry gets its mock, reported', async () => {
+    const build = await buildStart({
+      bundler,
+      files: {
+        'src/entry.server.ts': `export default {
   fetch: () => new Response('MARK_SERVER_ENTRY'),
 }
 `,
-          'src/pages.ts': patternImport[bundler],
-          'src/entry.ts': `import './pages'\n`,
-        },
-        entry: 'src/entry.ts',
-        start: {
-          server: { entry: 'entry.server.ts' },
-          importProtection: { behavior: 'mock' },
-        },
-      })
-      expect(build.client.where('MARK_SERVER_ENTRY')).toBe('nowhere')
-      expect(
-        build.violations
-          .filter((v) => v.env === 'client')
-          .map((v) => v.resolved?.endsWith('/src/entry.server.ts')),
-      ).toContain(true)
-    },
-    timeout,
-  )
+        'src/pages.ts': patternImport[bundler],
+        'src/entry.ts': `import './pages'\n`,
+      },
+      entry: 'src/entry.ts',
+      start: {
+        server: { entry: 'entry.server.ts' },
+        importProtection: { behavior: 'mock' },
+      },
+    })
+    expect(build.client.where('MARK_SERVER_ENTRY')).toBe('nowhere')
+    expect(
+      build.violations
+        .filter((v) => v.env === 'client')
+        .map((v) => v.resolved?.endsWith('/src/entry.server.ts')),
+    ).toContain(true)
+  })
 })

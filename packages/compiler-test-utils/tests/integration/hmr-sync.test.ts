@@ -21,8 +21,6 @@ import {
 } from '../../src/hmr-sync'
 import { test } from '../../src/test'
 
-const timeout = 60_000
-
 /**
  * An entry that shows the texts of `text.js` and `other.js` and applies
  * updates of `text.js` itself; nothing accepts the updates of `other.js`.
@@ -48,7 +46,6 @@ test.for([
   { name: 'the page imports it on every load', sync: false },
 ])(
   'once settled, an accepted update shows in place and one nothing accepts has reloaded the page ($name)',
-  { timeout },
   async ({ sync }, { devServer }) => {
     const server = await devServer({
       prefix: '.hmr-sync-',
@@ -93,53 +90,51 @@ test.for([
   },
 )
 
-test(
-  'once settled, an update whose accept callback invalidates it has reloaded the page, also when the page reaches the server late',
-  { timeout },
-  async ({ devServer }) => {
-    const server = await devServer({
-      prefix: '.hmr-sync-',
-      browser: true,
-      files: {
-        'index.html': `<div id="app"></div><script type="module" src="/main.js"></script>`,
-        'hmr-sync.ts': hmrSyncModule,
-        // A module that accepts its own update, then gives up on it (Vite
-        // propagates the update to its importer, which accepts nothing: a
-        // full reload)
-        'main.js': `import './hmr-sync.ts'
+test('once settled, an update whose accept callback invalidates it has reloaded the page, also when the page reaches the server late', async ({
+  devServer,
+}) => {
+  const server = await devServer({
+    prefix: '.hmr-sync-',
+    browser: true,
+    files: {
+      'index.html': `<div id="app"></div><script type="module" src="/main.js"></script>`,
+      'hmr-sync.ts': hmrSyncModule,
+      // A module that accepts its own update, then gives up on it (Vite
+      // propagates the update to its importer, which accepts nothing: a
+      // full reload)
+      'main.js': `import './hmr-sync.ts'
 import { text } from './text.js'
 document.getElementById('app').textContent = text
 `,
-        'text.js': `export const text = 'text v1'
+      'text.js': `export const text = 'text v1'
 import.meta.hot.accept(() => import.meta.hot.invalidate('cannot apply'))
 `,
-      },
+    },
+  })
+  const page = await closeAtEnd(() => openPage('about:blank'))
+  // What the page sends over its HMR WebSocket reaches the server 400 ms
+  // late (a busy server or a slow link); what the server sends is not held
+  await page.page.context().routeWebSocket(/./, (ws) => {
+    const upstream = ws.connectToServer()
+    ws.onMessage((message) => {
+      setTimeout(() => upstream.send(message), 400)
     })
-    const page = await closeAtEnd(() => openPage('about:blank'))
-    // What the page sends over its HMR WebSocket reaches the server 400 ms
-    // late (a busy server or a slow link); what the server sends is not held
-    await page.page.context().routeWebSocket(/./, (ws) => {
-      const upstream = ws.connectToServer()
-      ws.onMessage((message) => {
-        setTimeout(() => upstream.send(message), 400)
-      })
-      upstream.onMessage((message) => ws.send(message))
-    })
-    await page.page.goto(server.url!)
-    const inFlight = trackRequests(page)
-    await page.waitForText('text v1')
-    await settlePage(server, page, inFlight)
-    const loads = page.loads()
+    upstream.onMessage((message) => ws.send(message))
+  })
+  await page.page.goto(server.url!)
+  const inFlight = trackRequests(page)
+  await page.waitForText('text v1')
+  await settlePage(server, page, inFlight)
+  const loads = page.loads()
 
-    await server.edit({
-      'text.js': `export const text = 'text v2'
+  await server.edit({
+    'text.js': `export const text = 'text v2'
 import.meta.hot.accept(() => import.meta.hot.invalidate('cannot apply'))
 `,
-    })
-    await settlePage(server, page, inFlight)
-    expect({
-      text: await page.text('#app'),
-      reloads: page.loads() - loads,
-    }).toEqual({ text: 'text v2', reloads: 1 })
-  },
-)
+  })
+  await settlePage(server, page, inFlight)
+  expect({
+    text: await page.text('#app'),
+    reloads: page.loads() - loads,
+  }).toEqual({ text: 'text v2', reloads: 1 })
+})

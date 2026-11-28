@@ -9,8 +9,6 @@ import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { startBundlers } from '../build-harness'
 import { buildStart } from '../build-start'
 
-const timeout = 60_000
-
 const head = `import { createFileRoute } from '@tanstack/react-router'\n`
 const options = `{
   component: () => <p>MARK_PAGE_END</p>,
@@ -63,7 +61,6 @@ describe.each(startBundlers)('a %s build', (bundler) => {
       expect(build.client.where('MARK_SERVER_END')).toBe('nowhere')
       expect(build.client.where('MARK_PAGE_END')).toBe('lazy')
     },
-    timeout,
   )
 
   test.each([
@@ -90,6 +87,5 @@ export { Route as Helper, usesRouter } from './helper'
         { file: 'src/helper.tsx', root: build.client.root },
       )
     },
-    timeout,
   )
 })

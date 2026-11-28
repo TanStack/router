@@ -12,7 +12,6 @@ import { expect } from 'vitest'
 import { DanglingNameError } from '../../src/build-harness'
 import { test } from '../../src/test'
 
-const timeout = 60_000
 const head = `export function label(productLabel: string) {
   return productLabel.toUpperCase()
 }
@@ -139,7 +138,6 @@ test.for(
   ),
 )(
   '%s: a read %s is dangling (minified: %s)',
-  { timeout },
   async ([bundler, shape, minify], { build }) => {
     const outcome = await build({
       bundler,
@@ -219,7 +217,6 @@ test.for(
   ),
 )(
   'webpack: an app function reading a name nothing binds %s (minimized: %s)',
-  { timeout },
   async ([_, minimize, body, expected], { build }) => {
     const outcome = await build({
       bundler: 'webpack',
@@ -251,75 +248,73 @@ test.for(
 
 // A bundle-level read after a `try` that always returns never runs: the
 // chunk loads.
-test(
-  'webpack: a footer read after a try that returns, with an empty finally, is no read',
-  async ({ build }) => {
-    const footer = () => ({
-      apply(compiler: {
-        webpack: {
-          Compilation: { PROCESS_ASSETS_STAGE_REPORT: number }
-          sources: { RawSource: new (code: string) => unknown }
+test('webpack: a footer read after a try that returns, with an empty finally, is no read', async ({
+  build,
+}) => {
+  const footer = () => ({
+    apply(compiler: {
+      webpack: {
+        Compilation: { PROCESS_ASSETS_STAGE_REPORT: number }
+        sources: { RawSource: new (code: string) => unknown }
+      }
+      hooks: {
+        thisCompilation: {
+          tap: (name: string, run: (compilation: never) => void) => void
         }
-        hooks: {
-          thisCompilation: {
-            tap: (name: string, run: (compilation: never) => void) => void
-          }
-        }
-      }) {
-        const { Compilation, sources } = compiler.webpack
-        compiler.hooks.thisCompilation.tap(
-          'footer',
-          (compilation: {
-            hooks: {
-              processAssets: {
-                tap: (
-                  options: { name: string; stage: number },
-                  run: (assets: Record<string, unknown>) => void,
-                ) => void
-              }
+      }
+    }) {
+      const { Compilation, sources } = compiler.webpack
+      compiler.hooks.thisCompilation.tap(
+        'footer',
+        (compilation: {
+          hooks: {
+            processAssets: {
+              tap: (
+                options: { name: string; stage: number },
+                run: (assets: Record<string, unknown>) => void,
+              ) => void
             }
-            getAsset: (name: string) => { source: { source: () => unknown } }
-            updateAsset: (name: string, source: unknown) => void
-          }) => {
-            compilation.hooks.processAssets.tap(
-              {
-                name: 'footer',
-                stage: Compilation.PROCESS_ASSETS_STAGE_REPORT,
-              },
-              (assets) => {
-                for (const name of Object.keys(assets)) {
-                  if (/\.[cm]?js$/.test(name)) {
-                    const code = String(
-                      compilation.getAsset(name).source.source(),
-                    )
-                    compilation.updateAsset(
-                      name,
-                      new sources.RawSource(
-                        `${code}\n;(() => {\n  try {\n    return 1\n  } finally {\n  }\n  return droppedLabel\n})()\n`,
-                      ),
-                    )
-                  }
+          }
+          getAsset: (name: string) => { source: { source: () => unknown } }
+          updateAsset: (name: string, source: unknown) => void
+        }) => {
+          compilation.hooks.processAssets.tap(
+            {
+              name: 'footer',
+              stage: Compilation.PROCESS_ASSETS_STAGE_REPORT,
+            },
+            (assets) => {
+              for (const name of Object.keys(assets)) {
+                if (/\.[cm]?js$/.test(name)) {
+                  const code = String(
+                    compilation.getAsset(name).source.source(),
+                  )
+                  compilation.updateAsset(
+                    name,
+                    new sources.RawSource(
+                      `${code}\n;(() => {\n  try {\n    return 1\n  } finally {\n  }\n  return droppedLabel\n})()\n`,
+                    ),
+                  )
                 }
-              },
-            )
-          },
-        )
-      },
-    })
-    const outcome = await build({
-      bundler: 'webpack',
-      env: 'client',
-      files: { 'entry.ts': `export const value = () => 1\n` },
-      plugins: { webpack: footer },
-    }).then(
-      (app) =>
-        app.run('return entry.value()').then(
-          ({ result }) => result,
-          (thrown: unknown) => thrown,
-        ),
-      (thrown: unknown) => thrown,
-    )
-    expect(outcome).toBe(1)
-  },
-  timeout,
-)
+              }
+            },
+          )
+        },
+      )
+    },
+  })
+  const outcome = await build({
+    bundler: 'webpack',
+    env: 'client',
+    files: { 'entry.ts': `export const value = () => 1\n` },
+    plugins: { webpack: footer },
+  }).then(
+    (app) =>
+      app.run('return entry.value()').then(
+        ({ result }) => result,
+        (thrown: unknown) => thrown,
+      ),
+    (thrown: unknown) => thrown,
+  )
+  expect(outcome).toBe(1)
+})

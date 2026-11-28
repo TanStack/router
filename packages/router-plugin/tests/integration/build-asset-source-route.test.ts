@@ -8,7 +8,6 @@
  */
 import { describe, expect, test } from 'vitest'
 import { build, head, rootRoute } from '../build-harness'
-import { timeout } from '../production-bundle'
 
 const index = `${head}import { payload } from '../payload'
 function Page() {
@@ -52,26 +51,22 @@ const assetSourceRule = {
 }
 
 describe.each(['webpack', 'rspack'] as const)('%s', (bundler) => {
-  test(
-    "a route file imported as its text (asset/source) is the file's text, and the route still splits",
-    async () => {
-      const { tanstackRouter } = await import(`../../src/${bundler}`)
-      const app = await build({
-        bundler,
-        env: 'client',
-        files,
-        routerPlugins: (config) => [assetSourceRule, tanstackRouter(config)],
-      })
-      const { result } = await app.run(
-        `const { component, loader } = entry.Route.options
+  test("a route file imported as its text (asset/source) is the file's text, and the route still splits", async () => {
+    const { tanstackRouter } = await import(`../../src/${bundler}`)
+    const app = await build({
+      bundler,
+      env: 'client',
+      files,
+      routerPlugins: (config) => [assetSourceRule, tanstackRouter(config)],
+    })
+    const { result } = await app.run(
+      `const { component, loader } = entry.Route.options
 const split = typeof component.preload
 await component.preload?.()
 return [entry.text, split, loader()]`,
-      )
-      // the text is the file's, and the route module beside it still splits
-      // (its component is lazy; a resolved client component drops `preload`)
-      expect(result).toEqual([index, 'function', 'MARK_PAYLOAD'])
-    },
-    timeout,
-  )
+    )
+    // the text is the file's, and the route module beside it still splits
+    // (its component is lazy; a resolved client component drops `preload`)
+    expect(result).toEqual([index, 'function', 'MARK_PAYLOAD'])
+  })
 })

@@ -12,7 +12,6 @@ import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 
-const timeout = 60_000
 const compileTimeout = 20_000
 
 /** The app modules (under `src/`) a server's compiles since the last edit built, sorted. */
@@ -43,88 +42,80 @@ describe('Rsbuild dev: what an edit rebuilds', () => {
   // the compile started.
   // Source: factcheck of review 1, part 3 (a comment-only edit of a helper
   // with 373 importers rebuilt 853 + 869 modules).
-  test(
-    'an edit that changes no fact of a widely imported module builds that module only',
-    async () => {
-      const importers = Array.from({ length: 12 }, (_, i) => `m${i}`)
-      const format = `export const format = (n: number) => '#' + n\n`
-      const server = await startRsbuildStartDevServer({
-        compileTimeout,
-        files: {
-          'src/lib/format.ts': format,
-          ...Object.fromEntries(
-            importers.map((name, i) => [
-              `src/${name}.ts`,
-              `import { format } from './lib/format'
+  test('an edit that changes no fact of a widely imported module builds that module only', async () => {
+    const importers = Array.from({ length: 12 }, (_, i) => `m${i}`)
+    const format = `export const format = (n: number) => '#' + n\n`
+    const server = await startRsbuildStartDevServer({
+      compileTimeout,
+      files: {
+        'src/lib/format.ts': format,
+        ...Object.fromEntries(
+          importers.map((name, i) => [
+            `src/${name}.ts`,
+            `import { format } from './lib/format'
 export const ${name} = () => format(${i})
 `,
-            ]),
-          ),
-          'src/entry.ts': `${importers.map((name) => `import { ${name} } from './${name}'`).join('\n')}
+          ]),
+        ),
+        'src/entry.ts': `${importers.map((name) => `import { ${name} } from './${name}'`).join('\n')}
 console.log(${importers.map((name) => `${name}()`).join(', ')})
 `,
-        },
-      })
-      expect(server.errors).toEqual([])
-      await server.edit({ 'src/lib/format.ts': `${format}// a comment\n` })
-      expect(server.errors).toEqual([])
-      for (const environment of ['client', 'ssr']) {
-        expect(
-          new Set(
-            server.rebuiltBy[environment]?.filter((file) =>
-              file.startsWith('src/'),
-            ),
+      },
+    })
+    expect(server.errors).toEqual([])
+    await server.edit({ 'src/lib/format.ts': `${format}// a comment\n` })
+    expect(server.errors).toEqual([])
+    for (const environment of ['client', 'ssr']) {
+      expect(
+        new Set(
+          server.rebuiltBy[environment]?.filter((file) =>
+            file.startsWith('src/'),
           ),
-        ).toEqual(new Set(['src/lib/format.ts']))
-      }
-    },
-    timeout,
-  )
+        ),
+      ).toEqual(new Set(['src/lib/format.ts']))
+    }
+  })
 
   // An edit that makes an export a server fn builder: the modules that build
   // server fns on it are compiled again (the client loses their handlers),
   // and so is the entry, whose compile followed their values to it; the
   // modules that import something else are not.
   // Source: R87 (the core's invalidation decides which dependents are stale).
-  test(
-    'an edit that makes an export a server fn builder compiles its users again, and nothing unrelated',
-    async () => {
-      const server = await startRsbuildStartDevServer({
-        compileTimeout,
-        files: {
-          'src/lib/base.ts': plainBase,
-          'src/lib/other.ts': `export const other = (n: number) => n + 1\n`,
-          'src/a1.ts': handlerModule('a1', './lib/base'),
-          'src/a2.ts': handlerModule('a2', './lib/base'),
-          'src/u1.ts': `import { other } from './lib/other'\nexport const u1 = () => other(1)\n`,
-          'src/u2.ts': `import { other } from './lib/other'\nexport const u2 = () => other(2)\n`,
-          'src/entry.ts': `import { a1 } from './a1'
+  test('an edit that makes an export a server fn builder compiles its users again, and nothing unrelated', async () => {
+    const server = await startRsbuildStartDevServer({
+      compileTimeout,
+      files: {
+        'src/lib/base.ts': plainBase,
+        'src/lib/other.ts': `export const other = (n: number) => n + 1\n`,
+        'src/a1.ts': handlerModule('a1', './lib/base'),
+        'src/a2.ts': handlerModule('a2', './lib/base'),
+        'src/u1.ts': `import { other } from './lib/other'\nexport const u1 = () => other(1)\n`,
+        'src/u2.ts': `import { other } from './lib/other'\nexport const u2 = () => other(2)\n`,
+        'src/entry.ts': `import { a1 } from './a1'
 import { a2 } from './a2'
 import { u1 } from './u1'
 import { u2 } from './u2'
 console.log(a1, a2, u1(), u2())
 `,
-        },
-      })
-      const client = async () =>
-        Object.values(await server.outputs('client')).join('\n')
-      expect(server.errors).toEqual([])
-      expect(await client()).toContain('MARK_A1')
-      await server.edit({ 'src/lib/base.ts': builderBase })
-      expect(server.errors).toEqual([])
-      const output = await client()
-      expect(output).not.toContain('MARK_A1')
-      expect(output).not.toContain('MARK_A2')
-      const built = builtAppModules(server)
-      expect(built).toEqual(
-        expect.arrayContaining(['src/a1.ts', 'src/a2.ts', 'src/lib/base.ts']),
-      )
-      expect(
-        built.filter((file) => /^src\/(u1|u2|lib\/other)\.ts$/.test(file)),
-      ).toEqual([])
-    },
-    timeout,
-  )
+      },
+    })
+    const client = async () =>
+      Object.values(await server.outputs('client')).join('\n')
+    expect(server.errors).toEqual([])
+    expect(await client()).toContain('MARK_A1')
+    await server.edit({ 'src/lib/base.ts': builderBase })
+    expect(server.errors).toEqual([])
+    const output = await client()
+    expect(output).not.toContain('MARK_A1')
+    expect(output).not.toContain('MARK_A2')
+    const built = builtAppModules(server)
+    expect(built).toEqual(
+      expect.arrayContaining(['src/a1.ts', 'src/a2.ts', 'src/lib/base.ts']),
+    )
+    expect(
+      built.filter((file) => /^src\/(u1|u2|lib\/other)\.ts$/.test(file)),
+    ).toEqual([])
+  })
 
   // `base` stops being a server fn builder: the modules that built server
   // fns on it are built again in the compilation of the edit, and each
@@ -135,41 +126,37 @@ console.log(a1, a2, u1(), u2())
   // an error.
   // Source: design 3 §5 (the stale dependents are built at `finishMake`;
   // Rspack never calls back a rebuild whose module left its graph).
-  test(
-    'a server fn handler module removed by its importer rebuild does not hang the compilation',
-    async () => {
-      const names = Array.from({ length: 8 }, (_, i) => `h${i}`)
-      const server = await startRsbuildStartDevServer({
-        compileTimeout,
-        files: {
-          'src/lib/base.ts': builderBase,
-          ...Object.fromEntries(
-            names.map((name) => [
-              `src/${name}.ts`,
-              handlerModule(name, './lib/base'),
-            ]),
-          ),
-          'src/entry.ts': `${names.map((name) => `import { ${name} } from './${name}'`).join('\n')}
+  test('a server fn handler module removed by its importer rebuild does not hang the compilation', async () => {
+    const names = Array.from({ length: 8 }, (_, i) => `h${i}`)
+    const server = await startRsbuildStartDevServer({
+      compileTimeout,
+      files: {
+        'src/lib/base.ts': builderBase,
+        ...Object.fromEntries(
+          names.map((name) => [
+            `src/${name}.ts`,
+            handlerModule(name, './lib/base'),
+          ]),
+        ),
+        'src/entry.ts': `${names.map((name) => `import { ${name} } from './${name}'`).join('\n')}
 console.log(${names.join(', ')})
 `,
-        },
-      })
-      const client = async () =>
-        Object.values(await server.outputs('client')).join('\n')
-      expect(server.errors).toEqual([])
-      await server.edit({ 'src/lib/base.ts': plainBase })
-      expect(server.errors).toEqual([])
-      for (const name of names) {
-        expect(await client()).toContain(`MARK_${name.toUpperCase()}`)
-      }
-      await server.edit({ 'src/lib/base.ts': builderBase })
-      expect(server.errors).toEqual([])
-      for (const name of names) {
-        expect(await client()).not.toContain(`MARK_${name.toUpperCase()}`)
-      }
-    },
-    timeout,
-  )
+      },
+    })
+    const client = async () =>
+      Object.values(await server.outputs('client')).join('\n')
+    expect(server.errors).toEqual([])
+    await server.edit({ 'src/lib/base.ts': plainBase })
+    expect(server.errors).toEqual([])
+    for (const name of names) {
+      expect(await client()).toContain(`MARK_${name.toUpperCase()}`)
+    }
+    await server.edit({ 'src/lib/base.ts': builderBase })
+    expect(server.errors).toEqual([])
+    for (const name of names) {
+      expect(await client()).not.toContain(`MARK_${name.toUpperCase()}`)
+    }
+  })
 })
 
 describe('Rsbuild dev: files that appear and disappear', () => {
@@ -177,56 +164,48 @@ describe('Rsbuild dev: files that appear and disappear', () => {
   // created again as a plain object: the importer is compiled against the
   // new file, and keeps its handler in the client.
   // Source: R87 (no file dependency of the importer on its import any more).
-  test(
-    'a dependency deleted and created again with other facts compiles its importer again',
-    async () => {
-      const server = await startRsbuildStartDevServer({
-        compileTimeout,
-        files: {
-          'src/lib/base.ts': builderBase,
-          'src/a.ts': handlerModule('a', './lib/base'),
-          'src/entry.ts': `import { a } from './a'\nconsole.log(a)\n`,
-        },
-      })
-      const client = async () =>
-        Object.values(await server.outputs('client')).join('\n')
-      expect(server.errors).toEqual([])
-      expect(await client()).not.toContain('MARK_A')
-      await server.edit({ 'src/lib/base.ts': null })
-      expect(server.errors).not.toEqual([])
-      await server.edit({ 'src/lib/base.ts': plainBase })
-      expect(server.errors).toEqual([])
-      expect(await client()).toContain('MARK_A')
-    },
-    timeout,
-  )
+  test('a dependency deleted and created again with other facts compiles its importer again', async () => {
+    const server = await startRsbuildStartDevServer({
+      compileTimeout,
+      files: {
+        'src/lib/base.ts': builderBase,
+        'src/a.ts': handlerModule('a', './lib/base'),
+        'src/entry.ts': `import { a } from './a'\nconsole.log(a)\n`,
+      },
+    })
+    const client = async () =>
+      Object.values(await server.outputs('client')).join('\n')
+    expect(server.errors).toEqual([])
+    expect(await client()).not.toContain('MARK_A')
+    await server.edit({ 'src/lib/base.ts': null })
+    expect(server.errors).not.toEqual([])
+    await server.edit({ 'src/lib/base.ts': plainBase })
+    expect(server.errors).toEqual([])
+    expect(await client()).toContain('MARK_A')
+  })
 
   // `./lib` resolves to `src/lib/index.ts` (a plain object) until
   // `src/lib.ts` (a server fn builder) appears: the file comes first, so
   // the importer is compiled against it and its handler leaves the client.
   // Source: R87 (successful resolutions are kept across compiles; a created
   // file still invalidates the resolutions it shadows).
-  test(
-    'a created file that shadows a resolution compiles the importer again',
-    async () => {
-      const server = await startRsbuildStartDevServer({
-        compileTimeout,
-        files: {
-          'src/lib/index.ts': plainBase,
-          'src/a.ts': handlerModule('a', './lib'),
-          'src/entry.ts': `import { a } from './a'\nconsole.log(a)\n`,
-        },
-      })
-      const client = async () =>
-        Object.values(await server.outputs('client')).join('\n')
-      expect(server.errors).toEqual([])
-      expect(await client()).toContain('MARK_A')
-      await server.edit({ 'src/lib.ts': builderBase })
-      expect(server.errors).toEqual([])
-      expect(await client()).not.toContain('MARK_A')
-    },
-    timeout,
-  )
+  test('a created file that shadows a resolution compiles the importer again', async () => {
+    const server = await startRsbuildStartDevServer({
+      compileTimeout,
+      files: {
+        'src/lib/index.ts': plainBase,
+        'src/a.ts': handlerModule('a', './lib'),
+        'src/entry.ts': `import { a } from './a'\nconsole.log(a)\n`,
+      },
+    })
+    const client = async () =>
+      Object.values(await server.outputs('client')).join('\n')
+    expect(server.errors).toEqual([])
+    expect(await client()).toContain('MARK_A')
+    await server.edit({ 'src/lib.ts': builderBase })
+    expect(server.errors).toEqual([])
+    expect(await client()).not.toContain('MARK_A')
+  })
 })
 
 describe('Rsbuild dev restarted on its persistent cache', () => {
@@ -241,45 +220,37 @@ describe('Rsbuild dev restarted on its persistent cache', () => {
   // from the cache and compiles none.
   // Source: R87 (the plans' dependencies persist with the modules and are
   // checked at startup).
-  test(
-    'compiles no app module when nothing changed meanwhile',
-    async () => {
-      const first = await startRsbuildStartDevServer({
-        compileTimeout,
-        config,
-        files: app,
-      })
-      expect(first.errors).toEqual([])
-      const server = await first.restart()
-      expect(server.errors).toEqual([])
-      expect(builtAppModules(server)).toEqual([])
-    },
-    timeout,
-  )
+  test('compiles no app module when nothing changed meanwhile', async () => {
+    const first = await startRsbuildStartDevServer({
+      compileTimeout,
+      config,
+      files: app,
+    })
+    expect(first.errors).toEqual([])
+    const server = await first.restart()
+    expect(server.errors).toEqual([])
+    expect(builtAppModules(server)).toEqual([])
+  })
 
   // `base` became a server fn builder while the server was down: the
   // restored importer is compiled again and its handler leaves the client.
   // Source: R87; the build variant is start-build-env-separation.test.ts.
-  test(
-    'compiles again a module whose import became a server fn builder meanwhile',
-    async () => {
-      const first = await startRsbuildStartDevServer({
-        compileTimeout,
-        config,
-        files: app,
-      })
-      const client = async (server: typeof first) =>
-        Object.values(await server.outputs('client')).join('\n')
-      expect(first.errors).toEqual([])
-      expect(await client(first)).toContain('MARK_A')
-      await first.stop()
-      await writeFile(path.join(first.root, 'src/lib/base.ts'), builderBase)
-      const server = await first.restart()
-      expect(server.errors).toEqual([])
-      expect(await client(server)).not.toContain('MARK_A')
-    },
-    timeout,
-  )
+  test('compiles again a module whose import became a server fn builder meanwhile', async () => {
+    const first = await startRsbuildStartDevServer({
+      compileTimeout,
+      config,
+      files: app,
+    })
+    const client = async (server: typeof first) =>
+      Object.values(await server.outputs('client')).join('\n')
+    expect(first.errors).toEqual([])
+    expect(await client(first)).toContain('MARK_A')
+    await first.stop()
+    await writeFile(path.join(first.root, 'src/lib/base.ts'), builderBase)
+    const server = await first.restart()
+    expect(server.errors).toEqual([])
+    expect(await client(server)).not.toContain('MARK_A')
+  })
 
   // A package manager replaced the compiler in place while the server was
   // down (a flat `node_modules`: the loader's path stays, a lockfile-only
@@ -329,39 +300,34 @@ describe('Rsbuild dev restarted on its persistent cache', () => {
         syncBuiltinESMExports()
       }
     },
-    timeout,
   )
 
   // `base` changes back and forth while the server is down, each start on the
   // cache the previous one left: the handler is in the client exactly while
   // `base` is no builder, and no start fails.
   // Source: lane bfs (a builder that became plain killed the dev server 6/6).
-  test(
-    'follows an import that stopped and started being a server fn builder across restarts',
-    async () => {
-      let server = await startRsbuildStartDevServer({
-        compileTimeout,
-        config,
-        files: { ...app, 'src/lib/base.ts': builderBase },
-      })
-      const client = async () =>
-        Object.values(await server.outputs('client')).join('\n')
+  test('follows an import that stopped and started being a server fn builder across restarts', async () => {
+    let server = await startRsbuildStartDevServer({
+      compileTimeout,
+      config,
+      files: { ...app, 'src/lib/base.ts': builderBase },
+    })
+    const client = async () =>
+      Object.values(await server.outputs('client')).join('\n')
+    expect(server.errors).toEqual([])
+    expect(await client()).not.toContain('MARK_A')
+    for (const [base, handlerInClient] of [
+      [plainBase, true],
+      [builderBase, false],
+      [plainBase, true],
+    ] as const) {
+      await server.stop()
+      await writeFile(path.join(server.root, 'src/lib/base.ts'), base)
+      server = await server.restart()
       expect(server.errors).toEqual([])
-      expect(await client()).not.toContain('MARK_A')
-      for (const [base, handlerInClient] of [
-        [plainBase, true],
-        [builderBase, false],
-        [plainBase, true],
-      ] as const) {
-        await server.stop()
-        await writeFile(path.join(server.root, 'src/lib/base.ts'), base)
-        server = await server.restart()
-        expect(server.errors).toEqual([])
-        expect((await client()).includes('MARK_A')).toBe(handlerInClient)
-      }
-    },
-    timeout,
-  )
+      expect((await client()).includes('MARK_A')).toBe(handlerInClient)
+    }
+  })
 
   // `base` stopped being a server fn builder while the server was down:
   // compiling a restored importer again removes its handler module, which was
@@ -370,60 +336,52 @@ describe('Rsbuild dev restarted on its persistent cache', () => {
   // so that one does (Rspack panicked on a module that had left its graph).
   // Source: review of the integration of review 2, on a directory name that
   // hashed that way.
-  test(
-    'starts when compiling a restored module again removes another one it was to compile',
-    async () => {
-      const names = Array.from({ length: 8 }, (_, i) => `h${i}`)
-      const first = await startRsbuildStartDevServer({
-        compileTimeout,
-        config,
-        files: {
-          'src/lib/base.ts': builderBase,
-          ...Object.fromEntries(
-            names.map((name) => [
-              `src/${name}.ts`,
-              handlerModule(name, './lib/base'),
-            ]),
-          ),
-          'src/entry.ts': `${names.map((name) => `import { ${name} } from './${name}'`).join('\n')}
+  test('starts when compiling a restored module again removes another one it was to compile', async () => {
+    const names = Array.from({ length: 8 }, (_, i) => `h${i}`)
+    const first = await startRsbuildStartDevServer({
+      compileTimeout,
+      config,
+      files: {
+        'src/lib/base.ts': builderBase,
+        ...Object.fromEntries(
+          names.map((name) => [
+            `src/${name}.ts`,
+            handlerModule(name, './lib/base'),
+          ]),
+        ),
+        'src/entry.ts': `${names.map((name) => `import { ${name} } from './${name}'`).join('\n')}
 console.log(${names.join(', ')})
 `,
-        },
-      })
-      expect(first.errors).toEqual([])
-      await first.stop()
-      await writeFile(path.join(first.root, 'src/lib/base.ts'), plainBase)
-      const server = await first.restart()
-      expect(server.errors).toEqual([])
-      const client = Object.values(await server.outputs('client')).join('\n')
-      for (const name of names) {
-        expect(client).toContain(`MARK_${name.toUpperCase()}`)
-      }
-    },
-    timeout,
-  )
+      },
+    })
+    expect(first.errors).toEqual([])
+    await first.stop()
+    await writeFile(path.join(first.root, 'src/lib/base.ts'), plainBase)
+    const server = await first.restart()
+    expect(server.errors).toEqual([])
+    const client = Object.values(await server.outputs('client')).join('\n')
+    for (const name of names) {
+      expect(client).toContain(`MARK_${name.toUpperCase()}`)
+    }
+  })
 
   // Restored without a compile, the importer is still compiled again when
   // an edit of the new session changes what it read.
   // Source: R87 (the restored dependencies join the session's invalidation).
-  test(
-    'compiles again a restored module when an edit changes its import',
-    async () => {
-      const first = await startRsbuildStartDevServer({
-        compileTimeout,
-        config,
-        files: app,
-      })
-      expect(first.errors).toEqual([])
-      const server = await first.restart()
-      const client = async () =>
-        Object.values(await server.outputs('client')).join('\n')
-      expect(server.errors).toEqual([])
-      expect(await client()).toContain('MARK_A')
-      await server.edit({ 'src/lib/base.ts': builderBase })
-      expect(server.errors).toEqual([])
-      expect(await client()).not.toContain('MARK_A')
-    },
-    timeout,
-  )
+  test('compiles again a restored module when an edit changes its import', async () => {
+    const first = await startRsbuildStartDevServer({
+      compileTimeout,
+      config,
+      files: app,
+    })
+    expect(first.errors).toEqual([])
+    const server = await first.restart()
+    const client = async () =>
+      Object.values(await server.outputs('client')).join('\n')
+    expect(server.errors).toEqual([])
+    expect(await client()).toContain('MARK_A')
+    await server.edit({ 'src/lib/base.ts': builderBase })
+    expect(server.errors).toEqual([])
+    expect(await client()).not.toContain('MARK_A')
+  })
 })

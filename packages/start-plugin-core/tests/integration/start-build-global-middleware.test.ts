@@ -23,8 +23,6 @@ import {
   startPageEntries,
 } from './start-compose-app'
 
-const timeout = 60_000
-
 const files = {
   ...startPageEntries,
   'src/routes/__root.tsx': rootDocument(),
@@ -81,60 +79,56 @@ ${callByIdExports}`,
 }
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  test(
-    'global function and request middleware: no server code in the client, .client() runs on a client call, .server() and the request middleware run on the server',
-    async () => {
-      const build = await buildStart({
-        bundler,
-        files,
-      })
-      const { client, ssr } = build
-      expect({
-        audit: client.where('MARK_AUDIT_SERVER'),
-        auth: client.where('MARK_AUTH_USER'),
-        modules: client.where(/audit\.server|auth\.server/),
-      }).toEqual({ audit: 'nowhere', auth: 'nowhere', modules: 'nowhere' })
-      const served = await serveStartBuild(build)
-      const page = await openAppPage(served, '/')
-      const requests: Array<{ url: string; method: string }> = []
-      page.page.on('request', (request) => {
-        const url = new URL(request.url())
-        if (url.pathname.startsWith('/_serverFn/')) {
-          requests.push({
-            url: url.pathname + url.search,
-            method: request.method(),
-          })
-        }
-      })
-      await page.page.locator('[data-testid=call]').click()
-      await page.waitForText('MARK_AUDIT_SERVER MARK_AUTH_USER', {
-        selector: '[data-testid=called]',
-      })
-      expect(
-        await page.page.evaluate(() => (globalThis as any).__clientLog),
-      ).toEqual(['log'])
-      expect(page.serverFnRequests).toHaveLength(1)
-      expect(page.errors).toEqual([])
-      const url = await page.page.evaluate(
-        () => (globalThis as any).__app.whoAmI.url as string,
-      )
-      expect(requests).toEqual([{ url, method: 'GET' }])
-      const { result } =
-        await ssr.run(`${callByIdPrelude}const response = await entry.startServerEntry.fetch(
+  test('global function and request middleware: no server code in the client, .client() runs on a client call, .server() and the request middleware run on the server', async () => {
+    const build = await buildStart({
+      bundler,
+      files,
+    })
+    const { client, ssr } = build
+    expect({
+      audit: client.where('MARK_AUDIT_SERVER'),
+      auth: client.where('MARK_AUTH_USER'),
+      modules: client.where(/audit\.server|auth\.server/),
+    }).toEqual({ audit: 'nowhere', auth: 'nowhere', modules: 'nowhere' })
+    const served = await serveStartBuild(build)
+    const page = await openAppPage(served, '/')
+    const requests: Array<{ url: string; method: string }> = []
+    page.page.on('request', (request) => {
+      const url = new URL(request.url())
+      if (url.pathname.startsWith('/_serverFn/')) {
+        requests.push({
+          url: url.pathname + url.search,
+          method: request.method(),
+        })
+      }
+    })
+    await page.page.locator('[data-testid=call]').click()
+    await page.waitForText('MARK_AUDIT_SERVER MARK_AUTH_USER', {
+      selector: '[data-testid=called]',
+    })
+    expect(
+      await page.page.evaluate(() => (globalThis as any).__clientLog),
+    ).toEqual(['log'])
+    expect(page.serverFnRequests).toHaveLength(1)
+    expect(page.errors).toEqual([])
+    const url = await page.page.evaluate(
+      () => (globalThis as any).__app.whoAmI.url as string,
+    )
+    expect(requests).toEqual([{ url, method: 'GET' }])
+    const { result } =
+      await ssr.run(`${callByIdPrelude}const response = await entry.startServerEntry.fetch(
   new Request('http://localhost/'),
 )
 return {
   byId: await callById(serverFnId(${JSON.stringify(url)})),
   page: { status: response.status, html: await response.text() },
 }`)
-      const { byId, page: renderedPage } = result as {
-        byId: unknown
-        page: { status: number; html: string }
-      }
-      expect(byId).toEqual(['MARK_AUDIT_SERVER', 'MARK_AUTH_USER'])
-      expect(renderedPage.status).toBe(200)
-      expect(renderedPage.html).toContain('MARK_AUDIT_SERVER MARK_AUTH_USER')
-    },
-    timeout,
-  )
+    const { byId, page: renderedPage } = result as {
+      byId: unknown
+      page: { status: number; html: string }
+    }
+    expect(byId).toEqual(['MARK_AUDIT_SERVER', 'MARK_AUTH_USER'])
+    expect(renderedPage.status).toBe(200)
+    expect(renderedPage.html).toContain('MARK_AUDIT_SERVER MARK_AUTH_USER')
+  })
 })

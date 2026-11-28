@@ -18,8 +18,6 @@ import {
   startBrowserStartDevServer,
 } from './importProtection/client-pages'
 
-const timeout = 60_000
-
 describe('Vite dev server', () => {
   const page = (
     text: string,
@@ -48,32 +46,30 @@ createRoot(document.getElementById('root')!).render(<Page />)
   // Source: hydrate-when-transform.test.ts "invalidates cached Hydrate
   // source for virtual module loads" (the compiler half is in
   // hydrate-boundary-forms.test.ts)
-  test(
-    'client: a chunk requested before its parent module renders the children, and an edit reaches it',
-    async () => {
-      const optimizeDeps = {
-        include: [
-          'react',
-          'react/jsx-dev-runtime',
-          'react-dom',
-          'react-dom/client',
-          '@tanstack/react-router',
-        ],
-      }
-      const server = await startBrowserStartDevServer({
-        config: { optimizeDeps },
-        plugins: [react()],
-        files: { 'src/page.tsx': page('MARK_OLD'), 'src/main.tsx': main() },
-      })
-      const pageUrl = new URL('/__ip-fixture.html', server.url)
-      pageUrl.searchParams.set('entry', '/src/main.tsx')
+  test('client: a chunk requested before its parent module renders the children, and an edit reaches it', async () => {
+    const optimizeDeps = {
+      include: [
+        'react',
+        'react/jsx-dev-runtime',
+        'react-dom',
+        'react-dom/client',
+        '@tanstack/react-router',
+      ],
+    }
+    const server = await startBrowserStartDevServer({
+      config: { optimizeDeps },
+      plugins: [react()],
+      files: { 'src/page.tsx': page('MARK_OLD'), 'src/main.tsx': main() },
+    })
+    const pageUrl = new URL('/__ip-fixture.html', server.url)
+    pageUrl.searchParams.set('entry', '/src/main.tsx')
 
-      // The requests of a page that renders the children
-      const first = await openTestPage(pageUrl.href)
-      await first.waitForText('MARK_OLD', { selector: '#root' })
-      const childRequests = await first.page.evaluate<
-        Array<string>
-      >(`(async () => {
+    // The requests of a page that renders the children
+    const first = await openTestPage(pageUrl.href)
+    await first.waitForText('MARK_OLD', { selector: '#root' })
+    const childRequests = await first.page.evaluate<
+      Array<string>
+    >(`(async () => {
   const urls = [...new Set(performance.getEntriesByType('resource')
     .map((entry) => entry.name)
     .filter((url) => url.startsWith(location.origin + '/')))]
@@ -86,64 +82,62 @@ createRoot(document.getElementById('root')!).render(<Page />)
   }
   return holding
 })()`)
-      // (closed before the restart)
-      await first.close()
-      expect(childRequests).not.toEqual([])
+    // (closed before the restart)
+    await first.close()
+    expect(childRequests).not.toEqual([])
 
-      // The dev server restarts at the same root (the app's files and
-      // dependency cache stay): the new one has compiled nothing of the app.
-      // A page then requests what carries the children before the page
-      // module.
-      await writeFile(
-        server.file('src/main.tsx'),
-        main(
-          childRequests
-            .map(
-              (url) =>
-                `await import(/* @vite-ignore */ ${JSON.stringify(url)})\n`,
-            )
-            .join(''),
+    // The dev server restarts at the same root (the app's files and
+    // dependency cache stay): the new one has compiled nothing of the app.
+    // A page then requests what carries the children before the page
+    // module.
+    await writeFile(
+      server.file('src/main.tsx'),
+      main(
+        childRequests
+          .map(
+            (url) =>
+              `await import(/* @vite-ignore */ ${JSON.stringify(url)})\n`,
+          )
+          .join(''),
+      ),
+    )
+    await server.stop()
+    const restarted = await closeAtEnd(
+      () =>
+        runAsDevCommand(async () =>
+          createServer({
+            root: server.root,
+            configFile: false,
+            logLevel: 'error',
+            server: {
+              host: '127.0.0.1',
+              port: 0,
+              fs: { allow: await servedDirectories(server.root) },
+            },
+            optimizeDeps,
+            plugins: [
+              startPlugin(server.root, {}),
+              clientFixturePlugin,
+              react(),
+            ],
+          }),
         ),
-      )
-      await server.stop()
-      const restarted = await closeAtEnd(
-        () =>
-          runAsDevCommand(async () =>
-            createServer({
-              root: server.root,
-              configFile: false,
-              logLevel: 'error',
-              server: {
-                host: '127.0.0.1',
-                port: 0,
-                fs: { allow: await servedDirectories(server.root) },
-              },
-              optimizeDeps,
-              plugins: [
-                startPlugin(server.root, {}),
-                clientFixturePlugin,
-                react(),
-              ],
-            }),
-          ),
-        closeViteServer,
-      )
-      await restarted.listen()
-      const restartedUrl = new URL(
-        '/__ip-fixture.html',
-        restarted.resolvedUrls!.local[0],
-      )
-      restartedUrl.searchParams.set('entry', '/src/main.tsx')
-      const browser = await openTestPage(restartedUrl.href)
-      await browser.waitForText('MARK_OLD', { selector: '#root' })
+      closeViteServer,
+    )
+    await restarted.listen()
+    const restartedUrl = new URL(
+      '/__ip-fixture.html',
+      restarted.resolvedUrls!.local[0],
+    )
+    restartedUrl.searchParams.set('entry', '/src/main.tsx')
+    const browser = await openTestPage(restartedUrl.href)
+    await browser.waitForText('MARK_OLD', { selector: '#root' })
 
-      await writeFile(server.file('src/page.tsx'), page('MARK_NEW'))
+    await writeFile(server.file('src/page.tsx'), page('MARK_NEW'))
 
-      await browser.waitForText('MARK_NEW', { selector: '#root' })
-      expect(browser.errors).toEqual([])
-    },
-    timeout,
-  )
+    await browser.waitForText('MARK_NEW', { selector: '#root' })
+    expect(browser.errors).toEqual([])
+  })
 })
 
 describe('Rsbuild dev server', () => {
@@ -151,52 +145,46 @@ describe('Rsbuild dev server', () => {
   // import, so only the edit half of the Vite test applies. The page loads
   // the client entry's initial files first (Rspack's stats entrypoints,
   // `clientEntryFiles`); the children are in another file.
-  test(
-    'client: an edit of the file reaches the chunk of its boundary',
-    async () => {
-      const page = (
-        marker: string,
-      ) => `import { Hydrate } from '@tanstack/react-start'
+  test('client: an edit of the file reaches the chunk of its boundary', async () => {
+    const page = (
+      marker: string,
+    ) => `import { Hydrate } from '@tanstack/react-start'
 import { load } from '@tanstack/react-start/hydration'
 export function Page() {
   return <Hydrate when={load()}><p>${marker}</p></Hydrate>
 }
 `
-      const server = await startRsbuildDevServer({
-        files: {
-          'src/page.tsx': page('OLD_MARKER'),
-          'src/entry.ts': `import { Page } from './page'\nconsole.log(Page)\n`,
-        },
-      })
-      /** The output files containing each marker, and the entry's files. */
-      const locate = async () => {
-        const outputs = Object.entries(await server.outputs('client'))
-        const files = (marker: string) =>
-          outputs
-            .filter(([, code]) => code.includes(marker))
-            .map(([file]) => file)
-        return {
-          entry: clientEntryFiles(server),
-          old: files('OLD_MARKER'),
-          new: files('NEW_MARKER'),
-        }
+    const server = await startRsbuildDevServer({
+      files: {
+        'src/page.tsx': page('OLD_MARKER'),
+        'src/entry.ts': `import { Page } from './page'\nconsole.log(Page)\n`,
+      },
+    })
+    /** The output files containing each marker, and the entry's files. */
+    const locate = async () => {
+      const outputs = Object.entries(await server.outputs('client'))
+      const files = (marker: string) =>
+        outputs
+          .filter(([, code]) => code.includes(marker))
+          .map(([file]) => file)
+      return {
+        entry: clientEntryFiles(server),
+        old: files('OLD_MARKER'),
+        new: files('NEW_MARKER'),
       }
-      const before = await locate()
-      expect(before.entry).not.toEqual([])
-      expect(before.old.length).toBeGreaterThan(0)
-      // The children are in a chunk of their own.
-      expect(before.old.filter((file) => before.entry.includes(file))).toEqual(
-        [],
-      )
+    }
+    const before = await locate()
+    expect(before.entry).not.toEqual([])
+    expect(before.old.length).toBeGreaterThan(0)
+    // The children are in a chunk of their own.
+    expect(before.old.filter((file) => before.entry.includes(file))).toEqual([])
 
-      await server.edit({ 'src/page.tsx': page('NEW_MARKER') })
+    await server.edit({ 'src/page.tsx': page('NEW_MARKER') })
 
-      expect(reportedErrors(server)).toEqual([])
-      const after = await locate()
-      expect(after.old).toEqual([])
-      expect(after.new.length).toBeGreaterThan(0)
-      expect(after.new.filter((file) => after.entry.includes(file))).toEqual([])
-    },
-    timeout,
-  )
+    expect(reportedErrors(server)).toEqual([])
+    const after = await locate()
+    expect(after.old).toEqual([])
+    expect(after.new.length).toBeGreaterThan(0)
+    expect(after.new.filter((file) => after.entry.includes(file))).toEqual([])
+  })
 })

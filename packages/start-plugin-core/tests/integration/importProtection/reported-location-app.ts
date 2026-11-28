@@ -27,8 +27,6 @@ import type { Recorded } from '../../importProtection/start-apps'
 import type { StartBuildError } from '../../build-harness'
 import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 
-export const timeout = 60_000
-
 export type Channel =
   | 'vite dev'
   | 'rsbuild dev'

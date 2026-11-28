@@ -6,8 +6,6 @@
 import { reportedViolations } from '../../importProtection/start-apps'
 import type { StartBuild } from '../../build-harness'
 
-export const timeout = 60_000
-
 /** A barrel the client uses `label` of, re-exporting `reexport` (a statement of `src/lib/users.server.ts`). */
 export const barrelApp = (
   denied: Record<string, string>,

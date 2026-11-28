@@ -77,5 +77,4 @@ test.each(['vite', 'rspack', 'webpack'] as const)(
       portable: (observation) => observation,
     })
   },
-  120_000,
 )

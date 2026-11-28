@@ -13,8 +13,6 @@ import { reportedViolations } from '../../importProtection/start-apps'
 import { lateImport } from './late-import'
 import type { StartBundler } from '../../build-harness'
 
-export const timeout = 60_000
-
 /** A denied module of the app with an initializer. */
 export const db = {
   'src/db.server.ts': `;(globalThis as Record<string, unknown>).connected = 'MARK_DB'

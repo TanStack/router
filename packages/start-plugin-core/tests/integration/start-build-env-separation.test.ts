@@ -21,8 +21,6 @@ import { buildStart } from '../build-start'
 import { solidAppConfig } from './hydrate-pages'
 import type { StartBuild } from '../build-harness'
 
-const timeout = 60_000
-
 /**
  * The client's `entry.greet()` sends one request to the server, to the
  * server fn's URL.
@@ -45,57 +43,49 @@ describe.each(startBundlers)('%s build', (bundler) => {
 
     // Whether the SSR build loads the handler eagerly or on demand is left
     // open.
-    test(
-      'a server function handler is only in the SSR build, and runs there',
-      async () => {
-        const { client, ssr } = await buildStart({
-          bundler,
-          framework,
-          ...appConfig,
-          files: {
-            'fns.ts': `import { createServerFn } from '@tanstack/${framework}-start'
+    test('a server function handler is only in the SSR build, and runs there', async () => {
+      const { client, ssr } = await buildStart({
+        bundler,
+        framework,
+        ...appConfig,
+        files: {
+          'fns.ts': `import { createServerFn } from '@tanstack/${framework}-start'
 export const greet = createServerFn().handler(() => 'MARK_HANDLER')
 `,
-            'entry.ts': `export { greet } from './fns'
+          'entry.ts': `export { greet } from './fns'
 `,
-          },
-        })
-        expect(client.where('MARK_HANDLER')).toBe('nowhere')
-        expect(ssr.where('MARK_HANDLER')).not.toBe('nowhere')
-        expect((await ssr.run(`return await entry.greet()`)).result).toBe(
-          'MARK_HANDLER',
-        )
-        await expectCallsTheServer(client)
-      },
-      timeout,
-    )
+        },
+      })
+      expect(client.where('MARK_HANDLER')).toBe('nowhere')
+      expect(ssr.where('MARK_HANDLER')).not.toBe('nowhere')
+      expect((await ssr.run(`return await entry.greet()`)).result).toBe(
+        'MARK_HANDLER',
+      )
+      await expectCallsTheServer(client)
+    })
 
-    test(
-      'an isomorphic function keeps the branch of each build',
-      async () => {
-        const { client, ssr } = await buildStart({
-          bundler,
-          framework,
-          ...appConfig,
-          files: {
-            'entry.ts': `import { createIsomorphicFn } from '@tanstack/${framework}-start'
+    test('an isomorphic function keeps the branch of each build', async () => {
+      const { client, ssr } = await buildStart({
+        bundler,
+        framework,
+        ...appConfig,
+        files: {
+          'entry.ts': `import { createIsomorphicFn } from '@tanstack/${framework}-start'
 export const where = createIsomorphicFn()
   .server(() => 'MARK_SERVER')
   .client(() => 'MARK_CLIENT')
 `,
-          },
-        })
-        expect({
-          client: [client.where('MARK_CLIENT'), client.where('MARK_SERVER')],
-          ssr: [ssr.where('MARK_CLIENT'), ssr.where('MARK_SERVER')],
-        }).toEqual({ client: ['eager', 'nowhere'], ssr: ['nowhere', 'eager'] })
-        expect([
-          (await client.run(`return entry.where()`)).result,
-          (await ssr.run(`return entry.where()`)).result,
-        ]).toEqual(['MARK_CLIENT', 'MARK_SERVER'])
-      },
-      timeout,
-    )
+        },
+      })
+      expect({
+        client: [client.where('MARK_CLIENT'), client.where('MARK_SERVER')],
+        ssr: [ssr.where('MARK_CLIENT'), ssr.where('MARK_SERVER')],
+      }).toEqual({ client: ['eager', 'nowhere'], ssr: ['nowhere', 'eager'] })
+      expect([
+        (await client.run(`return entry.where()`)).result,
+        (await ssr.run(`return entry.where()`)).result,
+      ]).toEqual(['MARK_CLIENT', 'MARK_SERVER'])
+    })
   })
 
   /** A library in `node_modules` whose module is `code`, built for Start. */
@@ -111,44 +101,40 @@ export const where = createIsomorphicFn()
 
   // Source: review (no test built a server fn defined in node_modules
   // through Start's plugin).
-  test(
-    "a library's server fn: the client gets an RPC without the handler, and the SSR build runs it by that id",
-    async () => {
-      const { client, ssr } = await buildStart({
-        bundler,
-        // The app depends on the library, as an installed one.
-        packageJson: {
-          name: 'app',
-          private: true,
-          type: 'module',
-          dependencies: { 'server-fn-lib': '*' },
-        },
-        files: {
-          ...library(
-            'server-fn-lib',
-            `import { createServerFn } from '@tanstack/react-start'
+  test("a library's server fn: the client gets an RPC without the handler, and the SSR build runs it by that id", async () => {
+    const { client, ssr } = await buildStart({
+      bundler,
+      // The app depends on the library, as an installed one.
+      packageJson: {
+        name: 'app',
+        private: true,
+        type: 'module',
+        dependencies: { 'server-fn-lib': '*' },
+      },
+      files: {
+        ...library(
+          'server-fn-lib',
+          `import { createServerFn } from '@tanstack/react-start'
 export const libFn = createServerFn().handler(async () => 'MARK_LIB_HANDLER')
 `,
-          ),
-          'src/client-entry.ts': `export { libFn } from 'server-fn-lib'\n`,
-          'src/ssr-entry.ts': `export { libFn } from 'server-fn-lib'
+        ),
+        'src/client-entry.ts': `export { libFn } from 'server-fn-lib'\n`,
+        'src/ssr-entry.ts': `export { libFn } from 'server-fn-lib'
 ${callByIdExports}`,
-        },
-        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-      })
-      expect(client.where('MARK_LIB_HANDLER')).toBe('nowhere')
-      const url = (await client.run(`return entry.libFn.url`)).result
-      const { result } = await ssr.run(`${callByIdPrelude}return {
+      },
+      entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+    })
+    expect(client.where('MARK_LIB_HANDLER')).toBe('nowhere')
+    const url = (await client.run(`return entry.libFn.url`)).result
+    const { result } = await ssr.run(`${callByIdPrelude}return {
   called: await entry.libFn(),
   byId: await callById(serverFnId(${JSON.stringify(url)})),
 }`)
-      expect(result).toEqual({
-        called: 'MARK_LIB_HANDLER',
-        byId: 'MARK_LIB_HANDLER',
-      })
-    },
-    timeout,
-  )
+    expect(result).toEqual({
+      called: 'MARK_LIB_HANDLER',
+      byId: 'MARK_LIB_HANDLER',
+    })
+  })
 
   // The rows share one build and run it in Node processes and browser
   // pages. The last test builds: runs give their working directory and
@@ -474,7 +460,7 @@ const get = async (path) =>
           entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
         }),
       )
-    }, timeout)
+    }, 60_000)
 
     // The markers are searchable: the client keeps the client side of the
     // same modules.
@@ -704,48 +690,44 @@ const get = async (path) =>
     // build's stand-in.
     // Source: mutation testing (no Rsbuild build made the
     // compiler load another module, here the builder's).
-    test(
-      'each server fn of the client runs by its id in the SSR build',
-      async () => {
-        const fnFiles = [
-          'src/deps/handlerDep.ts',
-          'src/deps/baseHandlerDep.ts',
-          'src/deps/middlewareServer.ts',
-          'src/deps/middlewareValidator.ts',
-          'src/deps/isomorphicServer.ts',
-          'src/deps/serverOnlyDep.ts',
-          'src/deps/startMiddleware.ts',
-          'src/middleware.ts',
-          'src/base.ts',
-          'src/fns.ts',
-          'src/start.ts',
-        ]
-        const { client, ssr } = await buildStart({
-          bundler,
-          files: {
-            ...Object.fromEntries(
-              fnFiles.map((file) => [
-                file,
-                (files as Record<string, string>)[file]!,
-              ]),
-            ),
-            'src/ssr-entry.ts': `export * from './fns'
+    test('each server fn of the client runs by its id in the SSR build', async () => {
+      const fnFiles = [
+        'src/deps/handlerDep.ts',
+        'src/deps/baseHandlerDep.ts',
+        'src/deps/middlewareServer.ts',
+        'src/deps/middlewareValidator.ts',
+        'src/deps/isomorphicServer.ts',
+        'src/deps/serverOnlyDep.ts',
+        'src/deps/startMiddleware.ts',
+        'src/middleware.ts',
+        'src/base.ts',
+        'src/fns.ts',
+        'src/start.ts',
+      ]
+      const { client, ssr } = await buildStart({
+        bundler,
+        files: {
+          ...Object.fromEntries(
+            fnFiles.map((file) => [
+              file,
+              (files as Record<string, string>)[file]!,
+            ]),
+          ),
+          'src/ssr-entry.ts': `export * from './fns'
 ${callByIdExports}`,
-          },
-          entry: { client: 'src/fns.ts', ssr: 'src/ssr-entry.ts' },
-        })
-        const urls = (
-          await client.run(`return [entry.fn.url, entry.fromBase.url]`)
-        ).result
-        const { result } = await ssr.run(`${callByIdPrelude}const results = []
+        },
+        entry: { client: 'src/fns.ts', ssr: 'src/ssr-entry.ts' },
+      })
+      const urls = (
+        await client.run(`return [entry.fn.url, entry.fromBase.url]`)
+      ).result
+      const { result } = await ssr.run(`${callByIdPrelude}const results = []
 for (const url of ${JSON.stringify(urls)}) {
   results.push(await callById(serverFnId(url)))
 }
 return results`)
-        expect(result).toEqual(['MARK_HANDLER_DEP', 'MARK_BASE_HANDLER_DEP'])
-      },
-      timeout,
-    )
+      expect(result).toEqual(['MARK_HANDLER_DEP', 'MARK_BASE_HANDLER_DEP'])
+    })
   })
 })
 
@@ -754,36 +736,32 @@ describe("Vite build with Vite's default client target", () => {
   // (`baseline-widely-available`) lowers newer syntax after Start compiled
   // the module.
   // Source: review.
-  test(
-    'a server function handler is only in the SSR build, and the client calls the server',
-    async () => {
-      const { client, ssr } = await buildStart({
-        files: {
-          'fns.ts': `import { createServerFn } from '@tanstack/react-start'
+  test('a server function handler is only in the SSR build, and the client calls the server', async () => {
+    const { client, ssr } = await buildStart({
+      files: {
+        'fns.ts': `import { createServerFn } from '@tanstack/react-start'
 import { secret } from './secret'
 export const greet = createServerFn().handler(async () => secret?.() ?? 'MARK_NONE')
 export const label = () => 'MARK_CLIENT_LABEL'
 `,
-          'secret.ts': `export const secret = () => 'MARK_HANDLER'\n`,
-          'entry.ts': `export { greet, label } from './fns'\n`,
+        'secret.ts': `export const secret = () => 'MARK_HANDLER'\n`,
+        'entry.ts': `export { greet, label } from './fns'\n`,
+      },
+      viteConfig: {
+        environments: {
+          client: { build: { target: 'baseline-widely-available' } },
         },
-        viteConfig: {
-          environments: {
-            client: { build: { target: 'baseline-widely-available' } },
-          },
-        },
-      })
-      expect({
-        handler: client.where('MARK_HANDLER'),
-        label: client.where('MARK_CLIENT_LABEL'),
-      }).toEqual({ handler: 'nowhere', label: 'eager' })
-      expect((await ssr.run(`return await entry.greet()`)).result).toBe(
-        'MARK_HANDLER',
-      )
-      await expectCallsTheServer(client)
-    },
-    timeout,
-  )
+      },
+    })
+    expect({
+      handler: client.where('MARK_HANDLER'),
+      label: client.where('MARK_CLIENT_LABEL'),
+    }).toEqual({ handler: 'nowhere', label: 'eager' })
+    expect((await ssr.run(`return await entry.greet()`)).result).toBe(
+      'MARK_HANDLER',
+    )
+    await expectCallsTheServer(client)
+  })
 })
 
 describe('Vite: an environment built twice by one builder', () => {
@@ -794,66 +772,62 @@ describe('Vite: an environment built twice by one builder', () => {
   // after Start's builds (Vite's public `buildApp` hook), and the SSR
   // output of that last build serves the client's calls.
   // Source: mutation testing.
-  test(
-    'the second build compiles the server fns of its modules',
-    async () => {
-      let ssrBuilds = 0
-      const { client, ssr } = await buildStart({
-        bundler: 'vite',
-        files: {
-          'src/direct.ts': `import { createServerFn } from '@tanstack/react-start'
+  test('the second build compiles the server fns of its modules', async () => {
+    let ssrBuilds = 0
+    const { client, ssr } = await buildStart({
+      bundler: 'vite',
+      files: {
+        'src/direct.ts': `import { createServerFn } from '@tanstack/react-start'
 export const direct = createServerFn().handler(async () => 'MARK_DIRECT')
 `,
-          'src/base.ts': `import { createServerFn } from '@tanstack/react-start'
+        'src/base.ts': `import { createServerFn } from '@tanstack/react-start'
 export const base = createServerFn()
 `,
-          'src/fns.ts': `import { base } from './base'
+        'src/fns.ts': `import { base } from './base'
 export const greet = base.handler(async () => 'MARK_HANDLER')
 `,
-          'src/client-entry.ts': `export { direct } from './direct'
+        'src/client-entry.ts': `export { direct } from './direct'
 export { greet } from './fns'
 `,
-          'src/ssr-entry.ts': `export { direct } from './direct'
+        'src/ssr-entry.ts': `export { direct } from './direct'
 export { greet } from './fns'
 ${callByIdExports}`,
-        },
-        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-        viteConfig: {
-          plugins: [
-            {
-              name: 'build-ssr-again',
-              buildApp: {
-                order: 'post',
-                handler: async (builder) => {
-                  await builder.build(builder.environments.ssr!)
-                },
-              },
-              writeBundle() {
-                if (this.environment.name === 'ssr') {
-                  ssrBuilds++
-                }
+      },
+      entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+      viteConfig: {
+        plugins: [
+          {
+            name: 'build-ssr-again',
+            buildApp: {
+              order: 'post',
+              handler: async (builder) => {
+                await builder.build(builder.environments.ssr!)
               },
             },
-          ],
-        },
-      })
-      expect(ssrBuilds).toBe(2)
-      expect(client.where('MARK_HANDLER')).toBe('nowhere')
-      const urls = (
-        await client.run(`return [entry.direct.url, entry.greet.url]`)
-      ).result
-      const { result } = await ssr.run(`${callByIdPrelude}const results = []
+            writeBundle() {
+              if (this.environment.name === 'ssr') {
+                ssrBuilds++
+              }
+            },
+          },
+        ],
+      },
+    })
+    expect(ssrBuilds).toBe(2)
+    expect(client.where('MARK_HANDLER')).toBe('nowhere')
+    const urls = (
+      await client.run(`return [entry.direct.url, entry.greet.url]`)
+    ).result
+    const { result } = await ssr.run(`${callByIdPrelude}const results = []
 for (const url of ${JSON.stringify(urls)}) {
   results.push(await callById(serverFnId(url)))
 }
 return { byId: results, direct: await entry.greet() }`)
-      expect(result).toEqual({
-        byId: ['MARK_DIRECT', 'MARK_HANDLER'],
-        direct: 'MARK_HANDLER',
-      })
-    },
-    timeout,
-  )
+    expect(result).toEqual({
+      byId: ['MARK_DIRECT', 'MARK_HANDLER'],
+      direct: 'MARK_HANDLER',
+    })
+  })
 })
 
 describe('Rsbuild: a build restored from the persistent cache', () => {
@@ -862,73 +836,65 @@ describe('Rsbuild: a build restored from the persistent cache', () => {
   // still know their server fns.
   // Source: mutation testing (e2e apps custom-server-rsbuild and
   // server-functions build with buildCache).
-  test(
-    'each server fn of the client runs by its id in the SSR build',
-    async () => {
-      const { client, ssr } = await buildStart({
-        bundler: 'rsbuild',
-        builds: 2,
-        rsbuildConfig: { performance: { buildCache: true } },
-        files: {
-          'src/base.ts': `import { createServerFn } from '@tanstack/react-start'
+  test('each server fn of the client runs by its id in the SSR build', async () => {
+    const { client, ssr } = await buildStart({
+      bundler: 'rsbuild',
+      builds: 2,
+      rsbuildConfig: { performance: { buildCache: true } },
+      files: {
+        'src/base.ts': `import { createServerFn } from '@tanstack/react-start'
 export const base = createServerFn()
 `,
-          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+        'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 import { base } from './base'
 export const greet = createServerFn().handler(async () => 'MARK_GREET')
 export const fromBase = base.handler(async () => 'MARK_FROM_BASE')
 `,
-          'src/client-entry.ts': `export { greet, fromBase } from './fns'\n`,
-          'src/ssr-entry.ts': `export { greet, fromBase } from './fns'
+        'src/client-entry.ts': `export { greet, fromBase } from './fns'\n`,
+        'src/ssr-entry.ts': `export { greet, fromBase } from './fns'
 ${callByIdExports}`,
-        },
-        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-      })
-      expect(client.where(/MARK_GREET|MARK_FROM_BASE/)).toBe('nowhere')
-      const urls = (
-        await client.run(`return [entry.greet.url, entry.fromBase.url]`)
-      ).result
-      const { result } = await ssr.run(`${callByIdPrelude}const results = []
+      },
+      entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+    })
+    expect(client.where(/MARK_GREET|MARK_FROM_BASE/)).toBe('nowhere')
+    const urls = (
+      await client.run(`return [entry.greet.url, entry.fromBase.url]`)
+    ).result
+    const { result } = await ssr.run(`${callByIdPrelude}const results = []
 for (const url of ${JSON.stringify(urls)}) {
   results.push(await callById(serverFnId(url)))
 }
 return results`)
-      expect(result).toEqual(['MARK_GREET', 'MARK_FROM_BASE'])
-    },
-    timeout,
-  )
+    expect(result).toEqual(['MARK_GREET', 'MARK_FROM_BASE'])
+  })
 
   // An unchanged module the cache restores is compiled again when what it
   // imports changed meanwhile: `base` became a server fn builder, so the
   // handler built on it leaves the client.
   // Source: review of the Rsbuild host's dependencies (what restores the
   // importer is the loader's dependency on the files whose facts it read).
-  test(
-    'a module whose import became a server fn builder meanwhile is compiled again',
-    async () => {
-      const cold = await buildStart({
-        bundler: 'rsbuild',
-        rsbuildConfig: { performance: { buildCache: true } },
-        files: {
-          'src/base.ts': `export const base = {
+  test('a module whose import became a server fn builder meanwhile is compiled again', async () => {
+    const cold = await buildStart({
+      bundler: 'rsbuild',
+      rsbuildConfig: { performance: { buildCache: true } },
+      files: {
+        'src/base.ts': `export const base = {
   handler: (fn: () => Promise<string>) => fn,
 }
 `,
-          'src/fns.ts': `import { base } from './base'
+        'src/fns.ts': `import { base } from './base'
 export const fromBase = base.handler(async () => 'MARK_FROM_BASE')
 `,
-          'src/entry.ts': `export { fromBase } from './fns'\n`,
-        },
-        entry: 'src/entry.ts',
-      })
-      expect(cold.client.where('MARK_FROM_BASE')).not.toBe('nowhere')
-      const warm = await cold.rebuild({
-        'src/base.ts': `import { createServerFn } from '@tanstack/react-start'
+        'src/entry.ts': `export { fromBase } from './fns'\n`,
+      },
+      entry: 'src/entry.ts',
+    })
+    expect(cold.client.where('MARK_FROM_BASE')).not.toBe('nowhere')
+    const warm = await cold.rebuild({
+      'src/base.ts': `import { createServerFn } from '@tanstack/react-start'
 export const base = createServerFn()
 `,
-      })
-      expect(warm.client.where('MARK_FROM_BASE')).toBe('nowhere')
-    },
-    timeout,
-  )
+    })
+    expect(warm.client.where('MARK_FROM_BASE')).toBe('nowhere')
+  })
 })

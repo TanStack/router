@@ -64,7 +64,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
       start: denyToClient(['**/corpus.ts']),
     })
     expect(client.where('MARK_CORPUS')).toBe('nowhere')
-  }, 60_000)
+  })
 
   // On main, mock-mode builds ship mock code (a Proxy runtime) for unused
   // imports, and report violations the client never reaches.
@@ -117,7 +117,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
       (await mocked.client.run('return globalThis.corpusInitialized ?? null'))
         .result,
     ).toBe(null)
-  }, 60_000)
+  })
 })
 
 describe.each(startBundlers)('%s build', (bundler) => {
@@ -144,7 +144,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
     expect(
       reportedViolations(error).map(({ environment }) => environment),
     ).toEqual(['client'])
-  }, 60_000)
+  })
 
   /**
    * What the client gets in a mock-mode build of an entry that imports
@@ -190,7 +190,7 @@ return describeValue(entry.read(), 'MARK_SECRET')`)
 const secret = data.secret`,
       ),
     ).toEqual({ warned: true, hasRealCode: false, read: 'a safe mock' })
-  }, 60_000)
+  })
 
   // On main, a mock-mode build of a project with a `*.server.cjs` the client
   // imports fails instead of mocking it.
@@ -203,5 +203,5 @@ const secret = data.secret`,
         `import { secret } from './secret.server.cjs'`,
       ),
     ).toEqual({ warned: true, hasRealCode: false, read: 'a safe mock' })
-  }, 60_000)
+  })
 })

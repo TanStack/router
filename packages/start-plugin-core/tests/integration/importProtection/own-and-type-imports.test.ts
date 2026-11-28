@@ -14,7 +14,7 @@ import { describe, expect, test } from 'vitest'
 import { StartBuildError, startBundlers } from '../../build-harness'
 import { buildStart } from '../../build-start'
 import { reportedViolations } from '../../importProtection/start-apps'
-import { db, outcome, timeout } from './kept-importer-cases'
+import { db, outcome } from './kept-importer-cases'
 import type { KeptCase } from './kept-importer-cases'
 import type { StartBundler } from '../../build-harness'
 
@@ -109,22 +109,18 @@ export const label = 'l'
 ]
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  test.each(cases)(
-    '$name: protection on and off',
-    async (c) => {
-      expect({
-        on: await outcome(bundler, c, true),
-        off: await outcome(bundler, c, false),
-      }).toEqual({
-        on: {
-          failedAt: c.on === null || Array.isArray(c.on) ? c.on : c.on[bundler],
-          shipped: false,
-        },
-        off: { failedAt: null, shipped: c.off?.[bundler] ?? true },
-      })
-    },
-    timeout,
-  )
+  test.each(cases)('$name: protection on and off', async (c) => {
+    expect({
+      on: await outcome(bundler, c, true),
+      off: await outcome(bundler, c, false),
+    }).toEqual({
+      on: {
+        failedAt: c.on === null || Array.isArray(c.on) ? c.on : c.on[bundler],
+        shipped: false,
+      },
+      off: { failedAt: null, shipped: c.off?.[bundler] ?? true },
+    })
+  })
 })
 
 /** The client error of a build that must fail: its text and the reported importers (with their positions). */
@@ -174,46 +170,30 @@ async function failure(
 }
 
 describe.each(startBundlers)('%s build, the advice', (bundler) => {
-  test(
-    'an import of type specifiers next to a value import of the same file suggests `import type`',
-    async () => {
-      const { text } = await failure(bundler, {
-        'src/adapter.ts': adapterWithTypeImport,
-      })
-      expect(text).toContain(
-        "write it as `import type { … } from './db.server'`",
-      )
-    },
-    timeout,
-  )
+  test('an import of type specifiers next to a value import of the same file suggests `import type`', async () => {
+    const { text } = await failure(bundler, {
+      'src/adapter.ts': adapterWithTypeImport,
+    })
+    expect(text).toContain("write it as `import type { … } from './db.server'`")
+  })
 })
 
 // (Vite: SWC drops a TypeScript `export {} from`, so Rsbuild builds)
-test(
-  'vite build: an empty re-export with a comment inside its braces suggests no `export type`',
-  async () => {
-    const { text } = await failure('vite', {
-      'src/adapter.ts': `export { /* nothing */ } from './db.server'\nexport const label = 'l'\n`,
-    })
-    expect(text).toContain('Denied by file pattern')
-    expect(text).not.toContain('export type')
-  },
-  timeout,
-)
+test('vite build: an empty re-export with a comment inside its braces suggests no `export type`', async () => {
+  const { text } = await failure('vite', {
+    'src/adapter.ts': `export { /* nothing */ } from './db.server'\nexport const label = 'l'\n`,
+  })
+  expect(text).toContain('Denied by file pattern')
+  expect(text).not.toContain('export type')
+})
 
-test(
-  'rsbuild build: a re-export of type names only kept by verbatimModuleSyntax is reported at its statement',
-  async () => {
-    const { importers } = await failure(
-      'rsbuild',
-      {
-        'src/adapter.ts': `export const label = 'l'\nexport { type User } from './db.server'\n`,
-      },
-      true,
-    )
-    expect(importers).toEqual([
-      expect.stringMatching(/^src\/adapter\.ts:2:\d+$/),
-    ])
-  },
-  timeout,
-)
+test('rsbuild build: a re-export of type names only kept by verbatimModuleSyntax is reported at its statement', async () => {
+  const { importers } = await failure(
+    'rsbuild',
+    {
+      'src/adapter.ts': `export const label = 'l'\nexport { type User } from './db.server'\n`,
+    },
+    true,
+  )
+  expect(importers).toEqual([expect.stringMatching(/^src\/adapter\.ts:2:\d+$/)])
+})

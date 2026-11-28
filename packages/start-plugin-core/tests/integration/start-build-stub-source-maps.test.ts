@@ -24,8 +24,6 @@ import type { StartBuild, StartBundler } from '../build-harness'
 import type { RsbuildPlugin } from '@rsbuild/core'
 import type { Plugin } from 'vite'
 
-const timeout = 60_000
-
 /**
  * A client module with a server fn (an RPC stub in the client) and a
  * component throwing at a known line; the throw line uses syntax the
@@ -177,27 +175,19 @@ function expectThrowFrame(frames: ReturnType<typeof traceStack>, root: string) {
 }
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  test(
-    "client: a throw in the component of a server fn module maps to the user's file, line and throw statement (minified)",
-    async () => {
-      const { client, frames } = await throwFrames(bundler, {
-        preTransform: false,
-      })
-      expectThrowFrame(frames, client.root)
-    },
-    timeout,
-  )
+  test("client: a throw in the component of a server fn module maps to the user's file, line and throw statement (minified)", async () => {
+    const { client, frames } = await throwFrames(bundler, {
+      preTransform: false,
+    })
+    expectThrowFrame(frames, client.root)
+  })
 
-  test(
-    'client: the same, through a map-producing transform that ran before Start',
-    async () => {
-      preTransformSawSource = false
-      const { client, frames } = await throwFrames(bundler, {
-        preTransform: true,
-      })
-      expect(preTransformSawSource, 'the transform ran before Start').toBe(true)
-      expectThrowFrame(frames, client.root)
-    },
-    timeout,
-  )
+  test('client: the same, through a map-producing transform that ran before Start', async () => {
+    preTransformSawSource = false
+    const { client, frames } = await throwFrames(bundler, {
+      preTransform: true,
+    })
+    expect(preTransformSawSource, 'the transform ran before Start').toBe(true)
+    expectThrowFrame(frames, client.root)
+  })
 })

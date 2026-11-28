@@ -25,8 +25,6 @@ import {
 import { reactApp } from '../hydrate-dev-edits'
 import { loaderRoute } from '../route-edits-after-tree-rebuild'
 
-const timeout = 90_000
-
 /** The loader route with a server fn the loader calls; its component shows the result. */
 const serverFnInLoader = (
   token: string,
@@ -132,23 +130,14 @@ export const Route = createFileRoute('/')({ component: () => <p>index</p> })
 }
 
 describe('Rsbuild dev: a route module gains its first server fn', () => {
-  test(
-    'an edit that adds a server fn to the loader shows its result on the open page',
-    () => editInFirstServerFn({ target: 'loader' }),
-    timeout,
-  )
+  test('an edit that adds a server fn to the loader shows its result on the open page', () =>
+    editInFirstServerFn({ target: 'loader' }))
 
-  test(
-    'an edit that adds a server fn to the component shows its result on the open page',
-    () => editInFirstServerFn({ target: 'component' }),
-    timeout,
-  )
+  test('an edit that adds a server fn to the component shows its result on the open page', () =>
+    editInFirstServerFn({ target: 'component' }))
 
   // The control: with the server fn runtime in the entry chunk, the same
   // component edit adds no chunk and shows.
-  test(
-    'the component edit shows when the client entry already imports a server fn',
-    () => editInFirstServerFn({ target: 'component', warm: true }),
-    timeout,
-  )
+  test('the component edit shows when the client entry already imports a server fn', () =>
+    editInFirstServerFn({ target: 'component', warm: true }))
 })

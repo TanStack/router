@@ -19,7 +19,6 @@ import {
   expectRecovered,
   failedRebuild,
   scripts,
-  timeout,
 } from './start-build-settlement-app'
 
 describe('vite build --watch: a client rebuild that fails', () => {
@@ -28,46 +27,38 @@ describe('vite build --watch: a client rebuild that fails', () => {
   // renders the page naming no client file (none is on disk), and is rebuilt
   // once the client builds again.
   // Source: Fable's settlement design rev 4 (`hook/probe4.mjs`).
-  test(
-    "another plugin's generateBundle fails: the document names no client file",
-    async () => {
-      const { during, after, build } = await failedRebuild(
-        { 'src/client-only.ts': clientOnly('MARK_EDIT') },
-        'generateBundle',
-      )
-      // (the page, not an error page that names nothing)
-      const { status, rendered, named } = during.served
-      expect({ status, rendered, named }).toEqual({
-        status: 200,
-        rendered: true,
-        named: {},
-      })
-      expectRecovered(after, build)
-    },
-    timeout,
-  )
+  test("another plugin's generateBundle fails: the document names no client file", async () => {
+    const { during, after, build } = await failedRebuild(
+      { 'src/client-only.ts': clientOnly('MARK_EDIT') },
+      'generateBundle',
+    )
+    // (the page, not an error page that names nothing)
+    const { status, rendered, named } = during.served
+    expect({ status, rendered, named }).toEqual({
+      status: 200,
+      rendered: true,
+      named: {},
+    })
+    expectRecovered(after, build)
+  })
 
   // Another plugin's `writeBundle` fails after the client's files are
   // written: the previous files are gone, and the document names the new
   // ones, with their bytes on disk (as on head, whose client build is
   // published before the failure).
   // Source: Astra's re-check of the settlement design (rev 3), finding 1.
-  test(
-    "another plugin's writeBundle fails: the document names the new client files, on disk",
-    async () => {
-      const { during, after, build } = await failedRebuild(
-        { 'src/client-only.ts': clientOnly('MARK_EDIT') },
-        'writeBundle',
-      )
-      const { served } = during
-      expect([served.status, served.rendered]).toEqual([200, true])
-      expect(scripts(served).count).toBeGreaterThan(0)
-      expect(scripts(served).missing).toEqual([])
-      expect(bytesOf(served).some((code) => code?.includes('MARK_EDIT'))).toBe(
-        true,
-      )
-      expectRecovered(after, build)
-    },
-    timeout,
-  )
+  test("another plugin's writeBundle fails: the document names the new client files, on disk", async () => {
+    const { during, after, build } = await failedRebuild(
+      { 'src/client-only.ts': clientOnly('MARK_EDIT') },
+      'writeBundle',
+    )
+    const { served } = during
+    expect([served.status, served.rendered]).toEqual([200, true])
+    expect(scripts(served).count).toBeGreaterThan(0)
+    expect(scripts(served).missing).toEqual([])
+    expect(bytesOf(served).some((code) => code?.includes('MARK_EDIT'))).toBe(
+      true,
+    )
+    expectRecovered(after, build)
+  })
 })

@@ -28,8 +28,7 @@ import {
 import { importersIn } from './hosts'
 import type { Recorded } from '../../importProtection/start-apps'
 
-const timeout = 60_000
-const compileTimeout = timeout
+const compileTimeout = 60_000
 
 /** A denied module that records that it ran, then gives `value`. */
 const recording = (name: string, value: string) =>
@@ -236,22 +235,14 @@ describe.each(hosts)('$name', ({ run, uses, reportedAs }) => {
   const result = () => (ran ??= run())
 
   // (Main mocks every one too.)
-  test(
-    'the client never runs a denied module',
-    async () => {
-      expect((await result()).leaked).toEqual([])
-    },
-    timeout,
-  )
+  test('the client never runs a denied module', async () => {
+    expect((await result()).leaked).toEqual([])
+  })
 
   // Main reports these in vite build only (its dev hosts and Rsbuild mock them silently).
-  test(
-    'each denied import is reported',
-    async () => {
-      expect((await result()).reported).toEqual(uses.map(reportedAs).sort())
-    },
-    timeout,
-  )
+  test('each denied import is reported', async () => {
+    expect((await result()).reported).toEqual(uses.map(reportedAs).sort())
+  })
 })
 
 const appFor = (bundler: (typeof startBundlers)[number]) =>
@@ -262,40 +253,32 @@ const appFor = (bundler: (typeof startBundlers)[number]) =>
 describe.each(startBundlers)('%s build verdicts', (bundler) => {
   const { files, uses } = appFor(bundler)
 
-  test(
-    'with the error behaviour (the default), the build fails naming each importer',
-    async () => {
-      const error = await rejection(
-        buildStart({
-          bundler,
-          files,
-          entry: 'src/entry.ts',
-          start: { importProtection: { behavior: 'error' } },
-        }),
-      )
-      expect(importersIn(error, 'client')).toEqual(uses.map(importerOf))
-    },
-    timeout,
-  )
-
-  test(
-    'allowImport gives the client the real module',
-    async () => {
-      const build = await buildStart({
+  test('with the error behaviour (the default), the build fails naming each importer', async () => {
+    const error = await rejection(
+      buildStart({
         bundler,
         files,
         entry: 'src/entry.ts',
-        start: {
-          importProtection: { ...importProtection, allowImport: () => true },
-        },
-      })
-      const { result: read } = await build.client.run(readScript)
-      expect((read as Read).values).toEqual(
-        Object.fromEntries(
-          uses.map((name) => [name, `MARK_${name.toUpperCase()}`]),
-        ),
-      )
-    },
-    timeout,
-  )
+        start: { importProtection: { behavior: 'error' } },
+      }),
+    )
+    expect(importersIn(error, 'client')).toEqual(uses.map(importerOf))
+  })
+
+  test('allowImport gives the client the real module', async () => {
+    const build = await buildStart({
+      bundler,
+      files,
+      entry: 'src/entry.ts',
+      start: {
+        importProtection: { ...importProtection, allowImport: () => true },
+      },
+    })
+    const { result: read } = await build.client.run(readScript)
+    expect((read as Read).values).toEqual(
+      Object.fromEntries(
+        uses.map((name) => [name, `MARK_${name.toUpperCase()}`]),
+      ),
+    )
+  })
 })

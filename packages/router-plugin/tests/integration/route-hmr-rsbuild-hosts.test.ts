@@ -22,8 +22,6 @@ import { createRsbuildPluginHost } from '@tanstack/compiler-test-utils/rsbuild-p
 import { tanstackRouter } from '../../src/rspack'
 import type { RsbuildConfig, RsbuildPlugin } from '@rsbuild/core'
 
-const timeout = 60_000
-
 const posts = `function PostsComponent() {
   return <div>posts data</div>
 }`
@@ -202,6 +200,5 @@ describe.each(routes)('$name', ({ route, root, html }) => {
             ).check()
       expect(result).toEqual({ data: 'data', html, environment: seen })
     },
-    timeout,
   )
 })

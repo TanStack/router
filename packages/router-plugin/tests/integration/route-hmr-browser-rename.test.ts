@@ -47,4 +47,4 @@ test('vite: renaming a route file the page does not show reloads the page withou
     'info v2',
   )
   expect(edited.errors).toEqual([])
-}, 60_000)
+})

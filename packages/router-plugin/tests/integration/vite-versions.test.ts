@@ -103,7 +103,7 @@ console.log(await entry.render(entry.Route.options.component))`,
       { cwd: app.root },
     )
     expect(stdout.trim()).toBe('<p>MARK_COMPONENT</p>')
-  }, 120_000)
+  })
 
   // Bug: a route whose component is an imported binding (`component:
   // Outlet`, or a component the root route imports too) lost its lazy
@@ -173,7 +173,7 @@ export const Route = createFileRoute('/shared')({ component: Shared })
       shared: expect.any(String),
     })
     expect([lazy.outlet, lazy.shared]).not.toContain(entry?.file)
-  }, 120_000)
+  })
 
   test('a dev server splits the route component and hot-updates a route option edit in place', async () => {
     const vite = await load()
@@ -266,5 +266,5 @@ export const Route = createFileRoute('/shared')({ component: Shared })
       loads: 1,
       errors: [],
     })
-  }, 120_000)
+  })
 })

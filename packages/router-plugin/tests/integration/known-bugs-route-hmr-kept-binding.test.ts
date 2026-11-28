@@ -32,59 +32,53 @@ export function Other() {
 }
 `
 
-describe(
-  'an edit of a binding the route file exports and another module imports',
-  { timeout: 60_000 },
-  () => {
-    const targets = ['react', 'solid'] as const
-    const viaRouteHmrPage = async (
-      openRouteHmrPage: RouterFixtures['openRouteHmrPage'],
-      bundler: 'vite' | 'rsbuild',
-      target: Target,
-    ) => {
-      const app = await openRouteHmrPage({
-        bundler,
+describe('an edit of a binding the route file exports and another module imports', () => {
+  const targets = ['react', 'solid'] as const
+  const viaRouteHmrPage = async (
+    openRouteHmrPage: RouterFixtures['openRouteHmrPage'],
+    bundler: 'vite' | 'rsbuild',
+    target: Target,
+  ) => {
+    const app = await openRouteHmrPage({
+      bundler,
+      target,
+      files: {
+        'routes/index.tsx': importedRoute(target, 'v1'),
+        'other.tsx': other(),
+      },
+      ready: 'shows v1',
+    })
+    await app.edit(
+      { 'routes/index.tsx': importedRoute(target, 'v2') },
+      'shows v2',
+    )
+  }
+
+  test.fails.for(targets)('rsbuild %s: shows', (target, { openRouteHmrPage }) =>
+    viaRouteHmrPage(openRouteHmrPage, 'rsbuild', target),
+  )
+
+  test.fails.for(targets)(
+    'webpack with source maps %s: shows',
+    async (target, { openWebpackHmrPage }) => {
+      const jsx = target === 'solid'
+      const app = await openWebpackHmrPage({
         target,
+        devtool: 'cheap-module-source-map',
         files: {
-          'routes/index.tsx': importedRoute(target, 'v1'),
-          'other.tsx': other(),
+          'routes/index.tsx': importedRoute(target, 'v1', jsx),
+          'other.tsx': other(jsx),
         },
         ready: 'shows v1',
       })
       await app.edit(
-        { 'routes/index.tsx': importedRoute(target, 'v2') },
+        { 'routes/index.tsx': importedRoute(target, 'v2', jsx) },
         'shows v2',
       )
-    }
+    },
+  )
 
-    test.fails.for(targets)(
-      'rsbuild %s: shows',
-      (target, { openRouteHmrPage }) =>
-        viaRouteHmrPage(openRouteHmrPage, 'rsbuild', target),
-    )
-
-    test.fails.for(targets)(
-      'webpack with source maps %s: shows',
-      async (target, { openWebpackHmrPage }) => {
-        const jsx = target === 'solid'
-        const app = await openWebpackHmrPage({
-          target,
-          devtool: 'cheap-module-source-map',
-          files: {
-            'routes/index.tsx': importedRoute(target, 'v1', jsx),
-            'other.tsx': other(jsx),
-          },
-          ready: 'shows v1',
-        })
-        await app.edit(
-          { 'routes/index.tsx': importedRoute(target, 'v2', jsx) },
-          'shows v2',
-        )
-      },
-    )
-
-    test.for(targets)('vite %s: shows', (target, { openRouteHmrPage }) =>
-      viaRouteHmrPage(openRouteHmrPage, 'vite', target),
-    )
-  },
-)
+  test.for(targets)('vite %s: shows', (target, { openRouteHmrPage }) =>
+    viaRouteHmrPage(openRouteHmrPage, 'vite', target),
+  )
+})

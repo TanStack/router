@@ -22,54 +22,48 @@ import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { StartBuildError, startBundlers } from '../build-harness'
 import { buildStart } from '../build-start'
 
-const timeout = 60_000
-
 describe.each(startBundlers)('%s build', (bundler) => {
-  test(
-    'a server-fn module the compiler cannot parse fails the build with an error positioned in the module',
-    async () => {
-      const outcome = await buildStart({
-        bundler,
-        files: {
-          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+  test('a server-fn module the compiler cannot parse fails the build with an error positioned in the module', async () => {
+    const outcome = await buildStart({
+      bundler,
+      files: {
+        'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 class Secret {
   value!: string = 'MARK_SERVER_SECRET'
 }
 export const reveal = createServerFn().handler(async () => new Secret().value)
 `,
-          'src/entry.ts': `export { reveal } from './fns'\n`,
-        },
-        entry: 'src/entry.ts',
-      }).then(
-        (build) => ({
-          built: true as const,
-          secret: build.client.where('MARK_SERVER_SECRET'),
-        }),
-        (error: unknown) => {
-          if (!(error instanceof StartBuildError)) {
-            throw error
-          }
-          return {
-            built: false as const,
-            diagnostics: error.diagnostics,
-            root: error.root,
-          }
-        },
+        'src/entry.ts': `export { reveal } from './fns'\n`,
+      },
+      entry: 'src/entry.ts',
+    }).then(
+      (build) => ({
+        built: true as const,
+        secret: build.client.where('MARK_SERVER_SECRET'),
+      }),
+      (error: unknown) => {
+        if (!(error instanceof StartBuildError)) {
+          throw error
+        }
+        return {
+          built: false as const,
+          diagnostics: error.diagnostics,
+          root: error.root,
+        }
+      },
+    )
+    if (outcome.built) {
+      expect.fail(
+        `the build succeeded; the handler's text is ${outcome.secret} in the client bundle`,
       )
-      if (outcome.built) {
-        expect.fail(
-          `the build succeeded; the handler's text is ${outcome.secret} in the client bundle`,
-        )
-      }
-      expectDiagnostic(outcome.diagnostics, {
-        severity: 'error',
-        file: 'src/fns.ts',
-        root: outcome.root,
-        position: { line: 3 },
-      })
-    },
-    timeout,
-  )
+    }
+    expectDiagnostic(outcome.diagnostics, {
+      severity: 'error',
+      file: 'src/fns.ts',
+      root: outcome.root,
+      position: { line: 3 },
+    })
+  })
 })
 
 const handler = `export const reveal = base.handler(async () => 'MARK_SERVER_SECRET')`
@@ -117,39 +111,30 @@ const appFiles = (file: string, text: string) => ({
 describe.each(startBundlers)(
   '%s build, a module naming no Start package',
   (bundler) => {
-    test(
-      'that parses builds with its handler on the server only',
-      async () => {
-        const { client } = await buildStart({
-          bundler,
-          files: appFiles('src/fns.ts', `${baseImport}\n${handler}\n`),
-          entry: 'src/entry.ts',
-        })
-        expect(client.where('MARK_SERVER_SECRET')).toBe('nowhere')
-      },
-      timeout,
-    )
+    test('that parses builds with its handler on the server only', async () => {
+      const { client } = await buildStart({
+        bundler,
+        files: appFiles('src/fns.ts', `${baseImport}\n${handler}\n`),
+        entry: 'src/entry.ts',
+      })
+      expect(client.where('MARK_SERVER_SECRET')).toBe('nowhere')
+    })
 
-    test(
-      'that references a markdown asset builds, the asset left to the bundler',
-      async () => {
-        const { client } = await buildStart({
-          bundler,
-          files: {
-            ...appFiles('src/fns.ts', `${baseImport}\n${handler}\n`),
-            'src/readme.md': '# Hello\n\nSome *markdown* text.\n',
-            'src/entry.ts': `export { reveal } from './fns'\nexport const readme = new URL('./readme.md', import.meta.url).href\n`,
-          },
-          entry: 'src/entry.ts',
-        })
-        expect(client.where('MARK_SERVER_SECRET')).toBe('nowhere')
-      },
-      timeout,
-    )
+    test('that references a markdown asset builds, the asset left to the bundler', async () => {
+      const { client } = await buildStart({
+        bundler,
+        files: {
+          ...appFiles('src/fns.ts', `${baseImport}\n${handler}\n`),
+          'src/readme.md': '# Hello\n\nSome *markdown* text.\n',
+          'src/entry.ts': `export { reveal } from './fns'\nexport const readme = new URL('./readme.md', import.meta.url).href\n`,
+        },
+        entry: 'src/entry.ts',
+      })
+      expect(client.where('MARK_SERVER_SECRET')).toBe('nowhere')
+    })
 
     test.for(Object.entries(unparsable))(
       'with %s fails the client build with an error positioned in the module',
-      { timeout },
       async ([, { file, text, line }]) => {
         const outcome = await buildStart({
           bundler,

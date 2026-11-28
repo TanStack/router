@@ -111,4 +111,4 @@ test('are deterministic for an unchanged project, whatever order its files are w
     b: 'from b',
     nestedA: 'from c/a',
   })
-}, 60_000)
+})

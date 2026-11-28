@@ -22,8 +22,6 @@ import { describe, expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { startRsbuildRscApp, startViteRscApp } from './rsc-warning-app'
 
-const timeout = 30_000
-
 /** A server function module streaming `<Card />` through `body`. */
 const streamingModule = (
   name: string,
@@ -100,21 +98,17 @@ describe.each(Object.keys(hosts) as Array<keyof typeof hosts>)('%s', (host) => {
   // developer why.
   // SPEC J7.3: warn in dev only. Real coverage of the warning's delivery,
   // replacing two tests of start-build-warnings.test.ts.
-  test(
-    'renderToReadableStream with a variable or a spread warns once per file, naming the module',
-    async () => {
-      const { server, html } = await hosts[host]()
-      // (the server ran both calls: their modules were compiled for it)
-      expect(html).toContain('MARK_STREAMED')
-      for (const { file } of Object.values(skipped)) {
-        expectDiagnostic(server.diagnostics, {
-          severity: 'warning',
-          file,
-          root: server.root,
-          times: 1,
-        })
-      }
-    },
-    timeout,
-  )
+  test('renderToReadableStream with a variable or a spread warns once per file, naming the module', async () => {
+    const { server, html } = await hosts[host]()
+    // (the server ran both calls: their modules were compiled for it)
+    expect(html).toContain('MARK_STREAMED')
+    for (const { file } of Object.values(skipped)) {
+      expectDiagnostic(server.diagnostics, {
+        severity: 'warning',
+        file,
+        root: server.root,
+        times: 1,
+      })
+    }
+  })
 })

@@ -30,12 +30,12 @@ let hosts: HydrateHost
 const openHosts = closeAfterAll()
 beforeAll(async () => {
   hosts = await openHosts(() => createHydrateHost())
-}, 60_000)
+})
 let solidHost: SolidHost
 const openSolidHost = closeAfterAll()
 beforeAll(async () => {
   solidHost = await openSolidHost(() => createSolidHost())
-}, 60_000)
+})
 
 const head = `import { Hydrate } from '@tanstack/react-start'
 import { load } from '@tanstack/react-start/hydration'

@@ -30,8 +30,6 @@ import {
   probeMockPrelude,
 } from '../../importProtection/mock-helpers'
 
-const timeout = 120_000
-
 const app = {
   'src/router.ts': `import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
@@ -93,7 +91,6 @@ describe('a mock nothing imports in the build graph', () => {
         ),
       ).toBe(true)
     },
-    timeout,
   )
 })
 
@@ -221,6 +218,5 @@ console.log('IP_HELD:' + JSON.stringify(isSafeMock(held.value, 'ORPHAN_REAL')))
         real: false,
       })
     },
-    timeout,
   )
 })

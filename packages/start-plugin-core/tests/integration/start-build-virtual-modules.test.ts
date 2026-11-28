@@ -13,8 +13,6 @@ import { buildStart } from '../build-start'
 import type { StartBuild } from '../build-harness'
 import type { Plugin } from 'vite'
 
-const timeout = 60_000
-
 /** How long a build may take before the test calls it hung. */
 const hung = 30_000
 
@@ -70,56 +68,44 @@ export const secret = () => 'MARK_SERVER_SECRET'
 describe.each(['virtual:app', 'virtual:app.ts'])('%s', (id) => {
   const other = id.replace('app', 'other')
 
-  test(
-    'a marked virtual module a client module imports fails the build',
-    async () => {
-      const result = await build(
-        `import { secret } from '${id}'\nexport const value = () => secret()\n`,
-        { [id]: marked },
-      )
-      expect(result.outcome).toBe('failed')
-      if (result.outcome === 'failed') {
-        expectDiagnostic(result.error.diagnostics, { severity: 'error' })
-      }
-    },
-    timeout,
-  )
+  test('a marked virtual module a client module imports fails the build', async () => {
+    const result = await build(
+      `import { secret } from '${id}'\nexport const value = () => secret()\n`,
+      { [id]: marked },
+    )
+    expect(result.outcome).toBe('failed')
+    if (result.outcome === 'failed') {
+      expectDiagnostic(result.error.diagnostics, { severity: 'error' })
+    }
+  })
 
-  test(
-    'virtual modules importing each other fail the build',
-    async () => {
-      const result = await build(
-        `import { a } from '${id}'\nexport const value = () => a()\nconsole.log('MARK_ENTRY', value)\n`,
-        {
-          [id]: `import { b } from '${other}'\nexport const a = () => b\n`,
-          [other]: `import { a } from '${id}'\nexport const b = () => ['MARK_OTHER', a]\n`,
-        },
-      )
-      expect(result.outcome).toBe('failed')
-      if (result.outcome === 'failed') {
-        expectDiagnostic(result.error.diagnostics, { severity: 'error' })
-      }
-    },
-    timeout,
-  )
+  test('virtual modules importing each other fail the build', async () => {
+    const result = await build(
+      `import { a } from '${id}'\nexport const value = () => a()\nconsole.log('MARK_ENTRY', value)\n`,
+      {
+        [id]: `import { b } from '${other}'\nexport const a = () => b\n`,
+        [other]: `import { a } from '${id}'\nexport const b = () => ['MARK_OTHER', a]\n`,
+      },
+    )
+    expect(result.outcome).toBe('failed')
+    if (result.outcome === 'failed') {
+      expectDiagnostic(result.error.diagnostics, { severity: 'error' })
+    }
+  })
 
-  test(
-    'a virtual module importing another builds',
-    async () => {
-      const result = await build(
-        `import { a } from '${id}'\nexport const value = () => a()\nconsole.log('MARK_ENTRY', value)\n`,
-        {
-          [id]: `import { b } from '${other}'\nexport const a = () => b\n`,
-          [other]: `export const b = () => 'MARK_OTHER'\n`,
-        },
-      )
-      expect(result.outcome).toBe('built')
-      if (result.outcome === 'built') {
-        expect(result.build.client.where('MARK_OTHER')).not.toBe('nowhere')
-      }
-    },
-    timeout,
-  )
+  test('a virtual module importing another builds', async () => {
+    const result = await build(
+      `import { a } from '${id}'\nexport const value = () => a()\nconsole.log('MARK_ENTRY', value)\n`,
+      {
+        [id]: `import { b } from '${other}'\nexport const a = () => b\n`,
+        [other]: `export const b = () => 'MARK_OTHER'\n`,
+      },
+    )
+    expect(result.outcome).toBe('built')
+    if (result.outcome === 'built') {
+      expect(result.build.client.where('MARK_OTHER')).not.toBe('nowhere')
+    }
+  })
 })
 
 describe('a virtual module whose text differs per environment', () => {
@@ -168,6 +154,5 @@ export const run = choose().server(() => 'SSR_CHOICE').client(() => 'CLIENT_CHOI
         ssr: (await b.ssr.run('return entry.run()')).result,
       }).toEqual(expected)
     },
-    timeout,
   )
 })

@@ -348,11 +348,10 @@ export const Route = createFileRoute('/page')({ ${options} })`,
           autoCodeSplitting && split,
         )
       },
-      30_000,
     )
 
     it('keep exported overloads and their aliases that unsplit and split options call', async () => {
       await expectSharedOverloads(autoCodeSplitting)
-    }, 30_000)
+    })
   },
 )

@@ -12,8 +12,6 @@ import { startDevServer } from '../dev-server'
 import { apps, index } from './route-error-apps'
 import type { Framework } from './route-error-apps'
 
-const timeout = 90_000
-
 /**
  * A route at `/fails`; `throwInBrowser`: its loader throws `thrown` (an
  * `Error` by default) when it runs in the browser (a failing API, say).
@@ -152,7 +150,6 @@ describe('Vite dev, Start with a document shell: route edits after a loader fail
     test.each(['react', 'solid', 'vue'] as const)(
       '%s: an edit of another route updates in place, and an edit that fixes the loader shows the fix',
       (framework) => editAfterLoaderFailure(framework, errorComponent),
-      timeout,
     )
   })
 
@@ -172,6 +169,5 @@ describe('Vite dev, Start with a document shell: route edits after a loader fail
     'solid: a loader throwing %s, caught by %s: an edit of another route updates in place, and an edit that fixes the loader shows the fix',
     (_, __, errorComponent, thrown) =>
       editAfterLoaderFailure('solid', errorComponent, thrown),
-    timeout,
   )
 })

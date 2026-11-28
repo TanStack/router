@@ -21,8 +21,6 @@ import type { Recorded } from '../../importProtection/start-apps'
 import type { StartBuild, StartBundler } from '../../build-harness'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'
 
-const timeout = 60_000
-
 /**
  * What a use gives, described: the real value's text, `a safe mock`
  * (`mock-helpers.ts`), or what calling it threw.
@@ -162,20 +160,12 @@ describe.each(startBundlers)('%s build', (bundler) => {
       }
     }
 
-    test(
-      'an importer that is not exempt gets the mock and is reported',
-      async () => {
-        expectOtherGetsMock(await outcome())
-      },
-      timeout,
-    )
-    test(
-      'the exempt importer gets the real module, and is not reported',
-      async () => {
-        expectExemptGetsRealModule(await outcome())
-      },
-      timeout,
-    )
+    test('an importer that is not exempt gets the mock and is reported', async () => {
+      expectOtherGetsMock(await outcome())
+    })
+    test('the exempt importer gets the real module, and is not reported', async () => {
+      expectExemptGetsRealModule(await outcome())
+    })
   })
 })
 
@@ -190,20 +180,12 @@ describe.each(exemptions)('vite dev: $option', ({ importProtection }) => {
     }
   }
 
-  test(
-    'an importer that is not exempt gets the mock and is reported',
-    async () => {
-      expectOtherGetsMock(await outcome())
-    },
-    timeout,
-  )
-  test(
-    'the exempt importer gets the real module, and is not reported',
-    async () => {
-      expectExemptGetsRealModule(await outcome())
-    },
-    timeout,
-  )
+  test('an importer that is not exempt gets the mock and is reported', async () => {
+    expectOtherGetsMock(await outcome())
+  })
+  test('the exempt importer gets the real module, and is not reported', async () => {
+    expectExemptGetsRealModule(await outcome())
+  })
 })
 
 /**
@@ -316,69 +298,49 @@ describe.each(startBundlers)('%s build: excludeFiles', (bundler) => {
   describe('custom patterns', () => {
     const outcome = excludedBuild(bundler, vendorExcludedOptions)
 
-    test(
-      'client: the importer of a denied file client.excludeFiles matches gets the real module, and nothing is reported',
-      async () => {
-        const { vendor, reported } = await outcome('client')
-        expect({ vendor, reported }).toEqual({
-          vendor: realModule('vendor'),
-          reported: [],
-        })
-      },
-      timeout,
-    )
-    test(
-      'ssr: the importer of a denied file server.excludeFiles matches gets the real module, and nothing is reported',
-      async () => {
-        const { widget, reported } = await outcome('ssr')
-        expect({ widget, reported }).toEqual({
-          widget: realModule('widget'),
-          reported: [],
-        })
-      },
-      timeout,
-    )
+    test('client: the importer of a denied file client.excludeFiles matches gets the real module, and nothing is reported', async () => {
+      const { vendor, reported } = await outcome('client')
+      expect({ vendor, reported }).toEqual({
+        vendor: realModule('vendor'),
+        reported: [],
+      })
+    })
+    test('ssr: the importer of a denied file server.excludeFiles matches gets the real module, and nothing is reported', async () => {
+      const { widget, reported } = await outcome('ssr')
+      expect({ widget, reported }).toEqual({
+        widget: realModule('widget'),
+        reported: [],
+      })
+    })
   })
 
   describe('default patterns', () => {
     const outcome = excludedBuild(bundler, {})
 
     // Controls: the same files, which the default patterns do not match.
-    test(
-      'client: the importer of the same denied file outside the patterns gets the mock and is reported',
-      async () => {
-        const { vendor, reported } = await outcome('client')
-        expect({ vendor, reported }).toEqual({
-          vendor: mockedModule,
-          reported: expect.arrayContaining(['client src/app/vendor-user.ts']),
-        })
-      },
-      timeout,
-    )
-    test(
-      'ssr: the importer of the same denied file outside the patterns gets the mock and is reported',
-      async () => {
-        const { widget, reported } = await outcome('ssr')
-        expect({ widget, reported }).toEqual({
-          widget: mockedModule,
-          reported: expect.arrayContaining(['server src/app/widget-user.ts']),
-        })
-      },
-      timeout,
-    )
-    test(
-      'client: the importer of a denied file of a dependency gets the real module, and is not reported',
-      async () => {
-        const { package: used, reported } = await outcome('client')
-        expect({ package: used, reported }).toEqual({
-          package: realModule('package'),
-          reported: expect.not.arrayContaining([
-            'client src/app/package-user.ts',
-          ]),
-        })
-      },
-      timeout,
-    )
+    test('client: the importer of the same denied file outside the patterns gets the mock and is reported', async () => {
+      const { vendor, reported } = await outcome('client')
+      expect({ vendor, reported }).toEqual({
+        vendor: mockedModule,
+        reported: expect.arrayContaining(['client src/app/vendor-user.ts']),
+      })
+    })
+    test('ssr: the importer of the same denied file outside the patterns gets the mock and is reported', async () => {
+      const { widget, reported } = await outcome('ssr')
+      expect({ widget, reported }).toEqual({
+        widget: mockedModule,
+        reported: expect.arrayContaining(['server src/app/widget-user.ts']),
+      })
+    })
+    test('client: the importer of a denied file of a dependency gets the real module, and is not reported', async () => {
+      const { package: used, reported } = await outcome('client')
+      expect({ package: used, reported }).toEqual({
+        package: realModule('package'),
+        reported: expect.not.arrayContaining([
+          'client src/app/package-user.ts',
+        ]),
+      })
+    })
   })
 })
 
@@ -404,39 +366,25 @@ return { vendor: use(entry.vendorRead, 'vendorLoaded'), package: use(entry.packa
     }
   }
 
-  test(
-    'custom patterns: the importer of a denied file client.excludeFiles matches gets the real module, and nothing is reported',
-    async () => {
-      const { vendor, reported } = await outcome(vendorExcludedOptions)
-      expect({ vendor, reported }).toEqual({
-        vendor: realModule('vendor'),
-        reported: [],
-      })
-    },
-    timeout,
-  )
-  test(
-    'default patterns: the importer of the same denied file outside the patterns gets the mock and is reported',
-    async () => {
-      const { vendor, reported } = await outcome({})
-      expect({ vendor, reported }).toEqual({
-        vendor: mockedModule,
-        reported: expect.arrayContaining(['client src/app/vendor-user.ts']),
-      })
-    },
-    timeout,
-  )
-  test(
-    'default patterns: the importer of a denied file of a dependency gets the real module, and is not reported',
-    async () => {
-      const { package: used, reported } = await outcome({})
-      expect({ package: used, reported }).toEqual({
-        package: realModule('package'),
-        reported: expect.not.arrayContaining([
-          'client src/app/package-user.ts',
-        ]),
-      })
-    },
-    timeout,
-  )
+  test('custom patterns: the importer of a denied file client.excludeFiles matches gets the real module, and nothing is reported', async () => {
+    const { vendor, reported } = await outcome(vendorExcludedOptions)
+    expect({ vendor, reported }).toEqual({
+      vendor: realModule('vendor'),
+      reported: [],
+    })
+  })
+  test('default patterns: the importer of the same denied file outside the patterns gets the mock and is reported', async () => {
+    const { vendor, reported } = await outcome({})
+    expect({ vendor, reported }).toEqual({
+      vendor: mockedModule,
+      reported: expect.arrayContaining(['client src/app/vendor-user.ts']),
+    })
+  })
+  test('default patterns: the importer of a denied file of a dependency gets the real module, and is not reported', async () => {
+    const { package: used, reported } = await outcome({})
+    expect({ package: used, reported }).toEqual({
+      package: realModule('package'),
+      reported: expect.not.arrayContaining(['client src/app/package-user.ts']),
+    })
+  })
 })

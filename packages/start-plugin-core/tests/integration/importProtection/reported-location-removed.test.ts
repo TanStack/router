@@ -20,7 +20,6 @@ import {
   expectRelevantLocation,
   otherErrorsOf,
   reportedLocationsOfCases,
-  timeout,
 } from './reported-location-app'
 import type { Channel } from './reported-location-app'
 import type { Recorded } from '../../importProtection/start-apps'
@@ -89,21 +88,17 @@ export const fn = myServerFn.handler(async () => secret())
     Object.entries(safeUses).flatMap(([name, code]) =>
       channels.map((channel) => ({ name, code, channel })),
     ),
-  )(
-    '$channel: $name',
-    async ({ channel }) => {
-      // (an absence is a property of the whole app, of safe uses only: no
-      // callback at all, and a build succeeds; the row's case is part of
-      // that app)
-      const { importers, failed, otherErrors } = await reportsOf(channel)
-      expect({ importers, failed, otherErrors }).toEqual({
-        importers: [],
-        failed: false,
-        otherErrors: [],
-      })
-    },
-    timeout,
-  )
+  )('$channel: $name', async ({ channel }) => {
+    // (an absence is a property of the whole app, of safe uses only: no
+    // callback at all, and a build succeeds; the row's case is part of
+    // that app)
+    const { importers, failed, otherErrors } = await reportsOf(channel)
+    expect({ importers, failed, otherErrors }).toEqual({
+      importers: [],
+      failed: false,
+      otherErrors: [],
+    })
+  })
 })
 
 // The server side: a `.client` file (denied to the server by the default
@@ -265,7 +260,6 @@ export const readServer = createIsomorphicFn().server(() => widget())
         ],
       )
     },
-    timeout,
   )
 
   test.each(serverChannels)(
@@ -281,7 +275,6 @@ export const readServer = createIsomorphicFn().server(() => widget())
         ],
       )
     },
-    timeout,
   )
 
   test.each(serverChannels)(
@@ -299,7 +292,6 @@ export const readServer = createIsomorphicFn().server(() => widget())
           .sort(),
       ).toEqual(groups.kept.map((name) => `server src/${name}/a.ts`).sort())
     },
-    timeout,
   )
 
   test.each(serverChannels)(
@@ -313,6 +305,5 @@ export const readServer = createIsomorphicFn().server(() => widget())
         otherErrors: [],
       })
     },
-    timeout,
   )
 })

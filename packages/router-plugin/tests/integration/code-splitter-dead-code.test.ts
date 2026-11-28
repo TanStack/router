@@ -187,7 +187,6 @@ describe('the reference module only drops code that splitting left unused', () =
         html: '<div id="root"><p>MARK_HELPER</p></div>',
       })
     },
-    60_000,
   )
 })
 
@@ -213,7 +212,6 @@ describe('a function annotated #__NO_SIDE_EFFECTS__', () => {
         html: '<div id="root"><p>USED</p></div>',
       })
     },
-    60_000,
   )
 
   // Exported, annotated before `export`: the chunk's copy of the function
@@ -231,7 +229,6 @@ describe('a function annotated #__NO_SIDE_EFFECTS__', () => {
         html: '<div id="root"><p>USED</p></div>',
       })
     },
-    60_000,
   )
 
   // Control: without the annotation the effectful call stays (any bundler
@@ -245,5 +242,5 @@ describe('a function annotated #__NO_SIDE_EFFECTS__', () => {
       unusedCall: expect.not.stringMatching(/^nowhere$/),
       html: '<div id="root"><p>USED</p></div>',
     })
-  }, 60_000)
+  })
 })

@@ -17,41 +17,33 @@ import {
 import { recorder } from './rsc-use-client-app'
 import { openRscPage, startRscRsbuildPreviewServer } from './rsc-serial'
 
-const timeout = 120_000
-
 describe('Rsbuild build with RSC', () => {
-  test(
-    "the fixes a report prints for a *.client.* 'use client' component, applied as written, build and work in the browser",
-    async () => {
-      const build = (files: Record<string, string>) =>
-        startRscRsbuildPreviewServer({ start: recorder('error').start, files })
-      const report = reportOf(
-        await build(deniedApp).then(
-          () => 'built',
-          (error: unknown) => error,
-        ),
-      )
-      // (no trace of framework and virtual modules: no NUL byte)
-      expect(report).not.toContain('\0')
-      const { renames, clientOnly } = printedFixes(report)
-      expect(renames.map(([from]) => from).sort()).toEqual(deniedFiles)
-      expect(clientOnly).toEqual(
-        deniedFiles.map(() => '@tanstack/react-router'),
-      )
+  test("the fixes a report prints for a *.client.* 'use client' component, applied as written, build and work in the browser", async () => {
+    const build = (files: Record<string, string>) =>
+      startRscRsbuildPreviewServer({ start: recorder('error').start, files })
+    const report = reportOf(
+      await build(deniedApp).then(
+        () => 'built',
+        (error: unknown) => error,
+      ),
+    )
+    // (no trace of framework and virtual modules: no NUL byte)
+    expect(report).not.toContain('\0')
+    const { renames, clientOnly } = printedFixes(report)
+    expect(renames.map(([from]) => from).sort()).toEqual(deniedFiles)
+    expect(clientOnly).toEqual(deniedFiles.map(() => '@tanstack/react-router'))
 
-      const renamed = await build(renamedApp(renames))
-      await expectRoutesWork(
-        renamed.url,
-        (pathname) => openRscPage(renamed, pathname),
-        'component',
-      )
-      const wrapped = await build(clientOnlyApp(clientOnly[0]!))
-      await expectRoutesWork(
-        wrapped.url,
-        (pathname) => openRscPage(wrapped, pathname),
-        'fallback',
-      )
-    },
-    timeout,
-  )
+    const renamed = await build(renamedApp(renames))
+    await expectRoutesWork(
+      renamed.url,
+      (pathname) => openRscPage(renamed, pathname),
+      'component',
+    )
+    const wrapped = await build(clientOnlyApp(clientOnly[0]!))
+    await expectRoutesWork(
+      wrapped.url,
+      (pathname) => openRscPage(wrapped, pathname),
+      'fallback',
+    )
+  })
 })

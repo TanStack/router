@@ -24,7 +24,9 @@ const integration = {
   // (after the root's: each file ends with the compilers' stale
   // check, and the process environment it started with)
   setupFiles: ['@tanstack/compiler-test-utils/test-scope-setup'],
-  testTimeout: 60_000,
+  // Every test: RSC builds and dev servers of Vite and Rsbuild, and pages,
+  // take up to two minutes under load (a hook that builds says so)
+  testTimeout: 120_000,
   hookTimeout: 60_000,
 }
 

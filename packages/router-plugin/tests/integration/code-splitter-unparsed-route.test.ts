@@ -41,5 +41,4 @@ export const Route = createFileRoute('/')({ component: Page })
       String(failure),
     ).toBe(true)
   },
-  120_000,
 )

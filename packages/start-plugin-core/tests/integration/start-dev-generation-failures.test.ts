@@ -14,8 +14,6 @@ import { mentionsFile } from '@tanstack/compiler-test-utils/diagnostics'
 import { startDevServer } from '../dev-server'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 
-const timeout = 60_000
-
 const route = (id: string) =>
   `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('${id}')({})
@@ -32,61 +30,56 @@ async function requestError(server: DevServer, url: string) {
   }
 }
 
-test(
-  'a second cold generation failure is the next error of a route module, and generated routes compile it',
-  async () => {
-    // `/a` twice: `a.tsx`, and `a.tsx` under the pathless layout `_l`
-    const server = await startDevServer({
-      files: {
-        'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+test('a second cold generation failure is the next error of a route module, and generated routes compile it', async () => {
+  // `/a` twice: `a.tsx`, and `a.tsx` under the pathless layout `_l`
+  const server = await startDevServer({
+    files: {
+      'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute()
 `,
-        'src/routes/index.tsx': route('/'),
-        'src/routes/about.tsx': route('/about'),
-        'src/routes/a.tsx': route('/a'),
-        'src/routes/_l.tsx': route('/_l'),
-        'src/routes/_l/a.tsx': route('/_l/a'),
-      },
-    })
-    const url = '/src/routes/about.tsx'
-    const names = (error: string | undefined, file: string) =>
-      error !== undefined &&
-      mentionsFile(error, server.file(file), { root: server.root })
+      'src/routes/index.tsx': route('/'),
+      'src/routes/about.tsx': route('/about'),
+      'src/routes/a.tsx': route('/a'),
+      'src/routes/_l.tsx': route('/_l'),
+      'src/routes/_l/a.tsx': route('/_l/a'),
+    },
+  })
+  const url = '/src/routes/about.tsx'
+  const names = (error: string | undefined, file: string) =>
+    error !== undefined &&
+    mentionsFile(error, server.file(file), { root: server.root })
 
-    const first = await requestError(server, url)
-    expect(names(first, 'src/routes/_l/a.tsx')).toBe(true)
+  const first = await requestError(server, url)
+  expect(names(first, 'src/routes/_l/a.tsx')).toBe(true)
 
-    // a conflict of `/b` made too, then the one of `/a` fixed: the routes
-    // were never generated in between
-    await server.write({
-      'src/routes/b.tsx': route('/b'),
-      'src/routes/_m.tsx': route('/_m'),
-      'src/routes/_m/b.tsx': route('/_m/b'),
-    })
-    await expect
-      .poll(
-        async () =>
-          names(await requestError(server, url), 'src/routes/_m/b.tsx'),
-        { timeout: 10_000 },
-      )
-      .toBe(true)
-    await server.write({ 'src/routes/_l/a.tsx': null })
-    await expect
-      .poll(
-        async () =>
-          !names(await requestError(server, url), 'src/routes/_l/a.tsx'),
-        { timeout: 10_000 },
-      )
-      .toBe(true)
-    expect(names(await requestError(server, url), 'src/routes/_m/b.tsx')).toBe(
-      true,
+  // a conflict of `/b` made too, then the one of `/a` fixed: the routes
+  // were never generated in between
+  await server.write({
+    'src/routes/b.tsx': route('/b'),
+    'src/routes/_m.tsx': route('/_m'),
+    'src/routes/_m/b.tsx': route('/_m/b'),
+  })
+  await expect
+    .poll(
+      async () => names(await requestError(server, url), 'src/routes/_m/b.tsx'),
+      { timeout: 10_000 },
     )
+    .toBe(true)
+  await server.write({ 'src/routes/_l/a.tsx': null })
+  await expect
+    .poll(
+      async () =>
+        !names(await requestError(server, url), 'src/routes/_l/a.tsx'),
+      { timeout: 10_000 },
+    )
+    .toBe(true)
+  expect(names(await requestError(server, url), 'src/routes/_m/b.tsx')).toBe(
+    true,
+  )
 
-    // and fixed
-    await server.write({ 'src/routes/_m/b.tsx': null })
-    await expect
-      .poll(() => requestError(server, url), { timeout: 10_000 })
-      .toBeUndefined()
-  },
-  timeout,
-)
+  // and fixed
+  await server.write({ 'src/routes/_m/b.tsx': null })
+  await expect
+    .poll(() => requestError(server, url), { timeout: 10_000 })
+    .toBeUndefined()
+})

@@ -83,4 +83,4 @@ if (process.exitCode) throw new Error('${file} failed')`,
   expect(
     JSON.parse(await readFile(path.join(app.root, 'result.json'), 'utf8')),
   ).toEqual({ html: '<p>1</p>', stores: 1 })
-}, 120_000)
+})

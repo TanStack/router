@@ -16,8 +16,6 @@ import { startDevServer } from '../dev-server'
 import { apps, index, rootRendersDocument } from './route-error-apps'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 
-const timeout = 90_000
-
 /** Waits until the page reported the component's throw (what it shows then is the router's business). */
 const waitForThrow = (browser: BrowserPage) =>
   expect
@@ -62,7 +60,6 @@ describe('Vite dev, Start with a document shell: a route edit after a component 
         timeout: 20_000,
       })
     },
-    timeout,
   )
 
   test.each(['react', 'solid', 'vue'] as const)(
@@ -112,7 +109,6 @@ describe('Vite dev, Start with a document shell: a route edit after a component 
         timeout: 20_000,
       })
     },
-    timeout,
   )
 
   test.each(['react', 'solid', 'vue'] as const)(
@@ -153,7 +149,6 @@ describe('Vite dev, Start with a document shell: a route edit after a component 
       // the route's boundary resets in place when the route loads again
       await expect.poll(() => browser.loads()).toBe(1)
     },
-    timeout,
   )
 
   // Review of the route HMR implementation (11-23): a root route whose
@@ -196,6 +191,5 @@ describe('Vite dev, Start with a document shell: a route edit after a component 
         timeout: 20_000,
       })
     },
-    timeout,
   )
 })

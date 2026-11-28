@@ -44,8 +44,7 @@ import type { ImportProtectionOptions } from '../../importProtection/public-type
 import type { Recorded } from '../../importProtection/start-apps'
 import type { PluginOption } from 'vite'
 
-const timeout = 60_000
-const compileTimeout = timeout
+const compileTimeout = 60_000
 
 /** The directory the apps stand in for (where their imports resolve). */
 const testsDir = path.resolve(
@@ -212,23 +211,18 @@ describe.each(viteAliases)('vite: $alias', (alias) => {
       )
       expectAliasFailure(error)
     },
-    timeout,
   )
 
-  test(
-    'dev: the importer gets a safe mock, and the denied file never runs',
-    async () => {
-      const server = await startAliasDevServer(alias, {})
-      const { result } = await runViteClient(
-        server,
-        '/src/entry.ts',
-        `${probeMockPrelude}
+  test('dev: the importer gets a safe mock, and the denied file never runs', async () => {
+    const server = await startAliasDevServer(alias, {})
+    const { result } = await runViteClient(
+      server,
+      '/src/entry.ts',
+      `${probeMockPrelude}
 return { probe: probeMock(entry.widget(), 'MARK_SECRET'), loaded: globalThis.secretLoaded ?? null }`,
-      )
-      expect(result).toEqual({ probe: safeMock, loaded: null })
-    },
-    timeout,
-  )
+    )
+    expect(result).toEqual({ probe: safeMock, loaded: null })
+  })
 
   reportTest(
     'dev with behavior error: the load fails, reporting the aliased specifier at its original line',
@@ -239,73 +233,60 @@ return { probe: probeMock(entry.widget(), 'MARK_SECRET'), loaded: globalThis.sec
       await rejection(server.load('/src/entry.ts'))
       expectAliasFailure(server)
     },
-    timeout,
   )
 })
 
 describe('rsbuild: tsconfig paths', () => {
-  test(
-    'the build fails, reporting the aliased specifier at its original line',
-    async () => {
-      const error = await rejection(
-        buildStart({
-          bundler: 'rsbuild',
-          files: aliasApp,
-          entry: 'src/entry.ts',
-        }),
-      )
-      expect(reportsOf(error)).toEqual([expectedReport])
-    },
-    timeout,
-  )
-
-  test(
-    'dev: the importer gets a safe mock, and the denied file never runs',
-    async () => {
-      const recorder = violationRecorder()
-      const server = await startRsbuildStartDevServer({
-        compileTimeout,
-        browser: true,
-        hmr: false,
+  test('the build fails, reporting the aliased specifier at its original line', async () => {
+    const error = await rejection(
+      buildStart({
+        bundler: 'rsbuild',
         files: aliasApp,
-        start: { importProtection: recorder.importProtection },
-      })
-      // Nothing fails, on any channel
-      expectNoDiagnostic(server.diagnostics, { severity: 'error' })
-      // The probe of `expectSafeMock`, run where the mock lives.
-      const { result } = await captureConsole(() =>
-        runInClient(
-          server,
-          `${probeMockPrelude}
+        entry: 'src/entry.ts',
+      }),
+    )
+    expect(reportsOf(error)).toEqual([expectedReport])
+  })
+
+  test('dev: the importer gets a safe mock, and the denied file never runs', async () => {
+    const recorder = violationRecorder()
+    const server = await startRsbuildStartDevServer({
+      compileTimeout,
+      browser: true,
+      hmr: false,
+      files: aliasApp,
+      start: { importProtection: recorder.importProtection },
+    })
+    // Nothing fails, on any channel
+    expectNoDiagnostic(server.diagnostics, { severity: 'error' })
+    // The probe of `expectSafeMock`, run where the mock lives.
+    const { result } = await captureConsole(() =>
+      runInClient(
+        server,
+        `${probeMockPrelude}
 return {
   probe: probeMock(globalThis.widget(), 'MARK_SECRET'),
   loaded: globalThis.secretLoaded ?? null,
 }`,
-        ),
-      )
-      expect(result).toEqual({ result: { probe: safeMock, loaded: null } })
-      expect(reportsOf({ root: server.root, ...recorder })).toEqual([
-        expectedReport,
-      ])
-    },
-    timeout,
-  )
+      ),
+    )
+    expect(result).toEqual({ result: { probe: safeMock, loaded: null } })
+    expect(reportsOf({ root: server.root, ...recorder })).toEqual([
+      expectedReport,
+    ])
+  })
 
-  test(
-    'dev with behavior error: the compile fails, reporting the aliased specifier at its original line',
-    async () => {
-      const recorder = violationRecorder({ behavior: { dev: 'error' } })
-      const server = await startRsbuildStartDevServer({
-        compileTimeout,
-        browser: true,
-        hmr: false,
-        files: aliasApp,
-        start: { importProtection: recorder.importProtection },
-      })
-      expect(reportsOf({ root: server.root, ...recorder })).toEqual([
-        expectedReport,
-      ])
-    },
-    timeout,
-  )
+  test('dev with behavior error: the compile fails, reporting the aliased specifier at its original line', async () => {
+    const recorder = violationRecorder({ behavior: { dev: 'error' } })
+    const server = await startRsbuildStartDevServer({
+      compileTimeout,
+      browser: true,
+      hmr: false,
+      files: aliasApp,
+      start: { importProtection: recorder.importProtection },
+    })
+    expect(reportsOf({ root: server.root, ...recorder })).toEqual([
+      expectedReport,
+    ])
+  })
 })

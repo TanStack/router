@@ -9,8 +9,6 @@
 import { describe } from 'vitest'
 import { it } from '../test'
 
-const timeout = 90_000
-
 type Bundler = 'vite' | 'rsbuild'
 
 /** React: a counter in the component, whose state the edit may keep or not. */
@@ -61,7 +59,6 @@ export function shapeChangeSuite(bundler: Bundler) {
       { loader: 'sync', autoCodeSplitting: false },
     ] as const)(
       'shows each save in place ($loader loader, autoCodeSplitting: $autoCodeSplitting)',
-      { timeout },
       async ({ loader, autoCodeSplitting }, { expect, openRouteHmrPage }) => {
         const app = await openRouteHmrPage({
           bundler,
@@ -96,7 +93,6 @@ export function shapeChangeSuite(bundler: Bundler) {
         { autoCodeSplitting: false, errorComponent: false },
       ])(
         'shows each save in place (autoCodeSplitting: $autoCodeSplitting, route error component: $errorComponent)',
-        { timeout },
         async (
           { autoCodeSplitting, errorComponent },
           { expect, openRouteHmrPage },

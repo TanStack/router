@@ -16,8 +16,6 @@ import { openTestPage } from '../test-page'
 import { startDevServer } from '../dev-server'
 import { reactApp } from './hydrate-dev-edits'
 
-const timeout = 90_000
-
 const rootRoute = (text: string, broken = false) =>
   `import { HeadContent, Outlet, Scripts, createRootRoute, useHydrated } from '@tanstack/react-router'
 export const Route = createRootRoute({ component: Root })
@@ -65,76 +63,64 @@ const app = {
 }
 
 describe('Vite dev, Start: a route file that stops parsing, then parses again', () => {
-  test(
-    'the root route: the page keeps what it shows, and the fix shows in place',
-    async () => {
-      const server = await startDevServer({
-        start: {},
-        browser: true,
-        plugins: [react()],
-        files: app,
-      })
-      const page = await openTestPage(server.url!)
-      const inFlight = trackRequests(page)
-      await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
-      await page.waitForText('root-v1', { selector: '[data-probe=root]' })
+  test('the root route: the page keeps what it shows, and the fix shows in place', async () => {
+    const server = await startDevServer({
+      start: {},
+      browser: true,
+      plugins: [react()],
+      files: app,
+    })
+    const page = await openTestPage(server.url!)
+    const inFlight = trackRequests(page)
+    await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
+    await page.waitForText('root-v1', { selector: '[data-probe=root]' })
 
-      await server.edit({ 'src/routes/__root.tsx': rootRoute('root-v2', true) })
-      // the outcome of a broken edit: Vite's overlay reports it, on the same document
-      await page.page.waitForSelector('vite-error-overlay', { timeout: 20_000 })
-      expect(page.loads(), 'the page reloaded while the file was broken').toBe(
-        1,
-      )
-      await page.waitForText('root-v1', { selector: '[data-probe=root]' })
+    await server.edit({ 'src/routes/__root.tsx': rootRoute('root-v2', true) })
+    // the outcome of a broken edit: Vite's overlay reports it, on the same document
+    await page.page.waitForSelector('vite-error-overlay', { timeout: 20_000 })
+    expect(page.loads(), 'the page reloaded while the file was broken').toBe(1)
+    await page.waitForText('root-v1', { selector: '[data-probe=root]' })
 
-      await server.edit({ 'src/routes/__root.tsx': rootRoute('root-v3') })
-      await settlePage(server, page, inFlight)
-      await page.waitForText('root-v3', {
-        selector: '[data-probe=root]',
-        timeout: 20_000,
-      })
-      expect(page.loads()).toBe(1)
-    },
-    timeout,
-  )
+    await server.edit({ 'src/routes/__root.tsx': rootRoute('root-v3') })
+    await settlePage(server, page, inFlight)
+    await page.waitForText('root-v3', {
+      selector: '[data-probe=root]',
+      timeout: 20_000,
+    })
+    expect(page.loads()).toBe(1)
+  })
 
-  test(
-    'another route: the page keeps what it shows, and the fixed route shows when navigated to',
-    async () => {
-      const server = await startDevServer({
-        start: {},
-        browser: true,
-        plugins: [react()],
-        files: app,
-      })
-      const page = await openTestPage(server.url!)
-      const inFlight = trackRequests(page)
-      await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
-      await page.waitForText('index-v1', { selector: '[data-probe=index]' })
+  test('another route: the page keeps what it shows, and the fixed route shows when navigated to', async () => {
+    const server = await startDevServer({
+      start: {},
+      browser: true,
+      plugins: [react()],
+      files: app,
+    })
+    const page = await openTestPage(server.url!)
+    const inFlight = trackRequests(page)
+    await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
+    await page.waitForText('index-v1', { selector: '[data-probe=index]' })
 
-      await server.edit({
-        'src/routes/about.tsx': aboutRoute('about-v2', true),
-      })
-      await page.page.waitForSelector('vite-error-overlay', { timeout: 20_000 })
-      expect(page.loads(), 'the page reloaded while the file was broken').toBe(
-        1,
-      )
-      await page.waitForText('index-v1', { selector: '[data-probe=index]' })
+    await server.edit({
+      'src/routes/about.tsx': aboutRoute('about-v2', true),
+    })
+    await page.page.waitForSelector('vite-error-overlay', { timeout: 20_000 })
+    expect(page.loads(), 'the page reloaded while the file was broken').toBe(1)
+    await page.waitForText('index-v1', { selector: '[data-probe=index]' })
 
-      await server.edit({ 'src/routes/about.tsx': aboutRoute('about-v3') })
-      await settlePage(server, page, inFlight)
-      await page.waitForText('index-v1', { selector: '[data-probe=index]' })
-      await page.page.evaluate(() =>
-        (window as any).__TSR_ROUTER__.navigate({ to: '/about' }),
-      )
-      await page.waitForText('about-v3', {
-        selector: '[data-probe=about]',
-        timeout: 20_000,
-      })
-      expect(page.loads()).toBe(1)
-    },
-    timeout,
-  )
+    await server.edit({ 'src/routes/about.tsx': aboutRoute('about-v3') })
+    await settlePage(server, page, inFlight)
+    await page.waitForText('index-v1', { selector: '[data-probe=index]' })
+    await page.page.evaluate(() =>
+      (window as any).__TSR_ROUTER__.navigate({ to: '/about' }),
+    )
+    await page.waitForText('about-v3', {
+      selector: '[data-probe=about]',
+      timeout: 20_000,
+    })
+    expect(page.loads()).toBe(1)
+  })
 
   // The route on the page, its component split into a chunk the page
   // holds. The update of the broken file fails to import in the page; Vite's
@@ -145,39 +131,33 @@ describe('Vite dev, Start: a route file that stops parsing, then parses again', 
   // Source: design 3 step 4 review, finding 1 (the derived module's `load`
   // declared its file with `addWatchFile`, which Vite's dev server records
   // as an import of the module).
-  test(
-    'the route on the page: the page keeps what it shows, and the fix shows in place',
-    async () => {
-      const server = await startDevServer({
-        start: {},
-        browser: true,
-        plugins: [react()],
-        files: app,
-      })
-      const page = await openTestPage(server.url!)
-      const inFlight = trackRequests(page)
-      await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
-      await page.waitForText('index-v1', { selector: '[data-probe=index]' })
+  test('the route on the page: the page keeps what it shows, and the fix shows in place', async () => {
+    const server = await startDevServer({
+      start: {},
+      browser: true,
+      plugins: [react()],
+      files: app,
+    })
+    const page = await openTestPage(server.url!)
+    const inFlight = trackRequests(page)
+    await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
+    await page.waitForText('index-v1', { selector: '[data-probe=index]' })
 
-      await server.edit({
-        'src/routes/index.tsx': indexRoute('index-v2', true),
-      })
-      await page.page.waitForSelector('vite-error-overlay', { timeout: 20_000 })
-      // (Vite's client reloads after its 20 ms debounce of failed updates)
-      await new Promise((resolve) => setTimeout(resolve, 500))
-      expect(page.loads(), 'the page reloaded while the file was broken').toBe(
-        1,
-      )
-      await page.waitForText('index-v1', { selector: '[data-probe=index]' })
+    await server.edit({
+      'src/routes/index.tsx': indexRoute('index-v2', true),
+    })
+    await page.page.waitForSelector('vite-error-overlay', { timeout: 20_000 })
+    // (Vite's client reloads after its 20 ms debounce of failed updates)
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    expect(page.loads(), 'the page reloaded while the file was broken').toBe(1)
+    await page.waitForText('index-v1', { selector: '[data-probe=index]' })
 
-      await server.edit({ 'src/routes/index.tsx': indexRoute('index-v3') })
-      await settlePage(server, page, inFlight)
-      await page.waitForText('index-v3', {
-        selector: '[data-probe=index]',
-        timeout: 20_000,
-      })
-      expect(page.loads()).toBe(1)
-    },
-    timeout,
-  )
+    await server.edit({ 'src/routes/index.tsx': indexRoute('index-v3') })
+    await settlePage(server, page, inFlight)
+    await page.waitForText('index-v3', {
+      selector: '[data-probe=index]',
+      timeout: 20_000,
+    })
+    expect(page.loads()).toBe(1)
+  })
 })

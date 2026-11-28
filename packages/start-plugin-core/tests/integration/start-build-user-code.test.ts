@@ -16,8 +16,6 @@ import {
 } from '../build-harness'
 import { buildStart } from '../build-start'
 
-const timeout = 60_000
-
 /** Records each call it gets, an effect a bundler cannot see through. */
 const trackModule = `export const track = (label) => {
   ;(globalThis.__tracked ??= []).push(label)
@@ -104,7 +102,6 @@ return { values, tracked: ${tracked} }`)
         },
       })
     },
-    timeout,
   )
 
   /**
@@ -167,48 +164,40 @@ ${callByIdExports}`,
   // Every output parses and runs: the decorators run, the JSON import
   // works (`assert` reaches the bundler as `with`; `assert` stays supported,
   // SPEC J2.17), the handler runs.
-  test(
-    'a server fn module with decorated classes and an assert import attribute builds and runs',
-    async () => {
-      const { client, ssr } = await decoratedApp()
-      expect(
-        (
-          await client.run(
-            `return { label: new entry.Widget().label(), tagged: entry.tagged }`,
-          )
-        ).result,
-      ).toEqual({
-        label: 'widget:dark',
-        // (`Repository`'s decorator may run on the client too: pinned below.)
-        tagged: expect.arrayContaining(['widget']),
-      })
-      expect(
-        (
-          await ssr.run(
-            `${callByIdPrelude}return await callById(serverFnId(entry.fn))`,
-          )
-        ).result,
-      ).toEqual([
-        'MARK_FROM_REPOSITORY',
-        'dark',
-        // The handler's class was decorated (how often a module's top-level
-        // code runs on the server is pinned elsewhere; `Widget` may go).
-        expect.arrayContaining(['MARK_REPOSITORY']),
-      ])
-    },
-    timeout,
-  )
+  test('a server fn module with decorated classes and an assert import attribute builds and runs', async () => {
+    const { client, ssr } = await decoratedApp()
+    expect(
+      (
+        await client.run(
+          `return { label: new entry.Widget().label(), tagged: entry.tagged }`,
+        )
+      ).result,
+    ).toEqual({
+      label: 'widget:dark',
+      // (`Repository`'s decorator may run on the client too: pinned below.)
+      tagged: expect.arrayContaining(['widget']),
+    })
+    expect(
+      (
+        await ssr.run(
+          `${callByIdPrelude}return await callById(serverFnId(entry.fn))`,
+        )
+      ).result,
+    ).toEqual([
+      'MARK_FROM_REPOSITORY',
+      'dark',
+      // The handler's class was decorated (how often a module's top-level
+      // code runs on the server is pinned elsewhere; `Widget` may go).
+      expect.arrayContaining(['MARK_REPOSITORY']),
+    ])
+  })
 
   // On main, the handler's class, and what its decorators and methods
   // reference, ship to the client and run their decorators there.
-  test(
-    'the decorated class only a server fn handler uses is not in the client bundle',
-    async () => {
-      const { client } = await decoratedApp()
-      expect(client.where('MARK_FROM_REPOSITORY')).toBe('nowhere')
-    },
-    timeout,
-  )
+  test('the decorated class only a server fn handler uses is not in the client bundle', async () => {
+    const { client } = await decoratedApp()
+    expect(client.where('MARK_FROM_REPOSITORY')).toBe('nowhere')
+  })
 
   // A route with `ssr: false` whose component reads browser globals, in a
   // module that also defines a server fn the component calls: SSR renders
@@ -220,14 +209,12 @@ ${callByIdExports}`,
   // start-build-server-fn-cases.test.ts "SSR: a server fn module is
   // initialised once ...". An unconditional top-level `window` read is no
   // requirement, SPEC J4.14.)
-  test(
-    'an ssr: false route with browser-only code in its component and a server fn',
-    async () => {
-      const files = {
-        'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+  test('an ssr: false route with browser-only code in its component and a server fn', async () => {
+    const files = {
+      'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute()
 `,
-        'src/routes/canvas.tsx': `import { createFileRoute } from '@tanstack/react-router'
+      'src/routes/canvas.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 export const getMessage = createServerFn().handler(async () => 'MARK_SERVER_MESSAGE')
 export const Route = createFileRoute('/canvas')({
@@ -240,39 +227,37 @@ function CanvasPage() {
   return 'MARK_CANVAS_' + canvas.tagName
 }
 `,
-        'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+      'src/router.ts': `import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 export const getRouter = () => createRouter({ routeTree })
 `,
-        'src/client-entry.ts': `export { getRouter } from './router'
+      'src/client-entry.ts': `export { getRouter } from './router'
 export { renderPath } from '../harness/render'
 `,
-        'src/ssr-entry.ts': `export { getRouter } from './router'
+      'src/ssr-entry.ts': `export { getRouter } from './router'
 export { renderPath } from '../harness/render'
 export { getMessage } from './routes/canvas'
 ${callByIdExports}`,
-      }
-      const { client, ssr } = await buildStart({
-        bundler,
-        files,
-        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-      })
-      const { result } = await ssr.run(`${callByIdPrelude}return {
+    }
+    const { client, ssr } = await buildStart({
+      bundler,
+      files,
+      entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+    })
+    const { result } = await ssr.run(`${callByIdPrelude}return {
   page: await entry.renderPath(entry.getRouter().routeTree, '/canvas'),
   message: await callById(serverFnId(entry.getMessage)),
 }`)
-      expect(result).toEqual({
-        page: expect.not.stringContaining('MARK_CANVAS'),
-        message: 'MARK_SERVER_MESSAGE',
-      })
-      expect(
-        (
-          await client.run(
-            `return await entry.renderPath(entry.getRouter().routeTree, '/canvas')`,
-          )
-        ).result,
-      ).toContain('MARK_CANVAS_CANVAS')
-    },
-    timeout,
-  )
+    expect(result).toEqual({
+      page: expect.not.stringContaining('MARK_CANVAS'),
+      message: 'MARK_SERVER_MESSAGE',
+    })
+    expect(
+      (
+        await client.run(
+          `return await entry.renderPath(entry.getRouter().routeTree, '/canvas')`,
+        )
+      ).result,
+    ).toContain('MARK_CANVAS_CANVAS')
+  })
 })

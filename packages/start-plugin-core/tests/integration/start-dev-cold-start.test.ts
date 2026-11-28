@@ -22,8 +22,6 @@ import { openTestPage } from '../test-page'
 import { startDevServer } from '../dev-server'
 import type { StartDevServerOptions } from '../dev-server'
 
-const timeout = 90_000
-
 /**
  * A page app per framework: Start's default entries (hydration of
  * `StartClient`, the HTTP handler), the real router over the generated
@@ -191,6 +189,5 @@ describe('Vite dev: the first page load on a cold dependency cache', () => {
       expect(browser.loads()).toBe(1)
       expect(browser.errors).toEqual([])
     },
-    timeout,
   )
 })

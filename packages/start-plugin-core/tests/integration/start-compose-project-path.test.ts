@@ -233,19 +233,15 @@ return { id, answer: await callById(id) }`)
         return { id, answer, inClient: build.client.where(id) !== 'nowhere' }
       }
 
-      test(
-        'server fn default ids are those of the root as the file system spells it',
-        async () => {
-          const spelled = await ids()
-          expect(spelled).toEqual({
-            id: expect.any(String),
-            answer: 'MARK_GREETING',
-            inClient: true,
-          })
-          expect(await ids(flipDriveLetter)).toEqual(spelled)
-        },
-        timeout,
-      )
+      test('server fn default ids are those of the root as the file system spells it', async () => {
+        const spelled = await ids()
+        expect(spelled).toEqual({
+          id: expect.any(String),
+          answer: 'MARK_GREETING',
+          inClient: true,
+        })
+        expect(await ids(flipDriveLetter)).toEqual(spelled)
+      })
     },
   )
 })

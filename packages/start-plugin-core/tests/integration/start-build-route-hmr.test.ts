@@ -26,8 +26,6 @@ import {
   startRsbuildStartDevServer,
 } from '../rsbuild-dev-server'
 
-const timeout = 60_000
-
 /** The bundlers' HMR APIs (Vite's SSR transform spells `import.meta` its way). */
 const hmrApi =
   /\b(?:import\.meta|__vite_ssr_import_meta__)\.(?:hot|webpackHot)\b|\bmodule\.hot\b/
@@ -80,28 +78,26 @@ describe("dev servers with Start's plugin hot-update the route (controls)", () =
   // `@vitejs/plugin-react` serves the app (rendered on the client from
   // `index.html`; Start's own page middleware is off) to a real page. The
   // server environment's route module has no route HMR code.
-  test(
-    'Vite dev: an edit of the route loader shows in place, and the server environment gets no route HMR code',
-    async () => {
-      const server = await startDevServer({
-        start: { vite: { installDevServerMiddleware: false } },
-        browser: true,
-        // Pre-bundled up front, as Vite does for an app that installed them
-        // (the router is a linked workspace package here)
-        config: {
-          optimizeDeps: {
-            include: [
-              'react',
-              'react/jsx-dev-runtime',
-              'react-dom',
-              'react-dom/client',
-              '@tanstack/react-router',
-            ],
-          },
+  test('Vite dev: an edit of the route loader shows in place, and the server environment gets no route HMR code', async () => {
+    const server = await startDevServer({
+      start: { vite: { installDevServerMiddleware: false } },
+      browser: true,
+      // Pre-bundled up front, as Vite does for an app that installed them
+      // (the router is a linked workspace package here)
+      config: {
+        optimizeDeps: {
+          include: [
+            'react',
+            'react/jsx-dev-runtime',
+            'react-dom',
+            'react-dom/client',
+            '@tanstack/react-router',
+          ],
         },
-        plugins: [react()],
-        files: {
-          'index.html': `<!doctype html>
+      },
+      plugins: [react()],
+      files: {
+        'index.html': `<!doctype html>
 <html>
   <body>
     <div id="app"></div>
@@ -109,59 +105,55 @@ describe("dev servers with Start's plugin hot-update the route (controls)", () =
   </body>
 </html>
 `,
-          'src/main.tsx': `import { createRoot } from 'react-dom/client'
+        'src/main.tsx': `import { createRoot } from 'react-dom/client'
 import { RouterProvider } from '@tanstack/react-router'
 import { getRouter } from './router'
 createRoot(document.getElementById('app')!).render(<RouterProvider router={getRouter()} />)
 `,
-          'src/router.ts': routerFile,
-          'src/routes/__root.tsx': files['src/routes/__root.tsx'],
-          'src/routes/index.tsx': pageRoute(),
-        },
-      })
-      const page = await openTestPage(server.url!)
-      await page.waitForText('MARK_PAGE MARK_LOADER', { selector: '#app' })
-      await server.edit({ 'src/routes/index.tsx': pageRoute('_V2') })
-      await page.waitForText('MARK_PAGE MARK_LOADER_V2', { selector: '#app' })
-      expect(page.loads()).toBe(1)
-      expect(page.errors).toEqual([])
-      // Every module the server environment serves from the route module,
-      // the router's packages and any support module the compiler imports
-      // included; left out: Vite's own client, and packages the environment
-      // externalizes (bare ids: Node loads the installed package itself).
-      const ssr = await server.load('/src/routes/index.tsx', {
-        environment: 'ssr',
-        skip: /^\/@(?:vite|react-refresh)\b|^[^./]/,
-      })
-      expect(hmrApisIn(Object.values(ssr))).toEqual([])
-    },
-    timeout,
-  )
+        'src/router.ts': routerFile,
+        'src/routes/__root.tsx': files['src/routes/__root.tsx'],
+        'src/routes/index.tsx': pageRoute(),
+      },
+    })
+    const page = await openTestPage(server.url!)
+    await page.waitForText('MARK_PAGE MARK_LOADER', { selector: '#app' })
+    await server.edit({ 'src/routes/index.tsx': pageRoute('_V2') })
+    await page.waitForText('MARK_PAGE MARK_LOADER_V2', { selector: '#app' })
+    expect(page.loads()).toBe(1)
+    expect(page.errors).toEqual([])
+    // Every module the server environment serves from the route module,
+    // the router's packages and any support module the compiler imports
+    // included; left out: Vite's own client, and packages the environment
+    // externalizes (bare ids: Node loads the installed package itself).
+    const ssr = await server.load('/src/routes/index.tsx', {
+      environment: 'ssr',
+      skip: /^\/@(?:vite|react-refresh)\b|^[^./]/,
+    })
+    expect(hmrApisIn(Object.values(ssr))).toEqual([])
+  })
 
   // A real Rsbuild dev server with Start's Rsbuild plugin and HMR serves
   // the app's pages (Start's server entry renders them, the client entry
   // hydrates) to a real page.
-  test(
-    'Rsbuild dev: an edit of the route loader shows in place',
-    async () => {
-      const server = await startRsbuildStartDevServer({
-        hmr: true,
-        browser: true,
-        config: {
-          tools: {
-            // Start serves the pages, not an HTML template
-            htmlPlugin: false,
-          },
+  test('Rsbuild dev: an edit of the route loader shows in place', async () => {
+    const server = await startRsbuildStartDevServer({
+      hmr: true,
+      browser: true,
+      config: {
+        tools: {
+          // Start serves the pages, not an HTML template
+          htmlPlugin: false,
         },
-        files: {
-          'harness/client-entry.ts': `import { createElement } from 'react'
+      },
+      files: {
+        'harness/client-entry.ts': `import { createElement } from 'react'
 import { hydrateRoot } from 'react-dom/client'
 import { StartClient } from '@tanstack/react-start/client'
 hydrateRoot(document, createElement(StartClient))
 `,
-          'harness/server-entry.ts': `export { default } from '@tanstack/react-start/server-entry'\n`,
-          'src/router.ts': routerFile,
-          'src/routes/__root.tsx': `import { HeadContent, Outlet, Scripts, createRootRoute, useHydrated } from '@tanstack/react-router'
+        'harness/server-entry.ts': `export { default } from '@tanstack/react-start/server-entry'\n`,
+        'src/router.ts': routerFile,
+        'src/routes/__root.tsx': `import { HeadContent, Outlet, Scripts, createRootRoute, useHydrated } from '@tanstack/react-router'
 export const Route = createRootRoute({ component: Root })
 function Root() {
   const hydrated = useHydrated()
@@ -179,49 +171,43 @@ function Root() {
   )
 }
 `,
-          'src/routes/index.tsx': pageRoute(),
-        },
-      })
-      expect(reportedErrors(server)).toEqual([])
-      const page = await openTestPage(server.url!)
-      await page.waitForText('MARK_PAGE MARK_LOADER', { selector: '#app' })
-      await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
-      await server.write({ 'src/routes/index.tsx': pageRoute('_V2') })
-      await server.settle()
-      expect(reportedErrors(server)).toEqual([])
-      await page.waitForText('MARK_PAGE MARK_LOADER_V2', { selector: '#app' })
-      expect(page.loads()).toBe(1)
-      expect(page.errors).toEqual([])
-    },
-    timeout,
-  )
+        'src/routes/index.tsx': pageRoute(),
+      },
+    })
+    expect(reportedErrors(server)).toEqual([])
+    const page = await openTestPage(server.url!)
+    await page.waitForText('MARK_PAGE MARK_LOADER', { selector: '#app' })
+    await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
+    await server.write({ 'src/routes/index.tsx': pageRoute('_V2') })
+    await server.settle()
+    expect(reportedErrors(server)).toEqual([])
+    await page.waitForText('MARK_PAGE MARK_LOADER_V2', { selector: '#app' })
+    expect(page.loads()).toBe(1)
+    expect(page.errors).toEqual([])
+  })
 })
 
 describe.each(startBundlers)('%s production build', (bundler) => {
   // Source: review (only router-plugin's
   // build-production.test.ts checked SPEC R7, without Start's forced `addHmr`).
-  test(
-    'the client and server outputs use no HMR API, and the page renders',
-    async () => {
-      const { client, ssr } = await buildStart({
-        bundler,
-        files,
-        entry: 'src/entry.ts',
-      })
-      expect(hmrApisIn(client.chunks.map((chunk) => chunk.code))).toEqual([])
-      expect(hmrApisIn(ssr.chunks.map((chunk) => chunk.code))).toEqual([])
-      const { result } = await client.run(`const route = Object.values(
+  test('the client and server outputs use no HMR API, and the page renders', async () => {
+    const { client, ssr } = await buildStart({
+      bundler,
+      files,
+      entry: 'src/entry.ts',
+    })
+    expect(hmrApisIn(client.chunks.map((chunk) => chunk.code))).toEqual([])
+    expect(hmrApisIn(ssr.chunks.map((chunk) => chunk.code))).toEqual([])
+    const { result } = await client.run(`const route = Object.values(
   entry.getRouter().routeTree.children,
 ).find((candidate) => candidate.options.id === '/')
 return {
   loader: await route.options.loader(),
   page: await entry.renderPath(entry.getRouter().routeTree, '/'),
 }`)
-      expect(result).toEqual({
-        loader: 'MARK_LOADER',
-        page: expect.stringContaining('MARK_PAGE MARK_LOADER'),
-      })
-    },
-    timeout,
-  )
+    expect(result).toEqual({
+      loader: 'MARK_LOADER',
+      page: expect.stringContaining('MARK_PAGE MARK_LOADER'),
+    })
+  })
 })

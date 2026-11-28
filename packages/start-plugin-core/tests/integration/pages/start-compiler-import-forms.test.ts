@@ -207,7 +207,7 @@ describe.each(frameworks)('%s', (framework) => {
   beforeAll(async () => {
     host = await opening(() => createStartHost({ framework }))
     await host.page()
-  }, 60_000)
+  })
 
   describe.each(constructs)('$name', (construct) => {
     test.each(Object.keys(forms))('through %s', async (formName) => {

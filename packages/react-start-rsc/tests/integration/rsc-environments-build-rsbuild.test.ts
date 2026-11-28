@@ -30,60 +30,50 @@ import {
 } from './rsc-environments-app'
 import { openRscPage, startRscRsbuildPreviewServer } from './rsc-serial'
 
-const timeout = 60_000
-
 const secretViolations = [
   'rsc server file label.ts -> ./secret.client',
   'ssr server file label.ts -> ./secret.client',
 ]
 
 describe('Rsbuild build with RSC: a file in both compile environments', () => {
-  test(
-    'allowImport is asked once for each environment of an import a file of both makes',
-    async () => {
-      const { asked, start } = recorder('error', () => true)
-      const server = await startRscRsbuildPreviewServer({
-        start,
-        files: environmentsFiles,
-      })
-      expect(server.errors).toEqual([])
-      const response = await fetch(new URL('/', server.url))
-      expect({
-        status: response.status,
-        ...rendered(await response.text()),
-      }).toEqual({
-        status: 200,
-        route: 'MARK_SECRET MARK_WHERE_PLAIN',
-        server: 'MARK_SECRET MARK_WHERE_SERVER',
-        boxes: 2,
-      })
-      expect(calls(asked).sort()).toEqual(secretViolations)
-    },
-    timeout,
-  )
+  test('allowImport is asked once for each environment of an import a file of both makes', async () => {
+    const { asked, start } = recorder('error', () => true)
+    const server = await startRscRsbuildPreviewServer({
+      start,
+      files: environmentsFiles,
+    })
+    expect(server.errors).toEqual([])
+    const response = await fetch(new URL('/', server.url))
+    expect({
+      status: response.status,
+      ...rendered(await response.text()),
+    }).toEqual({
+      status: 200,
+      route: 'MARK_SECRET MARK_WHERE_PLAIN',
+      server: 'MARK_SECRET MARK_WHERE_SERVER',
+      boxes: 2,
+    })
+    expect(calls(asked).sort()).toEqual(secretViolations)
+  })
 
-  test(
-    "a denied import of the rsc environment is served its mock, and each environment's is reported",
-    async () => {
-      const { violations, start } = recorder('mock')
-      const server = await startRscRsbuildPreviewServer({
-        start,
-        files: environmentsFiles,
-      })
-      expect(server.errors).toEqual([])
-      const response = await fetch(new URL('/', server.url))
-      const html = await response.text()
-      expect(response.status).toBe(200)
-      expect(rendered(html)).toEqual({
-        route: expect.stringContaining('MARK_WHERE_PLAIN'),
-        server: expect.stringContaining('MARK_WHERE_SERVER'),
-        boxes: 2,
-      })
-      expect(html).not.toContain('MARK_SECRET')
-      expect(summary(violations)).toEqual(secretViolations)
-    },
-    timeout,
-  )
+  test("a denied import of the rsc environment is served its mock, and each environment's is reported", async () => {
+    const { violations, start } = recorder('mock')
+    const server = await startRscRsbuildPreviewServer({
+      start,
+      files: environmentsFiles,
+    })
+    expect(server.errors).toEqual([])
+    const response = await fetch(new URL('/', server.url))
+    const html = await response.text()
+    expect(response.status).toBe(200)
+    expect(rendered(html)).toEqual({
+      route: expect.stringContaining('MARK_WHERE_PLAIN'),
+      server: expect.stringContaining('MARK_WHERE_SERVER'),
+      boxes: 2,
+    })
+    expect(html).not.toContain('MARK_SECRET')
+    expect(summary(violations)).toEqual(secretViolations)
+  })
 })
 
 /**
@@ -134,30 +124,26 @@ export const Route = createFileRoute('/')({
 }
 
 describe('Rsbuild build with RSC: the rsc environment', () => {
-  test(
-    'its imports are judged by the server rules, and reported as rsc of type server',
-    async () => {
-      const { violations, start } = recorder('mock')
-      const server = await startRscRsbuildPreviewServer({
-        start: {
-          ...start,
-          importProtection: {
-            ...start.importProtection,
-            server: { specifiers: ['#server-denied'] },
-            client: { specifiers: ['#client-denied'] },
-          },
+  test('its imports are judged by the server rules, and reported as rsc of type server', async () => {
+    const { violations, start } = recorder('mock')
+    const server = await startRscRsbuildPreviewServer({
+      start: {
+        ...start,
+        importProtection: {
+          ...start.importProtection,
+          server: { specifiers: ['#server-denied'] },
+          client: { specifiers: ['#client-denied'] },
         },
-        files: rulesFiles,
-      })
-      expect(server.errors).toEqual([])
-      expect(summary(violations)).toEqual([
-        'rsc server file fns.ts -> ./ui.client',
-        'rsc server marker fns.ts -> ./client-marked',
-        'rsc server specifier fns.ts -> #server-denied',
-      ])
-    },
-    timeout,
-  )
+      },
+      files: rulesFiles,
+    })
+    expect(server.errors).toEqual([])
+    expect(summary(violations)).toEqual([
+      'rsc server file fns.ts -> ./ui.client',
+      'rsc server marker fns.ts -> ./client-marked',
+      'rsc server specifier fns.ts -> #server-denied',
+    ])
+  })
 })
 
 /** What the plugins use of Rspack's compiler (structural: the package has no `@rsbuild/core` types). */
@@ -231,20 +217,18 @@ const withPlugin = (environment: string, plugin: object) => ({
 })
 
 describe('Rsbuild build with RSC: a worker of the client', () => {
-  test(
-    "a server fn the page calls is the client's stub in the worker, of the same id",
-    async () => {
-      const server = await startRscRsbuildPreviewServer({
-        files: {
-          'src/lib/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+  test("a server fn the page calls is the client's stub in the worker, of the same id", async () => {
+    const server = await startRscRsbuildPreviewServer({
+      files: {
+        'src/lib/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 export const readShared = createServerFn().handler(() => 'MARK_SHARED')
 `,
-          'src/worker.ts': `import { readShared } from './lib/fns'
+        'src/worker.ts': `import { readShared } from './lib/fns'
 self.onmessage = () => {
   self.postMessage(readShared.url)
 }
 `,
-          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+        'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { readShared } from '../lib/fns'
 export const Route = createFileRoute('/')({
   loader: () => readShared(),
@@ -255,67 +239,61 @@ export const Route = createFileRoute('/')({
   ),
 })
 `,
-        },
-        tools: withPlugin(
-          'client',
-          childCompilerPlugin('worker', { worker: true }),
-        ),
-      })
-      expect(server.errors).toEqual([])
-      const page = await openRscPage(server, '/')
-      await page
-        .locator('[data-testid=page]', { hasText: /page MARK_SHARED/ })
-        .waitFor({ timeout: 5_000 })
-      const fromWorker = await page.evaluate(
-        () =>
-          new Promise<string>((resolve) => {
-            const worker = new Worker('/worker.js')
-            worker.onmessage = (event) => resolve(String(event.data))
-            worker.onerror = (event) => resolve(`error ${event.message}`)
-            worker.postMessage(null)
-          }),
-      )
-      const fromPage = await page
-        .locator('[data-testid=page]')
-        .getAttribute('data-url')
-      expect(fromWorker).toBe(fromPage)
-      expect(fromWorker).toMatch(/^\//)
-      const worker = await fetch(new URL('/worker.js', server.url))
-      expect(await worker.text()).not.toContain('MARK_SHARED')
-    },
-    timeout,
-  )
+      },
+      tools: withPlugin(
+        'client',
+        childCompilerPlugin('worker', { worker: true }),
+      ),
+    })
+    expect(server.errors).toEqual([])
+    const page = await openRscPage(server, '/')
+    await page
+      .locator('[data-testid=page]', { hasText: /page MARK_SHARED/ })
+      .waitFor({ timeout: 5_000 })
+    const fromWorker = await page.evaluate(
+      () =>
+        new Promise<string>((resolve) => {
+          const worker = new Worker('/worker.js')
+          worker.onmessage = (event) => resolve(String(event.data))
+          worker.onerror = (event) => resolve(`error ${event.message}`)
+          worker.postMessage(null)
+        }),
+    )
+    const fromPage = await page
+      .locator('[data-testid=page]')
+      .getAttribute('data-url')
+    expect(fromWorker).toBe(fromPage)
+    expect(fromWorker).toMatch(/^\//)
+    const worker = await fetch(new URL('/worker.js', server.url))
+    expect(await worker.text()).not.toContain('MARK_SHARED')
+  })
 })
 
 describe('Rsbuild build with RSC: a child compiler of the server', () => {
   // A15: a child's request maps through its issuer's layer, as its
   // parent's modules do: a child entry in the RSC layer is of `rsc`
-  test(
-    "a denied import of a child compiler's module in the RSC layer is reported in rsc and fails the build",
-    async () => {
-      const { violations, start } = recorder('error')
-      const error = await startRscRsbuildPreviewServer({
-        start,
-        files: {
-          ...environmentsFiles,
-          'src/lib/label.ts': labelModule(false),
-          'src/child.ts': `import { secretLabel } from './lib/secret.client'
+  test("a denied import of a child compiler's module in the RSC layer is reported in rsc and fails the build", async () => {
+    const { violations, start } = recorder('error')
+    const error = await startRscRsbuildPreviewServer({
+      start,
+      files: {
+        ...environmentsFiles,
+        'src/lib/label.ts': labelModule(false),
+        'src/child.ts': `import { secretLabel } from './lib/secret.client'
 ;(globalThis as { child?: string }).child = secretLabel()
 `,
-        },
-        tools: withPlugin(
-          'ssr',
-          childCompilerPlugin('child', { layer: 'react-server-components' }),
-        ),
-      }).then(
-        () => null,
-        (e: unknown) => e,
-      )
-      expect(error).not.toBeNull()
-      expect(summary(violations)).toEqual([
-        'rsc server file child.ts -> ./lib/secret.client',
-      ])
-    },
-    timeout,
-  )
+      },
+      tools: withPlugin(
+        'ssr',
+        childCompilerPlugin('child', { layer: 'react-server-components' }),
+      ),
+    }).then(
+      () => null,
+      (e: unknown) => e,
+    )
+    expect(error).not.toBeNull()
+    expect(summary(violations)).toEqual([
+      'rsc server file child.ts -> ./lib/secret.client',
+    ])
+  })
 })

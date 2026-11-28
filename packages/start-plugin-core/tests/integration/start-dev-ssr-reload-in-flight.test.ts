@@ -20,8 +20,6 @@
 import { describe, expect, test } from 'vitest'
 import { startDevServer } from '../dev-server'
 
-const timeout = 30_000
-
 /**
  * What the app's modules and the test share (one process: the SSR
  * environment's module runner runs in the test's process):
@@ -155,13 +153,9 @@ describe('Vite dev: requests that overlap an SSR reload', () => {
   test.fails(
     'the request in flight and a request after the reload both render the page',
     () => overlappingRequests({ reload: true }),
-    timeout,
   )
 
   // The control: the same overlapping requests without a reload.
-  test(
-    'two overlapping requests both render the page',
-    () => overlappingRequests({ reload: false }),
-    timeout,
-  )
+  test('two overlapping requests both render the page', () =>
+    overlappingRequests({ reload: false }))
 })

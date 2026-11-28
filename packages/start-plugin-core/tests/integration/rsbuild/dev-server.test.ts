@@ -16,8 +16,6 @@ import {
   startPageEntries,
 } from '../start-compose-app'
 
-const timeout = 30_000
-
 describe('Rsbuild dev: editing a server fn factory', () => {
   /**
    * `src/a1.ts` and `src/a2.ts` define server fns with the `base` builder of
@@ -118,7 +116,6 @@ import { fn2 } from './a2'
         true,
       ])
     },
-    timeout,
   )
 
   test.each(['./b', './c'])(
@@ -128,7 +125,6 @@ import { fn2 } from './a2'
         result: ['MARK_DB_SECRET', 'MARK_DB_SECRET'],
       })
     },
-    timeout,
   )
 })
 
@@ -208,83 +204,77 @@ function Page() {
   // and never the handler. (What the edited component shows is route HMR's
   // business, router-plugin's page tests with React Refresh.)
   // Source: review (the Rsbuild hot-update path never ran in tests).
-  test(
-    'the page applies the hot update of an edited server fn module and the next call runs the edited handler, without a full reload',
-    async () => {
-      const server = await startRsbuildStartDevServer({
-        hmr: true,
-        browser: true,
-        config: {
-          tools: {
-            // Start serves the pages, not an HTML template
-            htmlPlugin: false,
-          },
+  test('the page applies the hot update of an edited server fn module and the next call runs the edited handler, without a full reload', async () => {
+    const server = await startRsbuildStartDevServer({
+      hmr: true,
+      browser: true,
+      config: {
+        tools: {
+          // Start serves the pages, not an HTML template
+          htmlPlugin: false,
         },
-        files: {
-          ...hmrAppFiles,
-          'src/routes/index.tsx': route('V1'),
-        },
-      })
-      expect(server.errors).toEqual([])
-      const page = await openTestPage(server.url!)
-      await page.waitForText('MARK_LABEL_V1 MARK_HANDLER_V1', {
-        selector: '[data-testid=label]',
-      })
-      await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
-      await page.page.locator('[data-testid=count]').click()
-      await page.waitForText('count 1', { selector: '[data-testid=count]' })
-      await page.page.locator('[data-testid=call]').click()
-      await page.waitForText('called MARK_HANDLER_V1', {
-        selector: '[data-testid=called]',
-      })
+      },
+      files: {
+        ...hmrAppFiles,
+        'src/routes/index.tsx': route('V1'),
+      },
+    })
+    expect(server.errors).toEqual([])
+    const page = await openTestPage(server.url!)
+    await page.waitForText('MARK_LABEL_V1 MARK_HANDLER_V1', {
+      selector: '[data-testid=label]',
+    })
+    await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
+    await page.page.locator('[data-testid=count]').click()
+    await page.waitForText('count 1', { selector: '[data-testid=count]' })
+    await page.page.locator('[data-testid=call]').click()
+    await page.waitForText('called MARK_HANDLER_V1', {
+      selector: '[data-testid=called]',
+    })
 
-      await server.edit({ 'src/routes/index.tsx': route('V2') })
-      expect(server.errors).toEqual([])
-      await page.waitForText('MARK_HANDLER_V2', {
-        selector: '[data-testid=label]',
-      })
-      await page.page.locator('[data-testid=call]').click()
-      await page.waitForText('called MARK_HANDLER_V2', {
-        selector: '[data-testid=called]',
-      })
-      expect(page.loads()).toBe(1)
-      // The client's hot update has the client code and not the handler
-      const update = Object.values(await server.hotUpdates('client')).join('\n')
-      expect({
-        label: update.includes('MARK_LABEL_V2'),
-        handler: update.includes('MARK_HANDLER_V2'),
-      }).toEqual({ label: true, handler: false })
-      expect(page.errors).toEqual([])
-    },
-    timeout,
-  )
+    await server.edit({ 'src/routes/index.tsx': route('V2') })
+    expect(server.errors).toEqual([])
+    await page.waitForText('MARK_HANDLER_V2', {
+      selector: '[data-testid=label]',
+    })
+    await page.page.locator('[data-testid=call]').click()
+    await page.waitForText('called MARK_HANDLER_V2', {
+      selector: '[data-testid=called]',
+    })
+    expect(page.loads()).toBe(1)
+    // The client's hot update has the client code and not the handler
+    const update = Object.values(await server.hotUpdates('client')).join('\n')
+    expect({
+      label: update.includes('MARK_LABEL_V2'),
+      handler: update.includes('MARK_HANDLER_V2'),
+    }).toEqual({ label: true, handler: false })
+    expect(page.errors).toEqual([])
+  })
 
   // The modules only handlers import load on the first call (like a
   // production build, start-build-lazy-handlers.test.ts), and an edit of
   // one reaches the next call without a full reload.
-  test(
-    "a handler's server-only module loads on the first call, and an edit of it reaches the next call without a full reload",
-    async () => {
-      const db = (
-        version: string,
-      ) => `const g = globalThis as Record<string, unknown>
+  test("a handler's server-only module loads on the first call, and an edit of it reaches the next call without a full reload", async () => {
+    const db = (
+      version: string,
+    ) => `const g = globalThis as Record<string, unknown>
 g.__tssRsbuildDbLoads = ((g.__tssRsbuildDbLoads as number | undefined) ?? 0) + 1
 export const db = { x: () => 'MARK_DB_${version}' }
 `
-      const server = await startRsbuildStartDevServer({
-        hmr: true,
-        browser: true,
-        config: { tools: { htmlPlugin: false } },
-        files: {
-          ...hmrAppFiles,
-          'src/db.server.ts': db('V1'),
-          // (a module of its own: the handlers of one module load together)
-          'src/loads.ts': `import { createServerFn } from '@tanstack/react-start'
+    const server = await startRsbuildStartDevServer({
+      hmr: true,
+      browser: true,
+      config: { tools: { htmlPlugin: false } },
+      files: {
+        ...hmrAppFiles,
+        'src/db.server.ts': db('V1'),
+        // (a module of its own: the handlers of one module load together)
+        'src/loads.ts': `import { createServerFn } from '@tanstack/react-start'
 export const loads = createServerFn().handler(async () =>
   String((globalThis as Record<string, unknown>).__tssRsbuildDbLoads ?? 0),
 )
 `,
-          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+        'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
 import { db } from '../db.server'
@@ -305,30 +295,28 @@ function Page() {
   )
 }
 `,
-        },
-      })
-      expect(server.errors).toEqual([])
-      const page = await openTestPage(server.url!)
-      const result = (text: string) =>
-        page.waitForText(`result ${text}`, { selector: '[data-testid=result]' })
-      // The page's SSR ran the loader: the module defining the fns is
-      // loaded, the handler's server-only module is not
-      await result('0')
-      await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
-      await page.page.locator('[data-testid=call]').click()
-      await result('MARK_DB_V1')
-      await page.page.locator('[data-testid=loads]').click()
-      await result('1')
+      },
+    })
+    expect(server.errors).toEqual([])
+    const page = await openTestPage(server.url!)
+    const result = (text: string) =>
+      page.waitForText(`result ${text}`, { selector: '[data-testid=result]' })
+    // The page's SSR ran the loader: the module defining the fns is
+    // loaded, the handler's server-only module is not
+    await result('0')
+    await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
+    await page.page.locator('[data-testid=call]').click()
+    await result('MARK_DB_V1')
+    await page.page.locator('[data-testid=loads]').click()
+    await result('1')
 
-      await server.edit({ 'src/db.server.ts': db('V2') })
-      expect(server.errors).toEqual([])
-      await page.page.locator('[data-testid=call]').click()
-      await result('MARK_DB_V2')
-      expect(page.loads()).toBe(1)
-      expect(page.errors).toEqual([])
-    },
-    timeout,
-  )
+    await server.edit({ 'src/db.server.ts': db('V2') })
+    expect(server.errors).toEqual([])
+    await page.page.locator('[data-testid=call]').click()
+    await result('MARK_DB_V2')
+    expect(page.loads()).toBe(1)
+    expect(page.errors).toEqual([])
+  })
 })
 
 describe('Rsbuild dev: removing a server fn module', () => {
@@ -336,84 +324,76 @@ describe('Rsbuild dev: removing a server fn module', () => {
   // the app no longer has must leave it, or the next compile of the server
   // never completes.
   // Source: mutation testing, with Start's whole Rsbuild plugin.
-  test(
-    'deleting a module with a server fn keeps the dev server compiling',
-    async () => {
-      const fn = (
-        name: string,
-      ) => `import { createServerFn } from '@tanstack/react-start'
+  test('deleting a module with a server fn keeps the dev server compiling', async () => {
+    const fn = (
+      name: string,
+    ) => `import { createServerFn } from '@tanstack/react-start'
 export const ${name} = createServerFn().handler(async () => 'MARK_${name}')
 `
-      const server = await startRsbuildStartDevServer({
-        compileTimeout: 10_000,
-        files: {
-          'src/a.ts': fn('a'),
-          'src/b.ts': fn('b'),
-          'src/entry.ts': `export { a } from './a'\nexport { b } from './b'\n`,
-        },
-      })
-      // The deletion in its own edit, before the entry's: a write landing
-      // while Rspack compiles the deletion can be lost (watchpack 2.5.2
-      // vendored by Rspack; KNOWN-BUGS.md, upstream issues). Merge the two
-      // edits back once Rspack bundles watchpack >= 2.6.
-      await server.edit({ 'src/b.ts': null })
-      await server.edit({ 'src/entry.ts': `export { a } from './a'\n` })
-      expect(server.errors).toEqual([])
-      const ssr = Object.values(await server.outputs('ssr')).join('\n')
-      expect(ssr).toContain('MARK_a')
-    },
-    timeout,
-  )
+    const server = await startRsbuildStartDevServer({
+      compileTimeout: 10_000,
+      files: {
+        'src/a.ts': fn('a'),
+        'src/b.ts': fn('b'),
+        'src/entry.ts': `export { a } from './a'\nexport { b } from './b'\n`,
+      },
+    })
+    // The deletion in its own edit, before the entry's: a write landing
+    // while Rspack compiles the deletion can be lost (watchpack 2.5.2
+    // vendored by Rspack; KNOWN-BUGS.md, upstream issues). Merge the two
+    // edits back once Rspack bundles watchpack >= 2.6.
+    await server.edit({ 'src/b.ts': null })
+    await server.edit({ 'src/entry.ts': `export { a } from './a'\n` })
+    expect(server.errors).toEqual([])
+    const ssr = Object.values(await server.outputs('ssr')).join('\n')
+    expect(ssr).toContain('MARK_a')
+  })
 })
 
 describe('Rsbuild dev: server fn ids', () => {
   // Server fns are called by id: two server fns sharing an id would run
   // each other's handler.
   // Source: mutation testing.
-  test(
-    'same-named server fns of two modules get different ids',
-    async () => {
-      const fn = (
-        value: string,
-      ) => `import { createServerFn } from '@tanstack/react-start'
+  test('same-named server fns of two modules get different ids', async () => {
+    const fn = (
+      value: string,
+    ) => `import { createServerFn } from '@tanstack/react-start'
 export const getData = createServerFn().handler(async () => ${JSON.stringify(value)})
 `
-      const server = await startRsbuildStartDevServer({
-        browser: true,
-        hmr: false,
-        config: { plugins: [pluginReact()] },
-        files: {
-          ...startPageEntries,
-          'src/ssr-entry.ts': `export { getRouter } from './router'`,
-          'src/router.ts': routerFile,
-          'src/routes/__root.tsx': rootDocument(),
-          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+    const server = await startRsbuildStartDevServer({
+      browser: true,
+      hmr: false,
+      config: { plugins: [pluginReact()] },
+      files: {
+        ...startPageEntries,
+        'src/ssr-entry.ts': `export { getRouter } from './router'`,
+        'src/router.ts': routerFile,
+        'src/routes/__root.tsx': rootDocument(),
+        'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({ component: () => null })`,
-          'src/a.ts': fn('from a'),
-          'src/b.ts': fn('from b'),
-          'src/client-entry.ts': `export { getData as a } from './a'
+        'src/a.ts': fn('from a'),
+        'src/b.ts': fn('from b'),
+        'src/client-entry.ts': `export { getData as a } from './a'
 export { getData as b } from './b'
 `,
-        },
-      })
-      const page = await openTestPage(server.url!)
-      await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
-      // A server fn's identity is the URL its calls fetch (`fn.url`, which
-      // carries its id; the metadata object holding the id is Start's own)
-      const { urls, values } = await page.page.evaluate(async () => {
-        const { a, b } = (globalThis as any).__app
-        return {
-          urls: [a.url, b.url],
-          values: [await a(), await b()],
-        }
-      })
-      expect(urls).toEqual([expect.any(String), expect.any(String)])
-      expect(urls[0]).not.toBe(urls[1])
-      expect(values).toEqual(['from a', 'from b'])
-      expect(page.errors).toEqual([])
-    },
-    timeout,
-  )
+      },
+    })
+    const page = await openTestPage(server.url!)
+    await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
+    // A server fn's identity is the URL its calls fetch (`fn.url`, which
+    // carries its id; the metadata object holding the id is Start's own)
+    const { urls, values } = await page.page.evaluate(async () => {
+      const { a, b } = (globalThis as any).__app
+      return {
+        urls: [a.url, b.url],
+        values: [await a(), await b()],
+      }
+    })
+    expect(urls).toEqual([expect.any(String), expect.any(String)])
+    expect(urls[0]).not.toBe(urls[1])
+    expect(values).toEqual(['from a', 'from b'])
+    expect(page.errors).toEqual([])
+  })
 
   // Whether dev ids use `serverFns.generateFunctionId` is
   // free: it is a production-build contract (SPEC J4.4), covered by
@@ -471,35 +451,31 @@ return {
   middleware: typeof c.mw.options,
 }`
 
-  test(
-    'each environment runs its own side of each construct and loads only its code',
-    async () => {
-      const server = await startRsbuildStartDevServer({
-        compileTimeout: 20_000,
-        browser: true,
-        hmr: false,
-        config: ssrNodeOutput,
-        files,
-      })
-      expect(await runInClient(server, read)).toEqual({
-        result: {
-          loaded: ['chart'],
-          serverOnly: 'throws',
-          clientOnly: 'MARK_CLIENT_ONLY',
-          iso: 'MARK_ISO_CLIENT',
-          middleware: 'object',
-        },
-      })
-      expect(await runRsbuildSsr(server, read)).toEqual({
-        result: {
-          loaded: ['server-value'],
-          serverOnly: 'MARK_SERVER:server-only',
-          clientOnly: 'throws',
-          iso: 'MARK_SERVER:iso',
-          middleware: 'object',
-        },
-      })
-    },
-    timeout,
-  )
+  test('each environment runs its own side of each construct and loads only its code', async () => {
+    const server = await startRsbuildStartDevServer({
+      compileTimeout: 20_000,
+      browser: true,
+      hmr: false,
+      config: ssrNodeOutput,
+      files,
+    })
+    expect(await runInClient(server, read)).toEqual({
+      result: {
+        loaded: ['chart'],
+        serverOnly: 'throws',
+        clientOnly: 'MARK_CLIENT_ONLY',
+        iso: 'MARK_ISO_CLIENT',
+        middleware: 'object',
+      },
+    })
+    expect(await runRsbuildSsr(server, read)).toEqual({
+      result: {
+        loaded: ['server-value'],
+        serverOnly: 'MARK_SERVER:server-only',
+        clientOnly: 'throws',
+        iso: 'MARK_SERVER:iso',
+        middleware: 'object',
+      },
+    })
+  })
 })

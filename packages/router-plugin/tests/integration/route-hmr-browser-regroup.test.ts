@@ -16,8 +16,6 @@
 import { describe } from 'vitest'
 import { it } from '../test'
 
-const timeout = 90_000
-
 type Target = 'react' | 'solid' | 'vue'
 
 const route = (target: Target, groupings: string, version: number) =>
@@ -47,7 +45,6 @@ describe.each([
     { name: 'out of the split', moved: `[]` },
   ])(
     'the component moves $name and back, each move and the next save editing its body',
-    { timeout },
     async ({ moved }, { expect, openRouteHmrPage }) => {
       const app = await openRouteHmrPage({
         bundler,

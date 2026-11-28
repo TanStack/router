@@ -20,8 +20,6 @@ import {
 import { test } from './test'
 import type { RscPreviewServer } from './rsc-app'
 
-const timeout = 120_000
-
 let server: RscPreviewServer
 test.aroundAll(async (runSuite, { fileRoot }) => {
   server = await openRscRsbuildPreviewServer(
@@ -37,7 +35,7 @@ test.aroundAll(async (runSuite, { fileRoot }) => {
   } finally {
     await server.close()
   }
-}, timeout)
+}, 120_000)
 
 // SPEC J4.2: a server fn only client-only code imports is callable by id
 // (the server compilation's last settlement run builds the resolver again

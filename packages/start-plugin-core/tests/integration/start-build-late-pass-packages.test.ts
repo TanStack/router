@@ -26,7 +26,6 @@ import type { StartBuildOptions } from '../build-harness'
 import type { StartDeclaration } from '../package-layouts'
 
 const require = createRequire(import.meta.url)
-const timeout = 60_000
 
 const mdxConfig = {
   viteConfig: { plugins: [{ enforce: 'pre', ...mdx() }] },
@@ -90,7 +89,6 @@ export const fn = createServerFn().handler(async () => 'MARK_PKG_HANDLER')
         typeof (await build.client.run('return entry.fn.url')).result,
       ).toBe('string')
     },
-    timeout,
   )
 
   // A package that declares Start hands Start values on under any name:
@@ -98,83 +96,69 @@ export const fn = createServerFn().handler(async () => 'MARK_PKG_HANDLER')
   // text names.
   // Source: the reviews of settlement step 3 (Fable `d30.mjs`, Gemini;
   // Astra `step3-optional.mjs`).
-  test(
-    "a Start-declaring package's MDX module calling a renamed createServerOnlyFn: its body stays off the client",
-    async () => {
-      const build = await buildStart({
-        bundler,
-        ...app(
-          'peer',
-          `import { so } from './index.js'
+  test("a Start-declaring package's MDX module calling a renamed createServerOnlyFn: its body stays off the client", async () => {
+    const build = await buildStart({
+      bundler,
+      ...app(
+        'peer',
+        `import { so } from './index.js'
 export const only = so(() => 'MARK_PKG_ONLY')
 `,
-          {
-            'index.js': `export { createServerOnlyFn as so } from '@tanstack/react-start'\n`,
-          },
-        ),
-        ...mdxConfig,
-      })
-      expect(build.client.where('MARK_PKG_ONLY')).toBe('nowhere')
-    },
-    timeout,
-  )
+        {
+          'index.js': `export { createServerOnlyFn as so } from '@tanstack/react-start'\n`,
+        },
+      ),
+      ...mdxConfig,
+    })
+    expect(build.client.where('MARK_PKG_ONLY')).toBe('nowhere')
+  })
 
-  test(
-    "a Start-declaring package's MDX module finishing an imported builder by an optional call: the server answers it, the client has no handler",
-    async () => {
-      const build = await buildStart({
-        bundler,
-        ...app(
-          'peer',
-          `import { base } from './b.js'
+  test("a Start-declaring package's MDX module finishing an imported builder by an optional call: the server answers it, the client has no handler", async () => {
+    const build = await buildStart({
+      bundler,
+      ...app(
+        'peer',
+        `import { base } from './b.js'
 export const fn = base.handler?.(async () => 'MARK_PKG_OPTIONAL')
 `,
-          {
-            'index.js': `export {}\n`,
-            'b.js': `import { createServerFn } from '@tanstack/react-start'\nexport const base = createServerFn()\n`,
-          },
-        ),
-        ...mdxConfig,
-      })
-      expect(build.client.where('MARK_PKG_OPTIONAL')).toBe('nowhere')
-      const url = (await build.client.run('return entry.fn.url')).result
-      const { result } = await build.ssr.run(
-        `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
-      )
-      expect(result).toBe('MARK_PKG_OPTIONAL')
-    },
-    timeout,
-  )
+        {
+          'index.js': `export {}\n`,
+          'b.js': `import { createServerFn } from '@tanstack/react-start'\nexport const base = createServerFn()\n`,
+        },
+      ),
+      ...mdxConfig,
+    })
+    expect(build.client.where('MARK_PKG_OPTIONAL')).toBe('nowhere')
+    const url = (await build.client.run('return entry.fn.url')).result
+    const { result } = await build.ssr.run(
+      `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+    )
+    expect(result).toBe('MARK_PKG_OPTIONAL')
+  })
 
-  test(
-    "an installed package's MDX module naming no Start API is left as it is",
-    async () => {
-      const build = await buildStart({
-        bundler,
-        ...app('none', `# A page\n\nexport const note = 'MARK_PKG_NOTE'\n`),
-        ...mdxConfig,
-      })
-      expect((await build.client.run('return entry.note')).result).toBe(
-        'MARK_PKG_NOTE',
-      )
-    },
-    timeout,
-  )
+  test("an installed package's MDX module naming no Start API is left as it is", async () => {
+    const build = await buildStart({
+      bundler,
+      ...app('none', `# A page\n\nexport const note = 'MARK_PKG_NOTE'\n`),
+      ...mdxConfig,
+    })
+    expect((await build.client.run('return entry.note')).result).toBe(
+      'MARK_PKG_NOTE',
+    )
+  })
 })
 
 // The same for a Vue SFC of a package that declares Start: Vue's output of
 // its `<script setup>` block reaches the late pass.
 // Source: Gemini's review of settlement step 3, check 3.
 describe('vite build, a Vue SFC of a package that declares Start', () => {
-  test(
-    'calling a renamed createServerOnlyFn: its body stays off the client',
-    async () => {
-      const kit = installPackage('npm', {
-        name: 'vue-kit',
-        manifest: { peerDependencies: { '@tanstack/vue-start': '*' } },
-        files: {
-          'index.js': `export { createServerOnlyFn as so } from '@tanstack/vue-start'\n`,
-          'Comp.vue': `<template>
+  test('calling a renamed createServerOnlyFn: its body stays off the client', async () => {
+    const kit = installPackage('npm', {
+      name: 'vue-kit',
+      manifest: { peerDependencies: { '@tanstack/vue-start': '*' } },
+      files: {
+        'index.js': `export { createServerOnlyFn as so } from '@tanstack/vue-start'\n`,
+        'Comp.vue': `<template>
   <p>kit</p>
 </template>
 
@@ -184,25 +168,23 @@ const only = so(() => 'MARK_VUE_KIT_ONLY')
 defineExpose({ only })
 </script>
 `,
-        },
-      })
-      const build = await buildStart({
-        bundler: 'vite',
-        framework: 'vue',
-        files: {
-          ...kit.files,
-          'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/vue-router'
+      },
+    })
+    const build = await buildStart({
+      bundler: 'vite',
+      framework: 'vue',
+      files: {
+        ...kit.files,
+        'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/vue-router'
 export const Route = createRootRoute()
 `,
-          'src/entry.ts': `export { default as Comp } from 'vue-kit/Comp.vue'\n`,
-        },
-        symlinks: kit.symlinks,
-        packageJson: appManifest([kit]),
-        entry: 'src/entry.ts',
-        viteConfig: { plugins: [vue()] },
-      })
-      expect(build.client.where('MARK_VUE_KIT_ONLY')).toBe('nowhere')
-    },
-    timeout,
-  )
+        'src/entry.ts': `export { default as Comp } from 'vue-kit/Comp.vue'\n`,
+      },
+      symlinks: kit.symlinks,
+      packageJson: appManifest([kit]),
+      entry: 'src/entry.ts',
+      viteConfig: { plugins: [vue()] },
+    })
+    expect(build.client.where('MARK_VUE_KIT_ONLY')).toBe('nowhere')
+  })
 })

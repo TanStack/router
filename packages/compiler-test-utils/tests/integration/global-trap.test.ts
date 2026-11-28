@@ -11,8 +11,6 @@ import { closeAtEnd } from '../../src/test-end'
 import { openPage } from '../../src/browser'
 import { globalTrapSource } from '../../src/global-trap'
 
-const timeout = 30_000
-
 /** A page whose init script traps `$Trapped$` (`window.touches()`). */
 async function trappedPage() {
   return closeAtEnd(() =>
@@ -59,24 +57,18 @@ test.each([
     ['define $Trapped$', 'redefined $Trapped$'],
   ],
   ['a deletion', `delete window.$Trapped$`, ['redefined $Trapped$']],
-])(
-  '%s is recorded',
-  async (_, code, expected) => {
-    const page = await trappedPage()
-    const touched = await page.page.evaluate(`(() => {
+])('%s is recorded', async (_, code, expected) => {
+  const page = await trappedPage()
+  const touched = await page.page.evaluate(`(() => {
   try { ${code} } catch {}
   return window.touches()
 })()`)
-    expect(touched).toEqual(expected)
-  },
-  timeout,
-)
+  expect(touched).toEqual(expected)
+})
 
-test(
-  'other names, other objects and the probes of other names record nothing',
-  async () => {
-    const page = await trappedPage()
-    const seen = await page.page.evaluate(`(() => {
+test('other names, other objects and the probes of other names record nothing', async () => {
+  const page = await trappedPage()
+  const seen = await page.page.evaluate(`(() => {
   window.other = 1
   const element = document.getElementById('app')
   element.expando = 2
@@ -93,7 +85,5 @@ test(
     touched: window.touches(),
   }
 })()`)
-    expect(seen).toEqual({ values: [1, 2, true, true, true, 3], touched: [] })
-  },
-  timeout,
-)
+  expect(seen).toEqual({ values: [1, 2, true, true, true, 3], touched: [] })
+})

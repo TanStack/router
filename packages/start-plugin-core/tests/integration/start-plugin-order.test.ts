@@ -45,8 +45,6 @@ import { createStartHost } from '../start-host'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { StartFramework } from '../start-plugins'
 
-const timeout = 90_000
-
 const homeDep = 'home-dep'
 
 const routeFileNames = [
@@ -291,16 +289,10 @@ const buildHost = async (framework: StartFramework, startLast: boolean) => {
 }
 
 describe('Vite dev', () => {
-  test(
-    'solid: Start listed after vite-plugin-solid is refused',
-    async () => {
-      // (the refusal names the plugin listed out of order)
-      await expect(devServer('solid', true)).rejects.toThrow(
-        'vite-plugin-solid',
-      )
-    },
-    timeout,
-  )
+  test('solid: Start listed after vite-plugin-solid is refused', async () => {
+    // (the refusal names the plugin listed out of order)
+    await expect(devServer('solid', true)).rejects.toThrow('vite-plugin-solid')
+  })
 
   test.each([
     ['solid', false],
@@ -329,21 +321,16 @@ describe('Vite dev', () => {
         expectNoDiagnostic(server.diagnostics, { file, root: server.root })
       }
     },
-    timeout,
   )
 })
 
 describe('Vite build', () => {
-  test(
-    'solid: Start listed after vite-plugin-solid is refused',
-    async () => {
-      // (the refusal names the plugin listed out of order)
-      await expect(
-        buildHost('solid', true).then((host) => host.build()),
-      ).rejects.toThrow('vite-plugin-solid')
-    },
-    timeout,
-  )
+  test('solid: Start listed after vite-plugin-solid is refused', async () => {
+    // (the refusal names the plugin listed out of order)
+    await expect(
+      buildHost('solid', true).then((host) => host.build()),
+    ).rejects.toThrow('vite-plugin-solid')
+  })
 
   test.each([
     ['solid', false],
@@ -356,52 +343,47 @@ describe('Vite build', () => {
       await expectSplitOnOther(url)
       await expectHydratedHome(url, 'home-v1')
     },
-    timeout,
   )
 })
 
 describe('Rsbuild dev, Start listed after the framework plugin', () => {
-  test(
-    'solid: the route splits in the client, the page hydrates and a route edit applies in place',
-    async () => {
-      const server = await startRsbuildStartDevServer({
-        framework: 'solid',
-        hmr: true,
-        browser: true,
-        startLast: true,
-        config: {
-          plugins: [
-            pluginBabel({ include: /\.(?:jsx|tsx)$/ }),
-            pluginSolid({ ssr: true }),
-          ],
-          // Start serves the pages, not an HTML template.
-          tools: { htmlPlugin: false },
-        },
-        files: {
-          ...devAppFiles.solid,
-          ...routeFiles('solid'),
-          'src/hmr-sync.ts': 'export {}\n',
-          'src/routes/index.tsx': indexRoute('solid', 'home-v1'),
-        },
-      })
-      expect(reportedErrors(server)).toEqual([])
-      await expectSplitOnOther(server.url!)
-      const page = await expectHydratedHome(server.url!, 'home-v1')
-      await server.edit({
-        'src/routes/index.tsx': indexRoute('solid', 'home-v2'),
-      })
-      await page.waitForText('home-v2:dep', {
-        selector: '[data-probe=home]',
-        timeout: 20_000,
-      })
-      expect(page.loads(), 'the route edit reloaded the page').toBe(1)
-      expect(page.errors).toEqual([])
-      expect(reportedErrors(server)).toEqual([])
-      // nothing reported about the app's routes (the route is split)
-      for (const file of routeFileNames) {
-        expectNoDiagnostic(server.diagnostics, { file, root: server.root })
-      }
-    },
-    timeout,
-  )
+  test('solid: the route splits in the client, the page hydrates and a route edit applies in place', async () => {
+    const server = await startRsbuildStartDevServer({
+      framework: 'solid',
+      hmr: true,
+      browser: true,
+      startLast: true,
+      config: {
+        plugins: [
+          pluginBabel({ include: /\.(?:jsx|tsx)$/ }),
+          pluginSolid({ ssr: true }),
+        ],
+        // Start serves the pages, not an HTML template.
+        tools: { htmlPlugin: false },
+      },
+      files: {
+        ...devAppFiles.solid,
+        ...routeFiles('solid'),
+        'src/hmr-sync.ts': 'export {}\n',
+        'src/routes/index.tsx': indexRoute('solid', 'home-v1'),
+      },
+    })
+    expect(reportedErrors(server)).toEqual([])
+    await expectSplitOnOther(server.url!)
+    const page = await expectHydratedHome(server.url!, 'home-v1')
+    await server.edit({
+      'src/routes/index.tsx': indexRoute('solid', 'home-v2'),
+    })
+    await page.waitForText('home-v2:dep', {
+      selector: '[data-probe=home]',
+      timeout: 20_000,
+    })
+    expect(page.loads(), 'the route edit reloaded the page').toBe(1)
+    expect(page.errors).toEqual([])
+    expect(reportedErrors(server)).toEqual([])
+    // nothing reported about the app's routes (the route is split)
+    for (const file of routeFileNames) {
+      expectNoDiagnostic(server.diagnostics, { file, root: server.root })
+    }
+  })
 })

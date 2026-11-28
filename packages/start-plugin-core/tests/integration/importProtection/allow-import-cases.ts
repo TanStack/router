@@ -10,8 +10,6 @@ import { rejection } from '../../importProtection/start-apps'
 import type { StartBundler } from '../../build-harness'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'
 
-const timeout = 60_000
-
 const kinds: Record<
   'file' | 'specifier' | 'marker',
   {
@@ -85,22 +83,18 @@ export function describeAllowImport(bundler: StartBundler) {
           return { build, allowed, told }
         }
 
-        test(
-          'true: the real module, from the only pass; no report',
-          async () => {
-            const { build, allowed, told } = run(true)
-            const { client, diagnostics } = await build
-            expect((await client.run(`return entry.read()`)).result).toBe(
-              'MARK_SECRET',
-            )
-            expect(relevant(allowed)).toHaveLength(1)
-            expect(told).toEqual([])
-            expect(
-              diagnostics.filter((d) => /import-protection/.test(d.text)),
-            ).toEqual([])
-          },
-          timeout,
-        )
+        test('true: the real module, from the only pass; no report', async () => {
+          const { build, allowed, told } = run(true)
+          const { client, diagnostics } = await build
+          expect((await client.run(`return entry.read()`)).result).toBe(
+            'MARK_SECRET',
+          )
+          expect(relevant(allowed)).toHaveLength(1)
+          expect(told).toEqual([])
+          expect(
+            diagnostics.filter((d) => /import-protection/.test(d.text)),
+          ).toEqual([])
+        })
 
         test.each(kind === 'file' ? [false, undefined] : [undefined])(
           '%s: the normal outcome under the behavior, reported once',
@@ -119,93 +113,80 @@ export function describeAllowImport(bundler: StartBundler) {
             expect(relevant(told)).toHaveLength(1)
             expect(told[0]!.trace.length).toBeGreaterThan(0)
           },
-          timeout,
         )
       },
     )
   })
 
-  test(
-    'allowImport also sees an import tree-shaking removes; onViolation does not hear about it',
-    async () => {
-      const allowed: Array<string> = []
-      const told: Array<string> = []
-      const { client } = await buildStart({
-        bundler,
-        files: {
-          'src/s.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
-          'src/barrel.ts': `export { secret } from './s.server'\nexport const safe = () => 'MARK_SAFE'\n`,
-          'src/entry.ts': `export { safe } from './barrel'\n`,
-        },
-        entry: 'src/entry.ts',
-        start: {
-          importProtection: {
-            allowImport: (info) => {
-              allowed.push(info.specifier)
-            },
-            onViolation: (info) => {
-              told.push(info.specifier)
-            },
+  test('allowImport also sees an import tree-shaking removes; onViolation does not hear about it', async () => {
+    const allowed: Array<string> = []
+    const told: Array<string> = []
+    const { client } = await buildStart({
+      bundler,
+      files: {
+        'src/s.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+        'src/barrel.ts': `export { secret } from './s.server'\nexport const safe = () => 'MARK_SAFE'\n`,
+        'src/entry.ts': `export { safe } from './barrel'\n`,
+      },
+      entry: 'src/entry.ts',
+      start: {
+        importProtection: {
+          allowImport: (info) => {
+            allowed.push(info.specifier)
+          },
+          onViolation: (info) => {
+            told.push(info.specifier)
           },
         },
-      })
-      expect(allowed).toEqual(['./s.server'])
-      expect(told).toEqual([])
-      expect(client.where('MARK_SECRET')).toBe('nowhere')
-    },
-    timeout,
-  )
+      },
+    })
+    expect(allowed).toEqual(['./s.server'])
+    expect(told).toEqual([])
+    expect(client.where('MARK_SECRET')).toBe('nowhere')
+  })
 
-  test(
-    'allowImport is told about the import, without a trace or a snippet',
-    async () => {
-      let seen: Record<string, unknown> | undefined
-      await buildStart({
-        bundler,
-        files: matrixApp('file'),
-        entry: 'src/entry.ts',
-        start: {
-          importProtection: {
-            allowImport: (info) => {
-              seen = { ...info }
-              return true
-            },
+  test('allowImport is told about the import, without a trace or a snippet', async () => {
+    let seen: Record<string, unknown> | undefined
+    await buildStart({
+      bundler,
+      files: matrixApp('file'),
+      entry: 'src/entry.ts',
+      start: {
+        importProtection: {
+          allowImport: (info) => {
+            seen = { ...info }
+            return true
           },
         },
-      })
-      expect(seen).toMatchObject({
-        env: 'client',
-        envType: 'client',
-        type: 'file',
-        behavior: 'error',
-        specifier: './target.server',
-        importerLoc: { line: 1 },
-      })
-      expect(seen!.importer).toMatch(/\/src\/entry\.ts$/)
-      expect(seen!.resolved).toMatch(/\/src\/target\.server\.ts$/)
-      expect(Object.keys(seen!)).not.toContain('trace')
-      expect(Object.keys(seen!)).not.toContain('snippet')
-    },
-    timeout,
-  )
+      },
+    })
+    expect(seen).toMatchObject({
+      env: 'client',
+      envType: 'client',
+      type: 'file',
+      behavior: 'error',
+      specifier: './target.server',
+      importerLoc: { line: 1 },
+    })
+    expect(seen!.importer).toMatch(/\/src\/entry\.ts$/)
+    expect(seen!.resolved).toMatch(/\/src\/target\.server\.ts$/)
+    expect(Object.keys(seen!)).not.toContain('trace')
+    expect(Object.keys(seen!)).not.toContain('snippet')
+  })
 
-  test(
-    'onViolation returning false does not allow the import: the outcome stays',
-    async () => {
-      const { client } = await buildStart({
-        bundler,
-        files: matrixApp('file'),
-        entry: 'src/entry.ts',
-        start: {
-          importProtection: {
-            behavior: 'mock',
-            mockAccess: 'off',
-            onViolation: (() => false) as () => void,
-          },
+  test('onViolation returning false does not allow the import: the outcome stays', async () => {
+    const { client } = await buildStart({
+      bundler,
+      files: matrixApp('file'),
+      entry: 'src/entry.ts',
+      start: {
+        importProtection: {
+          behavior: 'mock',
+          mockAccess: 'off',
+          onViolation: (() => false) as () => void,
         },
-      })
-      expect(client.where('MARK_SECRET')).toBe('nowhere')
-    },
-    timeout,
-  )
+      },
+    })
+    expect(client.where('MARK_SECRET')).toBe('nowhere')
+  })
 }

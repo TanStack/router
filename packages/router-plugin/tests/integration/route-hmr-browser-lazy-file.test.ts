@@ -9,8 +9,6 @@
 import { describe } from 'vitest'
 import { it } from '../test'
 
-const timeout = 90_000
-
 type Target = 'react' | 'solid' | 'vue'
 
 const routeFile = (target: Target) =>
@@ -46,7 +44,6 @@ describe.each([
 ] as const)('$bundler: a $target app', ({ bundler, target }) => {
   it.for([false, true])(
     'shows the new code of an edited lazy route file in place (inline component: %s)',
-    { timeout },
     async (inline: boolean, { expect, openRouteHmrPage }) => {
       const app = await openRouteHmrPage({
         bundler,
@@ -92,27 +89,26 @@ describe.each([
   { bundler: 'rsbuild', target: 'solid' },
   { bundler: 'rsbuild', target: 'vue' },
 ] as const)('$bundler: a $target app', ({ bundler, target }) => {
-  it(
-    'loads the edited lazy route file of a route the page has not shown yet',
-    { timeout },
-    async ({ expect, openRouteHmrPage }) => {
-      const app = await openRouteHmrPage({
-        bundler,
-        target,
-        files: aboutApp(target, 'v1'),
-        ready: 'home',
-      })
-      expect(
-        await app.edit(
-          { 'routes/about.lazy.tsx': aboutLazy(target, 'v2') },
-          'home',
-        ),
-      ).toEqual({ reloaded: false, errors: [] })
-      await app.click('a')
-      await app.page.waitForText('about v2', { selector: '#app' })
-      expect(app.loads()).toBe(1)
-    },
-  )
+  it('loads the edited lazy route file of a route the page has not shown yet', async ({
+    expect,
+    openRouteHmrPage,
+  }) => {
+    const app = await openRouteHmrPage({
+      bundler,
+      target,
+      files: aboutApp(target, 'v1'),
+      ready: 'home',
+    })
+    expect(
+      await app.edit(
+        { 'routes/about.lazy.tsx': aboutLazy(target, 'v2') },
+        'home',
+      ),
+    ).toEqual({ reloaded: false, errors: [] })
+    await app.click('a')
+    await app.page.waitForText('about v2', { selector: '#app' })
+    expect(app.loads()).toBe(1)
+  })
 })
 
 // React: the component of a lazy route file keeps its state across an edit,
@@ -127,26 +123,25 @@ function Page() {
 }
 export const Route = createLazyFileRoute('/')({ component: Page })
 `
-  it(
-    'keeps the state of an edited lazy route component',
-    { timeout },
-    async ({ expect, openRouteHmrPage }) => {
-      const app = await openRouteHmrPage({
-        bundler,
-        files: {
-          'routes/index.tsx': routeFile('react'),
-          'routes/index.lazy.tsx': counter('v1'),
-        },
-        ready: 'lazy v1 count 0',
-      })
-      await app.click('button')
-      await app.page.waitForText('lazy v1 count 1', { selector: '#app' })
-      expect(
-        await app.edit(
-          { 'routes/index.lazy.tsx': counter('v2') },
-          'lazy v2 count 1',
-        ),
-      ).toEqual({ reloaded: false, errors: [] })
-    },
-  )
+  it('keeps the state of an edited lazy route component', async ({
+    expect,
+    openRouteHmrPage,
+  }) => {
+    const app = await openRouteHmrPage({
+      bundler,
+      files: {
+        'routes/index.tsx': routeFile('react'),
+        'routes/index.lazy.tsx': counter('v1'),
+      },
+      ready: 'lazy v1 count 0',
+    })
+    await app.click('button')
+    await app.page.waitForText('lazy v1 count 1', { selector: '#app' })
+    expect(
+      await app.edit(
+        { 'routes/index.lazy.tsx': counter('v2') },
+        'lazy v2 count 1',
+      ),
+    ).toEqual({ reloaded: false, errors: [] })
+  })
 })

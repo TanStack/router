@@ -20,8 +20,6 @@ import { workerPluginOf } from './worker-plugin'
 import type { WorkerPluginOptions } from './worker-plugin'
 import type { RsbuildConfig } from '@rsbuild/core'
 
-const timeout = 120_000
-
 /** What a worker plugin does with its child compilation's warnings. */
 const handOvers = [
   ['hands nothing over', false],
@@ -68,27 +66,22 @@ describe('rsbuild build: the warnings of modules only a worker imports', () => {
       expect(printed.compiler()).toEqual([1])
       expect(printed.package()).toEqual([1])
     },
-    timeout,
   )
 
   // Two workers import the same modules; the first plugin keeps its child's
   // warnings, the second hands them over.
-  test(
-    'two workers, the first keeps its warnings and the second hands them over: each warning is printed once',
-    async () => {
-      const files = workerApp()
-      const printed = await buildWith(
-        { ...files, 'src/second.ts': files['src/worker.ts'] },
-        [
-          { name: 'worker' },
-          { name: 'second', entry: './src/second.ts', handOver: 'as they are' },
-        ],
-      )
-      expect(printed.compiler()).toEqual([1])
-      expect(printed.package()).toEqual([1])
-    },
-    timeout,
-  )
+  test('two workers, the first keeps its warnings and the second hands them over: each warning is printed once', async () => {
+    const files = workerApp()
+    const printed = await buildWith(
+      { ...files, 'src/second.ts': files['src/worker.ts'] },
+      [
+        { name: 'worker' },
+        { name: 'second', entry: './src/second.ts', handOver: 'as they are' },
+      ],
+    )
+    expect(printed.compiler()).toEqual([1])
+    expect(printed.package()).toEqual([1])
+  })
 
   // The persistent cache restores the worker's modules with their records:
   // a build of the unchanged app on the cache prints what the first did.
@@ -105,7 +98,6 @@ describe('rsbuild build: the warnings of modules only a worker imports', () => {
         [1, 1],
       ])
     },
-    timeout,
   )
 })
 
@@ -118,7 +110,6 @@ describe('rsbuild build: a package a worker and other code import', () => {
       const printed = await buildWith(workerApp({ page: true }), [{ handOver }])
       expect(printed.package()).toEqual([1])
     },
-    timeout,
   )
 
   // Server code imports it and the page does not: the client compilation,
@@ -131,21 +122,16 @@ describe('rsbuild build: a package a worker and other code import', () => {
       ])
       expect(printed.package()).toEqual([1])
     },
-    timeout,
   )
 
   // The worker plugin runs its child compiler once the client compiler is
   // done, and hands nothing over.
-  test(
-    'server code imports it, the worker is built once the client compiler is done: the package warning is printed once',
-    async () => {
-      const printed = await buildWith(workerApp({ server: true }), [
-        { at: 'done' },
-      ])
-      expect(printed.package()).toEqual([1])
-    },
-    timeout,
-  )
+  test('server code imports it, the worker is built once the client compiler is done: the package warning is printed once', async () => {
+    const printed = await buildWith(workerApp({ server: true }), [
+      { at: 'done' },
+    ])
+    expect(printed.package()).toEqual([1])
+  })
 })
 
 describe('rsbuild build with RSC: a module a page and a worker share', () => {
@@ -186,6 +172,5 @@ self.onmessage = () => self.postMessage(String(requireRole))
       })
       expect(printed.counts(build.root, 'src/role.ts')).toEqual([1])
     },
-    timeout,
   )
 })

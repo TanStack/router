@@ -32,8 +32,6 @@ import {
 import type { ImportProtectionOptions } from '../../importProtection/public-types'
 import type { Recorded } from '../../importProtection/start-apps'
 
-const timeout = 60_000
-
 const app = {
   ...startServerEntryFiles,
   'harness/client-entry.ts': `import { createElement } from 'react'
@@ -172,58 +170,50 @@ const hosts = {
 
 describe.each(['vite', 'rsbuild'] as const)('%s dev', (host) => {
   describe.each(['error', 'mock'] as const)('behavior: %s', (behavior) => {
-    test(
-      'only the server-rendered lazy .client import is reported, and every page is served',
-      async () => {
-        const recorder = violationRecorder({ behavior })
-        const { url, root } = await hosts[host](recorder.importProtection)
+    test('only the server-rendered lazy .client import is reported, and every page is served', async () => {
+      const recorder = violationRecorder({ behavior })
+      const { url, root } = await hosts[host](recorder.importProtection)
 
-        const index = await request(url, '/')
-        const explore = await request(url, '/explore')
-        // the violating page answers too (its server render failed or read
-        // a mock: the client renders it)
-        const lazyClient = await request(url, '/lazy-client')
-        const indexAgain = await request(url, '/')
+      const index = await request(url, '/')
+      const explore = await request(url, '/explore')
+      // the violating page answers too (its server render failed or read
+      // a mock: the client renders it)
+      const lazyClient = await request(url, '/lazy-client')
+      const indexAgain = await request(url, '/')
 
-        expect(index.status).toBe(200)
-        expect(index.body).toContain('MARK_INDEX')
-        expect(explore.status).toBe(200)
-        expect(explore.body).toContain('MARK_EXPLORE_TITLE')
-        expect(lazyClient.status).toBe(200)
-        expect(indexAgain.status).toBe(200)
-        expect(indexAgain.body).toContain('MARK_INDEX')
-        expect(reportsOf({ root, violations: recorder.violations })).toEqual([
-          lazyReport,
-        ])
-      },
-      timeout,
-    )
+      expect(index.status).toBe(200)
+      expect(index.body).toContain('MARK_INDEX')
+      expect(explore.status).toBe(200)
+      expect(explore.body).toContain('MARK_EXPLORE_TITLE')
+      expect(lazyClient.status).toBe(200)
+      expect(indexAgain.status).toBe(200)
+      expect(indexAgain.body).toContain('MARK_INDEX')
+      expect(reportsOf({ root, violations: recorder.violations })).toEqual([
+        lazyReport,
+      ])
+    })
   })
 })
 
 // A build (default `behavior`: error) reports the same import only: the
 // server bundle keeps `/lazy-client`'s, not `/explore`'s.
 describe.each(['vite', 'rsbuild'] as const)('%s build', (bundler) => {
-  test(
-    'the build fails on the server-rendered lazy .client import only',
-    async () => {
-      const {
-        'harness/client-entry.ts': _client,
-        'harness/server-entry.ts': _server,
-        ...files
-      } = app
-      const error = await rejection(
-        buildStart({
-          bundler,
-          files: { ...files, 'src/entry.ts': `export {}\n` },
-          entry: 'src/entry.ts',
-          ...(bundler === 'vite' && {
-            viteConfig: { resolve: { tsconfigPaths: true } },
-          }),
+  test('the build fails on the server-rendered lazy .client import only', async () => {
+    const {
+      'harness/client-entry.ts': _client,
+      'harness/server-entry.ts': _server,
+      ...files
+    } = app
+    const error = await rejection(
+      buildStart({
+        bundler,
+        files: { ...files, 'src/entry.ts': `export {}\n` },
+        entry: 'src/entry.ts',
+        ...(bundler === 'vite' && {
+          viteConfig: { resolve: { tsconfigPaths: true } },
         }),
-      )
-      expect(reportsOf(error)).toEqual([lazyReport])
-    },
-    timeout,
-  )
+      }),
+    )
+    expect(reportsOf(error)).toEqual([lazyReport])
+  })
 })

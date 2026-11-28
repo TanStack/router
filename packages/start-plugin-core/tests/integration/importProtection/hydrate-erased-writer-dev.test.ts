@@ -21,8 +21,7 @@ import {
 } from './client-pages'
 import { importersIn } from './hosts'
 
-const timeout = 60_000
-const compileTimeout = timeout
+const compileTimeout = 60_000
 
 const shared = {
   'src/db.server.ts': `export const db = { ok: (s: string) => 'db ' + s }\n`,
@@ -113,6 +112,5 @@ describe.each(['vite', 'rsbuild'] as const)('%s dev', (host) => {
         reported: [],
       })
     },
-    timeout,
   )
 })

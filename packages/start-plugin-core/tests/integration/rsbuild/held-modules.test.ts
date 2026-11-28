@@ -22,8 +22,6 @@ import { callByIdExports, callByIdPrelude } from '../../build-harness'
 import { buildStart } from '../../build-start'
 import { workerPluginOf } from './worker-plugin'
 
-const timeout = 120_000
-
 const files = {
   // (a middleware factory whose parameter only server code reads: a
   // compiler warning of the file)
@@ -62,7 +60,6 @@ self.onmessage = () => {
 describe('rsbuild build: one file in the client and in a worker', () => {
   test.for(['make', 'done'] as const)(
     'the worker built at %s: a build on the cache is the clean build',
-    { timeout },
     async (at) => {
       /** What a build serves: the client's and the worker's call, and the file's warnings. */
       const outcome = async (cached: boolean) => {

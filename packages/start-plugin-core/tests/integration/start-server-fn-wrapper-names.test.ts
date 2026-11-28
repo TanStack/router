@@ -23,8 +23,6 @@ import {
   startPageEntries,
 } from './start-compose-app'
 
-const timeout = 60_000
-
 const app = {
   'src/router.ts': routerFile,
   'src/routes/__root.tsx': rootDocument(),
@@ -81,18 +79,14 @@ async function probe(page: {
 }
 
 describe.each(Object.keys(devServers))('%s dev', (bundler) => {
-  test(
-    'the client calls the top-level server fn, not the hoisted one the provider named alike',
-    async () => {
-      const url = await devServers[bundler]!()
-      const page = await openTestPage(url)
-      await page.waitForText('hydrated', {
-        selector: '[data-testid=hydrated]',
-      })
-      expect(await probe(page)).toBe('fn_1=MARK_TOP listed=2')
-    },
-    timeout,
-  )
+  test('the client calls the top-level server fn, not the hoisted one the provider named alike', async () => {
+    const url = await devServers[bundler]!()
+    const page = await openTestPage(url)
+    await page.waitForText('hydrated', {
+      selector: '[data-testid=hydrated]',
+    })
+    expect(await probe(page)).toBe('fn_1=MARK_TOP listed=2')
+  })
 })
 
 describe.each(['vite', 'rsbuild'] as const)('%s build', (bundler) => {
@@ -109,14 +103,10 @@ describe.each(['vite', 'rsbuild'] as const)('%s build', (bundler) => {
       }),
     )
     url = (await serving(() => serveStartBuildShared(build))).url
-  }, timeout)
+  }, 60_000)
 
-  test(
-    'the client calls the top-level server fn, not the hoisted one the provider named alike',
-    async () => {
-      const page = await openAppPage({ url }, '/')
-      expect(await probe(page)).toBe('fn_1=MARK_TOP listed=2')
-    },
-    timeout,
-  )
+  test('the client calls the top-level server fn, not the hoisted one the provider named alike', async () => {
+    const page = await openAppPage({ url }, '/')
+    expect(await probe(page)).toBe('fn_1=MARK_TOP listed=2')
+  })
 })

@@ -15,8 +15,6 @@ import { buildStart } from '../../build-start'
 import { rejection, violationsOf } from '../../importProtection/start-apps'
 import { rsbuildRscLinks } from '../../start-plugins'
 
-const timeout = 120_000
-
 /** A server component `ucServer.tsx` rendering `detail()` of `./${dep}` and a client box, and route `/uc` rendering it. */
 function app(dep: string, call: string): Record<string, string> {
   return {
@@ -167,45 +165,41 @@ async function tracedFiles(
 
 describe('Rsbuild RSC build, a file of several compile environments', () => {
   // decoy[reports] → Twin[reports] → safe; ucServer[rsc] → Twin[rsc] → actual[reports]
-  test(
-    "a trace is the chain of the reported module's own environment",
-    async () => {
-      const traces = await tracedFiles(
-        build({
-          files: {
-            ...app('Twin', 'read'),
-            'src/utils/Twin.ts': `import { detail } from '#impl'
+  test("a trace is the chain of the reported module's own environment", async () => {
+    const traces = await tracedFiles(
+      build({
+        files: {
+          ...app('Twin', 'read'),
+          'src/utils/Twin.ts': `import { detail } from '#impl'
 export const read = () => detail()
 `,
-            'src/utils/decoy.ts': `import { read } from './Twin'
+          'src/utils/decoy.ts': `import { read } from './Twin'
 ;(globalThis as any).decoy = read()
 `,
+        },
+        imports: {
+          'react-server': './src/utils/actual.ts',
+          default: './src/utils/safe.ts',
+        },
+        rules: [
+          { test: /actual\.ts$/, layer: 'reports' },
+          {
+            test: /Twin\.ts$/,
+            issuerLayer: 'reports',
+            resolve: { conditionNames: ['node', 'default'] },
           },
-          imports: {
-            'react-server': './src/utils/actual.ts',
-            default: './src/utils/safe.ts',
-          },
-          rules: [
-            { test: /actual\.ts$/, layer: 'reports' },
-            {
-              test: /Twin\.ts$/,
-              issuerLayer: 'reports',
-              resolve: { conditionNames: ['node', 'default'] },
-            },
-          ],
-          entry: entryIn('./src/utils/decoy.ts', 'reports'),
-        }),
-      )
-      expect(traces).toHaveLength(1)
-      expect(traces[0]).not.toContain('src/utils/decoy.ts')
-      expect(traces[0]!.slice(-3)).toEqual([
-        'src/utils/ucServer.tsx',
-        'src/utils/Twin.ts',
-        'src/utils/actual.ts',
-      ])
-    },
-    timeout,
-  )
+        ],
+        entry: entryIn('./src/utils/decoy.ts', 'reports'),
+      }),
+    )
+    expect(traces).toHaveLength(1)
+    expect(traces[0]).not.toContain('src/utils/decoy.ts')
+    expect(traces[0]!.slice(-3)).toEqual([
+      'src/utils/ucServer.tsx',
+      'src/utils/Twin.ts',
+      'src/utils/actual.ts',
+    ])
+  })
 
   // decoy[rsc] (an entry) → Twin[reports] → safe; ucServer[rsc] → Twin[rsc]
   // → actual[rsc]: the RSC layer's records have decoy's import of Twin.ts,
@@ -213,87 +207,79 @@ export const read = () => detail()
   // Source: the RSC phase 1 re-check 2 (/var/tmp/rsc-p1-recheck2/report.md
   // §4, `adversarial.py trace`: 2f8afeccc0 and db260cf3a3 traced
   // `decoy.ts → Twin.ts → actual.ts`)
-  test(
-    "a trace does not go through an import of the file that another layer's module of it has",
-    async () => {
-      const traces = await tracedFiles(
-        build({
-          files: {
-            ...app('Twin', 'read'),
-            'src/utils/Twin.ts': `import { detail } from '#impl'
+  test("a trace does not go through an import of the file that another layer's module of it has", async () => {
+    const traces = await tracedFiles(
+      build({
+        files: {
+          ...app('Twin', 'read'),
+          'src/utils/Twin.ts': `import { detail } from '#impl'
 export const read = () => detail()
 `,
-            'src/utils/decoy.ts': `import { read } from './Twin'
+          'src/utils/decoy.ts': `import { read } from './Twin'
 ;(globalThis as any).decoy = read()
 `,
+        },
+        imports: {
+          'react-server': './src/utils/actual.ts',
+          default: './src/utils/safe.ts',
+        },
+        rules: [
+          {
+            test: /Twin\.ts$/,
+            issuer: /decoy\.ts$/,
+            layer: 'reports',
+            resolve: { conditionNames: ['node', 'default'] },
           },
-          imports: {
-            'react-server': './src/utils/actual.ts',
-            default: './src/utils/safe.ts',
+          {
+            test: /Twin\.ts$/,
+            issuerLayer: 'reports',
+            resolve: { conditionNames: ['node', 'default'] },
           },
-          rules: [
-            {
-              test: /Twin\.ts$/,
-              issuer: /decoy\.ts$/,
-              layer: 'reports',
-              resolve: { conditionNames: ['node', 'default'] },
-            },
-            {
-              test: /Twin\.ts$/,
-              issuerLayer: 'reports',
-              resolve: { conditionNames: ['node', 'default'] },
-            },
-          ],
-          entry: entryIn('./src/utils/decoy.ts', 'react-server-components'),
-        }),
-      )
-      expect(traces).toHaveLength(1)
-      expect(traces[0]).not.toContain('src/utils/decoy.ts')
-      expect(traces[0]!.slice(-3)).toEqual([
-        'src/utils/ucServer.tsx',
-        'src/utils/Twin.ts',
-        'src/utils/actual.ts',
-      ])
-    },
-    timeout,
-  )
+        ],
+        entry: entryIn('./src/utils/decoy.ts', 'react-server-components'),
+      }),
+    )
+    expect(traces).toHaveLength(1)
+    expect(traces[0]).not.toContain('src/utils/decoy.ts')
+    expect(traces[0]!.slice(-3)).toEqual([
+      'src/utils/ucServer.tsx',
+      'src/utils/Twin.ts',
+      'src/utils/actual.ts',
+    ])
+  })
 
   // relay[independent] is an entry resolving `#impl` to safe; relay[rsc] is
   // not, and resolves it to actual
-  test(
-    "a file that is an entry of another environment is no entry of the reported module's",
-    async () => {
-      const traces = await tracedFiles(
-        build({
-          files: {
-            ...app('relay', 'detail'),
-            'src/utils/relay.ts': `import { detail } from '#impl'
+  test("a file that is an entry of another environment is no entry of the reported module's", async () => {
+    const traces = await tracedFiles(
+      build({
+        files: {
+          ...app('relay', 'detail'),
+          'src/utils/relay.ts': `import { detail } from '#impl'
 export { detail }
 ;(globalThis as any).relayValue = detail()
 `,
+        },
+        imports: {
+          independent: './src/utils/safe.ts',
+          default: './src/utils/actual.ts',
+        },
+        rules: [
+          {
+            test: /relay\.ts$/,
+            issuerLayer: 'independent',
+            resolve: { conditionNames: ['independent', '...'] },
           },
-          imports: {
-            independent: './src/utils/safe.ts',
-            default: './src/utils/actual.ts',
-          },
-          rules: [
-            {
-              test: /relay\.ts$/,
-              issuerLayer: 'independent',
-              resolve: { conditionNames: ['independent', '...'] },
-            },
-          ],
-          entry: entryIn('./src/utils/relay.ts', 'independent'),
-        }),
-      )
-      expect(traces).toHaveLength(1)
-      expect(traces[0]![0]).not.toBe('src/utils/relay.ts')
-      expect(traces[0]!.slice(-3)).toEqual([
-        'src/utils/ucServer.tsx',
-        'src/utils/relay.ts',
-        'src/utils/actual.ts',
-      ])
-    },
-    timeout,
-  )
+        ],
+        entry: entryIn('./src/utils/relay.ts', 'independent'),
+      }),
+    )
+    expect(traces).toHaveLength(1)
+    expect(traces[0]![0]).not.toBe('src/utils/relay.ts')
+    expect(traces[0]!.slice(-3)).toEqual([
+      'src/utils/ucServer.tsx',
+      'src/utils/relay.ts',
+      'src/utils/actual.ts',
+    ])
+  })
 })

@@ -17,8 +17,6 @@ import { appManifest, installPackage } from '../package-layouts'
 import type { StartBundler } from '../build-harness'
 import type { Plugin } from 'vite'
 
-const timeout = 60_000
-
 /** The shared chunk, exporting the builder as `exported`. */
 const chunk = (exported: string) =>
   `import { createServerFn } from "@tanstack/react-start";\nconst base = createServerFn({ method: "POST" });\nexport { base as ${exported} };\n`
@@ -87,7 +85,6 @@ describe.each(startBundlers)('%s build', (bundler: StartBundler) => {
       expect(build.client.where('MARK_HANDLER_BODY')).toBe('nowhere')
       expect(build.ssr.where('MARK_HANDLER_BODY')).not.toBe('nowhere')
     },
-    timeout,
   )
 
   // The builder made by a package that declares Start, forwarded by one
@@ -137,7 +134,6 @@ describe.each(startBundlers)('%s build', (bundler: StartBundler) => {
       expect(build.client.where('MARK_HANDLER_BODY')).toBe('nowhere')
       expect(build.ssr.where('MARK_HANDLER_BODY')).not.toBe('nowhere')
     },
-    timeout,
   )
 })
 
@@ -147,48 +143,44 @@ describe.each(startBundlers)('%s build', (bundler: StartBundler) => {
 // alone and left it unread). The app's isomorphic function built on the
 // forwarded builder keeps only each environment's implementation.
 describe('vite build', () => {
-  test(
-    'a package that does not declare Start, a virtual barrel without an extension re-exporting its builder: each environment keeps its own implementation',
-    async () => {
-      const lib = installPackage('npm', {
-        name: 'iso-lib',
-        declaration: 'none',
-        files: {
-          'impl.js': `import { createIsomorphicFn } from '@tanstack/react-start'\nexport const iso = createIsomorphicFn()\n`,
-        },
-      })
-      let root = ''
-      const barrel: Plugin = {
-        name: 'test-virtual-barrel',
-        configResolved(config) {
-          root = config.root
-        },
-        resolveId(id) {
-          return id === 'iso-lib/barrel'
-            ? `\0${path.join(root, lib.directory, 'barrel')}`
-            : null
-        },
-        load(id) {
-          return id === `\0${path.join(root, lib.directory, 'barrel')}`
-            ? `export { iso } from ${JSON.stringify(path.join(root, lib.directory, 'impl.js'))}\n`
-            : null
-        },
-      }
-      const build = await buildStart({
-        bundler: 'vite',
-        files: {
-          ...lib.files,
-          'src/label.ts': `import { iso } from 'iso-lib/barrel'\nexport const label = iso.client(() => 'MARK_LABEL_CLIENT').server(() => 'MARK_LABEL_SERVER')\n`,
-          'entry.ts': `export { label } from './src/label'\n`,
-        },
-        packageJson: appManifest([lib]),
-        viteConfig: { plugins: [barrel] },
-      })
-      expect(build.client.where('MARK_LABEL_CLIENT')).not.toBe('nowhere')
-      expect(build.client.where('MARK_LABEL_SERVER')).toBe('nowhere')
-      expect(build.ssr.where('MARK_LABEL_CLIENT')).toBe('nowhere')
-      expect(build.ssr.where('MARK_LABEL_SERVER')).not.toBe('nowhere')
-    },
-    timeout,
-  )
+  test('a package that does not declare Start, a virtual barrel without an extension re-exporting its builder: each environment keeps its own implementation', async () => {
+    const lib = installPackage('npm', {
+      name: 'iso-lib',
+      declaration: 'none',
+      files: {
+        'impl.js': `import { createIsomorphicFn } from '@tanstack/react-start'\nexport const iso = createIsomorphicFn()\n`,
+      },
+    })
+    let root = ''
+    const barrel: Plugin = {
+      name: 'test-virtual-barrel',
+      configResolved(config) {
+        root = config.root
+      },
+      resolveId(id) {
+        return id === 'iso-lib/barrel'
+          ? `\0${path.join(root, lib.directory, 'barrel')}`
+          : null
+      },
+      load(id) {
+        return id === `\0${path.join(root, lib.directory, 'barrel')}`
+          ? `export { iso } from ${JSON.stringify(path.join(root, lib.directory, 'impl.js'))}\n`
+          : null
+      },
+    }
+    const build = await buildStart({
+      bundler: 'vite',
+      files: {
+        ...lib.files,
+        'src/label.ts': `import { iso } from 'iso-lib/barrel'\nexport const label = iso.client(() => 'MARK_LABEL_CLIENT').server(() => 'MARK_LABEL_SERVER')\n`,
+        'entry.ts': `export { label } from './src/label'\n`,
+      },
+      packageJson: appManifest([lib]),
+      viteConfig: { plugins: [barrel] },
+    })
+    expect(build.client.where('MARK_LABEL_CLIENT')).not.toBe('nowhere')
+    expect(build.client.where('MARK_LABEL_SERVER')).toBe('nowhere')
+    expect(build.ssr.where('MARK_LABEL_CLIENT')).toBe('nowhere')
+    expect(build.ssr.where('MARK_LABEL_SERVER')).not.toBe('nowhere')
+  })
 })

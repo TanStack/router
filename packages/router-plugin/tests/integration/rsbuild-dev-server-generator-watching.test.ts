@@ -35,7 +35,7 @@ describeGeneratorWatching('rsbuild')
 // is missing from the app until the dev server restarts.
 test('an edit of the virtual route config file changes the live routes', async () => {
   await expectVirtualRouteConfigEdit('rsbuild')
-}, 45_000)
+})
 
 // Bug: an edit of a `__virtual.ts` subtree config never reaches the live
 // routes: the file is in no bundle and the generator's own watcher reports
@@ -48,7 +48,7 @@ test('an edit of the virtual route config file changes the live routes', async (
 // missing from the app until the dev server restarts.
 test('an edit of a __virtual.ts file changes the live routes', async () => {
   await expectVirtualSubtreeEdit('rsbuild')
-}, 45_000)
+})
 
 // A route registry change without a file change (a route added to the
 // virtual route config) re-plans the route file (SPEC J1.10, J2.13), a
@@ -59,5 +59,4 @@ test.each([false, true])(
   async (linked) => {
     await expectRegistryChangeRecompilesRoute('rsbuild', linked)
   },
-  45_000,
 )

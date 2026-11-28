@@ -17,8 +17,6 @@ import { cases } from './survival-cases'
 import type { StartBuild } from '../../build-harness'
 import type { SurvivalCase } from './survival-cases'
 
-const timeout = 60_000
-
 /** The directory of case `index`. */
 const dirOf = (index: number) => `src/cases/c${index}`
 
@@ -104,7 +102,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
         start: { importProtection: app.importProtection },
       }),
     )
-  }, timeout)
+  }, 60_000)
 
   test.each(indexed.map(([c, index]) => ({ name: c.name, c, index })))(
     'reported iff the edge survives: $name',
@@ -205,31 +203,26 @@ describe.each(startBundlers)('%s build', (bundler) => {
       )
       expect(logs).toContain(out)
     },
-    timeout,
   )
 
-  test(
-    'error behaviour fails the build on a surviving edge, and not when nothing survives',
-    async () => {
-      const build = (name: string) => {
-        const [c, index] = named(name)
-        const app = appOf([[c, index]])
-        return buildStart({
-          bundler,
-          files: app.files,
-          entry: 'src/entry.ts',
-          start: {
-            importProtection: { ...app.importProtection, behavior: 'error' },
-          },
-        })
-      }
-      const live = await rejection(build('a named import, used'))
-      expect(edgesOf(live)).toEqual([
-        `${dirOf(named('a named import, used')[1])}/entry.ts -> ./secret.server`,
-      ])
-      const dead = await build('used only in an unused function')
-      expect(edgesOf(dead)).toEqual([])
-    },
-    timeout,
-  )
+  test('error behaviour fails the build on a surviving edge, and not when nothing survives', async () => {
+    const build = (name: string) => {
+      const [c, index] = named(name)
+      const app = appOf([[c, index]])
+      return buildStart({
+        bundler,
+        files: app.files,
+        entry: 'src/entry.ts',
+        start: {
+          importProtection: { ...app.importProtection, behavior: 'error' },
+        },
+      })
+    }
+    const live = await rejection(build('a named import, used'))
+    expect(edgesOf(live)).toEqual([
+      `${dirOf(named('a named import, used')[1])}/entry.ts -> ./secret.server`,
+    ])
+    const dead = await build('used only in an unused function')
+    expect(edgesOf(dead)).toEqual([])
+  })
 })

@@ -34,8 +34,6 @@ import { routeShapes } from '../production-bundle'
 import { openRouteHmrPage, openWebpackHmrPage } from '../serial'
 import type { TargetFramework } from '../route-app'
 
-const timeout = 60_000
-
 const routes = routeShapes
 
 /**
@@ -126,28 +124,23 @@ describe('a dev server with addHmr: false', () => {
         ].join('\n'),
       ).toBe(false)
     },
-    timeout,
   )
 })
 
 // Control of the observation: the same edit, compiled with route HMR,
 // applies in place (the live route gets the new option, no reload).
-it(
-  'a dev server with addHmr: true applies the same edit in place (a split route)',
-  async () => {
-    const { shown, reloaded, inPlace, split } = await editWhileLoaded(
-      routes[0]!.route,
-      { hmr: true },
-    )
-    expect({ shown, reloaded, inPlace, split }).toEqual({
-      shown: true,
-      reloaded: false,
-      inPlace: true,
-      split: true,
-    })
-  },
-  timeout,
-)
+it('a dev server with addHmr: true applies the same edit in place (a split route)', async () => {
+  const { shown, reloaded, inPlace, split } = await editWhileLoaded(
+    routes[0]!.route,
+    { hmr: true },
+  )
+  expect({ shown, reloaded, inPlace, split }).toEqual({
+    shown: true,
+    reloaded: false,
+    inPlace: true,
+    split: true,
+  })
+})
 
 // The Rspack entry with `addHmr: false` (an Rsbuild dev server with the
 // framework's React Refresh): no route module accepts the edit, so the page
@@ -156,11 +149,9 @@ it(
 // Source: plugin-options.test.ts "with addHmr: false, a development build
 // with the HMR plugin has no route HMR code" (which looked for the hot API's
 // accept call by a local name in the build).
-it(
-  'an Rsbuild dev server with addHmr: false applies no route HMR to an edit',
-  async () => {
-    const route = (version: string) =>
-      `import { createFileRoute } from '@tanstack/react-router'
+it('an Rsbuild dev server with addHmr: false applies no route HMR to an edit', async () => {
+  const route = (version: string) =>
+    `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({
   loader: () => 'data ${version}',
   component: Page,
@@ -170,18 +161,16 @@ function Page() {
   return <p>page ${version} {data}</p>
 }
 `
-    const app = await openRouteHmrPage({
-      bundler: 'rsbuild',
-      pluginOptions: { codeSplittingOptions: { addHmr: false } },
-      files: { 'routes/index.tsx': route('v1') },
-      ready: 'page v1 data v1',
-    })
-    expect(
-      await app.edit({ 'routes/index.tsx': route('v2') }, 'page v2 data v2'),
-    ).toEqual({ reloaded: true, errors: [] })
-  },
-  timeout,
-)
+  const app = await openRouteHmrPage({
+    bundler: 'rsbuild',
+    pluginOptions: { codeSplittingOptions: { addHmr: false } },
+    files: { 'routes/index.tsx': route('v1') },
+    ready: 'page v1 data v1',
+  })
+  expect(
+    await app.edit({ 'routes/index.tsx': route('v2') }, 'page v2 data v2'),
+  ).toEqual({ reloaded: true, errors: [] })
+})
 
 // The webpack entry with `addHmr: false` (webpack-dev-server with `hot: true`,
 // as the webpack quickstart example runs it; no React Refresh): no route
@@ -207,32 +196,24 @@ function Page() {
 }
 `
 
-  it(
-    'with addHmr: false applies no route HMR to an edit',
-    async () => {
-      const app = await openWebpackHmrPage({
-        pluginOptions: { codeSplittingOptions: { addHmr: false } },
-        files: { 'routes/index.ts': route('v1') },
-        ready: 'page data v1',
-      })
-      expect(
-        await app.edit({ 'routes/index.ts': route('v2') }, 'page data v2'),
-      ).toEqual({ reloaded: true, errors: [] })
-    },
-    timeout,
-  )
+  it('with addHmr: false applies no route HMR to an edit', async () => {
+    const app = await openWebpackHmrPage({
+      pluginOptions: { codeSplittingOptions: { addHmr: false } },
+      files: { 'routes/index.ts': route('v1') },
+      ready: 'page data v1',
+    })
+    expect(
+      await app.edit({ 'routes/index.ts': route('v2') }, 'page data v2'),
+    ).toEqual({ reloaded: true, errors: [] })
+  })
 
-  it(
-    'with route HMR applies the same edit in place',
-    async () => {
-      const app = await openWebpackHmrPage({
-        files: { 'routes/index.ts': route('v1') },
-        ready: 'page data v1',
-      })
-      expect(
-        await app.edit({ 'routes/index.ts': route('v2') }, 'page data v2'),
-      ).toEqual({ reloaded: false, errors: [] })
-    },
-    timeout,
-  )
+  it('with route HMR applies the same edit in place', async () => {
+    const app = await openWebpackHmrPage({
+      files: { 'routes/index.ts': route('v1') },
+      ready: 'page data v1',
+    })
+    expect(
+      await app.edit({ 'routes/index.ts': route('v2') }, 'page data v2'),
+    ).toEqual({ reloaded: false, errors: [] })
+  })
 })

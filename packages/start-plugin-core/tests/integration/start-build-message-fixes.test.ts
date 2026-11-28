@@ -24,8 +24,6 @@ import {
 } from '../build-harness'
 import { buildStart } from '../build-start'
 
-const timeout = 90_000
-
 const head = `import { createMiddleware, createServerFn } from '@tanstack/react-start'
 import { makeSchema } from './schema'
 const auth = (role: string) =>
@@ -232,64 +230,54 @@ describe.each(['vite', 'rsbuild'] as const)('%s build', (bundler) => {
         `src/fns.ts:${position.line}:${position.column}`,
       )
     },
-    timeout,
   )
 
-  test(
-    'the fixes build, and each server fn answers with its handler',
-    async () => {
-      const build = await buildStart({
-        bundler,
-        files: {
-          'src/schema.ts': schemaModule,
-          ...Object.fromEntries(
-            fixes.map((fix, i) => [`src/fix${i}.ts`, fix.module]),
-          ),
-          'src/entry.ts': fixes
-            .map((_, i) => `export { make as make${i} } from './fix${i}'\n`)
-            .join(''),
-          'src/ssr-entry.ts': `export * from './entry'\n${callByIdExports}`,
-        },
-        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
-      })
-      for (const [i, { mark, data }] of fixes.entries()) {
-        expect(build.client.where(mark.split(':')[0]!), mark).toBe('nowhere')
-        const url = (await build.client.run(`return entry.make${i}().url`))
-          .result
-        const { result } = await build.ssr.run(
-          `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}), ${JSON.stringify(data ?? null)}, '${data === undefined ? 'GET' : 'POST'}')`,
-        )
-        expect(result, mark).toBe(mark)
-      }
-    },
-    timeout,
-  )
-
-  test(
-    'the fixes of a value the compiler cannot follow build, and each runs',
-    async () => {
-      const build = await buildStart({
-        bundler,
-        files: {
-          'src/entry.ts': flowFixes,
-          'src/ssr-entry.ts': `export * from './entry'\n${callByIdExports}`,
-        },
-        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
-      })
-      expect(build.client.where('MARK_SI_SECRET')).toBe('nowhere')
-      const { result } = await build.client.run(
-        `return [entry.tick(), entry.method, entry.fn.url]`,
+  test('the fixes build, and each server fn answers with its handler', async () => {
+    const build = await buildStart({
+      bundler,
+      files: {
+        'src/schema.ts': schemaModule,
+        ...Object.fromEntries(
+          fixes.map((fix, i) => [`src/fix${i}.ts`, fix.module]),
+        ),
+        'src/entry.ts': fixes
+          .map((_, i) => `export { make as make${i} } from './fix${i}'\n`)
+          .join(''),
+        'src/ssr-entry.ts': `export * from './entry'\n${callByIdExports}`,
+      },
+      entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+    })
+    for (const [i, { mark, data }] of fixes.entries()) {
+      expect(build.client.where(mark.split(':')[0]!), mark).toBe('nowhere')
+      const url = (await build.client.run(`return entry.make${i}().url`)).result
+      const { result } = await build.ssr.run(
+        `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}), ${JSON.stringify(data ?? null)}, '${data === undefined ? 'GET' : 'POST'}')`,
       )
-      const [tick, method, url] = result as [string, string, string]
-      expect([tick, method]).toEqual(['MARK_TICK_CLIENT', 'POST'])
-      expect(
-        (
-          await build.ssr.run(
-            `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}), null, 'POST')`,
-          )
-        ).result,
-      ).toBe('MARK_SI_SECRET')
-    },
-    timeout,
-  )
+      expect(result, mark).toBe(mark)
+    }
+  })
+
+  test('the fixes of a value the compiler cannot follow build, and each runs', async () => {
+    const build = await buildStart({
+      bundler,
+      files: {
+        'src/entry.ts': flowFixes,
+        'src/ssr-entry.ts': `export * from './entry'\n${callByIdExports}`,
+      },
+      entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+    })
+    expect(build.client.where('MARK_SI_SECRET')).toBe('nowhere')
+    const { result } = await build.client.run(
+      `return [entry.tick(), entry.method, entry.fn.url]`,
+    )
+    const [tick, method, url] = result as [string, string, string]
+    expect([tick, method]).toEqual(['MARK_TICK_CLIENT', 'POST'])
+    expect(
+      (
+        await build.ssr.run(
+          `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}), null, 'POST')`,
+        )
+      ).result,
+    ).toBe('MARK_SI_SECRET')
+  })
 })

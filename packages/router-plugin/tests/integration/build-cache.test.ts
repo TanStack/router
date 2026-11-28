@@ -17,8 +17,6 @@ import { createApp } from '@tanstack/compiler-test-utils/build-harness'
 import { buildWithRsbuild, routeApp, routeHead } from '../build-harness'
 import type { BuildResult } from '@tanstack/compiler-test-utils/build-harness'
 
-const timeout = 120_000
-
 /** The apps live next to the other harness apps, where imports resolve. */
 const appsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -112,121 +110,19 @@ async function bundleWithCache(
 }
 
 describe.each(['rspack', 'webpack'] as const)('%s', (bundler) => {
-  test(
-    'with a persistent filesystem cache, a cached rebuild and a rebuild after an unrelated edit keep one instance of the shared state',
-    async () => {
-      const app = await closeAtEnd(
-        () =>
-          createApp({
-            dir: appsDir,
-            prefix: `.build-cache-${bundler}-`,
-            files: initialFiles(),
-          }),
-        (opened) => opened.dispose(),
-      )
-      const cacheDirectory = path.join(app.root, '.bundler-cache')
-      const bundle = (outDir: string) =>
-        bundleWithCache(app, bundler, cacheDirectory, outDir)
-      await expectOneSharedInstance(await bundle('dist-cold'))
-      await expectOneSharedInstance(await bundle('dist-cached'))
-      await writeFile(
-        path.join(app.root, 'lib/unrelated.ts'),
-        files(2)['lib/unrelated.ts']!,
-      )
-      await expectOneSharedInstance(await bundle('dist-edited'))
-    },
-    timeout,
-  )
-
-  // the bundler's cache does not see a split configuration it is not told
-  // about (raw webpack without `buildDependencies`, options computed from
-  // the environment, `tsr.config.json`): the plans it restores are checked
-  // against the configuration of this build
-  test(
-    'with a persistent filesystem cache, a rebuild after a grouping edit splits as a build with a fresh cache does',
-    async () => {
-      const app = await closeAtEnd(
-        () =>
-          createApp({
-            dir: appsDir,
-            prefix: `.build-cache-groups-${bundler}-`,
-            files: routeApp(
-              `${routeHead()}function Page() {
-  return <p>MARK_COMPONENT</p>
-}
-export const Route = createFileRoute('/')({
-  loader: () => 'MARK_LOADER',
-  component: Page,
-})
-`,
-              { env: 'client' },
-            ),
-          }),
-        (opened) => opened.dispose(),
-      )
-      const regrouped = { defaultBehavior: [['loader'], ['component']] }
-      const outcome = async (build: Promise<BuildResult>) => {
-        const app = await build
-        const run = await app.run(`return await entry.Route.options.loader()`)
-        return {
-          loader: app.where('MARK_LOADER'),
-          component: app.where('MARK_COMPONENT'),
-          result: run.result,
-        }
-      }
-      const cacheDirectory = path.join(app.root, '.bundler-cache')
-      expect(
-        await outcome(
-          bundleWithCache(app, bundler, cacheDirectory, 'dist-cold', {
-            defaultBehavior: [['component']],
-          }),
-        ),
-      ).toEqual({ loader: 'eager', component: 'lazy', result: 'MARK_LOADER' })
-      const warm = await outcome(
-        bundleWithCache(app, bundler, cacheDirectory, 'dist-warm', regrouped),
-      )
-      const fresh = await outcome(
-        bundleWithCache(
-          app,
-          bundler,
-          path.join(app.root, '.bundler-cache-fresh'),
-          'dist-fresh',
-          regrouped,
-        ),
-      )
-      expect(fresh).toEqual({
-        loader: 'lazy',
-        component: 'lazy',
-        result: 'MARK_LOADER',
-      })
-      expect(warm).toEqual(fresh)
-    },
-    timeout,
-  )
-})
-
-test(
-  'with Rsbuild build cache on, a cached rebuild and a rebuild after an unrelated edit keep one instance of the shared state',
-  async () => {
+  test('with a persistent filesystem cache, a cached rebuild and a rebuild after an unrelated edit keep one instance of the shared state', async () => {
     const app = await closeAtEnd(
       () =>
         createApp({
           dir: appsDir,
-          prefix: '.build-cache-rsbuild-',
+          prefix: `.build-cache-${bundler}-`,
           files: initialFiles(),
         }),
       (opened) => opened.dispose(),
     )
-    const cacheDirectory = path.join(app.root, '.rsbuild-cache')
-    const bundle = (distDir: string) =>
-      buildWithRsbuild({
-        root: app.root,
-        files: {},
-        rsbuildConfig: {
-          output: { distPath: { root: distDir } },
-          performance: { buildCache: { cacheDirectory } },
-        },
-      })
+    const cacheDirectory = path.join(app.root, '.bundler-cache')
+    const bundle = (outDir: string) =>
+      bundleWithCache(app, bundler, cacheDirectory, outDir)
     await expectOneSharedInstance(await bundle('dist-cold'))
     await expectOneSharedInstance(await bundle('dist-cached'))
     await writeFile(
@@ -234,6 +130,96 @@ test(
       files(2)['lib/unrelated.ts']!,
     )
     await expectOneSharedInstance(await bundle('dist-edited'))
-  },
-  timeout,
-)
+  })
+
+  // the bundler's cache does not see a split configuration it is not told
+  // about (raw webpack without `buildDependencies`, options computed from
+  // the environment, `tsr.config.json`): the plans it restores are checked
+  // against the configuration of this build
+  test('with a persistent filesystem cache, a rebuild after a grouping edit splits as a build with a fresh cache does', async () => {
+    const app = await closeAtEnd(
+      () =>
+        createApp({
+          dir: appsDir,
+          prefix: `.build-cache-groups-${bundler}-`,
+          files: routeApp(
+            `${routeHead()}function Page() {
+  return <p>MARK_COMPONENT</p>
+}
+export const Route = createFileRoute('/')({
+  loader: () => 'MARK_LOADER',
+  component: Page,
+})
+`,
+            { env: 'client' },
+          ),
+        }),
+      (opened) => opened.dispose(),
+    )
+    const regrouped = { defaultBehavior: [['loader'], ['component']] }
+    const outcome = async (build: Promise<BuildResult>) => {
+      const app = await build
+      const run = await app.run(`return await entry.Route.options.loader()`)
+      return {
+        loader: app.where('MARK_LOADER'),
+        component: app.where('MARK_COMPONENT'),
+        result: run.result,
+      }
+    }
+    const cacheDirectory = path.join(app.root, '.bundler-cache')
+    expect(
+      await outcome(
+        bundleWithCache(app, bundler, cacheDirectory, 'dist-cold', {
+          defaultBehavior: [['component']],
+        }),
+      ),
+    ).toEqual({ loader: 'eager', component: 'lazy', result: 'MARK_LOADER' })
+    const warm = await outcome(
+      bundleWithCache(app, bundler, cacheDirectory, 'dist-warm', regrouped),
+    )
+    const fresh = await outcome(
+      bundleWithCache(
+        app,
+        bundler,
+        path.join(app.root, '.bundler-cache-fresh'),
+        'dist-fresh',
+        regrouped,
+      ),
+    )
+    expect(fresh).toEqual({
+      loader: 'lazy',
+      component: 'lazy',
+      result: 'MARK_LOADER',
+    })
+    expect(warm).toEqual(fresh)
+  })
+})
+
+test('with Rsbuild build cache on, a cached rebuild and a rebuild after an unrelated edit keep one instance of the shared state', async () => {
+  const app = await closeAtEnd(
+    () =>
+      createApp({
+        dir: appsDir,
+        prefix: '.build-cache-rsbuild-',
+        files: initialFiles(),
+      }),
+    (opened) => opened.dispose(),
+  )
+  const cacheDirectory = path.join(app.root, '.rsbuild-cache')
+  const bundle = (distDir: string) =>
+    buildWithRsbuild({
+      root: app.root,
+      files: {},
+      rsbuildConfig: {
+        output: { distPath: { root: distDir } },
+        performance: { buildCache: { cacheDirectory } },
+      },
+    })
+  await expectOneSharedInstance(await bundle('dist-cold'))
+  await expectOneSharedInstance(await bundle('dist-cached'))
+  await writeFile(
+    path.join(app.root, 'lib/unrelated.ts'),
+    files(2)['lib/unrelated.ts']!,
+  )
+  await expectOneSharedInstance(await bundle('dist-edited'))
+})

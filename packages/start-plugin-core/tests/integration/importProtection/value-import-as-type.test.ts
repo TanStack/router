@@ -33,8 +33,7 @@ import { importersIn } from './hosts'
 import type { InlineConfig } from 'vite'
 import type { RsbuildConfig } from '@rsbuild/core'
 
-const timeout = 60_000
-const compileTimeout = timeout
+const compileTimeout = 60_000
 
 const typesServer = `;(globalThis as any).typesLoaded = 'MARK_TYPES_LOADED'
 export type Secret = { value: string }
@@ -281,43 +280,23 @@ async function rsbuildDev(
 
 describe.each(layouts)('tsconfig layout: $name', (layout) => {
   const files = appOf(layout)
-  test(
-    'vite build: no violation, kept or erased',
-    async () => {
-      expect(await viteBuild(files)).toEqual(expectedBuild(layout))
-    },
-    timeout,
-  )
-  test(
-    'vite dev: reported iff oxc keeps the import',
-    async () => {
-      expect(await viteDev(files)).toEqual(expected(layout, layout.oxcKeeps))
-    },
-    timeout,
-  )
-  test(
-    'vite bundledDev: reported iff oxc keeps the import',
-    async () => {
-      expect(await viteBundledDev(files)).toEqual(
-        expected(layout, layout.oxcKeeps),
-      )
-    },
-    timeout,
-  )
-  test(
-    'rsbuild build: SWC never reads tsconfig, no violation',
-    async () => {
-      expect(await rsbuildBuild(files)).toEqual(expectedBuild(layout))
-    },
-    timeout,
-  )
-  test(
-    'rsbuild dev: SWC never reads tsconfig, the import is erased',
-    async () => {
-      expect(await rsbuildDev(files)).toEqual(expected(layout, false))
-    },
-    timeout,
-  )
+  test('vite build: no violation, kept or erased', async () => {
+    expect(await viteBuild(files)).toEqual(expectedBuild(layout))
+  })
+  test('vite dev: reported iff oxc keeps the import', async () => {
+    expect(await viteDev(files)).toEqual(expected(layout, layout.oxcKeeps))
+  })
+  test('vite bundledDev: reported iff oxc keeps the import', async () => {
+    expect(await viteBundledDev(files)).toEqual(
+      expected(layout, layout.oxcKeeps),
+    )
+  })
+  test('rsbuild build: SWC never reads tsconfig, no violation', async () => {
+    expect(await rsbuildBuild(files)).toEqual(expectedBuild(layout))
+  })
+  test('rsbuild dev: SWC never reads tsconfig, the import is erased', async () => {
+    expect(await rsbuildDev(files)).toEqual(expected(layout, false))
+  })
 })
 
 describe('the transformer option wins over tsconfig', () => {
@@ -329,70 +308,42 @@ describe('the transformer option wins over tsconfig', () => {
   const swcKeeps: RsbuildConfig = {
     tools: { swc: { jsc: { transform: { verbatimModuleSyntax: true } } } },
   }
-  test(
-    'vite build, oxc onlyRemoveTypeImports: false erases despite the solution-style verbatimModuleSyntax',
-    async () => {
-      expect(await viteBuild(appOf(solution), oxcErases)).toEqual(
-        expectedBuild(solution),
-      )
-    },
-    timeout,
-  )
-  test(
-    'vite dev, oxc onlyRemoveTypeImports: false erases despite the solution-style verbatimModuleSyntax',
-    async () => {
-      expect(await viteDev(appOf(solution), oxcErases)).toEqual(
-        expected(solution, false),
-      )
-    },
-    timeout,
-  )
-  test(
-    'vite bundledDev, oxc onlyRemoveTypeImports: false erases despite the solution-style verbatimModuleSyntax',
-    async () => {
-      expect(await viteBundledDev(appOf(solution), oxcErases)).toEqual(
-        expected(solution, false),
-      )
-    },
-    timeout,
-  )
-  test(
-    'rsbuild build, tools.swc verbatimModuleSyntax keeps the import without any tsconfig setting',
-    async () => {
-      expect(await rsbuildBuild(appOf(off), swcKeeps)).toEqual(
-        expectedBuild(off),
-      )
-    },
-    timeout,
-  )
-  test(
-    'rsbuild dev, tools.swc verbatimModuleSyntax keeps the import without any tsconfig setting',
-    async () => {
-      expect(await rsbuildDev(appOf(off), swcKeeps)).toEqual(
-        expected(off, true),
-      )
-    },
-    timeout,
-  )
+  test('vite build, oxc onlyRemoveTypeImports: false erases despite the solution-style verbatimModuleSyntax', async () => {
+    expect(await viteBuild(appOf(solution), oxcErases)).toEqual(
+      expectedBuild(solution),
+    )
+  })
+  test('vite dev, oxc onlyRemoveTypeImports: false erases despite the solution-style verbatimModuleSyntax', async () => {
+    expect(await viteDev(appOf(solution), oxcErases)).toEqual(
+      expected(solution, false),
+    )
+  })
+  test('vite bundledDev, oxc onlyRemoveTypeImports: false erases despite the solution-style verbatimModuleSyntax', async () => {
+    expect(await viteBundledDev(appOf(solution), oxcErases)).toEqual(
+      expected(solution, false),
+    )
+  })
+  test('rsbuild build, tools.swc verbatimModuleSyntax keeps the import without any tsconfig setting', async () => {
+    expect(await rsbuildBuild(appOf(off), swcKeeps)).toEqual(expectedBuild(off))
+  })
+  test('rsbuild dev, tools.swc verbatimModuleSyntax keeps the import without any tsconfig setting', async () => {
+    expect(await rsbuildDev(appOf(off), swcKeeps)).toEqual(expected(off, true))
+  })
 })
 
 describe('behavior "error" in dev', () => {
   const solution = layouts[0]!
   // A failing import keeps failing: the importer is not cached, and the
   // next request asks the bundler for the edge module again.
-  test(
-    'vite dev: an import oxc keeps fails to load on every request',
-    async () => {
-      const server = await startProtectedDevServer(
-        appOf(solution),
-        { behavior: 'error' },
-        { router: 'src/router.ts' },
-      )
-      await rejection(server.load('/src/router.ts'))
-      await rejection(server.load('/src/router.ts'))
-    },
-    timeout,
-  )
+  test('vite dev: an import oxc keeps fails to load on every request', async () => {
+    const server = await startProtectedDevServer(
+      appOf(solution),
+      { behavior: 'error' },
+      { router: 'src/router.ts' },
+    )
+    await rejection(server.load('/src/router.ts'))
+    await rejection(server.load('/src/router.ts'))
+  })
 })
 
 describe('allowImport returning true in dev', () => {
@@ -402,31 +353,19 @@ describe('allowImport returning true in dev', () => {
     tools: { swc: { jsc: { transform: { verbatimModuleSyntax: true } } } },
   }
   const allow = { allowImport: () => true }
-  test(
-    'vite dev: the import oxc keeps gets the real module',
-    async () => {
-      expect(
-        (await viteDev(appOf(solution), undefined, allow)).typesLoaded,
-      ).toBe('MARK_TYPES_LOADED')
-    },
-    timeout,
-  )
-  test(
-    'vite bundledDev: the import oxc keeps gets the real module',
-    async () => {
-      expect(
-        (await viteBundledDev(appOf(solution), undefined, allow)).typesLoaded,
-      ).toBe('MARK_TYPES_LOADED')
-    },
-    timeout,
-  )
-  test(
-    'rsbuild dev: the import SWC keeps gets the real module',
-    async () => {
-      expect((await rsbuildDev(appOf(off), swcKeeps, allow)).typesLoaded).toBe(
-        'MARK_TYPES_LOADED',
-      )
-    },
-    timeout,
-  )
+  test('vite dev: the import oxc keeps gets the real module', async () => {
+    expect((await viteDev(appOf(solution), undefined, allow)).typesLoaded).toBe(
+      'MARK_TYPES_LOADED',
+    )
+  })
+  test('vite bundledDev: the import oxc keeps gets the real module', async () => {
+    expect(
+      (await viteBundledDev(appOf(solution), undefined, allow)).typesLoaded,
+    ).toBe('MARK_TYPES_LOADED')
+  })
+  test('rsbuild dev: the import SWC keeps gets the real module', async () => {
+    expect((await rsbuildDev(appOf(off), swcKeeps, allow)).typesLoaded).toBe(
+      'MARK_TYPES_LOADED',
+    )
+  })
 })

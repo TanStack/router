@@ -30,8 +30,6 @@ import {
 import { importersIn } from './hosts'
 import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 
-const timeout = 60_000
-
 /** A server-only module (denied to the client by `importedAs`). */
 const deniedModules = {
   'a denied file': {
@@ -238,7 +236,6 @@ export const secret = () => 'MARK_SECRET'
     async (name) => {
       expect(await mockedRead(deniedFiles[name]!, 'off')).toEqual(mocked)
     },
-    timeout,
   )
 
   // On main, in a production build with `behavior: { build: 'mock' }`, code
@@ -266,46 +263,41 @@ export const secret = () => 'MARK_SECRET'
         loggedWith: [severity],
       })
     },
-    timeout,
   )
 
   // A production client mock reports only the denied import: nothing in the
   // client bundle names the importer's source path (the dev report does:
   // `mock-access.test.ts`).
   // Source: review (production-code audit, 11-18).
-  test(
-    'a production client mock carries no source path of its importer',
-    async () => {
-      const built = await buildStart({
-        bundler,
-        files: {
-          'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
-          'src/importer-path-mark.ts': `import { secret } from './secret.server'
+  test('a production client mock carries no source path of its importer', async () => {
+    const built = await buildStart({
+      bundler,
+      files: {
+        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+        'src/importer-path-mark.ts': `import { secret } from './secret.server'
 export const read = () => secret
 `,
-          'src/entry.ts': `import { read } from './importer-path-mark'
+        'src/entry.ts': `import { read } from './importer-path-mark'
 export const run = () => read()()
 `,
-        },
-        entry: 'src/entry.ts',
-        start: { importProtection: { behavior: 'mock' } },
-      })
-      const { result } = await built.client.run(`const logged = []
+      },
+      entry: 'src/entry.ts',
+      start: { importProtection: { behavior: 'mock' } },
+    })
+    const { result } = await built.client.run(`const logged = []
 console.error = (...args) => {
   logged.push(args.map((arg) => (arg instanceof Error ? arg.message : String(arg))).join(' '))
 }
 entry.run()
 return logged`)
-      expect({
-        // (a use of the mock is reported: the mock and its runtime are there)
-        mocked: (result as Array<string>).some((text) =>
-          mentionsFile(text, 'src/secret.server.ts', { root: built.root }),
-        ),
-        importerPath: built.client.where('importer-path-mark'),
-      }).toEqual({ mocked: true, importerPath: 'nowhere' })
-    },
-    timeout,
-  )
+    expect({
+      // (a use of the mock is reported: the mock and its runtime are there)
+      mocked: (result as Array<string>).some((text) =>
+        mentionsFile(text, 'src/secret.server.ts', { root: built.root }),
+      ),
+      importerPath: built.client.where('importer-path-mark'),
+    }).toEqual({ mocked: true, importerPath: 'nowhere' })
+  })
 
   // A denied file of a sibling workspace package, outside the app's root: a
   // production client mock names it relative to the root, never by the
@@ -356,7 +348,6 @@ return logged`)
         logged: mockAccess === 'warn' ? [true] : [],
       })
     },
-    timeout,
   )
 
   const markedModules: Record<string, MockedImport> = {
@@ -379,67 +370,62 @@ return logged`)
     async (name) => {
       expect(await mockedRead(markedModules[name]!, 'off')).toEqual(mocked)
     },
-    timeout,
   )
 
   // A module that re-exports from a denied specifier is rewritten like a
   // module that imports from it; re-exports of other modules keep their
   // values.
-  test(
-    're-exports from a denied specifier are mocked; other re-exports keep their values',
-    async () => {
-      const { client } = await buildStart({
-        bundler,
-        files: {
-          'node_modules/denied-pkg/package.json': JSON.stringify({
-            name: 'denied-pkg',
-            type: 'module',
-            main: 'index.js',
-            sideEffects: false,
-          }),
-          'node_modules/denied-pkg/index.js': `export const secret = () => 'MARK_SECRET'\n`,
-          'node_modules/safe-pkg/package.json': JSON.stringify({
-            name: 'safe-pkg',
-            type: 'module',
-            main: 'index.js',
-          }),
-          'node_modules/safe-pkg/index.js': `export const ok = () => 'MARK_SAFE'
+  test('re-exports from a denied specifier are mocked; other re-exports keep their values', async () => {
+    const { client } = await buildStart({
+      bundler,
+      files: {
+        'node_modules/denied-pkg/package.json': JSON.stringify({
+          name: 'denied-pkg',
+          type: 'module',
+          main: 'index.js',
+          sideEffects: false,
+        }),
+        'node_modules/denied-pkg/index.js': `export const secret = () => 'MARK_SECRET'\n`,
+        'node_modules/safe-pkg/package.json': JSON.stringify({
+          name: 'safe-pkg',
+          type: 'module',
+          main: 'index.js',
+        }),
+        'node_modules/safe-pkg/index.js': `export const ok = () => 'MARK_SAFE'
 export const fine = () => 'MARK_FINE'
 `,
-          'src/barrel.ts': `export { secret } from 'denied-pkg'\n`,
-          'src/mixed.ts': `import { secret as aliased } from 'denied-pkg'
+        'src/barrel.ts': `export { secret } from 'denied-pkg'\n`,
+        'src/mixed.ts': `import { secret as aliased } from 'denied-pkg'
 export { ok } from 'safe-pkg'
 export * from './fine'
 export const s = () => aliased
 `,
-          'src/fine.ts': `export { fine } from 'safe-pkg'\n`,
-          'src/entry.ts': `import { secret } from './barrel'
+        'src/fine.ts': `export { fine } from 'safe-pkg'\n`,
+        'src/entry.ts': `import { secret } from './barrel'
 import { ok, fine, s } from './mixed'
 export const read = () => [secret, ok(), fine(), s()]
 `,
+      },
+      entry: 'src/entry.ts',
+      start: {
+        importProtection: {
+          behavior: 'mock',
+          mockAccess: 'off',
+          client: { specifiers: ['denied-pkg'] },
         },
-        entry: 'src/entry.ts',
-        start: {
-          importProtection: {
-            behavior: 'mock',
-            mockAccess: 'off',
-            client: { specifiers: ['denied-pkg'] },
-          },
-        },
-      })
-      expect({
-        hasRealCode: client.where('MARK_SECRET') !== 'nowhere',
-        read: (
-          await client.run(`${describeValuePrelude}
+      },
+    })
+    expect({
+      hasRealCode: client.where('MARK_SECRET') !== 'nowhere',
+      read: (
+        await client.run(`${describeValuePrelude}
 return entry.read().map((value) => describeValue(value, 'MARK_SECRET'))`)
-        ).result,
-      }).toEqual({
-        hasRealCode: false,
-        read: ['a safe mock', 'MARK_SAFE', 'MARK_FINE', 'a safe mock'],
-      })
-    },
-    timeout,
-  )
+      ).result,
+    }).toEqual({
+      hasRealCode: false,
+      read: ['a safe mock', 'MARK_SAFE', 'MARK_FINE', 'a safe mock'],
+    })
+  })
 
   // SPEC J6.8 (`export *` of a denied module): in a
   // mock-mode build, a name a client module re-exports with `export *` from
@@ -484,67 +470,57 @@ return describeValue(entry.v, 'MARK_SECRET')`)
   }
   const starApp = (name: string) =>
     starReexportApps.find((app) => app.name === name)!
-  test(
-    'a name re-exported with `export *` from a denied file is a safe mock, or the build fails',
-    () => expectStarReexportMockedOrBuildFails(starApp('a denied file')),
-    timeout,
-  )
+  test('a name re-exported with `export *` from a denied file is a safe mock, or the build fails', () =>
+    expectStarReexportMockedOrBuildFails(starApp('a denied file')))
   // On main, a mock-mode Rsbuild build ships a client in which a name
   // re-exported with `export *` from a denied package is `undefined`: using it
   // throws instead of reaching a mock.
   // Source: SPEC J6.8, the build row of the dev pin in start-dev-edits.test.ts.
-  test(
-    'a name re-exported with `export *` from a denied specifier is a safe mock, or the build fails',
-    () => expectStarReexportMockedOrBuildFails(starApp('a denied specifier')),
-    timeout,
-  )
+  test('a name re-exported with `export *` from a denied specifier is a safe mock, or the build fails', () =>
+    expectStarReexportMockedOrBuildFails(starApp('a denied specifier')))
 
   // The route module and its split component are two modules of the bundle
   // that import the denied file for the same import of the source.
   // Source: mutation testing.
-  test(
-    'a denied import of a route used by its loader and its split component is warned once',
-    async () => {
-      const route = `import { createFileRoute } from '@tanstack/react-router'
+  test('a denied import of a route used by its loader and its split component is warned once', async () => {
+    const route = `import { createFileRoute } from '@tanstack/react-router'
 import { secret } from '../secret.server'
 export const Route = createFileRoute('/')({
   loader: () => String(secret()),
   component: () => String(secret()),
 })
 `
-      const build = await buildStart({
-        bundler,
-        files: {
-          ...deniedModules['a denied file'].files,
-          'src/routes/index.tsx': route,
-          'src/router.ts': `import { routeTree } from './routeTree.gen'
+    const build = await buildStart({
+      bundler,
+      files: {
+        ...deniedModules['a denied file'].files,
+        'src/routes/index.tsx': route,
+        'src/router.ts': `import { routeTree } from './routeTree.gen'
 export const getRouter = () => ({ routeTree })
 `,
-          'src/entry.ts': `export { getRouter } from './router'\n`,
-        },
-        entry: 'src/entry.ts',
-        start: { importProtection: { behavior: 'mock' } },
-      })
-      expect(build.client.where('MARK_SECRET')).toBe('nowhere')
-      // One warning printed, naming the route file
-      expectDiagnostic(build.diagnostics, {
-        severity: 'warning',
-        file: 'src/routes/index.tsx',
-        root: build.root,
-        times: 1,
-      })
-      // At either use or at the import (SPEC J6.5)
-      expectViolationsAt(inEnvironment(build, 'client'), [
-        {
-          environment: 'client',
-          use: locationIn('src/routes/index.tsx', route, 4, 'secret()'),
-          also: [
-            locationIn('src/routes/index.tsx', route, 5, 'secret()'),
-            'src/routes/index.tsx:2',
-          ],
-        },
-      ])
-    },
-    timeout,
-  )
+        'src/entry.ts': `export { getRouter } from './router'\n`,
+      },
+      entry: 'src/entry.ts',
+      start: { importProtection: { behavior: 'mock' } },
+    })
+    expect(build.client.where('MARK_SECRET')).toBe('nowhere')
+    // One warning printed, naming the route file
+    expectDiagnostic(build.diagnostics, {
+      severity: 'warning',
+      file: 'src/routes/index.tsx',
+      root: build.root,
+      times: 1,
+    })
+    // At either use or at the import (SPEC J6.5)
+    expectViolationsAt(inEnvironment(build, 'client'), [
+      {
+        environment: 'client',
+        use: locationIn('src/routes/index.tsx', route, 4, 'secret()'),
+        also: [
+          locationIn('src/routes/index.tsx', route, 5, 'secret()'),
+          'src/routes/index.tsx:2',
+        ],
+      },
+    ])
+  })
 })

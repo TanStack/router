@@ -19,7 +19,6 @@ test.each(['webpack', 'rsbuild', 'vite'] as const)(
   async (bundler) => {
     await expectRouteIdChangeRebuildsRoute(bundler)
   },
-  45_000,
 )
 
 // webpack with content hashes in its module snapshots
@@ -31,7 +30,7 @@ test('a route id change rebuilds the route module written again unchanged (webpa
     rewritten: true,
     webpack: { snapshot: { module: { hash: true } } },
   })
-}, 45_000)
+})
 
 // A rebuild of ours that fails (an app plugin's `buildModule` hook throws
 // once, at the route module's build after the route id change: webpack
@@ -72,7 +71,7 @@ test('a failed rebuild of the route module fails one compilation, and the dev se
   })
   await app.visit('/about', 'MARK_CONTACT_EDITED')
   expect(app.errors()).toEqual([])
-}, 45_000)
+})
 
 // A start from the bundler's persistent cache restores the route module
 // without compiling it in that process: a route id change is compiled all
@@ -87,5 +86,4 @@ test.each([
   async ({ bundler, whileDown }) => {
     await expectRouteIdChangeAfterWarmStart(bundler, whileDown)
   },
-  60_000,
 )

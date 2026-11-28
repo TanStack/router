@@ -27,8 +27,6 @@ import {
 import type { TanStackStartInputConfig } from '../../../src'
 import type { ViolationInfo } from '../../importProtection/public-types'
 
-const timeout = 60_000
-
 /** A server-only module (denied to the client by `importedAs`). */
 const deniedModules = {
   'a denied file': {
@@ -121,59 +119,51 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
     'src/entry.ts': `export { a } from './ignored'\nexport { b } from './other'\n`,
   }
 
-  test(
-    'imported by an ignored importer and another importer fails the build',
-    async () => {
-      const error = await rejection(
-        buildStart({
-          bundler,
-          files: ignoredAndOther,
-          entry: 'src/entry.ts',
-          start: { importProtection: { ignoreImporters: ['**/ignored.ts'] } },
-        }),
-      )
-      // (the exempt importer is never reported; with behavior "error",
-      // `onViolation` may get the other violation more than once)
-      const importers = reportedImporters(error)
-      expect(importers).not.toEqual([])
-      expect(importers).not.toContain('client src/ignored.ts')
-    },
-    timeout,
-  )
+  test('imported by an ignored importer and another importer fails the build', async () => {
+    const error = await rejection(
+      buildStart({
+        bundler,
+        files: ignoredAndOther,
+        entry: 'src/entry.ts',
+        start: { importProtection: { ignoreImporters: ['**/ignored.ts'] } },
+      }),
+    )
+    // (the exempt importer is never reported; with behavior "error",
+    // `onViolation` may get the other violation more than once)
+    const importers = reportedImporters(error)
+    expect(importers).not.toEqual([])
+    expect(importers).not.toContain('client src/ignored.ts')
+  })
 
   // On main, on Rsbuild, the report of a server-only-marked module imported by
   // an exempt importer and another one blames the exempt importer; the user
   // looks at code the project ignores on purpose, and the real importer is not
   // named.
   // Source: review.
-  test(
-    'imported by an ignored importer and, further from the entry, another importer: the violation blames the other importer',
-    async () => {
-      const seen: Array<ViolationInfo> = []
-      await rejection(
-        buildStart({
-          bundler,
-          files: {
-            ...ignoredAndOther,
-            'src/mid.ts': `export { b } from './other'\n`,
-            'src/entry.ts': `export { a } from './ignored'\nexport { b } from './mid'\n`,
-          },
-          entry: 'src/entry.ts',
-          start: {
-            importProtection: {
-              ignoreImporters: ['**/ignored.ts'],
-              onViolation: (info) => {
-                seen.push(info as ViolationInfo)
-              },
+  test('imported by an ignored importer and, further from the entry, another importer: the violation blames the other importer', async () => {
+    const seen: Array<ViolationInfo> = []
+    await rejection(
+      buildStart({
+        bundler,
+        files: {
+          ...ignoredAndOther,
+          'src/mid.ts': `export { b } from './other'\n`,
+          'src/entry.ts': `export { a } from './ignored'\nexport { b } from './mid'\n`,
+        },
+        entry: 'src/entry.ts',
+        start: {
+          importProtection: {
+            ignoreImporters: ['**/ignored.ts'],
+            onViolation: (info) => {
+              seen.push(info as ViolationInfo)
             },
           },
-        }),
-      )
-      expect(seen).not.toEqual([])
-      expect(distinct(seen.map(blamedImporter))).toEqual(['src/other.ts'])
-    },
-    timeout,
-  )
+        },
+      }),
+    )
+    expect(seen).not.toEqual([])
+    expect(distinct(seen.map(blamedImporter))).toEqual(['src/other.ts'])
+  })
 
   // (Was a Vite pin: main's Vite adapter reported a marker violation for the
   // marked module itself, so `ignoreImporters` could not exempt its
@@ -203,165 +193,144 @@ describe.each(startBundlers)('%s build, server-only marker', (bundler) => {
       expect(reportedViolations(build)).toEqual([])
       expect(problems(build.diagnostics).map(({ text }) => text)).toEqual([])
     },
-    timeout,
   )
 
   // On main, code a project exempts on purpose silently gets a mock instead of
   // the module it imports.
-  test(
-    'imported only by an ignored importer: the ignored importer gets the real module',
-    async () => {
-      expect(
-        await clientRead(bundler, ignoredOnly, {
-          importProtection: {
-            behavior: 'mock',
-            ignoreImporters: ['**/ignored.ts'],
-          },
-        }),
-      ).toEqual({ hasRealCode: true, ranReal: true, warnings: [] })
-    },
-    timeout,
-  )
+  test('imported only by an ignored importer: the ignored importer gets the real module', async () => {
+    expect(
+      await clientRead(bundler, ignoredOnly, {
+        importProtection: {
+          behavior: 'mock',
+          ignoreImporters: ['**/ignored.ts'],
+        },
+      }),
+    ).toEqual({ hasRealCode: true, ranReal: true, warnings: [] })
+  })
 
   // Source: review, with entry-order and indirection variants.
   // On main, exemptions either stop working (Rsbuild) or leak the denied real
   // value to the importer that is not exempt (Vite).
   // Blame is read from onViolation/trace: marker-origin display is allowed.
-  test(
-    'in mock mode, an ignored importer gets the real module, another importer a safe mock, and only the other importer is reported',
-    async () => {
-      for (const entry of [
-        // The other importer nearer the entry, in both orders
-        `export { b } from './other'\nexport { a } from './mid-ignored'\n`,
-        `export { a } from './mid-ignored'\nexport { b } from './other'\n`,
-        // Side by side, in both orders
-        `export { a } from './ignored'\nexport { b } from './other'\n`,
-        `export { b } from './other'\nexport { a } from './ignored'\n`,
-        // The ignored importer nearer the entry
-        `export { a } from './ignored'\nexport { b } from './mid'\n`,
-      ]) {
-        const seen: Array<ViolationInfo> = []
-        const { client } = await buildStart({
-          bundler,
-          files: {
-            ...ignoredAndOther,
-            'src/entry.ts': entry,
-            'src/mid.ts': `export { b } from './other'\n`,
-            'src/mid-ignored.ts': `export { a } from './ignored'\n`,
-          },
-          entry: 'src/entry.ts',
-          start: {
-            importProtection: {
-              behavior: 'mock',
-              mockAccess: 'off',
-              ignoreImporters: ['**/ignored.ts'],
-              onViolation: (info) => {
-                seen.push(info as ViolationInfo)
-              },
+  test('in mock mode, an ignored importer gets the real module, another importer a safe mock, and only the other importer is reported', async () => {
+    for (const entry of [
+      // The other importer nearer the entry, in both orders
+      `export { b } from './other'\nexport { a } from './mid-ignored'\n`,
+      `export { a } from './mid-ignored'\nexport { b } from './other'\n`,
+      // Side by side, in both orders
+      `export { a } from './ignored'\nexport { b } from './other'\n`,
+      `export { b } from './other'\nexport { a } from './ignored'\n`,
+      // The ignored importer nearer the entry
+      `export { a } from './ignored'\nexport { b } from './mid'\n`,
+    ]) {
+      const seen: Array<ViolationInfo> = []
+      const { client } = await buildStart({
+        bundler,
+        files: {
+          ...ignoredAndOther,
+          'src/entry.ts': entry,
+          'src/mid.ts': `export { b } from './other'\n`,
+          'src/mid-ignored.ts': `export { a } from './ignored'\n`,
+        },
+        entry: 'src/entry.ts',
+        start: {
+          importProtection: {
+            behavior: 'mock',
+            mockAccess: 'off',
+            ignoreImporters: ['**/ignored.ts'],
+            onViolation: (info) => {
+              seen.push(info as ViolationInfo)
             },
           },
-        })
-        const { result } = await client.run(`${describeValuePrelude}
+        },
+      })
+      const { result } = await client.run(`${describeValuePrelude}
 return {
   ignored: describeValue(entry.a(), 'MARK_SECRET'),
   other: describeValue(entry.b(), 'MARK_SECRET'),
 }`)
-        expect({
-          ...(result as object),
-          reported: distinct(seen.map(blamedImporter)),
-        }).toEqual({
-          ignored: 'MARK_SECRET',
-          other: 'a safe mock',
-          reported: ['src/other.ts'],
-        })
-      }
-    },
-    timeout,
-  )
+      expect({
+        ...(result as object),
+        reported: distinct(seen.map(blamedImporter)),
+      }).toEqual({
+        ignored: 'MARK_SECRET',
+        other: 'a safe mock',
+        reported: ['src/other.ts'],
+      })
+    }
+  })
 
-  test(
-    'imported by a split route component fails the build',
-    async () => {
-      const splitRoute = `import { createFileRoute } from '@tanstack/react-router'
+  test('imported by a split route component fails the build', async () => {
+    const splitRoute = `import { createFileRoute } from '@tanstack/react-router'
 import { secret } from '../marked'
 export const Route = createFileRoute('/')({
   component: () => String(secret()),
 })
 `
-      const error = await rejection(
-        buildStart({
-          bundler,
-          files: {
-            ...marked,
-            'src/routes/index.tsx': splitRoute,
-            'src/router.ts': `import { routeTree } from './routeTree.gen'
+    const error = await rejection(
+      buildStart({
+        bundler,
+        files: {
+          ...marked,
+          'src/routes/index.tsx': splitRoute,
+          'src/router.ts': `import { routeTree } from './routeTree.gen'
 export const getRouter = () => ({ routeTree })
 `,
-            'src/entry.ts': `export { getRouter } from './router'\n`,
-          },
-          entry: 'src/entry.ts',
-        }),
-      )
-      const [report, ...others] = violationsOf(error)
-      expect(others).toEqual([])
-      expectMarkerViolation(report!, {
-        marker: 'src/marked.ts:1',
-        use: locationIn('src/routes/index.tsx', splitRoute, 4, 'secret()'),
-        imports: ['src/routes/index.tsx:2'],
-      })
-    },
-    timeout,
-  )
+          'src/entry.ts': `export { getRouter } from './router'\n`,
+        },
+        entry: 'src/entry.ts',
+      }),
+    )
+    const [report, ...others] = violationsOf(error)
+    expect(others).toEqual([])
+    expectMarkerViolation(report!, {
+      marker: 'src/marked.ts:1',
+      use: locationIn('src/routes/index.tsx', splitRoute, 4, 'secret()'),
+      imports: ['src/routes/index.tsx:2'],
+    })
+  })
 
-  test(
-    'marking the client entry fails the build',
-    async () => {
-      const client = `import '@tanstack/react-start/server-only'
+  test('marking the client entry fails the build', async () => {
+    const client = `import '@tanstack/react-start/server-only'
 console.log('client')
 `
-      const error = await rejection(
-        buildStart({
-          bundler,
-          files: {
-            'src/client.ts': client,
-            'src/entry.ts': `export const read = () => 'entry'\n`,
-          },
-          entry: 'src/entry.ts',
-        }),
-      )
-      // At the client entry's marker import, line 1 (any column)
-      expect(reportedViolations(error)).toHaveLength(1)
-      expectViolationsAt(error, [
-        { environment: 'client', use: 'src/client.ts:1' },
-      ])
-    },
-    timeout,
-  )
+    const error = await rejection(
+      buildStart({
+        bundler,
+        files: {
+          'src/client.ts': client,
+          'src/entry.ts': `export const read = () => 'entry'\n`,
+        },
+        entry: 'src/entry.ts',
+      }),
+    )
+    // At the client entry's marker import, line 1 (any column)
+    expect(reportedViolations(error)).toHaveLength(1)
+    expectViolationsAt(error, [
+      { environment: 'client', use: 'src/client.ts:1' },
+    ])
+  })
 
   // The build fails and names the broken file at its line (an actionable
   // error, SPEC G5); other diagnostics may come with it.
-  test(
-    'imported by a module that fails to compile: the build fails, naming the broken file and line',
-    async () => {
-      const error = await rejection(
-        buildStart({
-          bundler,
-          files: {
-            ...marked,
-            'src/broken.ts': `import { secret } from './marked'
+  test('imported by a module that fails to compile: the build fails, naming the broken file and line', async () => {
+    const error = await rejection(
+      buildStart({
+        bundler,
+        files: {
+          ...marked,
+          'src/broken.ts': `import { secret } from './marked'
 export const read = ( => secret()
 `,
-            'src/entry.ts': `export { read } from './broken'\n`,
-          },
-          entry: 'src/entry.ts',
-        }),
-      )
-      expectDiagnostic(everyChannel(error), {
-        severity: 'error',
-        file: 'src/broken.ts',
-        position: { line: 2 },
-      })
-    },
-    timeout,
-  )
+          'src/entry.ts': `export { read } from './broken'\n`,
+        },
+        entry: 'src/entry.ts',
+      }),
+    )
+    expectDiagnostic(everyChannel(error), {
+      severity: 'error',
+      file: 'src/broken.ts',
+      position: { line: 2 },
+    })
+  })
 })

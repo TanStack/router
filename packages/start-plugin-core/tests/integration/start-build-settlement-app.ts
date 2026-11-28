@@ -22,8 +22,6 @@ import {
 import type { Plugin } from 'vite'
 import type { WatchStep } from '../build-harness'
 
-export const timeout = 90_000
-
 export const fns = (
   marker: string,
 ) => `import { createServerFn } from '@tanstack/react-start'

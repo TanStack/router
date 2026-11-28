@@ -46,7 +46,7 @@ export const Route = createFileRoute('/about')({})
     'utf8',
   )
   expect(tree).toContain(`path: '/about'`)
-}, 90_000)
+})
 
 test('rsbuild: a build generates the route tree once for both environments, and a second build of the instance the routes added since', async () => {
   let generations = 0
@@ -81,7 +81,7 @@ export const Route = createFileRoute('/about')({})
     'utf8',
   )
   expect(tree).toContain(`path: '/about'`)
-}, 90_000)
+})
 
 // A program that drives the compiler itself (`createCompiler().run()`):
 // Rsbuild dispatches no `onBeforeBuild`. Source: Astra round 4 (Rsbuild
@@ -105,4 +105,4 @@ export const Route = createFileRoute('/about')({})
     'utf8',
   )
   expect(tree).toContain(`path: '/about'`)
-}, 90_000)
+})

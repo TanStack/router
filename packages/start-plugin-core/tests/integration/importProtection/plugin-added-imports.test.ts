@@ -10,7 +10,7 @@
  */
 import { describe, expect, test } from 'vitest'
 import { startBundlers } from '../../build-harness'
-import { db, inCase, outcomesOfCases, timeout } from './kept-importer-cases'
+import { db, inCase, outcomesOfCases } from './kept-importer-cases'
 import type { KeptCase } from './kept-importer-cases'
 
 const cases: Array<KeptCase & { on: Array<string> | null; off: boolean }> = [
@@ -69,25 +69,20 @@ describe.each(startBundlers)('%s build', (bundler) => {
         off: { shipped: off },
       })
     },
-    timeout,
   )
 
   // (a build's failure is the whole app's: the refusing cases' app fails
   // with exactly their client importers, each once, and nothing on the
   // server: the complete list, duplicates kept)
-  test(
-    "the refusing cases' error-mode build fails with their importers, and no other",
-    async () => {
-      expect(
-        (await (outcomes ??= outcomesOfCases(bundler, cases))).refused,
-      ).toEqual(
-        cases
-          .flatMap(({ name, on }) =>
-            (on ?? []).map((file) => `client ${inCase(name, file)}`),
-          )
-          .sort(),
-      )
-    },
-    timeout,
-  )
+  test("the refusing cases' error-mode build fails with their importers, and no other", async () => {
+    expect(
+      (await (outcomes ??= outcomesOfCases(bundler, cases))).refused,
+    ).toEqual(
+      cases
+        .flatMap(({ name, on }) =>
+          (on ?? []).map((file) => `client ${inCase(name, file)}`),
+        )
+        .sort(),
+    )
+  })
 })

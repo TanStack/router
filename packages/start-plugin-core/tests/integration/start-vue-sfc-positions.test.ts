@@ -29,8 +29,6 @@ import { compileError, createStartHost } from '../regression-helpers'
 import { expectViolationsAt, rejection } from '../importProtection/start-apps'
 import type { StartHost } from '../regression-helpers'
 
-const timeout = 120_000
-
 /** An SFC whose `<script setup>` block (after its template) holds `setup`; `pre`: text the template shows. */
 const sfc = (setup: string, pre = '') => `<template>
   <p>page</p>${pre ? `\n  <pre>${pre}</pre>` : ''}
@@ -272,46 +270,36 @@ describe.each([
         }
         expectAtRefusal(error.diagnostics, 'src/Page.vue', row, error.root)
       },
-      timeout,
     )
 
     // Without a map, the statement's line is found by its text: text on two
     // lines is no position, not either of them
-    test(
-      'a refused statement whose text the template shows too fails the build at no other line',
-      async () => {
-        const statement = `const getX = base.handler(async () => 'MARK_SERVER_SECRET')`
-        const text = sfc(
-          `const base = createServerFn()\n${statement}`,
-          statement,
-        )
-        const error = await build(bundler, { Page: text }, sourcemap).then(
-          () => expect.fail('the build succeeded'),
-          (e: unknown) => e,
-        )
-        if (!(error instanceof StartBuildError)) {
-          throw error
-        }
-        expectDiagnostic(error.diagnostics, {
-          severity: 'error',
-          file: 'src/Page.vue',
-          root: error.root,
-        })
-        const template = diagnosticPosition(text, statement).line
-        expectNoDiagnostic(error.diagnostics, {
-          severity: 'error',
-          file: 'src/Page.vue',
-          root: error.root,
-          position: { line: template },
-        })
-      },
-      timeout,
-    )
+    test('a refused statement whose text the template shows too fails the build at no other line', async () => {
+      const statement = `const getX = base.handler(async () => 'MARK_SERVER_SECRET')`
+      const text = sfc(`const base = createServerFn()\n${statement}`, statement)
+      const error = await build(bundler, { Page: text }, sourcemap).then(
+        () => expect.fail('the build succeeded'),
+        (e: unknown) => e,
+      )
+      if (!(error instanceof StartBuildError)) {
+        throw error
+      }
+      expectDiagnostic(error.diagnostics, {
+        severity: 'error',
+        file: 'src/Page.vue',
+        root: error.root,
+      })
+      const template = diagnosticPosition(text, statement).line
+      expectNoDiagnostic(error.diagnostics, {
+        severity: 'error',
+        file: 'src/Page.vue',
+        root: error.root,
+        position: { line: template },
+      })
+    })
 
-    test(
-      'a denied import of the script fails the build at its position in the SFC',
-      async () => {
-        const text = `<template>
+    test('a denied import of the script fails the build at its position in the SFC', async () => {
+      const text = `<template>
   <p>{{ shown }}</p>
 </template>
 
@@ -324,33 +312,27 @@ import { secret } from './db.server'
 const shown = ref(secret)
 </script>
 `
-        const error = await rejection(
-          build(bundler, { Page: text }, sourcemap, {
-            'src/db.server.ts': `export const secret = 'MARK_DB'\n`,
-          }),
-        )
-        const { line, column } = diagnosticPosition(text, "'./db.server'")
-        expectViolationsAt(error, [
-          { environment: 'client', use: `src/Page.vue:${line}:${column}` },
-        ])
-      },
-      timeout,
-    )
+      const error = await rejection(
+        build(bundler, { Page: text }, sourcemap, {
+          'src/db.server.ts': `export const secret = 'MARK_DB'\n`,
+        }),
+      )
+      const { line, column } = diagnosticPosition(text, "'./db.server'")
+      expectViolationsAt(error, [
+        { environment: 'client', use: `src/Page.vue:${line}:${column}` },
+      ])
+    })
 
-    test(
-      'the fixes build, and their handlers stay on the server',
-      async () => {
-        const built = await build(
-          bundler,
-          Object.fromEntries(fixes.map((fix, i) => [`Fix${i}`, fix.sfc])),
-          sourcemap,
-        )
-        for (const { mark } of fixes) {
-          expect(built.client.where(mark), mark).toBe('nowhere')
-        }
-      },
-      timeout,
-    )
+    test('the fixes build, and their handlers stay on the server', async () => {
+      const built = await build(
+        bundler,
+        Object.fromEntries(fixes.map((fix, i) => [`Fix${i}`, fix.sfc])),
+        sourcemap,
+      )
+      for (const { mark } of fixes) {
+        expect(built.client.where(mark), mark).toBe('nowhere')
+      }
+    })
   },
 )
 
@@ -378,104 +360,86 @@ describe('vite dev', () => {
         row,
       )
     },
-    timeout,
   )
 
   // An SFC of an installed package that declares Start: the refusal Vue's
   // generated code moves to the binding's declaration keeps that position
   // while it names the package.
   // Source: whole-PR review S3-17 (Fable, Gemini); settlement step 2.
-  test(
-    "a refusal in an installed package's SFC is at its position in the SFC",
-    async () => {
-      devHost ??= createStartHost({ framework: 'vue' })
-      const row = refusedInDev[0]!
-      const file = 'node_modules/kit/Page.vue'
-      const startCase = await (
-        await devHost
-      ).case({
-        [file]: row.sfc,
-        'node_modules/kit/package.json': JSON.stringify({
-          name: 'kit',
-          version: '1.0.0',
-          type: 'module',
-          peerDependencies: { '@tanstack/vue-start': '*' },
-        }),
-        'module.ts': `export { default } from './${file}'\n`,
-      })
-      const failure = await compileError(startCase, 'client', file)
-      expect(failure).toBeInstanceOf(Error)
-      const diagnostics = [
-        ...diagnosticsOf(failure!.error),
-        ...failure!.reported,
-      ]
-      expectAtRefusal(diagnostics, startCase.file(file), row)
-      // (the error names the package its code is in)
-      expect(
-        diagnostics.some((d) => d.text.includes('installed package `kit`')),
-      ).toBe(true)
-    },
-    timeout,
-  )
+  test("a refusal in an installed package's SFC is at its position in the SFC", async () => {
+    devHost ??= createStartHost({ framework: 'vue' })
+    const row = refusedInDev[0]!
+    const file = 'node_modules/kit/Page.vue'
+    const startCase = await (
+      await devHost
+    ).case({
+      [file]: row.sfc,
+      'node_modules/kit/package.json': JSON.stringify({
+        name: 'kit',
+        version: '1.0.0',
+        type: 'module',
+        peerDependencies: { '@tanstack/vue-start': '*' },
+      }),
+      'module.ts': `export { default } from './${file}'\n`,
+    })
+    const failure = await compileError(startCase, 'client', file)
+    expect(failure).toBeInstanceOf(Error)
+    const diagnostics = [...diagnosticsOf(failure!.error), ...failure!.reported]
+    expectAtRefusal(diagnostics, startCase.file(file), row)
+    // (the error names the package its code is in)
+    expect(
+      diagnostics.some((d) => d.text.includes('installed package `kit`')),
+    ).toBe(true)
+  })
 
-  test.each(fixes)(
-    '$name compiles',
-    async ({ sfc: text, mark }) => {
-      const startCase = await sfcCase(text)
-      expect(
-        await compileError(startCase, 'client', 'Page.vue'),
-      ).toBeUndefined()
-      expect(await startCase.served('Page.vue', 'client')).not.toContain(mark)
-    },
-    timeout,
-  )
+  test.each(fixes)('$name compiles', async ({ sfc: text, mark }) => {
+    const startCase = await sfcCase(text)
+    expect(await compileError(startCase, 'client', 'Page.vue')).toBeUndefined()
+    expect(await startCase.served('Page.vue', 'client')).not.toContain(mark)
+  })
 })
 
 describe('rsbuild dev', () => {
-  test(
-    'each refusal is at its position in the SFC, and the fixes compile',
-    async () => {
-      const files = {
-        ...Object.fromEntries(
-          [...refused, ...refusedInDev].map((row, i) => [
-            `src/Refused${i}.vue`,
-            row.sfc,
-          ]),
-        ),
-        ...Object.fromEntries(
-          fixes.map((fix, i) => [`src/Fix${i}.vue`, fix.sfc]),
-        ),
-      }
-      const server = await startRsbuildStartDevServer({
-        ...clientPage,
-        framework: 'vue',
-        config: { plugins: [pluginVue()] },
-        files: {
-          'src/routes/__root.tsx': root,
-          'src/builders.ts': builders,
-          ...files,
-          // (the refused blocks only behind an import the page never runs)
-          'src/entry.ts': `${fixes.map((_, i) => `import Fix${i} from './Fix${i}.vue'\n`).join('')}globalThis.__fixes = [${fixes.map((_, i) => `Fix${i}`).join(', ')}]
+  test('each refusal is at its position in the SFC, and the fixes compile', async () => {
+    const files = {
+      ...Object.fromEntries(
+        [...refused, ...refusedInDev].map((row, i) => [
+          `src/Refused${i}.vue`,
+          row.sfc,
+        ]),
+      ),
+      ...Object.fromEntries(
+        fixes.map((fix, i) => [`src/Fix${i}.vue`, fix.sfc]),
+      ),
+    }
+    const server = await startRsbuildStartDevServer({
+      ...clientPage,
+      framework: 'vue',
+      config: { plugins: [pluginVue()] },
+      files: {
+        'src/routes/__root.tsx': root,
+        'src/builders.ts': builders,
+        ...files,
+        // (the refused blocks only behind an import the page never runs)
+        'src/entry.ts': `${fixes.map((_, i) => `import Fix${i} from './Fix${i}.vue'\n`).join('')}globalThis.__fixes = [${fixes.map((_, i) => `Fix${i}`).join(', ')}]
 globalThis.__refused = () => [${[...refused, ...refusedInDev].map((_, i) => `import('./Refused${i}.vue')`).join(', ')}]
 `,
-        },
+      },
+    })
+    for (const [i, row] of [...refused, ...refusedInDev].entries()) {
+      expectAtRefusal(
+        server.diagnostics,
+        `src/Refused${i}.vue`,
+        row,
+        server.root,
+      )
+    }
+    for (const [i] of fixes.entries()) {
+      expectNoDiagnostic(server.diagnostics, {
+        severity: 'error',
+        file: `src/Fix${i}.vue`,
+        root: server.root,
       })
-      for (const [i, row] of [...refused, ...refusedInDev].entries()) {
-        expectAtRefusal(
-          server.diagnostics,
-          `src/Refused${i}.vue`,
-          row,
-          server.root,
-        )
-      }
-      for (const [i] of fixes.entries()) {
-        expectNoDiagnostic(server.diagnostics, {
-          severity: 'error',
-          file: `src/Fix${i}.vue`,
-          root: server.root,
-        })
-      }
-    },
-    timeout,
-  )
+    }
+  })
 })

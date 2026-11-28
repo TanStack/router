@@ -11,8 +11,6 @@
 import { describe, expect, test } from 'vitest'
 import { buildStart } from '../build-start'
 
-const timeout = 60_000
-
 // (an effect at its top level: the bundler keeps the module where an import
 // of it stays)
 const db = `;(globalThis as any).dbLoaded = 'MARK_DB_SERVER'
@@ -25,55 +23,47 @@ export const fn = createServerOnlyFn(() => 1)
 `
 
 describe('rsbuild build', () => {
-  test(
-    'an export default of a define global keeps its value, and what its type names leaves',
-    async () => {
-      const build = await buildStart({
-        bundler: 'rsbuild',
-        files: {
-          'src/db.ts': db,
-          'src/module.ts': `${head}declare const __DEFINED__: { d: typeof db } | string
+  test('an export default of a define global keeps its value, and what its type names leaves', async () => {
+    const build = await buildStart({
+      bundler: 'rsbuild',
+      files: {
+        'src/db.ts': db,
+        'src/module.ts': `${head}declare const __DEFINED__: { d: typeof db } | string
 export default __DEFINED__
 `,
-          'src/entry.ts': `export { default as defined } from './module'\n`,
-        },
-        entry: 'src/entry.ts',
-        rsbuildConfig: {
-          source: { define: { __DEFINED__: JSON.stringify('MARK_DEFINED') } },
-        },
-      })
-      expect({
-        defined: (await build.client.run('return entry.defined')).result,
-        db: build.client.where('MARK_DB_SERVER'),
-      }).toEqual({ defined: 'MARK_DEFINED', db: 'nowhere' })
-    },
-    timeout,
-  )
+        'src/entry.ts': `export { default as defined } from './module'\n`,
+      },
+      entry: 'src/entry.ts',
+      rsbuildConfig: {
+        source: { define: { __DEFINED__: JSON.stringify('MARK_DEFINED') } },
+      },
+    })
+    expect({
+      defined: (await build.client.run('return entry.defined')).result,
+      db: build.client.where('MARK_DB_SERVER'),
+    }).toEqual({ defined: 'MARK_DEFINED', db: 'nowhere' })
+  })
 })
 
 describe('vite build', () => {
   // (Oxc erases the export of an ambient name: an importer gets nothing
   // from it, on main too)
-  test(
-    'an export specifier of a declare const builds, and what its type names leaves',
-    async () => {
-      const build = await buildStart({
-        bundler: 'vite',
-        files: {
-          'src/db.ts': db,
-          'src/module.ts': `${head}declare const ambient: { d: typeof db }
+  test('an export specifier of a declare const builds, and what its type names leaves', async () => {
+    const build = await buildStart({
+      bundler: 'vite',
+      files: {
+        'src/db.ts': db,
+        'src/module.ts': `${head}declare const ambient: { d: typeof db }
 export { ambient }
 export const run = () => 1
 `,
-          'src/entry.ts': `export { run } from './module'\n`,
-        },
-        entry: 'src/entry.ts',
-      })
-      expect({
-        run: (await build.client.run('return entry.run()')).result,
-        db: build.client.where('MARK_DB_SERVER'),
-      }).toEqual({ run: 1, db: 'nowhere' })
-    },
-    timeout,
-  )
+        'src/entry.ts': `export { run } from './module'\n`,
+      },
+      entry: 'src/entry.ts',
+    })
+    expect({
+      run: (await build.client.run('return entry.run()')).result,
+      db: build.client.where('MARK_DB_SERVER'),
+    }).toEqual({ run: 1, db: 'nowhere' })
+  })
 })

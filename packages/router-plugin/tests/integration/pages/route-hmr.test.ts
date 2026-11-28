@@ -240,7 +240,6 @@ export const Route = createFileRoute('/')({ loader: () => 'data', component: Pag
         '<p>SSR <!-- -->data</p>',
       )
     },
-    30_000,
   )
 
   // Source: add-hmr snapshot fixture string-literal-keys.
@@ -317,7 +316,6 @@ function markerOffset(code: string, value: string) {
 // The route HMR plugin that `tanstackRouter` adds in development when
 // automatic code splitting is off, in a Vite dev server.
 describe('route HMR in a Vite dev server without automatic code splitting', () => {
-  const timeout = 30_000
   // Vite's SSR transform serves `import.meta` as `__vite_ssr_import_meta__`;
   // the hot API read as a member, whatever its spelling
   const hasRouteHmr = (code: string) =>
@@ -337,36 +335,32 @@ export const Route = createFileRoute('/')({ loader: () => 'x' })`
   // packages and any support module the compiler imports included. Left
   // out: Vite's own client, and packages the environment externalizes
   // (bare ids: Node loads the installed package itself).
-  test(
-    'serves no route HMR code to an environment plugin.vite.environmentName does not name',
-    async () => {
-      const server = await routerDevServer({
-        pluginOptions: {
-          autoCodeSplitting: false,
-          plugin: { vite: { environmentName: 'client' } },
-        },
-        files: { 'routes/index.tsx': loaderRoute() },
-      })
-      // Positive delivery control: integration/route-hmr-browser-plugin.test.ts
-      // edits an environment-selected loader on a real page. The compiler
-      // may delegate HMR to an imported helper instead of inlining an API.
-      const served = await server.load('/routes/index.tsx', {
-        environment: 'ssr',
-        skip: /^\/@(?:vite|react-refresh)\b|^[^./]/,
-      })
-      for (const [url, code] of Object.entries(served)) {
-        expect(hasRouteHmr(code), url).toBe(false)
-      }
-      // The environment the option names gets route HMR code the check
-      // above recognises (otherwise that check would prove nothing)
-      const client = await server.load('/routes/index.tsx', {
-        environment: 'client',
-        skip: /^\/@(?:vite|react-refresh)\b|^[^./]/,
-      })
-      expect(Object.values(client).some(hasRouteHmr)).toBe(true)
-    },
-    timeout,
-  )
+  test('serves no route HMR code to an environment plugin.vite.environmentName does not name', async () => {
+    const server = await routerDevServer({
+      pluginOptions: {
+        autoCodeSplitting: false,
+        plugin: { vite: { environmentName: 'client' } },
+      },
+      files: { 'routes/index.tsx': loaderRoute() },
+    })
+    // Positive delivery control: integration/route-hmr-browser-plugin.test.ts
+    // edits an environment-selected loader on a real page. The compiler
+    // may delegate HMR to an imported helper instead of inlining an API.
+    const served = await server.load('/routes/index.tsx', {
+      environment: 'ssr',
+      skip: /^\/@(?:vite|react-refresh)\b|^[^./]/,
+    })
+    for (const [url, code] of Object.entries(served)) {
+      expect(hasRouteHmr(code), url).toBe(false)
+    }
+    // The environment the option names gets route HMR code the check
+    // above recognises (otherwise that check would prove nothing)
+    const client = await server.load('/routes/index.tsx', {
+      environment: 'client',
+      skip: /^\/@(?:vite|react-refresh)\b|^[^./]/,
+    })
+    expect(Object.values(client).some(hasRouteHmr)).toBe(true)
+  })
 
   // Stack traces and breakpoints of route files in development.
   test.each(['react', 'solid', 'vue'] as const)(
@@ -409,6 +403,5 @@ export const Route = createFileRoute('/')({
         route.slice(0, route.indexOf("'MARK_THROW '")).split('\n').length,
       )
     },
-    timeout,
   )
 })

@@ -22,8 +22,6 @@ import {
 import type { StartBuild, StartBuildError } from '../../build-harness'
 import type { TanStackStartInputConfig } from '../../../src'
 
-const timeout = 60_000
-
 /**
  * Start's import protection options of a build that fails on a violation,
  * denying `files` to the client.
@@ -123,85 +121,73 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // reported.
   // Source: issue #8102 (closed without a reproduction: Rolldown may elide
   // the barrel from `chunk.modules`).
-  test(
-    'a denied re-export barrel the client uses fails the build',
-    async () => {
-      const report = await failureReport(
-        buildStart({
-          bundler,
-          files: {
-            'src/secret.ts': `export const secret = () => 'MARK_SECRET' + Math.random()\n`,
-            'src/barrel.ts': `export { secret } from './secret'\n`,
-            'src/entry.ts': `import { secret } from './barrel'\nexport const read = () => secret()\n`,
-          },
-          entry: 'src/entry.ts',
-          start: importProtection(['**/barrel.ts']),
-        }),
-      )
-      expect(report.environment).toBe('client')
-      expect(report.importer).toMatch(/^src\/entry\.ts/)
-    },
-    timeout,
-  )
+  test('a denied re-export barrel the client uses fails the build', async () => {
+    const report = await failureReport(
+      buildStart({
+        bundler,
+        files: {
+          'src/secret.ts': `export const secret = () => 'MARK_SECRET' + Math.random()\n`,
+          'src/barrel.ts': `export { secret } from './secret'\n`,
+          'src/entry.ts': `import { secret } from './barrel'\nexport const read = () => secret()\n`,
+        },
+        entry: 'src/entry.ts',
+        start: importProtection(['**/barrel.ts']),
+      }),
+    )
+    expect(report.environment).toBe('client')
+    expect(report.importer).toMatch(/^src\/entry\.ts/)
+  })
 
   // Import protection's `include` may reach a dependency: it is judged like
   // a module of the app, though its text names no Start API.
-  test(
-    'a dependency import protection includes fails the build with the denied import it uses',
-    async () => {
-      const report = await failureReport(
-        buildStart({
-          bundler,
-          files: {
-            'node_modules/lib/package.json': JSON.stringify({
-              name: 'lib',
-              type: 'module',
-              exports: './index.js',
-            }),
-            'node_modules/lib/index.js': `import { secret } from './secret.js'\nexport const read = () => secret()\n`,
-            'node_modules/lib/secret.js': `export const secret = () => 'MARK_SECRET' + Math.random()\n`,
-            'src/entry.ts': `export { read } from 'lib'\n`,
+  test('a dependency import protection includes fails the build with the denied import it uses', async () => {
+    const report = await failureReport(
+      buildStart({
+        bundler,
+        files: {
+          'node_modules/lib/package.json': JSON.stringify({
+            name: 'lib',
+            type: 'module',
+            exports: './index.js',
+          }),
+          'node_modules/lib/index.js': `import { secret } from './secret.js'\nexport const read = () => secret()\n`,
+          'node_modules/lib/secret.js': `export const secret = () => 'MARK_SECRET' + Math.random()\n`,
+          'src/entry.ts': `export { read } from 'lib'\n`,
+        },
+        entry: 'src/entry.ts',
+        start: {
+          importProtection: {
+            behavior: 'error',
+            include: ['src/**', 'node_modules/lib/**'],
+            client: { files: ['**/lib/secret.js'], excludeFiles: [] },
           },
-          entry: 'src/entry.ts',
-          start: {
-            importProtection: {
-              behavior: 'error',
-              include: ['src/**', 'node_modules/lib/**'],
-              client: { files: ['**/lib/secret.js'], excludeFiles: [] },
-            },
-          },
-        }),
-      )
-      expect(report.environment).toBe('client')
-      expect(report.importer).toMatch(/^node_modules\/lib\/index\.js/)
-    },
-    timeout,
-  )
+        },
+      }),
+    )
+    expect(report.environment).toBe('client')
+    expect(report.importer).toMatch(/^node_modules\/lib\/index\.js/)
+  })
 
-  test(
-    'a file with both a server-only and a client-only marker fails the build, naming the file',
-    async () => {
-      const error = await rejection(
-        buildStart({
-          bundler,
-          files: {
-            'src/both.ts': `import '@tanstack/react-start/server-only'
+  test('a file with both a server-only and a client-only marker fails the build, naming the file', async () => {
+    const error = await rejection(
+      buildStart({
+        bundler,
+        files: {
+          'src/both.ts': `import '@tanstack/react-start/server-only'
 import '@tanstack/react-start/client-only'
 export const value = 1
 `,
-            'src/entry.ts': `import { value } from './both'\nexport const read = () => value\n`,
-          },
-          entry: 'src/entry.ts',
-          start: importProtection(),
-        }),
-      )
-      expectDiagnostic(everyChannel(error), {
-        severity: 'error',
-        file: 'src/both.ts',
-      })
-    },
-    timeout,
-  )
+          'src/entry.ts': `import { value } from './both'\nexport const read = () => value\n`,
+        },
+        entry: 'src/entry.ts',
+        start: importProtection(),
+      }),
+    )
+    expectDiagnostic(everyChannel(error), {
+      severity: 'error',
+      file: 'src/both.ts',
+    })
+  })
 })
 
 // Start's default import protection (no options): the defaults deny
@@ -347,7 +333,6 @@ export const read = () => secret()
           .sort(),
       )
     },
-    timeout,
   )
 
   // Each violation carries the rule that matched (the file pattern, or the
@@ -381,52 +366,39 @@ export const read = () => secret()
       ])
       expect(matched).toContain(rule)
     },
-    timeout,
   )
 
-  test(
-    'a server import of a *.client.* file fails the build, naming the importer at the use or the import, and the rule',
-    async () => {
-      const { recorded, rule } = await failureOf('clientFile')
-      expectViolationsAt(recorded, [
-        {
-          environment: 'server',
-          use: at('clientFile', 'server.ts', ':2:27'),
-          also: [at('clientFile', 'server.ts', ':1')],
-        },
-      ])
-      expect(rule).toContain('**/*.client.*')
-    },
-    timeout,
-  )
+  test('a server import of a *.client.* file fails the build, naming the importer at the use or the import, and the rule', async () => {
+    const { recorded, rule } = await failureOf('clientFile')
+    expectViolationsAt(recorded, [
+      {
+        environment: 'server',
+        use: at('clientFile', 'server.ts', ':2:27'),
+        also: [at('clientFile', 'server.ts', ':1')],
+      },
+    ])
+    expect(rule).toContain('**/*.client.*')
+  })
 
-  test(
-    'a client import of a server-only-marked module fails the build, naming the module and its importer',
-    async () => {
-      const { report } = await failureOf('marked')
-      expect(report.environment).toBe('client')
-      expectMarkerViolation(report, {
-        marker: at('marked', 'marked.ts', ':1'),
-        use: at('marked', 'entry.ts', ':2:27'),
-        imports: [at('marked', 'entry.ts', ':1')],
-      })
-    },
-    timeout,
-  )
+  test('a client import of a server-only-marked module fails the build, naming the module and its importer', async () => {
+    const { report } = await failureOf('marked')
+    expect(report.environment).toBe('client')
+    expectMarkerViolation(report, {
+      marker: at('marked', 'marked.ts', ':1'),
+      use: at('marked', 'entry.ts', ':2:27'),
+      imports: [at('marked', 'entry.ts', ':1')],
+    })
+  })
 
-  test(
-    'a server import of a client-only-marked module fails the build, naming the module and its importer',
-    async () => {
-      const { report } = await failureOf('clientMarked')
-      expect(report.environment).toBe('server')
-      expectMarkerViolation(report, {
-        marker: at('clientMarked', 'marked.ts', ':1'),
-        use: at('clientMarked', 'server.ts', ':2:27'),
-        imports: [at('clientMarked', 'server.ts', ':1')],
-      })
-    },
-    timeout,
-  )
+  test('a server import of a client-only-marked module fails the build, naming the module and its importer', async () => {
+    const { report } = await failureOf('clientMarked')
+    expect(report.environment).toBe('server')
+    expectMarkerViolation(report, {
+      marker: at('clientMarked', 'marked.ts', ':1'),
+      use: at('clientMarked', 'server.ts', ':2:27'),
+      imports: [at('clientMarked', 'server.ts', ':1')],
+    })
+  })
 
   // Several modules import the marked module (directly and through a
   // re-export), so the marker check sees it imported after it has seen its
@@ -471,20 +443,15 @@ export const read = () => secret() + '|' + d()
       )
       expect(reportedViolations(built)).toEqual([])
     },
-    timeout,
   )
 
-  test(
-    'enabled: false checks nothing: the client gets the real module',
-    async () => {
-      expect(
-        await clientRead(bundler, appUsing('a denied file'), {
-          importProtection: { enabled: false },
-        }),
-      ).toEqual({ hasRealCode: true, ranReal: true, warnings: [] })
-    },
-    timeout,
-  )
+  test('enabled: false checks nothing: the client gets the real module', async () => {
+    expect(
+      await clientRead(bundler, appUsing('a denied file'), {
+        importProtection: { enabled: false },
+      }),
+    ).toEqual({ hasRealCode: true, ranReal: true, warnings: [] })
+  })
 })
 
 // A build reports the denied imports that survive tree-shaking: "If an import
@@ -493,29 +460,25 @@ export const read = () => secret() + '|' + d()
 // re-exported through a mixed barrel that the client never uses).
 // Source: mutation testing (generateBundle's survival check).
 describe.each(startBundlers)('%s build, tree-shaken imports', (bundler) => {
-  test(
-    'a server-only-marked module re-exported by a barrel the client uses other exports of builds without any report',
-    async () => {
-      const build = await buildStart({
-        bundler,
-        files: {
-          ...deniedModules['a server-only-marked module'].files,
-          'src/barrel.ts': `export { secret } from './marked'
+  test('a server-only-marked module re-exported by a barrel the client uses other exports of builds without any report', async () => {
+    const build = await buildStart({
+      bundler,
+      files: {
+        ...deniedModules['a server-only-marked module'].files,
+        'src/barrel.ts': `export { secret } from './marked'
 export const label = () => 'client'
 `,
-          'src/entry.ts': `import { label } from './barrel'
+        'src/entry.ts': `import { label } from './barrel'
 export const read = () => label()
 `,
-        },
-        entry: 'src/entry.ts',
-      })
-      const { client } = build
-      expect({
-        reported: reportedViolations(build),
-        hasRealCode: client.where('MARK_SECRET') !== 'nowhere',
-        read: (await client.run(`return entry.read()`)).result,
-      }).toEqual({ reported: [], hasRealCode: false, read: 'client' })
-    },
-    timeout,
-  )
+      },
+      entry: 'src/entry.ts',
+    })
+    const { client } = build
+    expect({
+      reported: reportedViolations(build),
+      hasRealCode: client.where('MARK_SECRET') !== 'nowhere',
+      read: (await client.run(`return entry.read()`)).result,
+    }).toEqual({ reported: [], hasRealCode: false, read: 'client' })
+  })
 })

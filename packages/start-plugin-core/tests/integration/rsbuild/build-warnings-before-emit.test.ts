@@ -11,8 +11,6 @@ import { appManifest } from '../../package-layouts'
 import { uiKit, workerApp } from './worker-warning-apps'
 import type { Rspack } from '@rsbuild/core'
 
-const timeout = 120_000
-
 /** An app's policy: a compilation with a warning once it sealed fails. */
 const noWarnings = {
   apply(compiler: Rspack.Compiler) {
@@ -34,38 +32,30 @@ const noWarnings = {
 describe('rsbuild build: an app plugin that fails a compilation with warnings once it sealed', () => {
   const { 'src/worker.ts': _worker, ...files } = workerApp({ page: true })
 
-  test(
-    'a page imports a package that uses Start and does not declare it: the build fails',
-    async () => {
-      await expect(
-        buildStart({
-          bundler: 'rsbuild',
-          packageJson: appManifest([uiKit]),
-          files,
-          rsbuildConfig: { tools: { rspack: { plugins: [noWarnings] } } },
-        }),
-      ).rejects.toThrow(/POLICY: 1 warning/)
-    },
-    timeout,
-  )
-
-  test(
-    'control, the package declares Start: the build passes',
-    async () => {
-      const manifest = `${uiKit.directory}/package.json`
-      await buildStart({
+  test('a page imports a package that uses Start and does not declare it: the build fails', async () => {
+    await expect(
+      buildStart({
         bundler: 'rsbuild',
         packageJson: appManifest([uiKit]),
-        files: {
-          ...files,
-          [manifest]: JSON.stringify({
-            ...JSON.parse(uiKit.files[manifest] ?? '{}'),
-            peerDependencies: { '@tanstack/react-start': '*' },
-          }),
-        },
+        files,
         rsbuildConfig: { tools: { rspack: { plugins: [noWarnings] } } },
-      })
-    },
-    timeout,
-  )
+      }),
+    ).rejects.toThrow(/POLICY: 1 warning/)
+  })
+
+  test('control, the package declares Start: the build passes', async () => {
+    const manifest = `${uiKit.directory}/package.json`
+    await buildStart({
+      bundler: 'rsbuild',
+      packageJson: appManifest([uiKit]),
+      files: {
+        ...files,
+        [manifest]: JSON.stringify({
+          ...JSON.parse(uiKit.files[manifest] ?? '{}'),
+          peerDependencies: { '@tanstack/react-start': '*' },
+        }),
+      },
+      rsbuildConfig: { tools: { rspack: { plugins: [noWarnings] } } },
+    })
+  })
 })

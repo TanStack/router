@@ -59,5 +59,5 @@ describe.each([
       mapUrl: server.file('src/mapped.ts'),
       line: 3,
     })
-  }, 30_000)
+  })
 })

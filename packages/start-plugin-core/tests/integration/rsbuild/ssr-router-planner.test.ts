@@ -13,17 +13,13 @@ import { loadedModulesExpression } from '@tanstack/compiler-test-utils/importers
 import { buildStart } from '../../build-start'
 import { routeFiles } from '../start-build-route-app'
 
-const timeout = 60_000
-
-test(
-  'the SSR build splits the route as the client build does, and renders it',
-  async () => {
-    const { client, ssr } = await buildStart({
-      bundler: 'rsbuild',
-      files: routeFiles,
-      entry: 'src/entry.ts',
-    })
-    const script = `const loaded = () => [...${loadedModulesExpression}]
+test('the SSR build splits the route as the client build does, and renders it', async () => {
+  const { client, ssr } = await buildStart({
+    bundler: 'rsbuild',
+    files: routeFiles,
+    entry: 'src/entry.ts',
+  })
+  const script = `const loaded = () => [...${loadedModulesExpression}]
 const atStart = loaded()
 const route = Object.values(entry.getRouter().routeTree.children).find(
   (candidate) => candidate.options.id === '/',
@@ -35,16 +31,14 @@ return {
   preloaded: loaded().includes('component'),
   page: await entry.renderPath(entry.getRouter().routeTree, '/'),
 }`
-    const expected = {
-      loader: 'eager',
-      component: 'lazy',
-      preloaded: true,
-      page: expect.stringContaining('MARK_COMPONENT'),
-    }
-    expect({
-      client: (await client.run(script)).result,
-      ssr: (await ssr.run(script)).result,
-    }).toEqual({ client: expected, ssr: expected })
-  },
-  timeout,
-)
+  const expected = {
+    loader: 'eager',
+    component: 'lazy',
+    preloaded: true,
+    page: expect.stringContaining('MARK_COMPONENT'),
+  }
+  expect({
+    client: (await client.run(script)).result,
+    ssr: (await ssr.run(script)).result,
+  }).toEqual({ client: expected, ssr: expected })
+})

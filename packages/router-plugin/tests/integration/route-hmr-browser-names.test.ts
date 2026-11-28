@@ -26,7 +26,6 @@ const withoutLoaderErrors = (errors: Array<string>) =>
 // block, an assignment pattern.
 describe.each(['vite', 'rsbuild'] as const)(
   '%s: a lowercase component destructured with a default',
-  { timeout: 60_000 },
   (bundler) => {
     const route =
       (declared: string) =>
@@ -75,7 +74,7 @@ export const Route = createFileRoute('/')({ component: comp })
   },
 )
 
-describe('vite: React route components', { timeout: 60_000 }, () => {
+describe('vite: React route components', () => {
   /**
    * A route at `/` whose `mode` search parameter picks what the page shows:
    * its component (no mode), its error component (`error`: the loader

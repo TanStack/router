@@ -11,8 +11,6 @@ import { expect, test } from 'vitest'
 import { buildStart } from '../../build-start'
 import { rsbuildEntries } from '../route-css-cases'
 
-const timeout = 60_000
-
 const files = {
   ...rsbuildEntries,
   'src/routes/__root.tsx': `import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'
@@ -48,26 +46,22 @@ async function scriptStatuses(url: string): Promise<Record<string, number>> {
   return statuses
 }
 
-test(
-  'a build from the cache after an edit links the client entry it emitted',
-  async () => {
-    const cold = await buildStart({
-      bundler: 'rsbuild',
-      rsbuildConfig: { performance: { buildCache: true } },
-      files,
-    })
-    const warm = await cold.rebuild({
-      'src/routes/index.tsx': files['src/routes/index.tsx'].replace(
-        'MARK_FIRST',
-        'MARK_EDITED',
-      ),
-    })
-    const { url } = await warm.preview()
-    const statuses = await scriptStatuses(url)
-    expect(Object.keys(statuses)).not.toEqual([])
-    expect(
-      Object.entries(statuses).filter(([, status]) => status !== 200),
-    ).toEqual([])
-  },
-  timeout,
-)
+test('a build from the cache after an edit links the client entry it emitted', async () => {
+  const cold = await buildStart({
+    bundler: 'rsbuild',
+    rsbuildConfig: { performance: { buildCache: true } },
+    files,
+  })
+  const warm = await cold.rebuild({
+    'src/routes/index.tsx': files['src/routes/index.tsx'].replace(
+      'MARK_FIRST',
+      'MARK_EDITED',
+    ),
+  })
+  const { url } = await warm.preview()
+  const statuses = await scriptStatuses(url)
+  expect(Object.keys(statuses)).not.toEqual([])
+  expect(
+    Object.entries(statuses).filter(([, status]) => status !== 200),
+  ).toEqual([])
+})

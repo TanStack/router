@@ -19,7 +19,6 @@ import { build } from '../build-harness'
 import { expectValidModules, loadRoute } from '../route-app'
 
 const RP = '@tanstack/react-router'
-const timeout = 60_000
 
 const rootFile = `import { Outlet, createRootRoute } from '${RP}'
 export const Route = createRootRoute({ component: () => <Outlet /> })
@@ -258,7 +257,6 @@ export const Route = createFileRoute('/')(${page})
 describe('a listed route the code splitter does not read', () => {
   it.for(rows)(
     '$name is reported (unless quiet), and the offered fix is read',
-    { timeout },
     async ({ file, files, fixed, split, at, quiet }) => {
       const before = await buildApp(files)
       if (quiet) {
@@ -290,34 +288,30 @@ describe('a listed route the code splitter does not read', () => {
 
 // (a dev server: the production build of such an app fails on the name
 // the type-only import leaves undeclared)
-it(
-  'a route constructor imported as a type only is reported, and the offered fix is read',
-  { timeout },
-  async () => {
-    const before = await loadRoute(
-      `import type { createFileRoute } from '${RP}'
+it('a route constructor imported as a type only is reported, and the offered fix is read', async () => {
+  const before = await loadRoute(
+    `import type { createFileRoute } from '${RP}'
 export const Route = createFileRoute('/x')(${page})
 `,
-      { routeId: '/x', fresh: true },
-    )
-    await before.transform()
-    expectDiagnostic(await before.diagnostics(), {
-      severity: 'warning',
-      file: 'route.tsx',
-      root: before.host.root,
-    })
+    { routeId: '/x', fresh: true },
+  )
+  await before.transform()
+  expectDiagnostic(await before.diagnostics(), {
+    severity: 'warning',
+    file: 'route.tsx',
+    root: before.host.root,
+  })
 
-    const after = await loadRoute(
-      `import { createFileRoute } from '${RP}'
+  const after = await loadRoute(
+    `import { createFileRoute } from '${RP}'
 export const Route = createFileRoute('/x')(${page})
 `,
-      { routeId: '/x', fresh: true },
-    )
-    await expectValidModules(after)
-    expect(await after.isLazy('component')).toBe(true)
-    expectNoProblems(await after.diagnostics())
-  },
-)
+    { routeId: '/x', fresh: true },
+  )
+  await expectValidModules(after)
+  expect(await after.isLazy('component')).toBe(true)
+  expectNoProblems(await after.diagnostics())
+})
 
 const helper = {
   'lib/app-route.ts': `import { createFileRoute } from '${RP}'
@@ -344,7 +338,7 @@ export const makeRoute = createFileRoute
 export const Route = createAppRoute('/')(${page})
 `,
     },
-  ])('$name is reported nothing', { timeout }, async ({ route }) => {
+  ])('$name is reported nothing', async ({ route }) => {
     const { diagnostics } = await buildApp({
       ...helper,
       'routes/index.tsx': route,

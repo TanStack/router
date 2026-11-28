@@ -23,8 +23,6 @@ import {
 import { buildStart } from '../build-start'
 import type { StartBuild } from '../build-harness'
 
-const timeout = 60_000
-
 /** An app with server fns in two modules, a route and a lazy module. */
 const appFiles: Record<string, string> = {
   'src/a.ts': `import { createServerFn } from '@tanstack/react-start'
@@ -128,56 +126,48 @@ function expectAgreement(observation: Awaited<ReturnType<typeof observe>>) {
 }
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  test(
-    'the same app built again at the same root gives the same ids and results, and the same ids in another discovery order',
-    async () => {
-      const first = await buildStart({
-        bundler,
-        files: { ...appFiles, ...entries(['a', 'b']) },
-        entry,
-      })
-      const firstObservation = await observe(first)
-      expectAgreement(firstObservation)
-      // Built again, unchanged: the same ids and results. (Equal bytes and
-      // chunk names are not required, SPEC §8.)
-      const again = await first.rebuild()
-      expect(await observe(again)).toEqual(firstObservation)
-      // The entry imports the modules in the opposite order: same ids.
-      await expectDeterministic(
-        [
-          firstObservation,
-          await observe(await again.rebuild(entries(['b', 'a']))),
-        ],
-        (observation) => observation,
-      )
-    },
-    timeout,
-  )
+  test('the same app built again at the same root gives the same ids and results, and the same ids in another discovery order', async () => {
+    const first = await buildStart({
+      bundler,
+      files: { ...appFiles, ...entries(['a', 'b']) },
+      entry,
+    })
+    const firstObservation = await observe(first)
+    expectAgreement(firstObservation)
+    // Built again, unchanged: the same ids and results. (Equal bytes and
+    // chunk names are not required, SPEC §8.)
+    const again = await first.rebuild()
+    expect(await observe(again)).toEqual(firstObservation)
+    // The entry imports the modules in the opposite order: same ids.
+    await expectDeterministic(
+      [
+        firstObservation,
+        await observe(await again.rebuild(entries(['b', 'a']))),
+      ],
+      (observation) => observation,
+    )
+  })
 
   // Relocation (SPEC G4) requires correctness at each root, not equal ids.
-  test(
-    'the same app at another root builds correctly: within each build the client ids run their handlers',
-    async () => {
-      const builds: Record<string, StartBuild> = {}
-      await expectRelocatable(
-        ['first', 'second'],
-        async (name) => {
-          builds[name] = await buildStart({
-            bundler,
-            files: { ...appFiles, ...entries(['a', 'b']) },
-            entry,
-          })
-          return observe(builds[name])
-        },
-        {
-          check: expectAgreement,
-          portable: (observation) => observation.results,
-        },
-      )
-      expect(builds.first!.client.root).not.toBe(builds.second!.client.root)
-    },
-    timeout,
-  )
+  test('the same app at another root builds correctly: within each build the client ids run their handlers', async () => {
+    const builds: Record<string, StartBuild> = {}
+    await expectRelocatable(
+      ['first', 'second'],
+      async (name) => {
+        builds[name] = await buildStart({
+          bundler,
+          files: { ...appFiles, ...entries(['a', 'b']) },
+          entry,
+        })
+        return observe(builds[name])
+      },
+      {
+        check: expectAgreement,
+        portable: (observation) => observation.results,
+      },
+    )
+    expect(builds.first!.client.root).not.toBe(builds.second!.client.root)
+  })
 
   // A `generateFunctionId` giving two server fns the same id: the build
   // de-duplicates them with a suffix (`same-id`, `same-id_1`; docs
@@ -210,7 +200,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
       reordered = await observe(
         await build.rebuild(collisionEntries(['b', 'a'])),
       )
-    }, timeout)
+    }, 60_000)
 
     test('each client id runs its own handler in the SSR build in either discovery order', () => {
       for (const observation of [oppositeEnvironments, first, reordered]) {

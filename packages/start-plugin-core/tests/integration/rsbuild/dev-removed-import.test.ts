@@ -16,8 +16,6 @@ import { solidAppConfig } from '../hydrate-pages'
 
 type Fw = 'react' | 'solid'
 
-const timeout = 90_000
-
 /** `src/routes/index.tsx`: its component renders `label` of `src/dep.ts`. */
 const route = (fw: Fw, step: number) =>
   `import { createFileRoute } from '@tanstack/${fw}-router'
@@ -79,6 +77,5 @@ describe('Rsbuild dev: a file a route component reads, deleted and restored', ()
       }
       expect(page.loads() - restored).toBe(0)
     },
-    timeout,
   )
 })

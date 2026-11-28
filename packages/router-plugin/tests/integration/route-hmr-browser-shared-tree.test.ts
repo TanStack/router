@@ -22,8 +22,6 @@ import {
   widgetTree,
 } from './route-hmr-two-routers-cases'
 
-const timeout = 90_000
-
 const sharedMains = {
   'a second router created last, never mounted': `import { createRoot } from 'react-dom/client'
 import { RouterProvider, createMemoryHistory, createRouter } from '@tanstack/react-router'
@@ -63,7 +61,6 @@ describe.each(['vite', 'rsbuild'] as const)(
   (bundler) => {
     it.for(Object.keys(sharedMains) as Array<keyof typeof sharedMains>)(
       'a loader edit shows in every router of the tree (%s)',
-      { timeout },
       async (name, { expect, openRouteHmrPage }) => {
         const mounted = name === 'a second router created last, mounted'
         const app = await openRouteHmrPage({
@@ -123,131 +120,125 @@ describe.each([
     // (an instance compiling the other's routes would refresh them on its
     // edits, or split them twice; `generator and splitter`: each tree's
     // pair shares a context of its own, TanStack/router#7313)
-    it(
-      "an edit of each tree's route `/` shows in its own router, whose loader runs once; the other tree's `/` keeps its code",
-      { timeout },
-      async ({ expect, openRouteHmrPage }) => {
-        const app = await openRouteHmrPage({
-          bundler,
-          target,
-          moreRouteTrees: [widgetTree],
-          explicitContext: plugins === 'generator and splitter',
-          files: {
-            'main.tsx': twoTrees(target),
-            'routes/index.tsx': loaderRoute(
-              target,
-              'app v1',
-              'Page',
-              '__appRuns',
-            ),
-            'widget-routes/__root.tsx': root(target),
-            'widget-routes/index.tsx': loaderRoute(
-              target,
-              'widget v1',
-              'Widget',
-              '__widgetRuns',
-            ),
-          },
-          ready: 'app v1',
-        })
-        await app.page.waitForText('widget v1', { selector: '#widget' })
-        const edits = [
-          { file: 'routes/index.tsx', shows: 'app v2', ran: 'app' },
-          { file: 'routes/index.tsx', shows: 'app v3', ran: 'app' },
+    it("an edit of each tree's route `/` shows in its own router, whose loader runs once; the other tree's `/` keeps its code", async ({
+      expect,
+      openRouteHmrPage,
+    }) => {
+      const app = await openRouteHmrPage({
+        bundler,
+        target,
+        moreRouteTrees: [widgetTree],
+        explicitContext: plugins === 'generator and splitter',
+        files: {
+          'main.tsx': twoTrees(target),
+          'routes/index.tsx': loaderRoute(
+            target,
+            'app v1',
+            'Page',
+            '__appRuns',
+          ),
+          'widget-routes/__root.tsx': root(target),
+          'widget-routes/index.tsx': loaderRoute(
+            target,
+            'widget v1',
+            'Widget',
+            '__widgetRuns',
+          ),
+        },
+        ready: 'app v1',
+      })
+      await app.page.waitForText('widget v1', { selector: '#widget' })
+      const edits = [
+        { file: 'routes/index.tsx', shows: 'app v2', ran: 'app' },
+        { file: 'routes/index.tsx', shows: 'app v3', ran: 'app' },
+        {
+          file: 'widget-routes/index.tsx',
+          shows: 'widget v2',
+          ran: 'widget',
+        },
+      ] as const
+      let last = {
+        app: 'app v1',
+        widget: 'widget v1',
+        appRuns: 1,
+        widgetRuns: 1,
+      }
+      for (const { file, shows, ran } of edits) {
+        const result = await app.edit(
           {
-            file: 'widget-routes/index.tsx',
-            shows: 'widget v2',
-            ran: 'widget',
+            [file]:
+              ran === 'app'
+                ? loaderRoute(target, shows, 'Page', '__appRuns')
+                : loaderRoute(target, shows, 'Widget', '__widgetRuns'),
           },
-        ] as const
-        let last = {
-          app: 'app v1',
-          widget: 'widget v1',
-          appRuns: 1,
-          widgetRuns: 1,
+          // (the edit's outcome is read in `#app`: the app's text, which a
+          // widget edit leaves as it is)
+          ran === 'app' ? shows : last.app,
+        )
+        await app.page.waitForText(shows, { selector: `#${ran}` })
+        const expected = {
+          ...last,
+          [ran]: shows,
+          [`${ran}Runs`]: last[`${ran}Runs`] + 1,
         }
-        for (const { file, shows, ran } of edits) {
-          const result = await app.edit(
-            {
-              [file]:
-                ran === 'app'
-                  ? loaderRoute(target, shows, 'Page', '__appRuns')
-                  : loaderRoute(target, shows, 'Widget', '__widgetRuns'),
-            },
-            // (the edit's outcome is read in `#app`: the app's text, which a
-            // widget edit leaves as it is)
-            ran === 'app' ? shows : last.app,
-          )
-          await app.page.waitForText(shows, { selector: `#${ran}` })
-          const expected = {
-            ...last,
-            [ran]: shows,
-            [`${ran}Runs`]: last[`${ran}Runs`] + 1,
-          }
-          expect({
-            ...(await app.evaluate<typeof last>(state)),
-            errors: result.errors,
-            loads: app.loads(),
-          }).toEqual({ ...expected, errors: [], loads: 1 })
-          // the other tree's router loads its route again: it still renders
-          // its own code
-          const other = ran === 'app' ? 'widget' : 'app'
-          await app.evaluate(
-            `window.${other === 'app' ? '__APP_ROUTER__' : '__WIDGET_ROUTER__'}.invalidate()`,
-          )
-          await app.page.waitForText(expected[other], { selector: `#${other}` })
-          last = await app.evaluate<typeof last>(state)
-          expect(last).toEqual({
-            ...expected,
-            [`${other}Runs`]: expected[`${other}Runs`] + 1,
-          })
-        }
-      },
-    )
-
-    it(
-      "an edit of the app tree's lazy route file shows in the app's router; the other tree's keeps its code",
-      { timeout },
-      async ({ expect, openRouteHmrPage }) => {
-        const app = await openRouteHmrPage({
-          bundler,
-          target,
-          moreRouteTrees: [widgetTree],
-          explicitContext: plugins === 'generator and splitter',
-          files: {
-            'main.tsx': twoTrees(target),
-            'routes/index.tsx': emptyRoute(target),
-            'routes/index.lazy.tsx': lazyFile(target, 'app v1'),
-            'widget-routes/__root.tsx': root(target),
-            'widget-routes/index.tsx': emptyRoute(target),
-            'widget-routes/index.lazy.tsx': lazyFile(
-              target,
-              'widget',
-              'Widget',
-            ),
-          },
-          ready: 'app v1',
+        expect({
+          ...(await app.evaluate<typeof last>(state)),
+          errors: result.errors,
+          loads: app.loads(),
+        }).toEqual({ ...expected, errors: [], loads: 1 })
+        // the other tree's router loads its route again: it still renders
+        // its own code
+        const other = ran === 'app' ? 'widget' : 'app'
+        await app.evaluate(
+          `window.${other === 'app' ? '__APP_ROUTER__' : '__WIDGET_ROUTER__'}.invalidate()`,
+        )
+        await app.page.waitForText(expected[other], { selector: `#${other}` })
+        last = await app.evaluate<typeof last>(state)
+        expect(last).toEqual({
+          ...expected,
+          [`${other}Runs`]: expected[`${other}Runs`] + 1,
         })
-        await app.page.waitForText('widget', { selector: '#widget' })
-        for (const n of [2, 3]) {
-          const result = await app.edit(
-            { 'routes/index.lazy.tsx': lazyFile(target, `app v${n}`) },
-            `app v${n}`,
-          )
-          await app.evaluate('window.__WIDGET_ROUTER__.invalidate()')
-          expect({
-            app: await app.page.text('#app'),
-            widget: await app.page.text('#widget'),
-            errors: result.errors,
-            loads: app.loads(),
-          }).toEqual({
-            app: `app v${n}`,
-            widget: 'widget',
-            errors: [],
-            loads: 1,
-          })
-        }
-      },
-    )
+      }
+    })
+
+    it("an edit of the app tree's lazy route file shows in the app's router; the other tree's keeps its code", async ({
+      expect,
+      openRouteHmrPage,
+    }) => {
+      const app = await openRouteHmrPage({
+        bundler,
+        target,
+        moreRouteTrees: [widgetTree],
+        explicitContext: plugins === 'generator and splitter',
+        files: {
+          'main.tsx': twoTrees(target),
+          'routes/index.tsx': emptyRoute(target),
+          'routes/index.lazy.tsx': lazyFile(target, 'app v1'),
+          'widget-routes/__root.tsx': root(target),
+          'widget-routes/index.tsx': emptyRoute(target),
+          'widget-routes/index.lazy.tsx': lazyFile(target, 'widget', 'Widget'),
+        },
+        ready: 'app v1',
+      })
+      await app.page.waitForText('widget', { selector: '#widget' })
+      for (const n of [2, 3]) {
+        const result = await app.edit(
+          { 'routes/index.lazy.tsx': lazyFile(target, `app v${n}`) },
+          `app v${n}`,
+        )
+        await app.evaluate('window.__WIDGET_ROUTER__.invalidate()')
+        expect({
+          app: await app.page.text('#app'),
+          widget: await app.page.text('#widget'),
+          errors: result.errors,
+          loads: app.loads(),
+        }).toEqual({
+          app: `app v${n}`,
+          widget: 'widget',
+          errors: [],
+          loads: 1,
+        })
+      }
+    })
   },
 )

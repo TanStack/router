@@ -24,8 +24,6 @@ import {
   startRscRsbuildPreviewServer,
 } from './rsc-serial'
 
-const timeout = 60_000
-
 /** What the app's import protection reported (`onViolation`). */
 interface Violation {
   env: string
@@ -158,60 +156,48 @@ const devHosts = {
 describe.each(Object.keys(devHosts) as Array<keyof typeof devHosts>)(
   '%s with RSC',
   (host) => {
-    test(
-      'the provider judges the files its react-server condition resolves',
-      async () => {
-        const { violations, start } = recorder()
-        const { env, page } = await devHosts[host](start)
-        // (the denied files are served as their mocks)
-        expect(page).toContain('MARK_SERVER MARK_SERVER')
-        expect(page).not.toMatch(/MARK_LEAK_|MARK_PLAIN|MARK_CLIENT_/)
-        expect(summary(violations)).toEqual(leakViolations(env))
-      },
-      timeout,
-    )
+    test('the provider judges the files its react-server condition resolves', async () => {
+      const { violations, start } = recorder()
+      const { env, page } = await devHosts[host](start)
+      // (the denied files are served as their mocks)
+      expect(page).toContain('MARK_SERVER MARK_SERVER')
+      expect(page).not.toMatch(/MARK_LEAK_|MARK_PLAIN|MARK_CLIENT_/)
+      expect(summary(violations)).toEqual(leakViolations(env))
+    })
   },
 )
 
 describe('Rsbuild build with RSC', () => {
-  test(
-    'a file only the default condition names is not reported',
-    async () => {
-      const { violations, start } = recorder()
-      const server = await startRscRsbuildPreviewServer({
-        start,
-        files: {
-          'package.json': packageJson(whereImports),
-          ...whereFiles,
-          ...appFiles(['#where', '#whereMarked']),
-        },
-      })
-      expect(server.errors).toEqual([])
-      expect(summary(violations)).toEqual([])
-      const page = await (await fetch(new URL('/', server.url))).text()
-      expect(page).toContain('MARK_SERVER MARK_SERVER')
-    },
-    timeout,
-  )
+  test('a file only the default condition names is not reported', async () => {
+    const { violations, start } = recorder()
+    const server = await startRscRsbuildPreviewServer({
+      start,
+      files: {
+        'package.json': packageJson(whereImports),
+        ...whereFiles,
+        ...appFiles(['#where', '#whereMarked']),
+      },
+    })
+    expect(server.errors).toEqual([])
+    expect(summary(violations)).toEqual([])
+    const page = await (await fetch(new URL('/', server.url))).text()
+    expect(page).toContain('MARK_SERVER MARK_SERVER')
+  })
 
-  test(
-    'a denied file only the react-server condition names fails the build',
-    async () => {
-      const { violations, start } = recorder()
-      const built = await startRscRsbuildPreviewServer({
-        start,
-        files: {
-          'package.json': packageJson(leakImports),
-          ...leakFiles,
-          ...appFiles(['#leak', '#leakMarked']),
-        },
-      }).then(
-        () => null,
-        (error: unknown) => error,
-      )
-      expect(built).toBeInstanceOf(AggregateError)
-      expect(summary(violations)).toEqual(leakViolations('rsc'))
-    },
-    timeout,
-  )
+  test('a denied file only the react-server condition names fails the build', async () => {
+    const { violations, start } = recorder()
+    const built = await startRscRsbuildPreviewServer({
+      start,
+      files: {
+        'package.json': packageJson(leakImports),
+        ...leakFiles,
+        ...appFiles(['#leak', '#leakMarked']),
+      },
+    }).then(
+      () => null,
+      (error: unknown) => error,
+    )
+    expect(built).toBeInstanceOf(AggregateError)
+    expect(summary(violations)).toEqual(leakViolations('rsc'))
+  })
 })

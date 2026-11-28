@@ -26,8 +26,7 @@ import type {
 } from './client-pages'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'
 
-const timeout = 60_000
-const compileTimeout = timeout
+const compileTimeout = 60_000
 
 /** A module using `name` of the denied file `target` (a default export). */
 const use = (target: string, name: string) =>
@@ -126,13 +125,9 @@ describe('rsbuild dev', () => {
     }
   }
 
-  test(
-    "an importer neither exempt nor allowed, reached from the app's client entry, gets a safe mock and is reported",
-    async () => {
-      expect(await client('plain', 'src/app/plain.ts')).toEqual(mocked)
-    },
-    timeout,
-  )
+  test("an importer neither exempt nor allowed, reached from the app's client entry, gets a safe mock and is reported", async () => {
+    expect(await client('plain', 'src/app/plain.ts')).toEqual(mocked)
+  })
 
   /** The importers exempted or allowed, by how. */
   const permitted = [
@@ -161,27 +156,22 @@ describe('rsbuild dev', () => {
         reported: false,
       })
     },
-    timeout,
   )
 
-  test(
-    "an import of a .client file reached from the app's server entry is mocked on the server and reported",
-    async () => {
-      const server = await start()
-      const ran = await runRsbuildSsr(server, readScript)
-      expect({
-        ran,
-        reported: importersIn(
-          { root: server.root, violations: recorder.violations },
-          'server',
-        ),
-      }).toEqual({
-        ran: { result: { handler: 'a safe mock' } },
-        reported: ['src/app/handler.ts'],
-      })
-    },
-    timeout,
-  )
+  test("an import of a .client file reached from the app's server entry is mocked on the server and reported", async () => {
+    const server = await start()
+    const ran = await runRsbuildSsr(server, readScript)
+    expect({
+      ran,
+      reported: importersIn(
+        { root: server.root, violations: recorder.violations },
+        'server',
+      ),
+    }).toEqual({
+      ran: { result: { handler: 'a safe mock' } },
+      reported: ['src/app/handler.ts'],
+    })
+  })
 })
 
 describe('vite dev: allowImport returning Promise<true>', () => {
@@ -229,11 +219,7 @@ export const getRouter = () => undefined
 
   // An import allowed by an async `allowImport` is the real module in the
   // browser, without a report.
-  test(
-    'the client gets the real module, and the import is not reported',
-    async () => {
-      expect(await outcome()).toEqual({ value: 'MARK_SECRET', reported: [] })
-    },
-    timeout,
-  )
+  test('the client gets the real module, and the import is not reported', async () => {
+    expect(await outcome()).toEqual({ value: 'MARK_SECRET', reported: [] })
+  })
 })

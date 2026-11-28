@@ -9,8 +9,6 @@
 import { describe, expect, test } from 'vitest'
 import { buildStart } from '../build-start'
 
-const timeout = 60_000
-
 const dbServer = `export const getServerDb = () => ({ query: () => 'MARK_DB_SERVER' })\n`
 const head = `import { createServerOnlyFn } from '@tanstack/react-start'
 import { getServerDb } from './db'
@@ -39,25 +37,21 @@ export const run = () => [App, seen.length]
 `,
       serverModule: 'gone',
     },
-  ])(
-    '$name',
-    async ({ module, serverModule }) => {
-      const build = await buildStart({
-        bundler: 'rsbuild',
-        files: {
-          'src/db.ts': dbServer,
-          'src/module.ts': module,
-          'src/entry.ts': `export { run } from './module'\n`,
-        },
-        entry: 'src/entry.ts',
-      })
-      expect((await build.client.run('return entry.run()')).result).toEqual([
-        42, 1,
-      ])
-      if (serverModule === 'gone') {
-        expect(build.client.where('MARK_DB_SERVER')).toBe('nowhere')
-      }
-    },
-    timeout,
-  )
+  ])('$name', async ({ module, serverModule }) => {
+    const build = await buildStart({
+      bundler: 'rsbuild',
+      files: {
+        'src/db.ts': dbServer,
+        'src/module.ts': module,
+        'src/entry.ts': `export { run } from './module'\n`,
+      },
+      entry: 'src/entry.ts',
+    })
+    expect((await build.client.run('return entry.run()')).result).toEqual([
+      42, 1,
+    ])
+    if (serverModule === 'gone') {
+      expect(build.client.where('MARK_DB_SERVER')).toBe('nowhere')
+    }
+  })
 })

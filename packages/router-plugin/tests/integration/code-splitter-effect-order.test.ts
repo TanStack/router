@@ -8,8 +8,6 @@
 import { describe, expect, test } from 'vitest'
 import { build, head, routeApp } from '../build-harness'
 
-const timeout = 120_000
-
 const libs = {
   // what a shared module's effects record
   'link.ts': `export function make(mark: string) {
@@ -23,15 +21,13 @@ describe.each(['vite', 'rspack'] as const)('a %s build', (bundler) => {
   // A statement using an export and a `let` the component's code reads
   // once followed the export into its module, which then read the `let` of
   // the route module at its evaluation (found by fuzzing)
-  test(
-    'a statement using an export and a binding only split code reads runs when the route module loads, in source order',
-    async () => {
-      const app = await build({
-        bundler,
-        env: 'client',
-        minify: false,
-        files: routeApp(
-          `${head}import '../globals'
+  test('a statement using an export and a binding only split code reads runs when the route module loads, in source order', async () => {
+    const app = await build({
+      bundler,
+      env: 'client',
+      minify: false,
+      files: routeApp(
+        `${head}import '../globals'
 declare global {
   var fmt: (...a: Array<unknown>) => number
   var log: (tag: string, ...a: Array<unknown>) => unknown
@@ -46,11 +42,11 @@ export const Route = createFileRoute('/')({
   component: () => <b>I:{globalThis.fmt(P8, f5)}</b>,
 })
 `,
-          {
-            env: 'client',
-            files: {
-              ...libs,
-              'globals.ts': `const g = globalThis as any
+        {
+          env: 'client',
+          files: {
+            ...libs,
+            'globals.ts': `const g = globalThis as any
 g.__effects = []
 g.fmt = (...a: Array<unknown>) => a.length
 g.log = (tag: string, ...a: Array<unknown>) => {
@@ -58,22 +54,20 @@ g.log = (tag: string, ...a: Array<unknown>) => {
   return a[0]
 }
 `,
-            },
           },
-        ),
-      })
-      try {
-        const run = await app.run(
-          'const atLoad = [...globalThis.__effects]\nawait entry.mount(entry.Route.options.component)\nreturn atLoad',
-        )
-        expect(run.result).toEqual(['T2:number', 'T5:number:function'])
-        expect((run.html as string).replace(/<[^>]*>/g, '')).toBe('I:2')
-      } finally {
-        await app.dispose()
-      }
-    },
-    timeout,
-  )
+        },
+      ),
+    })
+    try {
+      const run = await app.run(
+        'const atLoad = [...globalThis.__effects]\nawait entry.mount(entry.Route.options.component)\nreturn atLoad',
+      )
+      expect(run.result).toEqual(['T2:number', 'T5:number:function'])
+      expect((run.html as string).replace(/<[^>]*>/g, '')).toBe('I:2')
+    } finally {
+      await app.dispose()
+    }
+  })
 })
 
 describe.each(['vite', 'rspack'] as const)(
@@ -121,7 +115,6 @@ return [before, mid, [...globalThis.__runs]]`,
           await app.dispose()
         }
       },
-      timeout,
     )
   },
 )

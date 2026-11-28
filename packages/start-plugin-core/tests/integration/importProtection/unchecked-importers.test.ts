@@ -38,8 +38,7 @@ import { importersIn } from './hosts'
 import type { Recorded } from '../../importProtection/start-apps'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'
 
-const timeout = 60_000
-const compileTimeout = timeout
+const compileTimeout = 60_000
 
 /** The exempt directories: `exclude` matches one, `ignoreImporters` the other. */
 const exemptDirs = { exclude: 'excluded', ignoreImporters: 'ignored' } as const
@@ -351,7 +350,6 @@ describe.each(hosts)('$name', ({ kinds, run, build: bundler }) => {
       const uses = [exemptUse(option, 'plain')]
       expect(about(await result(), uses)).toEqual(realModules(uses))
     },
-    timeout,
   )
 
   // Accepted (safe direction, R89): an importer outside the scope is not
@@ -368,7 +366,6 @@ describe.each(hosts)('$name', ({ kinds, run, build: bundler }) => {
         realModules([outsideUse]),
       )
     },
-    timeout,
   )
 
   // R89 amendment: a build warns about each file the accepted cases mock;
@@ -382,7 +379,6 @@ describe.each(hosts)('$name', ({ kinds, run, build: bundler }) => {
         warnings: warnings(outcome.unchecked!, allUses),
       }).toEqual({ reported: [], warnings: warnedAbout(allUses, mocked) })
     },
-    timeout,
   )
 
   test.runIf(bundler)(
@@ -394,7 +390,6 @@ describe.each(hosts)('$name', ({ kinds, run, build: bundler }) => {
         warnings: warnings(outcome.unchecked!, allUses),
       }).toEqual({ reported: [], warnings: warnedAbout(allUses, mocked) })
     },
-    timeout,
   )
 
   // Dev (unchanged): the dev server knows no importer of the denied file
@@ -406,6 +401,5 @@ describe.each(hosts)('$name', ({ kinds, run, build: bundler }) => {
         mocked.map(({ denied }) => denied).sort(),
       )
     },
-    timeout,
   )
 })

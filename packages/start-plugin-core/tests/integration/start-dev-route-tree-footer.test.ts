@@ -11,8 +11,6 @@ import { describe, expect, test } from 'vitest'
 import { startDevServer } from '../dev-server'
 import { startRsbuildStartDevServer } from '../rsbuild-dev-server'
 
-const timeout = 60_000
-
 /** Waits for `check`, bounded: a correct generator prints within a second. */
 async function until(check: () => Promise<boolean>, what: string) {
   const deadline = Date.now() + 20_000
@@ -25,41 +23,37 @@ async function until(check: () => Promise<boolean>, what: string) {
 }
 
 describe.each(['vite', 'rsbuild'] as const)('%s dev', (bundler) => {
-  test(
-    'a function-form routeTreeFileFooter gives its current lines at every print of the route tree',
-    async () => {
-      let line = 'MARK_FOOTER_FIRST'
-      const start = {
-        router: { routeTreeFileFooter: () => [`// ${line}`] },
-      }
-      const server =
-        bundler === 'vite'
-          ? await startDevServer({ files: {}, start })
-          : await startRsbuildStartDevServer({
-              files: { 'src/entry.ts': `export {}\n` },
-              start,
-            })
-      const tree = () =>
-        readFile(path.join(server.root, 'src/routeTree.gen.ts'), 'utf8').catch(
-          () => '',
-        )
-      await until(
-        async () => (await tree()).includes('MARK_FOOTER_FIRST'),
-        'the first route tree',
+  test('a function-form routeTreeFileFooter gives its current lines at every print of the route tree', async () => {
+    let line = 'MARK_FOOTER_FIRST'
+    const start = {
+      router: { routeTreeFileFooter: () => [`// ${line}`] },
+    }
+    const server =
+      bundler === 'vite'
+        ? await startDevServer({ files: {}, start })
+        : await startRsbuildStartDevServer({
+            files: { 'src/entry.ts': `export {}\n` },
+            start,
+          })
+    const tree = () =>
+      readFile(path.join(server.root, 'src/routeTree.gen.ts'), 'utf8').catch(
+        () => '',
       )
-      line = 'MARK_FOOTER_NEXT'
-      await server.write({
-        'src/routes/later.tsx': `import { createFileRoute } from '@tanstack/react-router'
+    await until(
+      async () => (await tree()).includes('MARK_FOOTER_FIRST'),
+      'the first route tree',
+    )
+    line = 'MARK_FOOTER_NEXT'
+    await server.write({
+      'src/routes/later.tsx': `import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/later')({})
 `,
-      })
-      await until(
-        async () => (await tree()).includes(`'/later'`),
-        'the route tree with /later',
-      )
-      expect(await tree()).toContain('// MARK_FOOTER_NEXT')
-    },
-    timeout,
-  )
+    })
+    await until(
+      async () => (await tree()).includes(`'/later'`),
+      'the route tree with /later',
+    )
+    expect(await tree()).toContain('// MARK_FOOTER_NEXT')
+  })
 })

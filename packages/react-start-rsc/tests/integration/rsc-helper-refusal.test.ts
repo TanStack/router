@@ -26,7 +26,6 @@ import {
   startRscRsbuildPreviewServer,
 } from './rsc-serial'
 
-const timeout = 120_000
 /**
  * From the dev server's start to the refusal: on Vite, the server renders
  * the page first, and the client compiles `src/part.tsx` only once the page
@@ -64,61 +63,51 @@ export const Route = createFileRoute('/')({
 })
 
 for (const bundler of ['vite', 'rsbuild'] as const) {
-  test(
-    `${bundler} dev: the render in an exported helper is refused at the call`,
-    async () => {
-      const server = await (
-        bundler === 'vite' ? startRscDevServer : startRscRsbuildDevServer
-      )({ files: files(refused), browser: true })
-      const page = await openRscPage(server, '/')
-      const where = {
-        severity: 'error',
-        file: 'src/part.tsx',
-        root: server.root,
-      } as const
-      // (no `problems`: on Rsbuild the page's errors hold the refused
-      // module's failed build, the outcome itself)
-      await waitForOutcome({
-        applied: () => findDiagnostics(server.diagnostics, where).length > 0,
-        timeout: refusalTimeout,
-        describe: async () =>
-          `the server reported ${JSON.stringify(
-            server.diagnostics.map(({ severity, text }) => ({
-              severity,
-              text: text.slice(0, 200),
-            })),
-          )}; the page shows ${JSON.stringify(
-            await page
-              .locator('body')
-              .textContent()
-              .catch(() => '(loading)'),
-          )}, its errors: ${JSON.stringify(errorsOf(page))}`,
-      })
-      expectDiagnostic(server.diagnostics, {
-        ...where,
-        position: diagnosticPosition(refused, 'renderServerComponent(<Part'),
-      })
-    },
-    timeout,
-  )
+  test(`${bundler} dev: the render in an exported helper is refused at the call`, async () => {
+    const server = await (
+      bundler === 'vite' ? startRscDevServer : startRscRsbuildDevServer
+    )({ files: files(refused), browser: true })
+    const page = await openRscPage(server, '/')
+    const where = {
+      severity: 'error',
+      file: 'src/part.tsx',
+      root: server.root,
+    } as const
+    // (no `problems`: on Rsbuild the page's errors hold the refused
+    // module's failed build, the outcome itself)
+    await waitForOutcome({
+      applied: () => findDiagnostics(server.diagnostics, where).length > 0,
+      timeout: refusalTimeout,
+      describe: async () =>
+        `the server reported ${JSON.stringify(
+          server.diagnostics.map(({ severity, text }) => ({
+            severity,
+            text: text.slice(0, 200),
+          })),
+        )}; the page shows ${JSON.stringify(
+          await page
+            .locator('body')
+            .textContent()
+            .catch(() => '(loading)'),
+        )}, its errors: ${JSON.stringify(errorsOf(page))}`,
+    })
+    expectDiagnostic(server.diagnostics, {
+      ...where,
+      position: diagnosticPosition(refused, 'renderServerComponent(<Part'),
+    })
+  })
 
-  test(
-    `${bundler} build: the helper wrapped in createServerOnlyFn renders the server component`,
-    async () => {
-      const server = await (
-        bundler === 'vite'
-          ? startRscPreviewServer
-          : startRscRsbuildPreviewServer
-      )({ files: files(fixed) })
-      const page = await openRscPage(server, '/')
-      await page
-        .locator('[data-testid=part]', { hasText: /MARK_PART_RENDERED/ })
-        .waitFor()
-      await waitForHydration(page)
-      expect(errorsOf(page)).toEqual([])
-    },
-    timeout,
-  )
+  test(`${bundler} build: the helper wrapped in createServerOnlyFn renders the server component`, async () => {
+    const server = await (
+      bundler === 'vite' ? startRscPreviewServer : startRscRsbuildPreviewServer
+    )({ files: files(fixed) })
+    const page = await openRscPage(server, '/')
+    await page
+      .locator('[data-testid=part]', { hasText: /MARK_PART_RENDERED/ })
+      .waitFor()
+    await waitForHydration(page)
+    expect(errorsOf(page)).toEqual([])
+  })
 }
 
 /** An app plugin compiling `.mdx` pages to JavaScript before Start (as `@mdx-js/rollup` does). */
@@ -130,38 +119,34 @@ const mdxLike = {
   },
 }
 
-test(
-  'vite dev: a server fn of a module compiled from an .mdx file is refused at its chain',
-  async () => {
-    const page = `# A page
+test('vite dev: a server fn of a module compiled from an .mdx file is refused at its chain', async () => {
+  const page = `# A page
 
 import { createServerFn } from '@tanstack/react-start'
 export const fn = createServerFn().handler(async () => 'MARK_MDX')
 `
-    const server = await startRscDevServer({
-      config: { plugins: [mdxLike] },
-      files: {
-        'src/page.mdx': page,
-        'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+  const server = await startRscDevServer({
+    config: { plugins: [mdxLike] },
+    files: {
+      'src/page.mdx': page,
+      'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { fn } from '../page.mdx'
 export const Route = createFileRoute('/')({
   component: () => <button onClick={() => fn()}>call</button>,
 })
 `,
-      },
-    })
-    const mark = server.diagnostics.length
-    const thrown = await server.transform('/src/page.mdx', 'client').then(
-      () => undefined,
-      (error: unknown) => error,
-    )
-    expect(thrown, 'the client serves the module').toBeDefined()
-    expectDiagnostic([thrown, ...server.diagnostics.slice(mark)], {
-      severity: 'error',
-      file: 'src/page.mdx',
-      root: server.root,
-      position: diagnosticPosition(page, 'createServerFn()'),
-    })
-  },
-  timeout,
-)
+    },
+  })
+  const mark = server.diagnostics.length
+  const thrown = await server.transform('/src/page.mdx', 'client').then(
+    () => undefined,
+    (error: unknown) => error,
+  )
+  expect(thrown, 'the client serves the module').toBeDefined()
+  expectDiagnostic([thrown, ...server.diagnostics.slice(mark)], {
+    severity: 'error',
+    file: 'src/page.mdx',
+    root: server.root,
+    position: diagnosticPosition(page, 'createServerFn()'),
+  })
+})

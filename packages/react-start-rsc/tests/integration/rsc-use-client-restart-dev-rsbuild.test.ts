@@ -15,8 +15,6 @@ import { describe, expect, test } from 'vitest'
 import { recorder, summary } from './rsc-environments-app'
 import { startRscRsbuildDevServer } from './rsc-serial'
 
-const timeout = 60_000
-
 const files = {
   'src/utils/ClientBox.client.tsx': `'use client'
 export function ClientBox() {
@@ -61,7 +59,6 @@ async function boxes(url: string): Promise<Array<string>> {
 describe('Rsbuild dev with RSC on the persistent cache, an exempt server component alone imports a denied client component', () => {
   test.for(['mock', 'error'] as const)(
     'behavior %s: the box renders on a cold start and after a restart, nothing is reported',
-    { timeout },
     async (behavior) => {
       const { violations, start } = recorder(behavior)
       const cold = await startRscRsbuildDevServer({

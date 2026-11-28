@@ -16,8 +16,6 @@ import { describe, expect, test } from 'vitest'
 import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { build, clientMountEntry, head, routeApp } from '../build-harness'
 
-const timeout = 120_000
-
 async function buildRoute(
   bundler: 'vite' | 'rspack',
   route: string,
@@ -93,26 +91,21 @@ describe.each(['vite', 'rspack'] as const)('a %s build', (bundler) => {
         root: r.root,
       })
     },
-    timeout,
   )
 
-  test(
-    'keeps a value assigning a `let` that a module two chunks share reads in place',
-    async () => {
-      const r = await buildRoute(
-        bundler,
-        `${head}let n = 1
+  test('keeps a value assigning a `let` that a module two chunks share reads in place', async () => {
+    const r = await buildRoute(
+      bundler,
+      `${head}let n = 1
 export const Route = createFileRoute('/')({
   loader: () => flags,
   component: (n = 5, () => <p>MARK_PAGE{String(flags)}</p>),
 })
 const flags = [n]
 `,
-        [['loader'], ['component']],
-      )
-      expect(r.where).toBe('eager')
-      expect(r.text).toBe('MARK_PAGE5')
-    },
-    timeout,
-  )
+      [['loader'], ['component']],
+    )
+    expect(r.where).toBe('eager')
+    expect(r.text).toBe('MARK_PAGE5')
+  })
 })

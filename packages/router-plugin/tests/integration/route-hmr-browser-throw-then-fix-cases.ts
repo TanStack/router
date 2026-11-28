@@ -9,8 +9,6 @@ import { describe } from 'vitest'
 import { it } from '../test'
 import type { TargetFramework } from '../route-app'
 
-const timeout = 90_000
-
 /** A route whose component throws when it renders (`throws`), or shows `text`. */
 const route = (
   target: TargetFramework,
@@ -49,7 +47,6 @@ export function throwThenFixSuite(bundler: 'vite' | 'rsbuild') {
         { autoCodeSplitting: false, errorComponent: true },
       ])(
         'the fix shows in place (autoCodeSplitting: $autoCodeSplitting, route error component: $errorComponent)',
-        { timeout },
         async (
           { autoCodeSplitting, errorComponent },
           { expect, openRouteHmrPage },

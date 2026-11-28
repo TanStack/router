@@ -30,8 +30,6 @@ import {
   reactWidgets,
 } from './hydrate-dev-edits'
 
-const timeout = 60_000
-
 /** Pre-bundled up front, as Vite does for an app that installed them. */
 const reactOptimizeDeps = {
   include: [
@@ -46,58 +44,51 @@ const reactOptimizeDeps = {
 }
 
 describe('Vite dev, React', () => {
-  test(
-    'a loaded child hot-updates in place, and a sibling opened later shows the edited version',
-    async () => {
-      const server = await startDevServer({
-        start: {},
-        browser: true,
-        config: { optimizeDeps: reactOptimizeDeps },
-        plugins: [react()],
-        files: {
-          ...reactApp,
-          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+  test('a loaded child hot-updates in place, and a sibling opened later shows the edited version', async () => {
+    const server = await startDevServer({
+      start: {},
+      browser: true,
+      config: { optimizeDeps: reactOptimizeDeps },
+      plugins: [react()],
+      files: {
+        ...reactApp,
+        'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { Widgets } from '../widgets'
 export const Route = createFileRoute('/')({ component: Widgets })
 `,
-          'src/widgets.tsx': reactWidgets('<i>v1</i>', 'capture-v1'),
-        },
-      })
-      const browser = await openTestPage(server.url!)
-      await browser.waitForText('hydrated', {
-        selector: '[data-testid=hydrated]',
-      })
-      await server.idle()
-      expectEditsReached(await editLoadedChild(server, browser, reactWidgets))
-      expect(browser.loads()).toBe(1)
-      expect(
-        describeHmr(
-          server.hmr.filter(
-            (message) =>
-              message.environment === 'client' &&
-              message.type === 'full-reload',
-          ),
+        'src/widgets.tsx': reactWidgets('<i>v1</i>', 'capture-v1'),
+      },
+    })
+    const browser = await openTestPage(server.url!)
+    await browser.waitForText('hydrated', {
+      selector: '[data-testid=hydrated]',
+    })
+    await server.idle()
+    expectEditsReached(await editLoadedChild(server, browser, reactWidgets))
+    expect(browser.loads()).toBe(1)
+    expect(
+      describeHmr(
+        server.hmr.filter(
+          (message) =>
+            message.environment === 'client' && message.type === 'full-reload',
         ),
-      ).toEqual([])
-      expect(browser.errors).toEqual([])
-    },
-    timeout,
-  )
+      ),
+    ).toEqual([])
+    expect(browser.errors).toEqual([])
+  })
 
   // The router splits the route component into its own module, which the
   // Hydrate plugin splits again: the page hydrates the server's HTML with
   // both, the deferred child loading its code on its interaction.
-  test(
-    'boundaries of a split route component hydrate the server HTML',
-    async () => {
-      const server = await startDevServer({
-        start: {},
-        browser: true,
-        config: { optimizeDeps: reactOptimizeDeps },
-        plugins: [react()],
-        files: {
-          ...reactApp,
-          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+  test('boundaries of a split route component hydrate the server HTML', async () => {
+    const server = await startDevServer({
+      start: {},
+      browser: true,
+      config: { optimizeDeps: reactOptimizeDeps },
+      plugins: [react()],
+      files: {
+        ...reactApp,
+        'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { Hydrate } from '@tanstack/react-start'
 import { idle, interaction } from '@tanstack/react-start/hydration'
 import { Counter } from '../counter'
@@ -112,64 +103,60 @@ function Page() {
   )
 }
 `,
-        },
-      })
-      const browser = await openTestPage(server.url!)
-      await browser.waitForText('hydrated', {
-        selector: '[data-testid=hydrated]',
-      })
-      expect(await browser.text('#app')).toBe('route:0deferred:0idle:0')
-      /** How many resources the page requested so far. */
-      const requested = () =>
-        browser.page.evaluate(
-          () => performance.getEntriesByType('resource').length,
-        )
-      /** Clicks the counter `label` until it counts. */
-      const count = async (label: string) => {
-        const deadline = Date.now() + 10_000
-        while (!(await browser.text('#app')).includes(`${label}:1`)) {
-          if (Date.now() > deadline) {
-            throw new Error(
-              `${label} never counted: ${await browser.text('#app')}`,
-            )
-          }
-          await browser.page.locator(`[data-label=${label}]`).click()
-          await new Promise((resolve) => setTimeout(resolve, 100))
+      },
+    })
+    const browser = await openTestPage(server.url!)
+    await browser.waitForText('hydrated', {
+      selector: '[data-testid=hydrated]',
+    })
+    expect(await browser.text('#app')).toBe('route:0deferred:0idle:0')
+    /** How many resources the page requested so far. */
+    const requested = () =>
+      browser.page.evaluate(
+        () => performance.getEntriesByType('resource').length,
+      )
+    /** Clicks the counter `label` until it counts. */
+    const count = async (label: string) => {
+      const deadline = Date.now() + 10_000
+      while (!(await browser.text('#app')).includes(`${label}:1`)) {
+        if (Date.now() > deadline) {
+          throw new Error(
+            `${label} never counted: ${await browser.text('#app')}`,
+          )
         }
+        await browser.page.locator(`[data-label=${label}]`).click()
+        await new Promise((resolve) => setTimeout(resolve, 100))
       }
-      await count('route')
-      await count('idle')
-      await server.idle()
-      // The deferred child's code loads when it hydrates.
-      const beforeDeferred = await requested()
-      await count('deferred')
-      expect(await requested()).toBeGreaterThan(beforeDeferred)
-      expect(await browser.text('#app')).toBe('route:1deferred:1idle:1')
-      expect(
-        await browser.page.evaluate(
-          () => (globalThis as any).__recoverable ?? [],
-        ),
-      ).toEqual([])
-      expect(browser.errors).toEqual([])
-    },
-    timeout,
-  )
+    }
+    await count('route')
+    await count('idle')
+    await server.idle()
+    // The deferred child's code loads when it hydrates.
+    const beforeDeferred = await requested()
+    await count('deferred')
+    expect(await requested()).toBeGreaterThan(beforeDeferred)
+    expect(await browser.text('#app')).toBe('route:1deferred:1idle:1')
+    expect(
+      await browser.page.evaluate(
+        () => (globalThis as any).__recoverable ?? [],
+      ),
+    ).toEqual([])
+    expect(browser.errors).toEqual([])
+  })
 
   // The importer is unchanged: the edit of the module it imports `Hydrate`
   // from decides whether its element is a boundary, both ways.
-  test(
-    'an edit of an app module that starts or stops re-exporting the Start Hydrate decides whether its importers split',
-    async () => {
-      const local = `export const Hydrate = (props: { when?: unknown; children?: unknown }) => props.children\n`
-      const server = await startDevServer({
-        start: {},
-        browser: true,
-        config: { optimizeDeps: reactOptimizeDeps },
-        plugins: [react()],
-        files: {
-          ...reactApp,
-          'src/ui.tsx': local,
-          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+  test('an edit of an app module that starts or stops re-exporting the Start Hydrate decides whether its importers split', async () => {
+    const local = `export const Hydrate = (props: { when?: unknown; children?: unknown }) => props.children\n`
+    const server = await startDevServer({
+      start: {},
+      browser: true,
+      config: { optimizeDeps: reactOptimizeDeps },
+      plugins: [react()],
+      files: {
+        ...reactApp,
+        'src/ui.tsx': local,
+        'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { interaction } from '@tanstack/react-start/hydration'
 import { Hydrate } from '../ui'
 import { Counter } from '../counter'
@@ -182,33 +169,29 @@ function Page() {
   )
 }
 `,
-        },
+      },
+    })
+    /** Whether a fresh page, hydrated, loaded the child's module before any interaction. */
+    const childLoaded = async () => {
+      const browser = await openTestPage(server.url!)
+      await browser.waitForText('hydrated', {
+        selector: '[data-testid=hydrated]',
       })
-      /** Whether a fresh page, hydrated, loaded the child's module before any interaction. */
-      const childLoaded = async () => {
-        const browser = await openTestPage(server.url!)
-        await browser.waitForText('hydrated', {
-          selector: '[data-testid=hydrated]',
-        })
-        await server.idle()
-        expect(await browser.text('#app')).toBe('child:0')
-        expect(browser.errors).toEqual([])
-        return browser.page.evaluate(() =>
-          performance
-            .getEntriesByType('resource')
-            .some(
-              (entry) => new URL(entry.name).pathname === '/src/counter.tsx',
-            ),
-        )
-      }
-      expect(await childLoaded(), 'a plain element').toBe(true)
-      await server.edit({
-        'src/ui.tsx': `export { Hydrate } from '@tanstack/react-start'\n`,
-      })
-      expect(await childLoaded(), 'a boundary').toBe(false)
-      await server.edit({ 'src/ui.tsx': local })
-      expect(await childLoaded(), 'a plain element again').toBe(true)
-    },
-    timeout,
-  )
+      await server.idle()
+      expect(await browser.text('#app')).toBe('child:0')
+      expect(browser.errors).toEqual([])
+      return browser.page.evaluate(() =>
+        performance
+          .getEntriesByType('resource')
+          .some((entry) => new URL(entry.name).pathname === '/src/counter.tsx'),
+      )
+    }
+    expect(await childLoaded(), 'a plain element').toBe(true)
+    await server.edit({
+      'src/ui.tsx': `export { Hydrate } from '@tanstack/react-start'\n`,
+    })
+    expect(await childLoaded(), 'a boundary').toBe(false)
+    await server.edit({ 'src/ui.tsx': local })
+    expect(await childLoaded(), 'a plain element again').toBe(true)
+  })
 })

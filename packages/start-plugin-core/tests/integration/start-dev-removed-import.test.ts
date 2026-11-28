@@ -31,8 +31,6 @@ import { startDevServer } from '../dev-server'
 import { apps } from './route-error-apps'
 import type { Framework } from './route-error-apps'
 
-const timeout = 90_000
-
 /**
  * `src/routes/index.tsx`, whose plan reads `src/dep.ts` (a server fn
  * builder): `kept`, its component renders `label` (the client output
@@ -131,7 +129,6 @@ describe('Vite dev: a file a route reads, deleted and restored', () => {
       expect(await editRoute(3)).toBe(0)
       expect(await browser.page.locator('vite-error-overlay').count()).toBe(0)
     },
-    timeout,
   )
 
   test.each(['react', 'solid'] as const)(
@@ -164,7 +161,6 @@ describe('Vite dev: a file a route reads, deleted and restored', () => {
       expect(browser.loads() - restored).toBe(0)
       expect(await browser.page.locator('vite-error-overlay').count()).toBe(0)
     },
-    timeout,
   )
 
   // The component lives in `src/home.tsx`, which reads the file: the
@@ -220,38 +216,30 @@ export const Route = createFileRoute('/')({ ssr: false, component: Home })
       await settle()
       expect(browser.loads() - loads).toBe(0)
     },
-    timeout,
   )
 
   // (the update of the return goes to the route module alone here too)
-  test(
-    'solid, an import the component renders, the route edited while the file is missing: the return shows both, edits after it apply in place',
-    async () => {
-      const framework = 'solid'
-      const { server, browser, settle, editRoute } = await open(
-        framework,
-        'kept',
-      )
-      await server.edit({ 'src/dep.ts': null })
-      await settle()
-      await server.edit({
-        'src/routes/index.tsx': route(framework, 'kept', 2),
-      })
-      await settle()
-      const loads = browser.loads()
-      await server.edit({ 'src/dep.ts': dep(framework, 'DEP_BACK') })
-      await settle()
-      await browser.waitForText('DEP_BACK step-2', {
-        selector: '[data-probe=home]',
-      })
-      expect(browser.loads() - loads).toBe(restoreReloads[framework])
-      await settle()
-      expect(await editRoute(3)).toBe(0)
-      expect(await browser.text('[data-probe=home]')).toBe('DEP_BACK step-3')
-      expect(await browser.page.locator('vite-error-overlay').count()).toBe(0)
-    },
-    timeout,
-  )
+  test('solid, an import the component renders, the route edited while the file is missing: the return shows both, edits after it apply in place', async () => {
+    const framework = 'solid'
+    const { server, browser, settle, editRoute } = await open(framework, 'kept')
+    await server.edit({ 'src/dep.ts': null })
+    await settle()
+    await server.edit({
+      'src/routes/index.tsx': route(framework, 'kept', 2),
+    })
+    await settle()
+    const loads = browser.loads()
+    await server.edit({ 'src/dep.ts': dep(framework, 'DEP_BACK') })
+    await settle()
+    await browser.waitForText('DEP_BACK step-2', {
+      selector: '[data-probe=home]',
+    })
+    expect(browser.loads() - loads).toBe(restoreReloads[framework])
+    await settle()
+    expect(await editRoute(3)).toBe(0)
+    expect(await browser.text('[data-probe=home]')).toBe('DEP_BACK step-3')
+    expect(await browser.page.locator('vite-error-overlay').count()).toBe(0)
+  })
 
   test.each(['react', 'solid'] as const)(
     '%s, an import only a server fn handler reads: a file created meanwhile sends nothing, edits after the return apply in place',
@@ -275,6 +263,5 @@ export const Route = createFileRoute('/')({ ssr: false, component: Home })
       expect(await editRoute(3)).toBe(0)
       expect(await browser.page.locator('vite-error-overlay').count()).toBe(0)
     },
-    timeout,
   )
 })

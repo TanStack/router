@@ -29,8 +29,6 @@ import { rootDocument, routerFile } from './start-compose-app'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
-const timeout = 90_000
-
 /** `src/fns.ts`: `pinned` is the pinned declaration's mark, `handler` the handler's. */
 const fns = (pinned: string, handler: string) =>
   `import { createServerFn } from '@tanstack/react-start'
@@ -239,141 +237,121 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
   const openServer = closeAfterAll()
   beforeAll(async () => {
     server = await openServer(() => servers[bundler]!())
-  }, timeout)
+  }, 90_000)
 
-  test(
-    'edits of a pinned declaration, of the handler and of a handler kept in place reach server code and HTTP calls',
-    async () => {
-      /** The server render's loader value, once it is `expected`. */
-      const rendered = async (expected: string) => {
-        let last = ''
-        await waitForOutcome({
-          applied: async () =>
-            (last = await (await fetch(server.url)).text()).includes(
-              `loader=${expected}`,
-            ),
-          timeout: 10_000,
-          describe: () => `the server render: ${last.slice(0, 400)}`,
-        })
-      }
-      /** What a client call over HTTP gives, from a fresh page. */
-      const called = () => clientCall(server.url, 'probe')
-
-      await restore(server, ['src/fns.ts', 'src/kept.ts'])
-      await rendered('a:P1/b/H1|K1')
-      expect(await called()).toBe('client=a:P1/b/H1|K1')
-
-      await server.edit({ 'src/fns.ts': fns('P2', 'H1') })
-      await rendered('a:P2/b/H1|K1')
-      expect(await called()).toBe('client=a:P2/b/H1|K1')
-
-      await server.edit({ 'src/fns.ts': fns('P2', 'H2') })
-      await rendered('a:P2/b/H2|K1')
-      expect(await called()).toBe('client=a:P2/b/H2|K1')
-
-      await server.edit({ 'src/kept.ts': kept('K2') })
-      await rendered('a:P2/b/H2|K2')
-      expect(await called()).toBe('client=a:P2/b/H2|K2')
-    },
-    timeout,
-  )
-
-  test(
-    "edits of a module only the lazy module's server fn imports and of its handler reach HTTP calls",
-    async () => {
-      /** The call's result from a fresh page of the route, once it is `expected`. */
-      const reaches = (expected: string) =>
-        expect
-          .poll(() => clientCall(`${server.url}stubbed`, 'lazy-probe'), {
-            timeout: 15_000,
-          })
-          .toBe(expected)
-
-      await restore(server, ['src/lazy-schema.ts', 'src/routes/stubbed.tsx'])
-      await reaches('client=S1/H1')
-      await server.edit({ 'src/lazy-schema.ts': lazySchema('S2') })
-      await reaches('client=S2/H1')
-      await server.edit({ 'src/routes/stubbed.tsx': lazyRoute('H2') })
-      await reaches('client=S2/H2')
-    },
-    timeout,
-  )
-
-  test(
-    'a hoisted server fn a plain file names: an edit of its handler reaches server code and HTTP calls',
-    async () => {
-      const url = `${server.url}nested-dev`
-      /** The server render's loader value, once it is `expected`. */
-      const rendered = async (expected: string) => {
-        let last = ''
-        await waitForOutcome({
-          applied: async () =>
-            (last = await (await fetch(url)).text()).includes(
-              `loader=${expected}`,
-            ),
-          timeout: 10_000,
-          describe: () => `the server render: ${last.slice(0, 400)}`,
-        })
-      }
-      /** A client call over HTTP from a fresh page, once it gives `expected`. */
-      const reaches = (expected: string) =>
-        expect
-          .poll(() => clientCall(url, 'nested-probe'), { timeout: 15_000 })
-          .toBe(expected)
-
-      await restore(server, ['src/nested-fns.ts'])
-      await rendered('N:H1')
-      await reaches('client=N:H1')
-      await server.edit({ 'src/nested-fns.ts': nestedFns('H2') })
-      await rendered('N:H2')
-      await reaches('client=N:H2')
-    },
-    timeout,
-  )
-
-  test(
-    "an edit of a module only the lazy module's chain reads reaches HTTP calls, one instance",
-    async () => {
-      /** Two calls answered by the `mark` validator, one instance counting on (n, n + 1). */
-      const reaches = (mark: string) =>
-        reachesTwice(
-          server,
-          'stop',
-          'stop-probe',
-          new RegExp(`^client=L/${mark}:(\\d+) client=L/${mark}:(\\d+)$`),
-        )
-
-      await restore(server, ['src/stop-schema.ts'])
-      await reaches('S1')
-      await server.edit({ 'src/stop-schema.ts': stopSchema('S2') })
-      await reaches('S2')
-    },
-    timeout,
-  )
-
-  test(
-    "a server fn on an imported builder only the split component calls: edits of the builder's module and of the handler reach HTTP calls, one instance",
-    async () => {
-      /** Two calls answered with the builder's `builder` mark and the handler's `handler` mark, one instance counting on. */
-      const reaches = (builder: string, handler: string) =>
-        reachesTwice(
-          server,
-          'built',
-          'built-probe',
-          new RegExp(
-            `^client=${builder}:(\\d+)/${handler} client=${builder}:(\\d+)/${handler}$`,
+  test('edits of a pinned declaration, of the handler and of a handler kept in place reach server code and HTTP calls', async () => {
+    /** The server render's loader value, once it is `expected`. */
+    const rendered = async (expected: string) => {
+      let last = ''
+      await waitForOutcome({
+        applied: async () =>
+          (last = await (await fetch(server.url)).text()).includes(
+            `loader=${expected}`,
           ),
-        )
+        timeout: 10_000,
+        describe: () => `the server render: ${last.slice(0, 400)}`,
+      })
+    }
+    /** What a client call over HTTP gives, from a fresh page. */
+    const called = () => clientCall(server.url, 'probe')
 
-      await restore(server, ['src/lib-builder.ts', 'src/routes/built.tsx'])
-      await reaches('B1', 'H1')
-      await server.edit({ 'src/lib-builder.ts': libBuilder('B2') })
-      await reaches('B2', 'H1')
-      await server.edit({ 'src/routes/built.tsx': builtRoute('H2') })
-      await reaches('B2', 'H2')
-    },
-    timeout,
-  )
+    await restore(server, ['src/fns.ts', 'src/kept.ts'])
+    await rendered('a:P1/b/H1|K1')
+    expect(await called()).toBe('client=a:P1/b/H1|K1')
+
+    await server.edit({ 'src/fns.ts': fns('P2', 'H1') })
+    await rendered('a:P2/b/H1|K1')
+    expect(await called()).toBe('client=a:P2/b/H1|K1')
+
+    await server.edit({ 'src/fns.ts': fns('P2', 'H2') })
+    await rendered('a:P2/b/H2|K1')
+    expect(await called()).toBe('client=a:P2/b/H2|K1')
+
+    await server.edit({ 'src/kept.ts': kept('K2') })
+    await rendered('a:P2/b/H2|K2')
+    expect(await called()).toBe('client=a:P2/b/H2|K2')
+  })
+
+  test("edits of a module only the lazy module's server fn imports and of its handler reach HTTP calls", async () => {
+    /** The call's result from a fresh page of the route, once it is `expected`. */
+    const reaches = (expected: string) =>
+      expect
+        .poll(() => clientCall(`${server.url}stubbed`, 'lazy-probe'), {
+          timeout: 15_000,
+        })
+        .toBe(expected)
+
+    await restore(server, ['src/lazy-schema.ts', 'src/routes/stubbed.tsx'])
+    await reaches('client=S1/H1')
+    await server.edit({ 'src/lazy-schema.ts': lazySchema('S2') })
+    await reaches('client=S2/H1')
+    await server.edit({ 'src/routes/stubbed.tsx': lazyRoute('H2') })
+    await reaches('client=S2/H2')
+  })
+
+  test('a hoisted server fn a plain file names: an edit of its handler reaches server code and HTTP calls', async () => {
+    const url = `${server.url}nested-dev`
+    /** The server render's loader value, once it is `expected`. */
+    const rendered = async (expected: string) => {
+      let last = ''
+      await waitForOutcome({
+        applied: async () =>
+          (last = await (await fetch(url)).text()).includes(
+            `loader=${expected}`,
+          ),
+        timeout: 10_000,
+        describe: () => `the server render: ${last.slice(0, 400)}`,
+      })
+    }
+    /** A client call over HTTP from a fresh page, once it gives `expected`. */
+    const reaches = (expected: string) =>
+      expect
+        .poll(() => clientCall(url, 'nested-probe'), { timeout: 15_000 })
+        .toBe(expected)
+
+    await restore(server, ['src/nested-fns.ts'])
+    await rendered('N:H1')
+    await reaches('client=N:H1')
+    await server.edit({ 'src/nested-fns.ts': nestedFns('H2') })
+    await rendered('N:H2')
+    await reaches('client=N:H2')
+  })
+
+  test("an edit of a module only the lazy module's chain reads reaches HTTP calls, one instance", async () => {
+    /** Two calls answered by the `mark` validator, one instance counting on (n, n + 1). */
+    const reaches = (mark: string) =>
+      reachesTwice(
+        server,
+        'stop',
+        'stop-probe',
+        new RegExp(`^client=L/${mark}:(\\d+) client=L/${mark}:(\\d+)$`),
+      )
+
+    await restore(server, ['src/stop-schema.ts'])
+    await reaches('S1')
+    await server.edit({ 'src/stop-schema.ts': stopSchema('S2') })
+    await reaches('S2')
+  })
+
+  test("a server fn on an imported builder only the split component calls: edits of the builder's module and of the handler reach HTTP calls, one instance", async () => {
+    /** Two calls answered with the builder's `builder` mark and the handler's `handler` mark, one instance counting on. */
+    const reaches = (builder: string, handler: string) =>
+      reachesTwice(
+        server,
+        'built',
+        'built-probe',
+        new RegExp(
+          `^client=${builder}:(\\d+)/${handler} client=${builder}:(\\d+)/${handler}$`,
+        ),
+      )
+
+    await restore(server, ['src/lib-builder.ts', 'src/routes/built.tsx'])
+    await reaches('B1', 'H1')
+    await server.edit({ 'src/lib-builder.ts': libBuilder('B2') })
+    await reaches('B2', 'H1')
+    await server.edit({ 'src/routes/built.tsx': builtRoute('H2') })
+    await reaches('B2', 'H2')
+  })
 })
 
 /**

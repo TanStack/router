@@ -13,8 +13,6 @@ import { buildStart } from '../../build-start'
 import { rsbuildEntries } from '../route-css-cases'
 import type { RsbuildConfig, RsbuildPlugin } from '@rsbuild/core'
 
-const timeout = 60_000
-
 const files = {
   ...rsbuildEntries,
   'src/routes/__root.tsx': `import { Outlet, createRootRoute } from '@tanstack/react-router'
@@ -65,44 +63,36 @@ async function transformCalls(
   return observed.builds
 }
 
-test(
-  'a transform of the client route tree runs once per build that builds the module, and not for a restored one',
-  async () => {
-    const [fresh] = await transformCalls(1)
-    const [cold, warm] = await transformCalls(2, {
-      performance: { buildCache: true },
-    })
-    expect(fresh).toHaveLength(1)
-    expect(cold).toHaveLength(1)
-    expect(warm).toHaveLength(0)
-    expect(fresh![0]).toContain(`'/about'`)
-    expect(cold![0]).toBe(fresh![0])
-  },
-  timeout,
-)
+test('a transform of the client route tree runs once per build that builds the module, and not for a restored one', async () => {
+  const [fresh] = await transformCalls(1)
+  const [cold, warm] = await transformCalls(2, {
+    performance: { buildCache: true },
+  })
+  expect(fresh).toHaveLength(1)
+  expect(cold).toHaveLength(1)
+  expect(warm).toHaveLength(0)
+  expect(fresh![0]).toContain(`'/about'`)
+  expect(cold![0]).toBe(fresh![0])
+})
 
-test(
-  'a build on the cache after a route was added runs the transform once, on the new tree',
-  async () => {
-    const observed = observeRouteTree()
-    const cold = await buildStart({
-      bundler: 'rsbuild',
-      rsbuildConfig: {
-        performance: { buildCache: true },
-        plugins: [observed.plugin],
-      },
-      files,
-    })
-    await cold.rebuild({
-      'src/routes/contact.tsx': `import { createFileRoute } from '@tanstack/react-router'
+test('a build on the cache after a route was added runs the transform once, on the new tree', async () => {
+  const observed = observeRouteTree()
+  const cold = await buildStart({
+    bundler: 'rsbuild',
+    rsbuildConfig: {
+      performance: { buildCache: true },
+      plugins: [observed.plugin],
+    },
+    files,
+  })
+  await cold.rebuild({
+    'src/routes/contact.tsx': `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/contact')({ component: () => <p>contact</p> })
 `,
-    })
-    const [first, second] = observed.builds
-    expect(first).toHaveLength(1)
-    expect(first![0]).not.toContain(`'/contact'`)
-    expect(second).toHaveLength(1)
-    expect(second![0]).toContain(`'/contact'`)
-  },
-  timeout,
-)
+  })
+  const [first, second] = observed.builds
+  expect(first).toHaveLength(1)
+  expect(first![0]).not.toContain(`'/contact'`)
+  expect(second).toHaveLength(1)
+  expect(second![0]).toContain(`'/contact'`)
+})

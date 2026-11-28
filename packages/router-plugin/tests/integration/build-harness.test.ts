@@ -9,8 +9,6 @@ import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { build, buildWithRsbuild, head, routeApp } from '../build-harness'
 import type { BuildResult } from '@tanstack/compiler-test-utils/build-harness'
 
-const timeout = 60_000
-
 const splitRoute = `${head}import { heavy } from '../heavy'
 function Page() {
   return <p>{heavy('MARK_COMPONENT')}</p>
@@ -54,21 +52,17 @@ const splitRouteExpected = {
 
 // Rsbuild with its production defaults and the router plugin of Rspack,
 // as an Rsbuild app adds it.
-test(
-  'router plugin with Rsbuild loads a split component lazily and renders it (client)',
-  async () => {
-    const app = await buildWithRsbuild({
-      files: routeApp(splitRoute, {
-        env: 'client',
-        files: { 'heavy.ts': heavy },
-      }),
-    })
-    expect(await describeSplitRoute(app, 'client')).toEqual(
-      splitRouteExpected.client,
-    )
-  },
-  timeout,
-)
+test('router plugin with Rsbuild loads a split component lazily and renders it (client)', async () => {
+  const app = await buildWithRsbuild({
+    files: routeApp(splitRoute, {
+      env: 'client',
+      files: { 'heavy.ts': heavy },
+    }),
+  })
+  expect(await describeSplitRoute(app, 'client')).toEqual(
+    splitRouteExpected.client,
+  )
+})
 
 // Bug: the esbuild adapter never runs the route generator in a build (its
 // generator only initialises in `esbuild.config`; generation happens in
@@ -99,5 +93,4 @@ test.each(['ssr', 'client'] as const)(
     }
     expect(await describeSplitRoute(app, env)).toEqual(splitRouteExpected[env])
   },
-  timeout,
 )

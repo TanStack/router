@@ -35,8 +35,7 @@ import type { Recorded } from '../../importProtection/start-apps'
 import type { StartBuild } from '../../build-harness'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'
 
-const timeout = 60_000
-const compileTimeout = timeout
+const compileTimeout = 60_000
 
 const importProtection: ImportProtectionOptions = {
   client: { files: ['**/private/**'] },
@@ -222,25 +221,17 @@ export const getRouter = () => createRouter({ routeTree })
       }),
     ))
 
-  test(
-    'client.files replaces the default file rule of the client',
-    async () => {
-      const built = await build()
-      const { result } = await built.client.run(readScript(usesOf.client))
-      expect(outcome('client', result as Read, built)).toEqual(expected.client)
-    },
-    timeout,
-  )
+  test('client.files replaces the default file rule of the client', async () => {
+    const built = await build()
+    const { result } = await built.client.run(readScript(usesOf.client))
+    expect(outcome('client', result as Read, built)).toEqual(expected.client)
+  })
 
-  test(
-    'server.files replaces the default file rule of the server',
-    async () => {
-      const built = await build()
-      const { result } = await built.ssr.run(readScript(usesOf.server))
-      expect(outcome('server', result as Read, built)).toEqual(expected.server)
-    },
-    timeout,
-  )
+  test('server.files replaces the default file rule of the server', async () => {
+    const built = await build()
+    const { result } = await built.ssr.run(readScript(usesOf.server))
+    expect(outcome('server', result as Read, built)).toEqual(expected.server)
+  })
 })
 
 describe('vite dev', () => {
@@ -293,21 +284,13 @@ describe('vite dev', () => {
     })
   }
 
-  test(
-    'client.files replaces the default file rule of the client',
-    async () => {
-      expect(await run('client')).toEqual(expected.client)
-    },
-    timeout,
-  )
+  test('client.files replaces the default file rule of the client', async () => {
+    expect(await run('client')).toEqual(expected.client)
+  })
 
-  test(
-    'server.files replaces the default file rule of the server',
-    async () => {
-      expect(await run('server')).toEqual(expected.server)
-    },
-    timeout,
-  )
+  test('server.files replaces the default file rule of the server', async () => {
+    expect(await run('server')).toEqual(expected.server)
+  })
 })
 
 describe('rsbuild dev', () => {
@@ -327,35 +310,27 @@ describe('rsbuild dev', () => {
       }),
     ))
 
-  test(
-    'client.files replaces the default file rule of the client',
-    async () => {
-      const server = await start()
-      const ran = await runInClient(server, readScript(usesOf.client))
-      expect(ran).toEqual({ result: expect.anything() })
-      expect(
-        outcome('client', (ran as { result: Read }).result, {
-          root: server.root,
-          violations: recorder.violations,
-        }),
-      ).toEqual(expected.client)
-    },
-    timeout,
-  )
+  test('client.files replaces the default file rule of the client', async () => {
+    const server = await start()
+    const ran = await runInClient(server, readScript(usesOf.client))
+    expect(ran).toEqual({ result: expect.anything() })
+    expect(
+      outcome('client', (ran as { result: Read }).result, {
+        root: server.root,
+        violations: recorder.violations,
+      }),
+    ).toEqual(expected.client)
+  })
 
-  test(
-    'server.files replaces the default file rule of the server',
-    async () => {
-      const server = await start()
-      const ran = await runRsbuildSsr(server, readScript(usesOf.server))
-      expect(ran).toEqual({ result: expect.anything() })
-      expect(
-        outcome('server', (ran as { result: Read }).result, {
-          root: server.root,
-          violations: recorder.violations,
-        }),
-      ).toEqual(expected.server)
-    },
-    timeout,
-  )
+  test('server.files replaces the default file rule of the server', async () => {
+    const server = await start()
+    const ran = await runRsbuildSsr(server, readScript(usesOf.server))
+    expect(ran).toEqual({ result: expect.anything() })
+    expect(
+      outcome('server', (ran as { result: Read }).result, {
+        root: server.root,
+        violations: recorder.violations,
+      }),
+    ).toEqual(expected.server)
+  })
 })

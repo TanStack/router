@@ -116,4 +116,4 @@ test('a split route renders, loads its component on demand and hot-updates in fu
     loads: 1,
     errors: [],
   })
-}, 60_000)
+})

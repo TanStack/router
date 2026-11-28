@@ -8,8 +8,6 @@ import { openRouteHmrPage } from '../serial'
  * no error, each time.
  */
 
-const timeout = 60_000
-
 const route = (top: string, options: string, edit: string) =>
   `import { createFileRoute } from '@tanstack/react-router'
 ${top}
@@ -50,6 +48,5 @@ export const make = () => options
         expect(result.errors).toEqual([])
       }
     },
-    timeout,
   )
 })

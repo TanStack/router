@@ -104,4 +104,4 @@ test('a module only imported, never requested, is not analysed and its edit send
   expect(typeof lazy!.isSelfAccepting).toBe('boolean')
   await ssr.transformRequest('/lazy.ts')
   expect(typeof ssrLazy!.isSelfAccepting).toBe('boolean')
-}, 30_000)
+})

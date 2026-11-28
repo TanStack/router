@@ -12,8 +12,6 @@ import { describe, expect, test } from 'vitest'
 import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { build, clientMountEntry, head, routeApp } from '../build-harness'
 
-const timeout = 120_000
-
 async function buildRoute(bundler: 'vite' | 'rspack', route: string) {
   const app = await build({
     bundler,
@@ -78,6 +76,5 @@ describe.each(['vite', 'rspack'] as const)('a %s build', (bundler) => {
         root: r.root,
       })
     },
-    timeout,
   )
 })

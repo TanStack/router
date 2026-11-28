@@ -8,8 +8,6 @@ import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { startBundlers } from '../build-harness'
 import { buildStart } from '../build-start'
 
-const timeout = 120_000
-
 const route = `import { createFileRoute } from '@tanstack/react-router'
 export function Card() {
   return <b>MARK_CARD</b>
@@ -113,27 +111,23 @@ export const Route = createFileRoute('/memo')({
 describe.each(startBundlers)(
   'a %s build of routes reading their API',
   (bundler) => {
-    test(
-      'loads the API, the effect before it and a memo component with the chunk, unreported',
-      async () => {
-        const build = await buildStart({ bundler, files: routeApiFiles })
-        const reported = [...build.client.warnings, ...build.ssr.warnings]
-        // (no order rule: the effect before the API moves with it)
-        for (const path of ['direct']) {
-          expect(build.client.where(`MARK_API_${path}`), path).toBe('lazy')
-          expect(build.client.where(`MARK_CONFETTI_${path}`), path).toBe('lazy')
-          expectNoDiagnostic(reported, {
-            file: `src/routes/${path}.tsx`,
-            root: build.root,
-          })
-        }
-        expect(build.client.where('MARK_MEMO')).toBe('lazy')
+    test('loads the API, the effect before it and a memo component with the chunk, unreported', async () => {
+      const build = await buildStart({ bundler, files: routeApiFiles })
+      const reported = [...build.client.warnings, ...build.ssr.warnings]
+      // (no order rule: the effect before the API moves with it)
+      for (const path of ['direct']) {
+        expect(build.client.where(`MARK_API_${path}`), path).toBe('lazy')
+        expect(build.client.where(`MARK_CONFETTI_${path}`), path).toBe('lazy')
         expectNoDiagnostic(reported, {
-          file: 'src/routes/memo.tsx',
+          file: `src/routes/${path}.tsx`,
           root: build.root,
         })
-      },
-      timeout,
-    )
+      }
+      expect(build.client.where('MARK_MEMO')).toBe('lazy')
+      expectNoDiagnostic(reported, {
+        file: 'src/routes/memo.tsx',
+        root: build.root,
+      })
+    })
   },
 )

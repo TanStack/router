@@ -14,8 +14,6 @@ import { describe, expect, test } from 'vitest'
 import { buildStart } from '../../build-start'
 import type { Plugin } from 'vite'
 
-const timeout = 60_000
-
 const groups = ['atoms', 'molecules', 'organisms']
 const pages = Array.from({ length: 8 }, (_, i) => `page${i}`)
 
@@ -66,32 +64,28 @@ function countResolutions(counts: Map<string, number>): Plugin {
 }
 
 describe('resolutions for the analysis (Vite)', () => {
-  test(
-    "a barrel's re-exports are resolved once per environment, however many modules import from it",
-    async () => {
-      const counts = new Map<string, number>()
-      const build = await buildStart({
-        files: barrelApp(),
-        entry: 'src/entry.ts',
-        viteConfig: { plugins: [countResolutions(counts)] },
-      })
-      const ran = (await build.client.run('return entry.run()')).result
-      expect(ran).toBe(pages.map((_, i) => `MARK_MADE${i}`).join(','))
-      for (const env of ['client', 'ssr']) {
-        // the pages were analysed in this environment (their own import was asked)
-        for (const page of pages) {
-          expect(counts.get(`${env} src/${page}.ts ./kit`)).toBeGreaterThan(0)
-        }
-        // each edge of the chain: once by the bundler for its module graph,
-        // at most once more by the compiler, shared by the eight pages
-        // (without sharing: once per page, 10 for the kit's first group)
-        for (const edge of barrelEdges) {
-          const key = `${env} ${edge}`
-          expect(counts.get(key), key).toBeDefined()
-          expect(counts.get(key), key).toBeLessThanOrEqual(2)
-        }
+  test("a barrel's re-exports are resolved once per environment, however many modules import from it", async () => {
+    const counts = new Map<string, number>()
+    const build = await buildStart({
+      files: barrelApp(),
+      entry: 'src/entry.ts',
+      viteConfig: { plugins: [countResolutions(counts)] },
+    })
+    const ran = (await build.client.run('return entry.run()')).result
+    expect(ran).toBe(pages.map((_, i) => `MARK_MADE${i}`).join(','))
+    for (const env of ['client', 'ssr']) {
+      // the pages were analysed in this environment (their own import was asked)
+      for (const page of pages) {
+        expect(counts.get(`${env} src/${page}.ts ./kit`)).toBeGreaterThan(0)
       }
-    },
-    timeout,
-  )
+      // each edge of the chain: once by the bundler for its module graph,
+      // at most once more by the compiler, shared by the eight pages
+      // (without sharing: once per page, 10 for the kit's first group)
+      for (const edge of barrelEdges) {
+        const key = `${env} ${edge}`
+        expect(counts.get(key), key).toBeDefined()
+        expect(counts.get(key), key).toBeLessThanOrEqual(2)
+      }
+    }
+  })
 })

@@ -19,7 +19,7 @@ import type { RouterFixtures } from '../test'
 
 const inPlace = { reloaded: false, errors: [] }
 
-describe('vite: React route components', { timeout: 60_000 }, () => {
+describe('vite: React route components', () => {
   /**
    * Opens an app whose route file `file` holds `route('v1')`, waits until it
    * shows `shows('v1')` (after navigating to `path`, when given), edits it

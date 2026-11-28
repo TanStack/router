@@ -224,110 +224,87 @@ describe.each<[StartBundler, Array<[string, string, Files]>]>([
         `${formDir(name)}/entry.ts`,
       ])
     },
-    timeout,
   )
 
-  test(
-    'every form is reported, and nothing else',
-    () => {
-      expect(importers).toEqual(
-        forms.map(([name]) => `${formDir(name)}/entry.ts`).sort(),
-      )
-    },
-    timeout,
-  )
+  test('every form is reported, and nothing else', () => {
+    expect(importers).toEqual(
+      forms.map(([name]) => `${formDir(name)}/entry.ts`).sort(),
+    )
+  })
 
-  test(
-    'with a persistent cache, a restored build is mocked and reported too',
-    async () => {
-      const result = await buildStart({
-        bundler,
-        files: app(
-          bundler === 'vite'
-            ? eagerGlob('./secrets*.ts', '?raw')
-            : webpackContext('/secrets.*\\.ts$/'),
-          byFileRule,
-        ),
-        entry: 'src/entry.ts',
-        builds: 2,
-        ...(bundler === 'rsbuild' && {
-          rsbuildConfig: { performance: { buildCache: true } },
-        }),
-        start: { importProtection },
-      })
-      expect(await emittedCanaries(result.client.outDir)).toEqual([])
-      expect(importersIn(result, 'client')).toEqual(['src/entry.ts'])
-    },
-    timeout,
-  )
+  test('with a persistent cache, a restored build is mocked and reported too', async () => {
+    const result = await buildStart({
+      bundler,
+      files: app(
+        bundler === 'vite'
+          ? eagerGlob('./secrets*.ts', '?raw')
+          : webpackContext('/secrets.*\\.ts$/'),
+        byFileRule,
+      ),
+      entry: 'src/entry.ts',
+      builds: 2,
+      ...(bundler === 'rsbuild' && {
+        rsbuildConfig: { performance: { buildCache: true } },
+      }),
+      start: { importProtection },
+    })
+    expect(await emittedCanaries(result.client.outDir)).toEqual([])
+    expect(importersIn(result, 'client')).toEqual(['src/entry.ts'])
+  })
 
-  test(
-    'a file that loses its marker in a watch build is its text again, unreported',
-    async () => {
-      const result = await buildStart({
-        bundler,
-        files: app(
-          bundler === 'vite'
-            ? eagerGlob('./marked*.ts', '?raw')
-            : webpackContext('/marked.*\\.ts$/'),
-          byMarker,
-        ),
-        entry: 'src/entry.ts',
-        start: { importProtection },
-        watchEdits: { 'src/marked.ts': `export const s = '${CANARY}'\n` },
-      })
-      expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
-      // (what the rebuild reported)
-      expect(clientViolations(result)).toBe(0)
-    },
-    timeout,
-  )
-
-  test(
-    'an unused bare import is erased: no report, the error behaviour builds',
-    async () => {
-      const result = await buildApp(
-        bundler,
-        `import './marked.ts?raw'\n`,
+  test('a file that loses its marker in a watch build is its text again, unreported', async () => {
+    const result = await buildStart({
+      bundler,
+      files: app(
+        bundler === 'vite'
+          ? eagerGlob('./marked*.ts', '?raw')
+          : webpackContext('/marked.*\\.ts$/'),
         byMarker,
-        { behavior: 'error' },
-      )
-      expect(await emittedCanaries(result.client.outDir)).toEqual([])
-    },
-    timeout,
-  )
+      ),
+      entry: 'src/entry.ts',
+      start: { importProtection },
+      watchEdits: { 'src/marked.ts': `export const s = '${CANARY}'\n` },
+    })
+    expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
+    // (what the rebuild reported)
+    expect(clientViolations(result)).toBe(0)
+  })
 
-  test(
-    'an asset that is not denied keeps its bytes',
-    async () => {
-      const result = await buildStart({
-        bundler,
-        files: app(
-          `import url from './logo.png?url'
+  test('an unused bare import is erased: no report, the error behaviour builds', async () => {
+    const result = await buildApp(
+      bundler,
+      `import './marked.ts?raw'\n`,
+      byMarker,
+      { behavior: 'error' },
+    )
+    expect(await emittedCanaries(result.client.outDir)).toEqual([])
+  })
+
+  test('an asset that is not denied keeps its bytes', async () => {
+    const result = await buildStart({
+      bundler,
+      files: app(
+        `import url from './logo.png?url'
 ;(globalThis as any).url = url
 `,
-          // a byte order mark: a loader decoding the file would drop it
-          { 'src/logo.png': `\uFEFF${'0123456789'.repeat(1024)}` },
-        ),
-        entry: 'src/entry.ts',
-        // (a production client of one asset module reads a Rspack runtime
-        // name the harness's dangling-name check rejects; bytes are the same)
-        mode: 'development',
-        start: { importProtection },
+        // a byte order mark: a loader decoding the file would drop it
+        { 'src/logo.png': `\uFEFF${'0123456789'.repeat(1024)}` },
+      ),
+      entry: 'src/entry.ts',
+      // (a production client of one asset module reads a Rspack runtime
+      // name the harness's dangling-name check rejects; bytes are the same)
+      mode: 'development',
+      start: { importProtection },
+    })
+    const emitted = (
+      await readdir(result.client.outDir, {
+        recursive: true,
+        withFileTypes: true,
       })
-      const emitted = (
-        await readdir(result.client.outDir, {
-          recursive: true,
-          withFileTypes: true,
-        })
-      ).find((entry) => entry.isFile() && entry.name.endsWith('.png'))
-      const bytes = await readFile(
-        path.join(emitted!.parentPath, emitted!.name),
-      )
-      expect([...bytes.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf])
-    },
-    timeout,
-  )
+    ).find((entry) => entry.isFile() && entry.name.endsWith('.png'))
+    const bytes = await readFile(path.join(emitted!.parentPath, emitted!.name))
+    expect([...bytes.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf])
+  })
 })
 
 describe('vite dev', () => {
@@ -374,82 +351,65 @@ describe('vite dev', () => {
         devReported(name, entry, files),
       )
     },
-    timeout,
   )
 
-  test(
-    'every form is reported, and nothing else',
-    () => {
-      expect(served.importers).toEqual(
-        forms
-          .flatMap(([name, entry, files]) => devReported(name, entry, files))
-          .sort(),
-      )
-    },
-    timeout,
-  )
+  test('every form is reported, and nothing else', () => {
+    expect(served.importers).toEqual(
+      forms
+        .flatMap(([name, entry, files]) => devReported(name, entry, files))
+        .sort(),
+    )
+  })
 
   test.each([
     '/src/secrets.server.ts?raw',
     '/src/secrets.server.ts?inline',
     '/src/marked.ts?raw',
-  ])(
-    'a direct request for %s never gets the text',
-    async (url) => {
-      const server = await startDevServer({
-        browser: true,
-        start: { importProtection },
-        files: app('export {}\n', { ...byFileRule, ...byMarker }),
-      })
-      const response = await fetch(new URL(url, server.url))
-      expect(await response.text()).not.toContain(CANARY)
-    },
-    timeout,
-  )
+  ])('a direct request for %s never gets the text', async (url) => {
+    const server = await startDevServer({
+      browser: true,
+      start: { importProtection },
+      files: app('export {}\n', { ...byFileRule, ...byMarker }),
+    })
+    const response = await fetch(new URL(url, server.url))
+    expect(await response.text()).not.toContain(CANARY)
+  })
 
-  test(
-    'a file that gains a marker is mocked from then on',
-    async () => {
-      const server = await startDevServer({
-        browser: true,
-        start: { importProtection },
-        files: app('export {}\n', {
-          'src/later.ts': `export const s = '${CANARY}'\n`,
-        }),
-      })
-      const url = new URL('/src/later.ts?raw', server.url)
-      expect(await (await fetch(url)).text()).toContain(CANARY)
-      await server.edit({
-        'src/later.ts': `import '@tanstack/react-start/server-only'
+  test('a file that gains a marker is mocked from then on', async () => {
+    const server = await startDevServer({
+      browser: true,
+      start: { importProtection },
+      files: app('export {}\n', {
+        'src/later.ts': `export const s = '${CANARY}'\n`,
+      }),
+    })
+    const url = new URL('/src/later.ts?raw', server.url)
+    expect(await (await fetch(url)).text()).toContain(CANARY)
+    await server.edit({
+      'src/later.ts': `import '@tanstack/react-start/server-only'
 export const s = '${CANARY}'
 `,
-      })
-      await expect
-        .poll(async () => (await fetch(url)).text(), { timeout: 10_000 })
-        .not.toContain(CANARY)
-      await server.edit({ 'src/later.ts': `export const s = '${CANARY}'\n` })
-      await expect
-        .poll(async () => (await fetch(url)).text(), { timeout: 10_000 })
-        .toContain(CANARY)
-    },
-    timeout,
-  )
+    })
+    await expect
+      .poll(async () => (await fetch(url)).text(), { timeout: 10_000 })
+      .not.toContain(CANARY)
+    await server.edit({ 'src/later.ts': `export const s = '${CANARY}'\n` })
+    await expect
+      .poll(async () => (await fetch(url)).text(), { timeout: 10_000 })
+      .toContain(CANARY)
+  })
 })
 
-test(
-  'vite bundledDev: a glob ?raw of a denied file is mocked and reported',
-  async () => {
-    const server = await startProtectedDevServer(
-      app(eagerGlob('./secrets*.ts', '?raw'), byFileRule),
-      { mockAccess: 'off' },
-      { router: 'src/router.ts', bundledDev: { entry: 'src/router.ts' } },
-    )
-    const bundle = Object.values(await server.clientBundle()).join('\n')
-    expect(bundle).not.toContain(CANARY)
-    expect(importersIn(server, 'client')).toEqual(['src/secrets.server.ts'])
-  },
-  timeout,
-)
+test('vite bundledDev: a glob ?raw of a denied file is mocked and reported', async () => {
+  const server = await startProtectedDevServer(
+    app(eagerGlob('./secrets*.ts', '?raw'), byFileRule),
+    { mockAccess: 'off' },
+    { router: 'src/router.ts', bundledDev: { entry: 'src/router.ts' } },
+  )
+  const bundle = Object.values(await server.clientBundle()).join('\n')
+  expect(bundle).not.toContain(CANARY)
+  expect(importersIn(server, 'client')).toEqual(['src/secrets.server.ts'])
+})
 
 describe('rsbuild dev', () => {
   const forms = [...bothHosts, ...rsbuildOnly]
@@ -491,20 +451,15 @@ describe('rsbuild dev', () => {
         devReported(name, entry, files),
       )
     },
-    timeout,
   )
 
-  test(
-    'every form is reported, and nothing else',
-    () => {
-      expect(served.importers).toEqual(
-        forms
-          .flatMap(([name, entry, files]) => devReported(name, entry, files))
-          .sort(),
-      )
-    },
-    timeout,
-  )
+  test('every form is reported, and nothing else', () => {
+    expect(served.importers).toEqual(
+      forms
+        .flatMap(([name, entry, files]) => devReported(name, entry, files))
+        .sort(),
+    )
+  })
 })
 
 const patternImports: Array<[StartBundler, string, string, Files]> = [
@@ -518,83 +473,63 @@ describe.each(patternImports)(
   '%s build verdicts, %s',
   (bundler, rule, entry, denied) => {
     const file = Object.keys(denied)[0]!
-    test(
-      'the error behaviour fails the build naming the importer',
-      async () => {
-        const error = await rejection(
-          buildApp(bundler, entry, denied, { behavior: 'error' }),
-        )
-        expect(importersIn(error, 'client')).toEqual(['src/entry.ts'])
-      },
-      timeout,
-    )
+    test('the error behaviour fails the build naming the importer', async () => {
+      const error = await rejection(
+        buildApp(bundler, entry, denied, { behavior: 'error' }),
+      )
+      expect(importersIn(error, 'client')).toEqual(['src/entry.ts'])
+    })
 
-    test(
-      'allowImport gives the real text',
-      async () => {
-        const result = await buildApp(bundler, entry, denied, {
-          ...importProtection,
-          allowImport: () => true,
-        })
-        expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
-      },
-      timeout,
-    )
+    test('allowImport gives the real text', async () => {
+      const result = await buildApp(bundler, entry, denied, {
+        ...importProtection,
+        allowImport: () => true,
+      })
+      expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
+    })
 
     // (a file name only: `excludeFiles` never hides a marker, SPEC J6.1)
     if (rule === 'a file rule') {
-      test(
-        '`excludeFiles` gives the real text, unreported',
-        async () => {
-          const result = await buildApp(bundler, entry, denied, {
-            ...importProtection,
-            client: { excludeFiles: [`**/${path.basename(file)}`] },
-          })
-          expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
-          expect(clientViolations(result)).toBe(0)
-        },
-        timeout,
-      )
-    }
-
-    test(
-      'a file that is not denied keeps its text, unreported',
-      async () => {
-        const result = await buildApp(
-          bundler,
-          bundler === 'vite'
-            ? eagerGlob('./plain*.ts', '?raw')
-            : webpackContext('/plain.*\\.ts$/'),
-          { 'src/plain.ts': `export const s = '${CANARY}'\n` },
-        )
+      test('`excludeFiles` gives the real text, unreported', async () => {
+        const result = await buildApp(bundler, entry, denied, {
+          ...importProtection,
+          client: { excludeFiles: [`**/${path.basename(file)}`] },
+        })
         expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
         expect(clientViolations(result)).toBe(0)
-      },
-      timeout,
-    )
+      })
+    }
+
+    test('a file that is not denied keeps its text, unreported', async () => {
+      const result = await buildApp(
+        bundler,
+        bundler === 'vite'
+          ? eagerGlob('./plain*.ts', '?raw')
+          : webpackContext('/plain.*\\.ts$/'),
+        { 'src/plain.ts': `export const s = '${CANARY}'\n` },
+      )
+      expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
+      expect(clientViolations(result)).toBe(0)
+    })
   },
 )
 
 describe.each<StartBundler>(['vite', 'rsbuild'])('%s build', (bundler) => {
-  test(
-    'an exempt importer of a static ?raw import gets the real text, unreported',
-    async () => {
-      const result = await buildApp(
-        bundler,
-        `import './exempt/reader'\n`,
-        {
-          ...byFileRule,
-          'src/exempt/reader.ts': `import text from '../secrets.server.ts?raw'
+  test('an exempt importer of a static ?raw import gets the real text, unreported', async () => {
+    const result = await buildApp(
+      bundler,
+      `import './exempt/reader'\n`,
+      {
+        ...byFileRule,
+        'src/exempt/reader.ts': `import text from '../secrets.server.ts?raw'
 ;(globalThis as any).text = text
 `,
-        },
-        { ...importProtection, ignoreImporters: ['**/exempt/**'] },
-      )
-      expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
-      expect(clientViolations(result)).toBe(0)
-    },
-    timeout,
-  )
+      },
+      { ...importProtection, ignoreImporters: ['**/exempt/**'] },
+    )
+    expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
+    expect(clientViolations(result)).toBe(0)
+  })
 
   test.each([
     [
@@ -622,36 +557,31 @@ export const s = '${CANARY}'
       expect(await emittedCanaries(result.ssr.outDir)).not.toEqual([])
       expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
     },
-    timeout,
   )
 })
 
-test(
-  'vite build: a virtual module with a query keeps its own marker',
-  async () => {
-    const id = 'virtual:thing?variant=a'
-    const result = await buildStart({
-      bundler: 'vite',
-      files: app(staticImport(id), {}),
-      entry: 'src/entry.ts',
-      start: { importProtection },
-      viteConfig: {
-        plugins: [
-          {
-            name: 'virtual-thing',
-            resolveId: (source) => (source === id ? `\0${id}` : null),
-            load: (loaded) =>
-              loaded === `\0${id}`
-                ? `import '@tanstack/react-start/server-only'
+test('vite build: a virtual module with a query keeps its own marker', async () => {
+  const id = 'virtual:thing?variant=a'
+  const result = await buildStart({
+    bundler: 'vite',
+    files: app(staticImport(id), {}),
+    entry: 'src/entry.ts',
+    start: { importProtection },
+    viteConfig: {
+      plugins: [
+        {
+          name: 'virtual-thing',
+          resolveId: (source) => (source === id ? `\0${id}` : null),
+          load: (loaded) =>
+            loaded === `\0${id}`
+              ? `import '@tanstack/react-start/server-only'
 export const s = '${CANARY}'
 `
-                : null,
-          },
-        ],
-      },
-    })
-    expect(await emittedCanaries(result.client.outDir)).toEqual([])
-    expect(importersIn(result, 'client')).toEqual(['src/entry.ts'])
-  },
-  timeout,
-)
+              : null,
+        },
+      ],
+    },
+  })
+  expect(await emittedCanaries(result.client.outDir)).toEqual([])
+  expect(importersIn(result, 'client')).toEqual(['src/entry.ts'])
+})

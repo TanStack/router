@@ -29,8 +29,6 @@ import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import { runViteClient, startBrowserProtectedDevServer } from './client-pages'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'
 
-const timeout = 60_000
-
 /** Names an importer may use, including ones no identifier can spell. */
 const oddNames = [
   'valid',
@@ -432,6 +430,5 @@ describe.each(channels)('%s, mock mode', (channel) => {
     async (name) => {
       expect((await outcomeOf(channel))[name]).toEqual(expected[name])
     },
-    timeout,
   )
 })

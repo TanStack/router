@@ -36,8 +36,6 @@ import {
 import type { AppPage, serveStartBuild } from './start-compose-app'
 import type { StartBuild } from '../build-harness'
 
-const timeout = 60_000
-
 const files = {
   'src/db.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
   'src/routes/__root.tsx': rootDocument(['/', '/posts']),
@@ -139,7 +137,7 @@ describe.each(startBundlers)('%s production build, served', (bundler) => {
       }),
     )
     served = await serving(() => serveStartBuildShared(build))
-  }, timeout)
+  }, 60_000)
 
   test('nothing of the server-only module is in the client build, and import protection reports nothing', () => {
     expect({
@@ -156,110 +154,93 @@ describe.each(startBundlers)('%s production build, served', (bundler) => {
     expect(build.client.where('MARK_POSTS_COMPONENT')).toBe('lazy')
   })
 
-  test(
-    'the server renders the loader data through the server fn',
-    async () => {
-      const { result } = await build.ssr.run(
-        `return await entry.renderPath(entry.getRouter().routeTree, '/posts')`,
-      )
-      expect(result).toContain('MARK_POSTS_COMPONENT posts:MARK_SECRET')
-    },
-    timeout,
-  )
+  test('the server renders the loader data through the server fn', async () => {
+    const { result } = await build.ssr.run(
+      `return await entry.renderPath(entry.getRouter().routeTree, '/posts')`,
+    )
+    expect(result).toContain('MARK_POSTS_COMPONENT posts:MARK_SECRET')
+  })
 
   // Same bug as start-build-server-fn-cases.test.ts "SSR: a server fn module
   // is initialised once and shares its state with SSR code": the SSR bundle
   // holds the route module twice (the SSR module and the server fn provider
   // module of the same file), so its top-level code runs twice.
-  test(
-    'the server runs the route module once',
-    async () => {
-      const { result } = await build.ssr.run(
-        `await entry.renderPath(entry.getRouter().routeTree, '/posts')
+  test('the server runs the route module once', async () => {
+    const { result } = await build.ssr.run(
+      `await entry.renderPath(entry.getRouter().routeTree, '/posts')
 return globalThis.__postsInits`,
-      )
-      expect(result).toBe(1)
-    },
-    timeout,
-  )
+    )
+    expect(result).toBe(1)
+  })
 
-  test(
-    'the page navigates to the route, loads its chunk, and the loader and a click call the same server fn the server answers',
-    async () => {
-      const page = await openAppPage(served, '/')
-      await page.waitForText('MARK_HOME', { selector: '#app' })
-      const result = await visitPosts(page)
-      const chunks = build.client.locate('MARK_POSTS_COMPONENT').lazy
-      expect(result).toEqual({
-        ...visited,
-        scriptsLoadedForPosts: expect.arrayContaining(
-          chunks.map((chunk) => `/${chunk}`),
-        ),
-      })
-      expect(result.requests[1]).toBe(result.requests[0])
-      // That id is the one the server's handler is registered under.
-      const id = result.requests[0]!.slice('/_serverFn/'.length)
-      expect(
-        (
-          await build.ssr.run(
-            `${callByIdPrelude}return await callById(${JSON.stringify(id)})`,
-          )
-        ).result,
-      ).toBe('posts:MARK_SECRET')
-    },
-    timeout,
-  )
+  test('the page navigates to the route, loads its chunk, and the loader and a click call the same server fn the server answers', async () => {
+    const page = await openAppPage(served, '/')
+    await page.waitForText('MARK_HOME', { selector: '#app' })
+    const result = await visitPosts(page)
+    const chunks = build.client.locate('MARK_POSTS_COMPONENT').lazy
+    expect(result).toEqual({
+      ...visited,
+      scriptsLoadedForPosts: expect.arrayContaining(
+        chunks.map((chunk) => `/${chunk}`),
+      ),
+    })
+    expect(result.requests[1]).toBe(result.requests[0])
+    // That id is the one the server's handler is registered under.
+    const id = result.requests[0]!.slice('/_serverFn/'.length)
+    expect(
+      (
+        await build.ssr.run(
+          `${callByIdPrelude}return await callById(${JSON.stringify(id)})`,
+        )
+      ).result,
+    ).toBe('posts:MARK_SECRET')
+  })
 })
 
 describe('Vite dev server with Start', () => {
-  test(
-    'the page navigates to the route, and the loader and a click call the same server fn the dev server answers',
-    async () => {
-      const recorder = violationRecorder()
-      const server = await startDevServer({
-        start: { importProtection: recorder.importProtection },
-        browser: true,
-        config: {
-          optimizeDeps: {
-            include: [
-              'react',
-              'react/jsx-dev-runtime',
-              'react-dom',
-              'react-dom/client',
-              '@tanstack/react-router',
-              '@tanstack/react-router > @tanstack/router-core > seroval',
-              '@tanstack/react-router > @tanstack/router-core > seroval-plugins/web',
-            ],
-          },
+  test('the page navigates to the route, and the loader and a click call the same server fn the dev server answers', async () => {
+    const recorder = violationRecorder()
+    const server = await startDevServer({
+      start: { importProtection: recorder.importProtection },
+      browser: true,
+      config: {
+        optimizeDeps: {
+          include: [
+            'react',
+            'react/jsx-dev-runtime',
+            'react-dom',
+            'react-dom/client',
+            '@tanstack/react-router',
+            '@tanstack/react-router > @tanstack/router-core > seroval',
+            '@tanstack/react-router > @tanstack/router-core > seroval-plugins/web',
+          ],
         },
-        plugins: [react()],
-        files: {
-          ...startServerEntryFiles,
-          'harness/client-entry.ts':
-            startPageEntries['harness/client-entry.ts'],
-          ...files,
-        },
-      })
-      const page = await openAppPage({ url: server.url! }, '/')
-      await page.waitForText('MARK_HOME', { selector: '#app' })
-      const result = await visitPosts(page)
-      expect(result).toEqual({
-        ...visited,
-        scriptsLoadedForPosts: expect.any(Array),
-      })
-      // The route's component loads on navigation: one of the scripts the
-      // page requested then serves it (whatever its URL).
-      const served = await Promise.all(
-        result.scriptsLoadedForPosts.map(
-          async (url) => (await server.fetch(url)).body,
-        ),
-      )
-      expect(served.some((code) => code.includes('MARK_POSTS_COMPONENT'))).toBe(
-        true,
-      )
-      expect(result.requests[1]).toBe(result.requests[0])
-      expect(reportedViolations({ root: server.root, ...recorder })).toEqual([])
-    },
-    timeout,
-  )
+      },
+      plugins: [react()],
+      files: {
+        ...startServerEntryFiles,
+        'harness/client-entry.ts': startPageEntries['harness/client-entry.ts'],
+        ...files,
+      },
+    })
+    const page = await openAppPage({ url: server.url! }, '/')
+    await page.waitForText('MARK_HOME', { selector: '#app' })
+    const result = await visitPosts(page)
+    expect(result).toEqual({
+      ...visited,
+      scriptsLoadedForPosts: expect.any(Array),
+    })
+    // The route's component loads on navigation: one of the scripts the
+    // page requested then serves it (whatever its URL).
+    const served = await Promise.all(
+      result.scriptsLoadedForPosts.map(
+        async (url) => (await server.fetch(url)).body,
+      ),
+    )
+    expect(served.some((code) => code.includes('MARK_POSTS_COMPONENT'))).toBe(
+      true,
+    )
+    expect(result.requests[1]).toBe(result.requests[0])
+    expect(reportedViolations({ root: server.root, ...recorder })).toEqual([])
+  })
 })

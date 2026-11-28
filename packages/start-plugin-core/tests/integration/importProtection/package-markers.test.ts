@@ -24,8 +24,6 @@ import type { PackageLayout, StartDeclaration } from '../../package-layouts'
 import type { StartBundler } from '../../build-harness'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'
 
-const timeout = 60_000
-
 /** `audit-lib`: a barrel re-exporting a marked module and a safe value. */
 const auditLib = (declaration: StartDeclaration, sideEffects?: boolean) => ({
   name: 'audit-lib',
@@ -92,7 +90,6 @@ describe.each(startBundlers)('%s build', (bundler: StartBundler) => {
         )
       }
     },
-    timeout,
   )
 
   // An importer the user exempts is compiled: its imports are read, and the
@@ -116,64 +113,55 @@ describe.each(startBundlers)('%s build', (bundler: StartBundler) => {
       expect(reportedViolations(build)).toEqual([])
       expect(problems(build.diagnostics).map(({ text }) => text)).toEqual([])
     },
-    timeout,
   )
 
   // Decision 8's contract: for an importer the compiler does not compile,
   // `allowImport` is asked once about the marked file, with the file as
   // `importer` and as `resolved`; allowing it gives the real module.
   // Source: node_modules policy, decision 8 (A).
-  test(
-    'allowImport is asked about the marked file with the file as importer and resolved; allowing it gives the real module',
-    async () => {
-      const { lib, options } = app('npm', 'none', 'secret')
-      const asked: Array<{ importer: string; resolved?: string }> = []
-      const build = await buildStart({
-        bundler,
-        ...options,
-        start: {
-          importProtection: {
-            allowImport: (info) => {
-              asked.push({ importer: info.importer, resolved: info.resolved })
-              return info.resolved?.endsWith('/audit-lib/secret.js') === true
-            },
+  test('allowImport is asked about the marked file with the file as importer and resolved; allowing it gives the real module', async () => {
+    const { lib, options } = app('npm', 'none', 'secret')
+    const asked: Array<{ importer: string; resolved?: string }> = []
+    const build = await buildStart({
+      bundler,
+      ...options,
+      start: {
+        importProtection: {
+          allowImport: (info) => {
+            asked.push({ importer: info.importer, resolved: info.resolved })
+            return info.resolved?.endsWith('/audit-lib/secret.js') === true
           },
         },
-      })
-      expect(
-        (await build.client.run(`return String(entry.read())`)).result,
-      ).toBe('MARK_SECRET')
-      const secret = `${build.root}/${lib.directory}/secret.js`
-      expect(asked).toEqual([{ importer: secret, resolved: secret }])
-    },
-    timeout,
-  )
+      },
+    })
+    expect((await build.client.run(`return String(entry.read())`)).result).toBe(
+      'MARK_SECRET',
+    )
+    const secret = `${build.root}/${lib.directory}/secret.js`
+    expect(asked).toEqual([{ importer: secret, resolved: secret }])
+  })
 
   // `excludeFiles` skips the file-name rules only: a marked app file it
   // matches is still denied (main's Vite behaviour).
   // Source: node_modules policy, decision 7 (the reviews' `rs_2a`).
-  test(
-    'a marked app file matched by excludeFiles is denied',
-    async () => {
-      const error = await rejection(
-        buildStart({
-          bundler,
-          files: {
-            'src/vendor/secret.ts': `import '@tanstack/react-start/server-only'\nexport const secret = () => 'MARK_SECRET'\n`,
-            'src/entry.ts': `import { secret } from './vendor/secret'\nexport const read = () => secret()\n`,
-          },
-          entry: 'src/entry.ts',
-          start: {
-            importProtection: { client: { excludeFiles: ['src/vendor/**'] } },
-          },
-        }),
-      )
-      expect(
-        reportedViolations(error).map(({ importer }) => importer),
-      ).toContainEqual(expect.stringMatching(/^src\/entry\.ts:1:/))
-    },
-    timeout,
-  )
+  test('a marked app file matched by excludeFiles is denied', async () => {
+    const error = await rejection(
+      buildStart({
+        bundler,
+        files: {
+          'src/vendor/secret.ts': `import '@tanstack/react-start/server-only'\nexport const secret = () => 'MARK_SECRET'\n`,
+          'src/entry.ts': `import { secret } from './vendor/secret'\nexport const read = () => secret()\n`,
+        },
+        entry: 'src/entry.ts',
+        start: {
+          importProtection: { client: { excludeFiles: ['src/vendor/**'] } },
+        },
+      }),
+    )
+    expect(
+      reportedViolations(error).map(({ importer }) => importer),
+    ).toContainEqual(expect.stringMatching(/^src\/entry\.ts:1:/))
+  })
 
   // A file name is a convention of the app's scope, not a statement: an
   // unmarked `.server.js` imported inside a package or a workspace package
@@ -205,7 +193,6 @@ describe.each(startBundlers)('%s build', (bundler: StartBundler) => {
       ).toBe('MARK_DB')
       expect(reportedViolations(build)).toEqual([])
     },
-    timeout,
   )
 })
 
@@ -239,7 +226,6 @@ describe.each(startBundlers)(
           reportedViolations(error).map(({ importer }) => importer),
         ).toContainEqual(expect.stringMatching(/^src\/entry\.ts:1:/))
       },
-      timeout,
     )
   },
 )
@@ -249,41 +235,37 @@ describe.each(startBundlers)(
 // Rsbuild (Vite's dependency filter let only Start text through).
 // Source: node_modules policy, step 4.
 describe.each(startBundlers)('%s build, a package in the scope', (bundler) => {
-  test(
-    'a specifier rule denies the import of a package under src/node_modules',
-    async () => {
-      const error = await rejection(
-        buildStart({
-          bundler,
-          files: {
-            'node_modules/secret-sdk/package.json': JSON.stringify({
-              name: 'secret-sdk',
-              type: 'module',
-              exports: { '.': './index.js' },
-            }),
-            'node_modules/secret-sdk/index.js': `export const sdk = () => 'MARK_SDK'\n`,
-            'src/node_modules/vendored/package.json': JSON.stringify({
-              name: 'vendored',
-              type: 'module',
-              exports: { '.': './index.js' },
-            }),
-            'src/node_modules/vendored/index.js': `import { sdk } from 'secret-sdk'\nexport const read = () => sdk()\n`,
-            'src/entry.ts': `import { read } from 'vendored'\nexport { read }\n`,
-          },
-          entry: 'src/entry.ts',
-          start: {
-            importProtection: { client: { specifiers: ['secret-sdk'] } },
-          },
-        }),
-      )
-      expect(
-        reportedViolations(error).map(({ importer }) => importer),
-      ).toContainEqual(
-        expect.stringMatching(/^src\/node_modules\/vendored\/index\.js:1:/),
-      )
-    },
-    timeout,
-  )
+  test('a specifier rule denies the import of a package under src/node_modules', async () => {
+    const error = await rejection(
+      buildStart({
+        bundler,
+        files: {
+          'node_modules/secret-sdk/package.json': JSON.stringify({
+            name: 'secret-sdk',
+            type: 'module',
+            exports: { '.': './index.js' },
+          }),
+          'node_modules/secret-sdk/index.js': `export const sdk = () => 'MARK_SDK'\n`,
+          'src/node_modules/vendored/package.json': JSON.stringify({
+            name: 'vendored',
+            type: 'module',
+            exports: { '.': './index.js' },
+          }),
+          'src/node_modules/vendored/index.js': `import { sdk } from 'secret-sdk'\nexport const read = () => sdk()\n`,
+          'src/entry.ts': `import { read } from 'vendored'\nexport { read }\n`,
+        },
+        entry: 'src/entry.ts',
+        start: {
+          importProtection: { client: { specifiers: ['secret-sdk'] } },
+        },
+      }),
+    )
+    expect(
+      reportedViolations(error).map(({ importer }) => importer),
+    ).toContainEqual(
+      expect.stringMatching(/^src\/node_modules\/vendored\/index\.js:1:/),
+    )
+  })
 })
 
 // An exemption's pattern matches a package hoisted above the app's root
@@ -337,7 +319,6 @@ describe.each(startBundlers)('%s build, a hoisted package', (bundler) => {
       expect(reportedViolations(build)).toEqual([])
       expect(problems(build.diagnostics).map(({ text }) => text)).toEqual([])
     },
-    timeout,
   )
 })
 
@@ -385,7 +366,6 @@ describe.each(startBundlers)(
           expect(v.specifier).toBe(name)
         }
       },
-      timeout,
     )
   },
 )
@@ -446,19 +426,14 @@ describe.each(startBundlers)('%s build, exemption patterns', (bundler) => {
       expect(reportedViolations(build)).toEqual([])
       expect(problems(build.diagnostics).map(({ text }) => text)).toEqual([])
     },
-    timeout,
   )
 
-  test(
-    'an empty pattern exempts nothing: the build fails at the barrel',
-    async () => {
-      const error = await rejection(app(['']))
-      const reported = reportedViolations(error)
-      expect(reported).not.toEqual([])
-      for (const { importer } of reported) {
-        expect(importer).toMatch(/^node_modules\/ui-kit\/index\.js:1:/)
-      }
-    },
-    timeout,
-  )
+  test('an empty pattern exempts nothing: the build fails at the barrel', async () => {
+    const error = await rejection(app(['']))
+    const reported = reportedViolations(error)
+    expect(reported).not.toEqual([])
+    for (const { importer } of reported) {
+      expect(importer).toMatch(/^node_modules\/ui-kit\/index\.js:1:/)
+    }
+  })
 })

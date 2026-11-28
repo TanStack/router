@@ -9,8 +9,6 @@ import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { build, head, rootRoute } from '../build-harness'
 import type { BuildResult } from '@tanstack/compiler-test-utils/build-harness'
 
-const timeout = 60_000
-
 const route = `export const Route = createFileRoute('/')({
   component: () => <p>MARK_PAGE_END</p>,
 })
@@ -63,7 +61,6 @@ describe.each(['vite', 'rspack', 'webpack'] as const)('on %s', (bundler) => {
         await app.dispose()
       }
     },
-    timeout,
   )
 
   test.each([
@@ -75,49 +72,41 @@ const opts = { component: () => <p>MARK_PAGE_END</p> }
 export const Route = createFileRoute('/')(opts)
 `,
     ],
-  ] as const)(
-    '%s splits, unreported',
-    async (_, body) => {
-      const app = await build({
-        bundler,
-        env: 'client',
-        minify: false,
-        files: files(`${head}${body}`),
-      })
-      try {
-        expect({
-          where: app.where('MARK_PAGE_END'),
-          warnings: reportedIn(app),
-        }).toEqual({ where: 'lazy', warnings: 0 })
-      } finally {
-        await app.dispose()
-      }
-    },
-    timeout,
-  )
+  ] as const)('%s splits, unreported', async (_, body) => {
+    const app = await build({
+      bundler,
+      env: 'client',
+      minify: false,
+      files: files(`${head}${body}`),
+    })
+    try {
+      expect({
+        where: app.where('MARK_PAGE_END'),
+        warnings: reportedIn(app),
+      }).toEqual({ where: 'lazy', warnings: 0 })
+    } finally {
+      await app.dispose()
+    }
+  })
 
-  test(
-    'a `Route` declared twice stays unsplit and warns once',
-    async () => {
-      const app = await build({
-        bundler,
-        env: 'client',
-        minify: false,
-        files: files(`${head}export var Route = createFileRoute('/')({
+  test('a `Route` declared twice stays unsplit and warns once', async () => {
+    const app = await build({
+      bundler,
+      env: 'client',
+      minify: false,
+      files: files(`${head}export var Route = createFileRoute('/')({
   component: () => <p>MARK_PAGE_END</p>,
 })
 var Route
 `),
-      })
-      try {
-        expect({
-          where: app.where('MARK_PAGE_END'),
-          warnings: reportedIn(app),
-        }).toEqual({ where: 'eager', warnings: 1 })
-      } finally {
-        await app.dispose()
-      }
-    },
-    timeout,
-  )
+    })
+    try {
+      expect({
+        where: app.where('MARK_PAGE_END'),
+        warnings: reportedIn(app),
+      }).toEqual({ where: 'eager', warnings: 1 })
+    } finally {
+      await app.dispose()
+    }
+  })
 })

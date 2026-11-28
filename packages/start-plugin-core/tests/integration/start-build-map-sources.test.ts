@@ -28,8 +28,6 @@ import {
   startPageEntries,
 } from './start-compose-app'
 
-const timeout = 60_000
-
 const route = `import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 const shared = { prefix: 'MARK_SHARED' }
@@ -67,28 +65,24 @@ function expectMarkerMapsToItsLine(
 }
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  test(
-    'every output of a route file names it once in the maps, client and server',
-    async () => {
-      const build = await buildStart({
-        bundler,
-        sourcemap: true,
-        files: {
-          ...startPageEntries,
-          ...pageEntries,
-          'src/router.ts': routerFile,
-          'src/routes/__root.tsx': rootDocument(),
-          'src/routes/index.tsx': route,
-        },
-      })
-      const routeFile = path.join(build.root, 'src/routes/index.tsx')
-      const client = await emittedMaps(build.client.outDir)
-      const ssr = await emittedMaps(build.ssr.outDir)
-      expectNamesFileOnce(client, build.root, routeFile, route)
-      expectNamesFileOnce(ssr, build.root, routeFile, route)
-      expectMarkerMapsToItsLine(client, build.root, 'MARK_PAGE ')
-      expectMarkerMapsToItsLine(ssr, build.root, 'MARK_HANDLER')
-    },
-    timeout,
-  )
+  test('every output of a route file names it once in the maps, client and server', async () => {
+    const build = await buildStart({
+      bundler,
+      sourcemap: true,
+      files: {
+        ...startPageEntries,
+        ...pageEntries,
+        'src/router.ts': routerFile,
+        'src/routes/__root.tsx': rootDocument(),
+        'src/routes/index.tsx': route,
+      },
+    })
+    const routeFile = path.join(build.root, 'src/routes/index.tsx')
+    const client = await emittedMaps(build.client.outDir)
+    const ssr = await emittedMaps(build.ssr.outDir)
+    expectNamesFileOnce(client, build.root, routeFile, route)
+    expectNamesFileOnce(ssr, build.root, routeFile, route)
+    expectMarkerMapsToItsLine(client, build.root, 'MARK_PAGE ')
+    expectMarkerMapsToItsLine(ssr, build.root, 'MARK_HANDLER')
+  })
 })

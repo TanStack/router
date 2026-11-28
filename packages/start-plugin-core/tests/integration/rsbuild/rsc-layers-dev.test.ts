@@ -23,34 +23,24 @@ import {
 } from './rsc-layers-app'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
-const timeout = 60_000
-
 describe('Rsbuild dev with RSC: one file, a module in each layer', () => {
   let server: RsbuildDevServer
   const openServer = closeAfterAll()
   beforeAll(async () => {
     server = await openServer(() => startRsbuildRscAppShared(layersFiles))
-  }, timeout)
+  }, 60_000)
 
   test('a server fn module and a client component of both layers serve each layer its role', async () => {
     await expectBothLayers(server.url!, 'MARK_SHARED', 'box')
   })
 
-  test(
-    'an edit of the server fn module reaches both layers',
-    async () => {
-      await server.edit({ 'src/shared/fns.ts': sharedFns('MARK_EDITED') })
-      await expectBothLayers(server.url!, 'MARK_EDITED', 'box')
-    },
-    timeout,
-  )
+  test('an edit of the server fn module reaches both layers', async () => {
+    await server.edit({ 'src/shared/fns.ts': sharedFns('MARK_EDITED') })
+    await expectBothLayers(server.url!, 'MARK_EDITED', 'box')
+  })
 
-  test(
-    'an edit of the client component reaches both layers',
-    async () => {
-      await server.edit({ 'src/shared/ClientBox.tsx': clientBox('edited') })
-      await expectBothLayers(server.url!, 'MARK_EDITED', 'edited')
-    },
-    timeout,
-  )
+  test('an edit of the client component reaches both layers', async () => {
+    await server.edit({ 'src/shared/ClientBox.tsx': clientBox('edited') })
+    await expectBothLayers(server.url!, 'MARK_EDITED', 'edited')
+  })
 })

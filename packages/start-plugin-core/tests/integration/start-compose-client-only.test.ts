@@ -26,8 +26,6 @@ import {
 } from './start-compose-app'
 import type { StartBuild } from '../build-harness'
 
-const timeout = 60_000
-
 const files = {
   ...startPageEntries,
   'src/chart.client.tsx': `// A browser-only module: evaluating it anywhere else throws.
@@ -77,7 +75,7 @@ describe.each(startBundlers)(
         }
         failure = error
       }
-    }, timeout)
+    }, 60_000)
 
     const built = () => {
       if (!build) {
@@ -98,24 +96,20 @@ describe.each(startBundlers)(
       expect(built().ssr.where('MARK_CHART')).toBe('nowhere')
     })
 
-    test(
-      'the server renders the fallback, and the page renders the children once hydrated',
-      async () => {
-        const served = await serveStartBuild(built())
-        const response = await served.fetch('/')
-        const html = await response.text()
-        expect({ status: response.status, html }).toEqual({
-          status: 200,
-          html: expect.stringContaining('MARK_LOADING'),
-        })
-        expect(html).not.toContain('MARK_CHART')
-        const page = await openAppPage(served, '/')
-        await page.waitForText('MARK_CHART wide', {
-          selector: '[data-testid=chart]',
-        })
-        expect(page.errors).toEqual([])
-      },
-      timeout,
-    )
+    test('the server renders the fallback, and the page renders the children once hydrated', async () => {
+      const served = await serveStartBuild(built())
+      const response = await served.fetch('/')
+      const html = await response.text()
+      expect({ status: response.status, html }).toEqual({
+        status: 200,
+        html: expect.stringContaining('MARK_LOADING'),
+      })
+      expect(html).not.toContain('MARK_CHART')
+      const page = await openAppPage(served, '/')
+      await page.waitForText('MARK_CHART wide', {
+        selector: '[data-testid=chart]',
+      })
+      expect(page.errors).toEqual([])
+    })
   },
 )

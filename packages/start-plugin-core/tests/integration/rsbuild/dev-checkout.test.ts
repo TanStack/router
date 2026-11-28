@@ -13,7 +13,6 @@ import { describe, expect, test } from 'vitest'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 import type { RsbuildPlugin, Rspack } from '@rsbuild/core'
 
-const timeout = 90_000
 const compileTimeout = 30_000
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
@@ -117,29 +116,25 @@ describe('Rsbuild dev: a dependent saved while its dependency is invalidated', (
   test.for([
     { name: 'one importer of the dependency', importers: 0 },
     { name: '300 importers of the dependency', importers: 300 },
-  ])(
-    'still re-plans its importers ($name)',
-    { timeout },
-    async ({ importers }) => {
-      const writer = writeOnWatchRun()
-      const server = await startRsbuildStartDevServer({
-        compileTimeout,
-        config: { plugins: [writer] },
-        files: checkoutApp(importers),
-      })
-      const client = async () =>
-        Object.values(await server.outputs('client')).join('\n')
-      expect(server.errors).toEqual([])
-      expect(await client()).toContain('MARK_PAGE')
-      writer.arm()
-      await server.write({ 'src/lib/l.ts': builderL })
-      await server.settle()
-      expect(server.errors).toEqual([])
-      const output = await client()
-      expect(output).not.toContain('MARK_A')
-      expect(output).not.toContain('MARK_PAGE')
-    },
-  )
+  ])('still re-plans its importers ($name)', async ({ importers }) => {
+    const writer = writeOnWatchRun()
+    const server = await startRsbuildStartDevServer({
+      compileTimeout,
+      config: { plugins: [writer] },
+      files: checkoutApp(importers),
+    })
+    const client = async () =>
+      Object.values(await server.outputs('client')).join('\n')
+    expect(server.errors).toEqual([])
+    expect(await client()).toContain('MARK_PAGE')
+    writer.arm()
+    await server.write({ 'src/lib/l.ts': builderL })
+    await server.settle()
+    expect(server.errors).toEqual([])
+    const output = await client()
+    expect(output).not.toContain('MARK_A')
+    expect(output).not.toContain('MARK_PAGE')
+  })
 
   // The same checkout with `l.ts` saved in place (truncated, then written),
   // and `a.ts` saved 5 to 20 ms after the truncation, before `l.ts`'s text
@@ -147,60 +142,52 @@ describe('Rsbuild dev: a dependent saved while its dependency is invalidated', (
   // invalidation reads `l.ts` again until its text is there. Each gap starts
   // from the first files, restored one at a time.
   // Source: as above.
-  test(
-    'still re-plans its importers when the dependency is saved in place',
-    async () => {
-      const server = await startRsbuildStartDevServer({
-        compileTimeout,
-        files: checkoutApp(0),
-      })
-      const client = async () =>
-        Object.values(await server.outputs('client')).join('\n')
-      expect(server.errors).toEqual([])
-      for (const gap of [5, 10, 15, 20]) {
-        expect(await client()).toContain('MARK_PAGE')
-        const l = await open(path.join(server.root, 'src/lib/l.ts'), 'r+')
-        try {
-          await l.truncate(0)
-          await sleep(gap)
-          await server.write({ 'src/lib/a.ts': builderA })
-          await sleep(5)
-          await l.write(builderL, 0)
-        } finally {
-          await l.close()
-        }
-        await server.settle()
-        expect(server.errors).toEqual([])
-        const output = await client()
-        expect(output, `${gap} ms apart`).not.toContain('MARK_A')
-        expect(output, `${gap} ms apart`).not.toContain('MARK_PAGE')
-        await server.edit({ 'src/lib/a.ts': plainA })
-        await server.edit({ 'src/lib/l.ts': plainL })
+  test('still re-plans its importers when the dependency is saved in place', async () => {
+    const server = await startRsbuildStartDevServer({
+      compileTimeout,
+      files: checkoutApp(0),
+    })
+    const client = async () =>
+      Object.values(await server.outputs('client')).join('\n')
+    expect(server.errors).toEqual([])
+    for (const gap of [5, 10, 15, 20]) {
+      expect(await client()).toContain('MARK_PAGE')
+      const l = await open(path.join(server.root, 'src/lib/l.ts'), 'r+')
+      try {
+        await l.truncate(0)
+        await sleep(gap)
+        await server.write({ 'src/lib/a.ts': builderA })
+        await sleep(5)
+        await l.write(builderL, 0)
+      } finally {
+        await l.close()
       }
-    },
-    timeout,
-  )
+      await server.settle()
+      expect(server.errors).toEqual([])
+      const output = await client()
+      expect(output, `${gap} ms apart`).not.toContain('MARK_A')
+      expect(output, `${gap} ms apart`).not.toContain('MARK_PAGE')
+      await server.edit({ 'src/lib/a.ts': plainA })
+      await server.edit({ 'src/lib/l.ts': plainL })
+    }
+  })
 
   // The control: the same edits, each one compiled before the next (passes
   // with the session's record of file events too).
-  test(
-    're-plans its importers when the edits compile one at a time',
-    async () => {
-      const server = await startRsbuildStartDevServer({
-        compileTimeout,
-        files: checkoutApp(0),
-      })
-      const client = async () =>
-        Object.values(await server.outputs('client')).join('\n')
-      expect(server.errors).toEqual([])
-      expect(await client()).toContain('MARK_PAGE')
-      await server.edit({ 'src/lib/l.ts': builderL })
-      await server.edit({ 'src/lib/a.ts': builderA })
-      expect(server.errors).toEqual([])
-      const output = await client()
-      expect(output).not.toContain('MARK_A')
-      expect(output).not.toContain('MARK_PAGE')
-    },
-    timeout,
-  )
+  test('re-plans its importers when the edits compile one at a time', async () => {
+    const server = await startRsbuildStartDevServer({
+      compileTimeout,
+      files: checkoutApp(0),
+    })
+    const client = async () =>
+      Object.values(await server.outputs('client')).join('\n')
+    expect(server.errors).toEqual([])
+    expect(await client()).toContain('MARK_PAGE')
+    await server.edit({ 'src/lib/l.ts': builderL })
+    await server.edit({ 'src/lib/a.ts': builderA })
+    expect(server.errors).toEqual([])
+    const output = await client()
+    expect(output).not.toContain('MARK_A')
+    expect(output).not.toContain('MARK_PAGE')
+  })
 })

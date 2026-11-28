@@ -534,27 +534,21 @@ describe.each(startBundlers)('%s build', (bundler) => {
     )
   }, timeout)
 
-  test(
-    'SSR: the server-only modules of handlers load on the first call, not with the module defining the fn',
-    async () => {
-      const { result } = await build.ssr
-        .run(`${counters}const before = counts('fns', 'heavy')
+  test('SSR: the server-only modules of handlers load on the first call, not with the module defining the fn', async () => {
+    const { result } = await build.ssr
+      .run(`${counters}const before = counts('fns', 'heavy')
 const heavy = await entry.getHeavy()
 return { before, heavy, after: counts('fns', 'heavy') }`)
-      expect(result).toEqual({
-        before: { fns: 1, heavy: 0 },
-        heavy: 'MARK_HEAVY',
-        after: { fns: 1, heavy: 1 },
-      })
-    },
-    timeout,
-  )
+    expect(result).toEqual({
+      before: { fns: 1, heavy: 0 },
+      heavy: 'MARK_HEAVY',
+      after: { fns: 1, heavy: 1 },
+    })
+  })
 
-  test(
-    'SSR: direct calls and calls over HTTP run one instance of the module and of what its handlers import',
-    async () => {
-      const { result } = await build.ssr
-        .run(`${callByIdPrelude}${counters}const results = await Promise.all([
+  test('SSR: direct calls and calls over HTTP run one instance of the module and of what its handlers import', async () => {
+    const { result } = await build.ssr
+      .run(`${callByIdPrelude}${counters}const results = await Promise.all([
   ...Array.from({ length: 25 }, () => entry.getSlow()),
   ...Array.from({ length: 25 }, () => callById(serverFnId(entry.getSlow))),
 ])
@@ -564,48 +558,38 @@ return {
   overHttp: await callById(serverFnId(entry.getHeavy)),
   after: counts('fns', 'slow', 'heavy'),
 }`)
-      expect(result).toEqual({
-        results: ['MARK_SLOW'],
-        counts: { fns: 1, slow: 1 },
-        overHttp: 'MARK_HEAVY',
-        after: { fns: 1, slow: 1, heavy: 1 },
-      })
-    },
-    timeout,
-  )
+    expect(result).toEqual({
+      results: ['MARK_SLOW'],
+      counts: { fns: 1, slow: 1 },
+      overHttp: 'MARK_HEAVY',
+      after: { fns: 1, slow: 1, heavy: 1 },
+    })
+  })
 
-  test(
-    "SSR: a handler reads the module's current state, and a handler's writes are what the module reads",
-    async () => {
-      const { result } = await build.ssr
-        .run(`${callByIdPrelude}entry.setLabel('changed')
+  test("SSR: a handler reads the module's current state, and a handler's writes are what the module reads", async () => {
+    const { result } = await build.ssr
+      .run(`${callByIdPrelude}entry.setLabel('changed')
 const label = await entry.readLabel()
 const overHttp = await callById(serverFnId(entry.readLabel))
 await entry.bump()
 await callById(serverFnId(entry.bump))
 return { label, overHttp, count: entry.readCount() }`)
-      expect(result).toEqual({
-        label: 'changed',
-        overHttp: 'changed',
-        count: 2,
-      })
-    },
-    timeout,
-  )
+    expect(result).toEqual({
+      label: 'changed',
+      overHttp: 'changed',
+      count: 2,
+    })
+  })
 
-  test(
-    'SSR: two handlers writing one binding share one instance of it',
-    async () => {
-      const { result } = await build.ssr.run(`${callByIdPrelude}return [
+  test('SSR: two handlers writing one binding share one instance of it', async () => {
+    const { result } = await build.ssr.run(`${callByIdPrelude}return [
   await entry.addOne(),
   await callById(serverFnId(entry.addTen)),
   await entry.addTen(),
   await callById(serverFnId(entry.addOne)),
 ]`)
-      expect(result).toEqual([1, 11, 21, 22])
-    },
-    timeout,
-  )
+    expect(result).toEqual([1, 11, 21, 22])
+  })
 
   // each runs once (R157): the statement assigning the state stays in the
   // module and runs at load (R154), and the handler module imports what it
@@ -613,11 +597,9 @@ return { label, overHttp, count: entry.readCount() }`)
   // module keeps (`seed` is an import), moves to the handler module and runs
   // at the first call, as on main (R153 supersedes R29/R31's "both at the
   // same time"; main's provider copy runs the statement a second time)
-  test(
-    'SSR: an effect setting state only handlers read runs once, in its declaration or after it',
-    async () => {
-      const { result } = await build.ssr
-        .run(`${callByIdPrelude}const atLoad = [...globalThis.seeded]
+  test('SSR: an effect setting state only handlers read runs once, in its declaration or after it', async () => {
+    const { result } = await build.ssr
+      .run(`${callByIdPrelude}const atLoad = [...globalThis.seeded]
 const values = [
   await entry.readInitialised(),
   await entry.readAssigned(),
@@ -625,54 +607,42 @@ const values = [
   await entry.readPure(),
 ]
 return { atLoad, values, after: globalThis.seeded }`)
-      const { atLoad, values, after } = result as {
-        atLoad: Array<string>
-        values: Array<number>
-        after: Array<string>
-      }
-      expect(values).toEqual([1, 1, 1, 5])
-      expect(atLoad).toEqual(['assignment'])
-      expect(after).toEqual(['assignment', 'initialiser'])
-    },
-    timeout,
-  )
+    const { atLoad, values, after } = result as {
+      atLoad: Array<string>
+      values: Array<number>
+      after: Array<string>
+    }
+    expect(values).toEqual([1, 1, 1, 5])
+    expect(atLoad).toEqual(['assignment'])
+    expect(after).toEqual(['assignment', 'initialiser'])
+  })
 
-  test(
-    'SSR: a destructuring of a function literal only a handler reads is evaluated at load, before a later statement changes its computed key',
-    async () => {
-      const { result } = await build.ssr.run(`${callByIdPrelude}return [
+  test('SSR: a destructuring of a function literal only a handler reads is evaluated at load, before a later statement changes its computed key', async () => {
+    const { result } = await build.ssr.run(`${callByIdPrelude}return [
   await entry.readPicked(),
   await callById(serverFnId(entry.readPicked)),
 ]`)
-      expect(result).toEqual([
-        [1, 1],
-        [1, 1],
-      ])
-    },
-    timeout,
-  )
+    expect(result).toEqual([
+      [1, 1],
+      [1, 1],
+    ])
+  })
 
-  test(
-    'SSR: the server-only module of a hoisted server fn loads on its first call',
-    async () => {
-      const { result } = await build.ssr
-        .run(`${counters}const fn = entry.hoisted.nested
+  test('SSR: the server-only module of a hoisted server fn loads on its first call', async () => {
+    const { result } = await build.ssr
+      .run(`${counters}const fn = entry.hoisted.nested
 const before = counts('deep')
 return { before, called: await fn(), after: counts('deep') }`)
-      expect(result).toEqual({
-        before: { deep: 0 },
-        called: 'MARK_DEEP',
-        after: { deep: 1 },
-      })
-    },
-    timeout,
-  )
+    expect(result).toEqual({
+      before: { deep: 0 },
+      called: 'MARK_DEEP',
+      after: { deep: 1 },
+    })
+  })
 
-  test(
-    'SSR: a server fn a top-level statement names and the split component calls has one instance: 1 2 3 4',
-    async () => {
-      const { result } = await build.ssr
-        .run(`${callByIdPrelude}const { routeTree } = entry.getRouter()
+  test('SSR: a server fn a top-level statement names and the split component calls has one instance: 1 2 3 4', async () => {
+    const { result } = await build.ssr
+      .run(`${callByIdPrelude}const { routeTree } = entry.getRouter()
 await entry.renderPath(routeTree, '/registered')
 const save = globalThis.__registered
 const calls = [await save({ data: {} })]
@@ -680,37 +650,29 @@ calls.push(await callById(serverFnId(save), {}, 'POST'))
 calls.push(await callById(serverFnId(save), {}, 'POST'))
 calls.push(await save({ data: {} }))
 return calls`)
-      expect(result).toEqual([1, 2, 3, 4])
-    },
-    timeout,
-  )
+    expect(result).toEqual([1, 2, 3, 4])
+  })
 
-  test(
-    "SSR: a declaration only a route's server-fn handler reads loads on the first call, though the loader and the split component both call the fn",
-    async () => {
-      const { result } = await build.ssr
-        .run(`${callByIdPrelude}${counters}const before = counts('route_log')
+  test("SSR: a declaration only a route's server-fn handler reads loads on the first call, though the loader and the split component both call the fn", async () => {
+    const { result } = await build.ssr
+      .run(`${callByIdPrelude}${counters}const before = counts('route_log')
 return {
   before,
   called: await entry.listLogged(),
   overHttp: await callById(serverFnId(entry.listLogged)),
   after: counts('route_log'),
 }`)
-      expect(result).toEqual({
-        before: { route_log: 0 },
-        called: 'route:x:20',
-        overHttp: 'route:x:20',
-        after: { route_log: 1 },
-      })
-    },
-    timeout,
-  )
+    expect(result).toEqual({
+      before: { route_log: 0 },
+      called: 'route:x:20',
+      overHttp: 'route:x:20',
+      after: { route_log: 1 },
+    })
+  })
 
-  test(
-    "SSR: a server fn only a route's split component calls loads nothing at server start; its chain loads with the chunk, as on main, its handler's imports at the first call",
-    async () => {
-      const { result } = await build.ssr
-        .run(`${callByIdPrelude}const marks = () => ({
+  test("SSR: a server fn only a route's split component calls loads nothing at server start; its chain loads with the chunk, as on main, its handler's imports at the first call", async () => {
+    const { result } = await build.ssr
+      .run(`${callByIdPrelude}const marks = () => ({
   mw: globalThis.MARK_PROBE_MW ?? 0,
   schema: globalThis.MARK_PROBE_SCHEMA ?? 0,
   builds: globalThis.MARK_PROBE_BUILDS ?? 0,
@@ -725,29 +687,25 @@ const called = await save({ data: { id: 'x' } })
 const afterCall = marks()
 const overHttp = await callById(serverFnId(save), { id: 'y' }, 'POST')
 return { atStart, rendered, afterRender, called, afterCall, overHttp, end: marks() }`)
-      // the chunk's caller copy builds the chain's root and middleware (its
-      // validator is the server phase's, gone as in the client's copy), the
-      // lazy module the executing instance (main: its provider copy, after
-      // the chunk built the validator too)
-      const called_ = { mw: 1, schema: 1, builds: 1, db: 1 }
-      expect(result).toEqual({
-        atStart: { mw: 0, schema: 0, builds: 0, db: 0 },
-        rendered: true,
-        afterRender: { mw: 1, schema: 0, builds: 0, db: 0 },
-        called: 'MARK_PROBE_DB',
-        afterCall: called_,
-        overHttp: 'MARK_PROBE_DB',
-        end: called_,
-      })
-    },
-    timeout,
-  )
+    // the chunk's caller copy builds the chain's root and middleware (its
+    // validator is the server phase's, gone as in the client's copy), the
+    // lazy module the executing instance (main: its provider copy, after
+    // the chunk built the validator too)
+    const called_ = { mw: 1, schema: 1, builds: 1, db: 1 }
+    expect(result).toEqual({
+      atStart: { mw: 0, schema: 0, builds: 0, db: 0 },
+      rendered: true,
+      afterRender: { mw: 1, schema: 0, builds: 0, db: 0 },
+      called: 'MARK_PROBE_DB',
+      afterCall: called_,
+      overHttp: 'MARK_PROBE_DB',
+      end: called_,
+    })
+  })
 
-  test(
-    "SSR: server fns only a route's split component calls share the module's state: chain state 1 2 3 4, validator state, a pinned snapshot, #8656's class and container",
-    async () => {
-      const { result } = await build.ssr
-        .run(`${callByIdPrelude}const { routeTree } = entry.getRouter()
+  test("SSR: server fns only a route's split component calls share the module's state: chain state 1 2 3 4, validator state, a pinned snapshot, #8656's class and container", async () => {
+    const { result } = await build.ssr
+      .run(`${callByIdPrelude}const { routeTree } = entry.getRouter()
 await entry.renderPath(routeTree, '/shared-state')
 const fns = globalThis.__shared
 const http = (fn, data) => callById(serverFnId(fn), data, 'POST')
@@ -764,22 +722,18 @@ return {
   session: session instanceof entry.Session,
   size: [await fns.size(), await callById(serverFnId(fns.size))],
 }`)
-      expect(result).toEqual({
-        chain: [1, 2, 3, 4],
-        validated: [1, 2],
-        snap: ['a/b', 'a/b'],
-        session: true,
-        size: [1, 1],
-      })
-    },
-    timeout,
-  )
+    expect(result).toEqual({
+      chain: [1, 2, 3, 4],
+      validated: [1, 2],
+      snap: ['a/b', 'a/b'],
+      session: true,
+      size: [1, 1],
+    })
+  })
 
-  test(
-    "SSR: a server fn only the split component calls stays lazy beside one the route's loader calls; the chunk's caller copy has the server fn's url and method",
-    async () => {
-      const { result } = await build.ssr
-        .run(`${callByIdPrelude}const marks = () => ({
+  test("SSR: a server fn only the split component calls stays lazy beside one the route's loader calls; the chunk's caller copy has the server fn's url and method", async () => {
+    const { result } = await build.ssr
+      .run(`${callByIdPrelude}const marks = () => ({
   schema: globalThis.MARK_STOP_SCHEMA ?? 0,
   builds: globalThis.MARK_STOP_BUILDS ?? 0,
   db: globalThis.MARK_STOP_DB ?? 0,
@@ -804,26 +758,24 @@ return {
   peek: [await peek(), await callById(serverFnId(peek), undefined, peek.method)],
   end: marks(),
 }`)
-      const once = { schema: 1, builds: 1, db: 1 }
-      expect(result).toEqual({
-        atStart: { schema: 0, builds: 0, db: 0 },
-        rendered: true,
-        // the render runs the loader: the file's first server-fn call loads
-        // its lazy module, `save`'s chain with it (main: its provider copy)
-        afterRender: once,
-        surface: [
-          { url: true, method: 'POST' },
-          { url: true, method: 'GET' },
-        ],
-        called: 'MARK_STOP_DB',
-        afterCall: once,
-        overHttp: 'MARK_STOP_DB',
-        peek: ['MARK_STOP_PEEK', 'MARK_STOP_PEEK'],
-        end: once,
-      })
-    },
-    timeout,
-  )
+    const once = { schema: 1, builds: 1, db: 1 }
+    expect(result).toEqual({
+      atStart: { schema: 0, builds: 0, db: 0 },
+      rendered: true,
+      // the render runs the loader: the file's first server-fn call loads
+      // its lazy module, `save`'s chain with it (main: its provider copy)
+      afterRender: once,
+      surface: [
+        { url: true, method: 'POST' },
+        { url: true, method: 'GET' },
+      ],
+      called: 'MARK_STOP_DB',
+      afterCall: once,
+      overHttp: 'MARK_STOP_DB',
+      peek: ['MARK_STOP_PEEK', 'MARK_STOP_PEEK'],
+      end: once,
+    })
+  })
 
   test.each(Object.entries(builderShapes))(
     "SSR %s: a server fn only a route's split component calls, on any chain shape, loads its chain (without its validator) with the chunk as on main and the handler's imports at the first call; one executing instance; the caller copy runs the middleware's client half and has the server fn's method and url; production lists its id",
@@ -903,14 +855,11 @@ return {
         url: true,
       })
     },
-    timeout,
   )
 
-  test(
-    'SSR: a server fn whose validator assigns an exported binding, only the split component calls it: the component is split on the server; one instance counts 1 2 3 4',
-    async () => {
-      const { result } = await build.ssr
-        .run(`${callByIdPrelude}const atStart = globalThis.MARK_VW_UI ?? 0
+  test('SSR: a server fn whose validator assigns an exported binding, only the split component calls it: the component is split on the server; one instance counts 1 2 3 4', async () => {
+    const { result } = await build.ssr
+      .run(`${callByIdPrelude}const atStart = globalThis.MARK_VW_UI ?? 0
 const { routeTree } = entry.getRouter()
 const rendered = (await entry.renderPath(routeTree, '/validator-writes')).includes('MARK_VW_PAGE')
 const afterRender = globalThis.MARK_VW_UI ?? 0
@@ -920,32 +869,24 @@ calls.push(await callById(serverFnId(save), {}, 'POST'))
 calls.push(await callById(serverFnId(save), {}, 'POST'))
 calls.push(await save({ data: {} }))
 return { atStart, rendered, afterRender, calls, seen: entry.vwSeen }`)
-      expect(result).toEqual({
-        atStart: 0,
-        rendered: true,
-        afterRender: 1,
-        calls: [1, 2, 3, 4],
-        seen: 4,
-      })
-    },
-    timeout,
-  )
+    expect(result).toEqual({
+      atStart: 0,
+      rendered: true,
+      afterRender: 1,
+      calls: [1, 2, 3, 4],
+      seen: 4,
+    })
+  })
 
-  test(
-    'SSR: a server fn only the client side of an isomorphic fn calls loads nothing at server start',
-    async () => {
-      const { result } = await build.ssr
-        .run(`const atStart = globalThis.MARK_CUBBY_CONTRACT ?? 0
+  test('SSR: a server fn only the client side of an isomorphic fn calls loads nothing at server start', async () => {
+    const { result } = await build.ssr
+      .run(`const atStart = globalThis.MARK_CUBBY_CONTRACT ?? 0
 return { atStart, server: await entry.check('x'), after: globalThis.MARK_CUBBY_CONTRACT ?? 0 }`)
-      expect(result).toEqual({ atStart: 0, server: 'server:x', after: 0 })
-    },
-    timeout,
-  )
+    expect(result).toEqual({ atStart: 0, server: 'server:x', after: 0 })
+  })
 
-  test(
-    'SSR: a handler-only module that throws at load fails only the calls of that fn',
-    async () => {
-      const { result } = await build.ssr.run(`const settle = async (run) => {
+  test('SSR: a handler-only module that throws at load fails only the calls of that fn', async () => {
+    const { result } = await build.ssr.run(`const settle = async (run) => {
   try {
     return { value: await run() }
   } catch (error) {
@@ -956,35 +897,27 @@ return {
   broken: await settle(() => entry.callBroken()),
   other: await settle(() => entry.getHeavy()),
 }`)
-      expect(result).toEqual({
-        broken: { error: expect.stringContaining('MARK_BROKEN_AT_IMPORT') },
-        other: { value: 'MARK_HEAVY' },
-      })
-    },
-    timeout,
-  )
+    expect(result).toEqual({
+      broken: { error: expect.stringContaining('MARK_BROKEN_AT_IMPORT') },
+      other: { value: 'MARK_HEAVY' },
+    })
+  })
 
-  test(
-    "SSR: an HTTP call loads its handler's imports before its middleware runs, as main's provider module does",
-    async () => {
-      const { result } = await build.ssr
-        .run(`${callByIdPrelude}const atLoad = globalThis.ORDER ?? []
+  test("SSR: an HTTP call loads its handler's imports before its middleware runs, as main's provider module does", async () => {
+    const { result } = await build.ssr
+      .run(`${callByIdPrelude}const atLoad = globalThis.ORDER ?? []
 const overHttp = await callById(serverFnId(entry.ordered))
 return { atLoad, overHttp, order: globalThis.ORDER }`)
-      expect(result).toEqual({
-        atLoad: [],
-        overHttp: 'MARK_ORDER',
-        order: ['dep', 'middleware', 'handler'],
-      })
-    },
-    timeout,
-  )
+    expect(result).toEqual({
+      atLoad: [],
+      overHttp: 'MARK_ORDER',
+      order: ['dep', 'middleware', 'handler'],
+    })
+  })
 
-  test(
-    "SSR: a direct call and then an HTTP call of a server fn with a middleware share one instance of its handler's imports",
-    async () => {
-      const { result } = await build.ssr
-        .run(`${callByIdPrelude}const direct = await entry.ordered()
+  test("SSR: a direct call and then an HTTP call of a server fn with a middleware share one instance of its handler's imports", async () => {
+    const { result } = await build.ssr
+      .run(`${callByIdPrelude}const direct = await entry.ordered()
 const overHttp = await callById(serverFnId(entry.ordered))
 const order = globalThis.ORDER
 return {
@@ -993,85 +926,66 @@ return {
   deps: order.filter((x) => x === 'dep').length,
   calls: order.filter((x) => x === 'handler').length,
 }`)
-      expect(result).toEqual({
-        direct: 'MARK_ORDER',
-        overHttp: 'MARK_ORDER',
-        deps: 1,
-        calls: 2,
-      })
-    },
-    timeout,
-  )
+    expect(result).toEqual({
+      direct: 'MARK_ORDER',
+      overHttp: 'MARK_ORDER',
+      deps: 1,
+      calls: 2,
+    })
+  })
 
-  test(
-    'SSR: an HTTP call reaches the server fn of a module that awaits it at its top level, one instance with the direct call',
-    async () => {
-      const { result } = await build.ssr
-        .run(`${callByIdPrelude}const tla = await entry.loadTla()
+  test('SSR: an HTTP call reaches the server fn of a module that awaits it at its top level, one instance with the direct call', async () => {
+    const { result } = await build.ssr
+      .run(`${callByIdPrelude}const tla = await entry.loadTla()
 return {
   ready: tla.ready,
   overHttp: await callById(serverFnId(tla.tlaFn)),
   dep: globalThis.MARK_TLA_DEP,
 }`)
-      expect(result).toEqual({
-        ready: 'tla:MARK_TLA_DEP',
-        overHttp: 'tla:MARK_TLA_DEP',
-        dep: 1,
-      })
-    },
-    timeout,
-  )
+    expect(result).toEqual({
+      ready: 'tla:MARK_TLA_DEP',
+      overHttp: 'tla:MARK_TLA_DEP',
+      dep: 1,
+    })
+  })
 
-  test(
-    'SSR: a module that awaits one of its own server fns at its top level evaluates',
-    async () => {
-      const { result } = await build.ssr.run(`const tla = await entry.loadTla()
+  test('SSR: a module that awaits one of its own server fns at its top level evaluates', async () => {
+    const { result } = await build.ssr.run(`const tla = await entry.loadTla()
 return { ready: tla.ready, again: await tla.tlaFn(), dep: globalThis.MARK_TLA_DEP }`)
-      expect(result).toEqual({
-        ready: 'tla:MARK_TLA_DEP',
-        again: 'tla:MARK_TLA_DEP',
-        dep: 1,
-      })
-    },
-    timeout,
-  )
+    expect(result).toEqual({
+      ready: 'tla:MARK_TLA_DEP',
+      again: 'tla:MARK_TLA_DEP',
+      dep: 1,
+    })
+  })
 
-  test(
-    'SSR: a module that awaits one of its own server fns in a top-level for await loop evaluates',
-    async () => {
-      const { result } = await build.ssr
-        .run(`const tla = await entry.loadTlaFor()
+  test('SSR: a module that awaits one of its own server fns in a top-level for await loop evaluates', async () => {
+    const { result } = await build.ssr.run(`const tla = await entry.loadTlaFor()
 return { results: tla.results, again: await tla.tlaForFn(), dep: globalThis.MARK_TLA_FOR_DEP }`)
-      expect(result).toEqual({
-        results: ['tla-for:MARK_TLA_FOR_DEP'],
-        again: 'tla-for:MARK_TLA_FOR_DEP',
-        dep: 1,
-      })
-    },
-    timeout,
-  )
+    expect(result).toEqual({
+      results: ['tla-for:MARK_TLA_FOR_DEP'],
+      again: 'tla-for:MARK_TLA_FOR_DEP',
+      dep: 1,
+    })
+  })
 
-  test(
-    'SSR: a module that awaits one of its own server fns in the disposer of an `await using` in a top-level block or for head evaluates',
-    async () => {
-      const { result } = await build.ssr.run(`const loaded = {}
+  test('SSR: a module that awaits one of its own server fns in the disposer of an `await using` in a top-level block or for head evaluates', async () => {
+    const { result } = await build.ssr.run(`const loaded = {}
 for (const [form, load] of Object.entries(entry.loadTlaUsing)) {
   const tla = await load()
   loaded[form] = { results: tla.results, again: await tla.tlaUsingFn() }
 }
 return { loaded, dep: globalThis.MARK_TLA_USING_DEP }`)
-      expect(result).toEqual({
-        loaded: Object.fromEntries(
-          ['block', 'for'].map((form) => {
-            const answer = `tla-using-${form}:MARK_TLA_USING_DEP`
-            return [form, { results: [answer], again: answer }]
-          }),
-        ),
-        dep: 1,
-      })
-    },
-    timeout,
-  )
+    expect(result).toEqual({
+      loaded: Object.fromEntries(
+        ['block', 'for'].map((form) => {
+          const answer = `tla-using-${form}:MARK_TLA_USING_DEP`
+          return [form, { results: [answer], again: answer }]
+        }),
+      ),
+      dep: 1,
+    })
+  })
 })
 
 /**
@@ -1189,85 +1103,77 @@ describe.each(startBundlers)(
       )
     }, timeout)
 
-    test(
-      'each handler, and each module only handlers or split chunks import, is emitted once',
-      () => {
-        expect(
-          Object.fromEntries(
-            handlerMarkers.map((marker) => [
-              marker,
-              build.ssr.chunks
-                .filter((chunk) => chunk.code.includes(marker))
-                .map((chunk) => chunk.fileName),
-            ]),
-          ),
-        ).toEqual(
-          Object.fromEntries(
-            handlerMarkers.map((marker) => [marker, [expect.any(String)]]),
-          ),
-        )
-      },
-      timeout,
-    )
-
-    test(
-      'the first request loads the handler it calls and no other; a handler sharing a module with a split component loads it once',
-      async () => {
-        const { outDir } = build.ssr
-        const { stdout } = await runNodeProgram(
-          requestsProgram(path.join(outDir, build.ssr.entry.fileName), outDir, [
-            '/',
-            '/uncalled',
-            '/split',
+    test('each handler, and each module only handlers or split chunks import, is emitted once', () => {
+      expect(
+        Object.fromEntries(
+          handlerMarkers.map((marker) => [
+            marker,
+            build.ssr.chunks
+              .filter((chunk) => chunk.code.includes(marker))
+              .map((chunk) => chunk.fileName),
           ]),
-          { cwd: outDir, env: { ...process.env, NODE_ENV: 'production' } },
+        ),
+      ).toEqual(
+        Object.fromEntries(
+          handlerMarkers.map((marker) => [marker, [expect.any(String)]]),
+        ),
+      )
+    })
+
+    test('the first request loads the handler it calls and no other; a handler sharing a module with a split component loads it once', async () => {
+      const { outDir } = build.ssr
+      const { stdout } = await runNodeProgram(
+        requestsProgram(path.join(outDir, build.ssr.entry.fileName), outDir, [
+          '/',
+          '/uncalled',
+          '/split',
+        ]),
+        { cwd: outDir, env: { ...process.env, NODE_ENV: 'production' } },
+      )
+      const steps = JSON.parse(stdout) as Array<{
+        path: string
+        status: number
+        text: string
+        loaded: Array<string>
+      }>
+      const markersIn = (files: Array<string>) => {
+        const code = files.map((file) => readFileSync(file, 'utf8'))
+        return handlerMarkers.filter((marker) =>
+          code.some((text) => text.includes(marker)),
         )
-        const steps = JSON.parse(stdout) as Array<{
-          path: string
-          status: number
-          text: string
-          loaded: Array<string>
-        }>
-        const markersIn = (files: Array<string>) => {
-          const code = files.map((file) => readFileSync(file, 'utf8'))
-          return handlerMarkers.filter((marker) =>
-            code.some((text) => text.includes(marker)),
-          )
-        }
-        expect(
-          steps.map((step) => ({
-            path: step.path,
-            status: step.status,
-            page: /page:[^<]*/.exec(step.text)?.[0],
-            markers: markersIn(step.loaded),
-          })),
-        ).toEqual([
-          {
-            path: '/',
-            status: 200,
-            page: 'page:MARK_CALLED_HANDLER',
-            markers: ['MARK_CALLED_HANDLER'],
-          },
-          {
-            path: '/uncalled',
-            status: 200,
-            page: 'page:MARK_UNCALLED_HANDLER:MARK_HEAVY_DEP',
-            markers: [
-              'MARK_CALLED_HANDLER',
-              'MARK_UNCALLED_HANDLER',
-              'MARK_HEAVY_DEP',
-            ],
-          },
-          {
-            path: '/split',
-            status: 200,
-            page: 'page:MARK_SPLIT_HANDLER:MARK_SPLIT_ONLY:MARK_SPLIT_ONLY:1',
-            markers: [...handlerMarkers],
-          },
-        ])
-      },
-      timeout,
-    )
+      }
+      expect(
+        steps.map((step) => ({
+          path: step.path,
+          status: step.status,
+          page: /page:[^<]*/.exec(step.text)?.[0],
+          markers: markersIn(step.loaded),
+        })),
+      ).toEqual([
+        {
+          path: '/',
+          status: 200,
+          page: 'page:MARK_CALLED_HANDLER',
+          markers: ['MARK_CALLED_HANDLER'],
+        },
+        {
+          path: '/uncalled',
+          status: 200,
+          page: 'page:MARK_UNCALLED_HANDLER:MARK_HEAVY_DEP',
+          markers: [
+            'MARK_CALLED_HANDLER',
+            'MARK_UNCALLED_HANDLER',
+            'MARK_HEAVY_DEP',
+          ],
+        },
+        {
+          path: '/split',
+          status: 200,
+          page: 'page:MARK_SPLIT_HANDLER:MARK_SPLIT_ONLY:MARK_SPLIT_ONLY:1',
+          markers: [...handlerMarkers],
+        },
+      ])
+    })
   },
 )
 
@@ -1275,14 +1181,12 @@ describe.each(startBundlers)(
 // as a module of its own (`Page.vue?vue&type=script&lang.ts`); its
 // handlers' server-only modules load on the first call like any module's.
 describe('vite build of a Vue app', () => {
-  test(
-    'SSR: the server-only module of a handler in a <script lang="ts"> block is not loaded with the SFC',
-    async () => {
-      const host = await closeAtEnd(() =>
-        createStartHost({ framework: 'vue', serve: false }),
-      )
-      const startCase = await host.case({
-        'Page.vue': `<script lang="ts">
+  test('SSR: the server-only module of a handler in a <script lang="ts"> block is not loaded with the SFC', async () => {
+    const host = await closeAtEnd(() =>
+      createStartHost({ framework: 'vue', serve: false }),
+    )
+    const startCase = await host.case({
+      'Page.vue': `<script lang="ts">
 import { createServerFn } from '@tanstack/vue-start'
 import { db } from './db.server'
 const input = <string>(globalThis as any).input
@@ -1294,35 +1198,31 @@ export default {}
   <p>page</p>
 </template>
 `,
-        'db.server.ts': `export const db = { x: (input: string) => 'MARK_DB_SERVER:' + input }\n`,
-        'module.ts': `export { fn } from './Page.vue'\n`,
-      })
-      const build = await host.build()
-      const { chunks } = build.environments.ssr!
-      const byName = new Map(chunks.map((chunk) => [chunk.fileName, chunk]))
-      const page = startCase.file('Page.vue')
-      // (the SFC module itself, which imports its blocks)
-      const own = chunks.filter((chunk) => chunk.moduleIds.includes(page))
-      expect(own.length, 'SSR chunks of the SFC').toBeGreaterThan(0)
-      // the SFC's chunks and every chunk they import statically
-      const loaded = new Set(own)
-      for (const chunk of loaded) {
-        for (const name of chunk.imports) {
-          const next = byName.get(name)
-          if (next) {
-            loaded.add(next)
-          }
+      'db.server.ts': `export const db = { x: (input: string) => 'MARK_DB_SERVER:' + input }\n`,
+      'module.ts': `export { fn } from './Page.vue'\n`,
+    })
+    const build = await host.build()
+    const { chunks } = build.environments.ssr!
+    const byName = new Map(chunks.map((chunk) => [chunk.fileName, chunk]))
+    const page = startCase.file('Page.vue')
+    // (the SFC module itself, which imports its blocks)
+    const own = chunks.filter((chunk) => chunk.moduleIds.includes(page))
+    expect(own.length, 'SSR chunks of the SFC').toBeGreaterThan(0)
+    // the SFC's chunks and every chunk they import statically
+    const loaded = new Set(own)
+    for (const chunk of loaded) {
+      for (const name of chunk.imports) {
+        const next = byName.get(name)
+        if (next) {
+          loaded.add(next)
         }
       }
-      expect({
-        withTheSfc: [...loaded].some((chunk) =>
-          chunk.code.includes('MARK_DB_SERVER'),
-        ),
-        inTheBuild: chunks.some((chunk) =>
-          chunk.code.includes('MARK_DB_SERVER'),
-        ),
-      }).toEqual({ withTheSfc: false, inTheBuild: true })
-    },
-    timeout,
-  )
+    }
+    expect({
+      withTheSfc: [...loaded].some((chunk) =>
+        chunk.code.includes('MARK_DB_SERVER'),
+      ),
+      inTheBuild: chunks.some((chunk) => chunk.code.includes('MARK_DB_SERVER')),
+    }).toEqual({ withTheSfc: false, inTheBuild: true })
+  })
 })

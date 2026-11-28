@@ -8,7 +8,6 @@ import { openRouteHmrPage } from '../serial'
  * and routes created inside functions: route-hmr-browser-plugin.test.ts.
  */
 
-const timeout = 90_000
 const inPlace = { reloaded: false, errors: [] }
 
 /**
@@ -53,7 +52,6 @@ export const Route = createFileRoute('/')({ loader: () => 'data ${version}' })
 
   it.for([true, false])(
     'a React .ts route module shows its new loader data in place (autoCodeSplitting: %s)',
-    { timeout },
     async (autoCodeSplitting: boolean, { expect }) => {
       const app = await openRouteHmrPage({
         pluginOptions: { autoCodeSplitting },
@@ -74,7 +72,6 @@ export const Route = createFileRoute('/')({ loader: () => 'data ${version}' })
 
   it.for([true, false])(
     'a route component in an app without @vitejs/plugin-react shows in place (autoCodeSplitting: %s)',
-    { timeout },
     async (autoCodeSplitting: boolean, { expect }) => {
       const app = await openRouteHmrPage({
         frameworkPlugin: false,
@@ -115,7 +112,7 @@ export const Route = createAppRoute('/')({ component: () => <p>helper ${version}
 `
     it(
       'shows each version, reporting nothing',
-      { timeout, fails: bundler === 'rsbuild' },
+      { fails: bundler === 'rsbuild' },
       async ({ expect }) => {
         const app = await openRouteHmrPage({
           bundler,
@@ -152,37 +149,35 @@ export const Route = createAppRoute('/')({ component: () => <p>helper ${version}
 // known not to be the router's, so nothing is reported about it and the
 // page shows the edit.
 describe('vite: a route file switching to an app helper while every generation fails', () => {
-  it(
-    'shows the edit, reporting nothing about the route file',
-    { timeout },
-    async ({ expect }) => {
-      const helper = `import { createFileRoute } from '@tanstack/react-router'
+  it('shows the edit, reporting nothing about the route file', async ({
+    expect,
+  }) => {
+    const helper = `import { createFileRoute } from '@tanstack/react-router'
 export const createAppRoute = (id: any) => (options: any) => createFileRoute(id)(options)
 `
-      const app = await openRouteHmrPage({
-        files: {
-          'app-route.ts': helper,
-          'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+    const app = await openRouteHmrPage({
+      files: {
+        'app-route.ts': helper,
+        'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({ component: () => <p>router v1</p> })
 `,
-        },
-        ready: 'router v1',
-      })
-      await app.edit(
-        { 'routes/broken.tsx': 'export const Route = (' },
-        'router v1',
-      )
-      await app.edit(
-        {
-          'routes/index.tsx': `import { createAppRoute } from '../app-route'
+      },
+      ready: 'router v1',
+    })
+    await app.edit(
+      { 'routes/broken.tsx': 'export const Route = (' },
+      'router v1',
+    )
+    await app.edit(
+      {
+        'routes/index.tsx': `import { createAppRoute } from '../app-route'
 export const Route = createAppRoute('/')({ component: () => <p>helper v2</p> })
 `,
-        },
-        'helper v2',
-      )
-      expect(
-        app.warnings().filter(({ text }) => text.includes('routes/index.tsx')),
-      ).toEqual([])
-    },
-  )
+      },
+      'helper v2',
+    )
+    expect(
+      app.warnings().filter(({ text }) => text.includes('routes/index.tsx')),
+    ).toEqual([])
+  })
 })

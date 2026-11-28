@@ -64,7 +64,6 @@ export const Route = createFileRoute('/')({ component: () => <p>page</p> })
       '<div id="root"><p>page</p></div>',
     ]).toContain(outcome)
   },
-  60_000,
 )
 
 // The Solid router cannot run in process (code-splitter-plugin-pipeline's
@@ -113,7 +112,7 @@ return { data, loaded }`)
     componentLoadedWithLoader: [],
     html: '<div id="root"><ul>MARK_COMPONENT</ul></div>',
   })
-}, 60_000)
+})
 
 /** What a build reported about its route file, on every channel. */
 const aboutRoute = (app: { root: string }) =>
@@ -176,7 +175,7 @@ it('a pre plugin that only the route module goes through is reported', async () 
   expect(
     findDiagnostics(reported(app), aboutRoute(app)).length,
   ).toBeGreaterThan(0)
-}, 60_000)
+})
 
 // A plugin whose filter accepts queries gives every id of the file the same
 // text: nothing is reported
@@ -203,4 +202,4 @@ it('a pre plugin that handles every id of the route file is not reported', async
     }),
   })
   expectNoDiagnostic(reported(app), aboutRoute(app))
-}, 60_000)
+})

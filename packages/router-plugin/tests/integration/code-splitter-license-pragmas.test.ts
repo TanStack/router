@@ -10,8 +10,6 @@ import { describe, expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { build, routeApp, routeHead } from '../build-harness'
 
-const timeout = 120_000
-
 const styledRoute = (header: string) => `${header}${routeHead()}
 function Page() {
   return <div id="styled" css={{ color: 'red' }}>MARK_STYLED</div>
@@ -84,6 +82,5 @@ describe('a license comment holding a JSX pragma, on Rspack', () => {
       }
       expect(split.colour).toBe(untouched.colour)
     },
-    timeout,
   )
 })

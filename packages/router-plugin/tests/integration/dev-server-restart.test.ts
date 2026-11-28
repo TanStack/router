@@ -17,7 +17,6 @@ import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-p
 import { tanstackRouter } from '../../src/vite'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
-const timeout = 60_000
 
 const virtualRouteConfig = (children: string) =>
   `import { index, rootRoute, route } from '@tanstack/virtual-file-routes'
@@ -87,5 +86,4 @@ export const Route = createFileRoute('/contact')({
       describe: () => `the route module is still served as:\n${last}`,
     })
   },
-  timeout,
 )

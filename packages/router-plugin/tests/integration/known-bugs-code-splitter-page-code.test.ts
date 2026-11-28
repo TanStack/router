@@ -174,7 +174,6 @@ export const label = 'label'
       afterAll(async () => {
         await (await built)?.dispose()
       })
-      const timeout = 120_000
       let renders: Promise<Record<string, string>> | undefined
       /** What the route of each case renders when mounted, by file. */
       const rendered = async (file: string) => {
@@ -198,39 +197,27 @@ export const label = 'label'
       })
       const lazyAndRendered = { placement: 'lazy', rendersPage: true }
 
-      test.each(controls)(
-        '$name loads with its chunk',
-        async (row) => {
-          expect(await outcome(row)).toEqual(lazyAndRendered)
-        },
-        timeout,
-      )
+      test.each(controls)('$name loads with its chunk', async (row) => {
+        expect(await outcome(row)).toEqual(lazyAndRendered)
+      })
 
       // One cell per bundler kind: Vite and a webpack-family bundler.
       if (
         sideEffects === undefined &&
         (bundler === 'vite' || bundler === 'rspack')
       ) {
-        test(
-          "a root route's components load with the route module",
-          async () => {
-            const built = await app()
-            expect({
-              errorComponent: built.where(rootMarkers.errorComponent),
-              notFoundComponent: built.where(rootMarkers.notFoundComponent),
-            }).toEqual({ errorComponent: 'eager', notFoundComponent: 'eager' })
-          },
-          timeout,
-        )
+        test("a root route's components load with the route module", async () => {
+          const built = await app()
+          expect({
+            errorComponent: built.where(rootMarkers.errorComponent),
+            notFoundComponent: built.where(rootMarkers.notFoundComponent),
+          }).toEqual({ errorComponent: 'eager', notFoundComponent: 'eager' })
+        })
       }
 
-      test(
-        `${unreadExport.name} is not in its chunk`,
-        async () => {
-          expect((await app()).locate(unreadExport.marker).lazy).toEqual([])
-        },
-        timeout,
-      )
+      test(`${unreadExport.name} is not in its chunk`, async () => {
+        expect((await app()).locate(unreadExport.marker).lazy).toEqual([])
+      })
     })
   })
 })

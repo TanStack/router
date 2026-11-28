@@ -17,8 +17,6 @@ import type { RsbuildPlugin } from '@rsbuild/core'
 import type { Plugin } from 'vite'
 import type { StartBuildOptions } from '../../build-harness'
 
-const timeout = 60_000
-
 const files = {
   'src/db.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
   // the plugin below prepends `import { secret } from './db.server'` (plain
@@ -65,59 +63,47 @@ try {
 describe.each(startBundlers)('%s build', (bundler) => {
   // the report's fix, applied: no plugin adds the import; the module imports
   // the file itself, inside createServerOnlyFn
-  test(
-    'the fixed app (the import written in the module, inside createServerOnlyFn) builds with the error behaviour, and the client has none of the file',
-    async () => {
-      const build = await buildStart({
-        bundler,
-        files: {
-          ...files,
-          'src/inj.js': `import { createServerOnlyFn } from '@tanstack/react-start'
+  test('the fixed app (the import written in the module, inside createServerOnlyFn) builds with the error behaviour, and the client has none of the file', async () => {
+    const build = await buildStart({
+      bundler,
+      files: {
+        ...files,
+        'src/inj.js': `import { createServerOnlyFn } from '@tanstack/react-start'
 import { secret } from './db.server'
 export const read = createServerOnlyFn(() => secret())
 `,
-        },
-        entry: 'src/entry.ts',
-        start: { importProtection: { behavior: 'error' } },
-      })
-      expect(build.client.where('MARK_SECRET')).toBe('nowhere')
-    },
-    timeout,
-  )
+      },
+      entry: 'src/entry.ts',
+      start: { importProtection: { behavior: 'error' } },
+    })
+    expect(build.client.where('MARK_SECRET')).toBe('nowhere')
+  })
 
-  test(
-    'mock: the client gets the mock, and the build reports the module the import was added to',
-    async () => {
-      const build = await buildStart({
+  test('mock: the client gets the mock, and the build reports the module the import was added to', async () => {
+    const build = await buildStart({
+      bundler,
+      files,
+      entry: 'src/entry.ts',
+      start: { importProtection: { behavior: 'mock', mockAccess: 'off' } },
+      ...withPlugin(bundler),
+    })
+    const { result } = await build.client.run(readScript)
+    expect({
+      read: result,
+      reported: importersIn(build, 'client'),
+    }).toEqual({ read: 'a safe mock', reported: ['src/inj.js'] })
+  })
+
+  test('error: the build fails at the module the import was added to', async () => {
+    const error = await rejection(
+      buildStart({
         bundler,
         files,
         entry: 'src/entry.ts',
-        start: { importProtection: { behavior: 'mock', mockAccess: 'off' } },
+        start: { importProtection: { behavior: 'error' } },
         ...withPlugin(bundler),
-      })
-      const { result } = await build.client.run(readScript)
-      expect({
-        read: result,
-        reported: importersIn(build, 'client'),
-      }).toEqual({ read: 'a safe mock', reported: ['src/inj.js'] })
-    },
-    timeout,
-  )
-
-  test(
-    'error: the build fails at the module the import was added to',
-    async () => {
-      const error = await rejection(
-        buildStart({
-          bundler,
-          files,
-          entry: 'src/entry.ts',
-          start: { importProtection: { behavior: 'error' } },
-          ...withPlugin(bundler),
-        }),
-      )
-      expect(importersIn(error, 'client')).toEqual(['src/inj.js'])
-    },
-    timeout,
-  )
+      }),
+    )
+    expect(importersIn(error, 'client')).toEqual(['src/inj.js'])
+  })
 })

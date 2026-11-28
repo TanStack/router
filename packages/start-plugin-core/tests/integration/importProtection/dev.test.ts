@@ -59,8 +59,6 @@ import type {
 } from '../../importProtection/public-types'
 import type { DevEnvironment, Plugin } from 'vite'
 
-const timeout = 30_000
-
 afterEach(() => {
   vi.restoreAllMocks()
 })
@@ -170,16 +168,12 @@ const deniedFileViolation: ExpectedViolation = {
 
 describe('a client import of a denied file', () => {
   // Source: review (the warning channel of dev violations).
-  test(
-    'is mocked, and the dev server logs a warning naming the importer at the use or the import',
-    async () => {
-      const server = await startProtectedDevServer(deniedFileApp)
-      const client = await server.load('/src/entry.ts')
-      expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-      expectViolationsAt(server, [deniedFileViolation])
-    },
-    timeout,
-  )
+  test('is mocked, and the dev server logs a warning naming the importer at the use or the import', async () => {
+    const server = await startProtectedDevServer(deniedFileApp)
+    const client = await server.load('/src/entry.ts')
+    expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
+    expectViolationsAt(server, [deniedFileViolation])
+  })
 
   /**
    * Starts the app with a `src/a.ts` that imports nothing, loads it, then
@@ -196,14 +190,10 @@ describe('a client import of a denied file', () => {
     return { server, client }
   })
 
-  test(
-    'added by an edit of the importer is mocked, without a restart',
-    async () => {
-      const { client } = await addDeniedImportByAnEdit()
-      expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-    },
-    timeout,
-  )
+  test('added by an edit of the importer is mocked, without a restart', async () => {
+    const { client } = await addDeniedImportByAnEdit()
+    expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
+  })
 
   // On main, in dev (mock mode), a denied import added to an existing module by
   // an edit is mocked without any warning; with `log: 'always'`, a violation is
@@ -211,18 +201,14 @@ describe('a client import of a denied file', () => {
   // A scratch run that keeps the incoming edges passes both pins.
   // Source: found registering Start's entries in the dev harness; the trace
   // part: mutation testing.
-  test(
-    'added by an edit of the importer is logged at its original import or surviving use, with a trace from the entry',
-    async () => {
-      const { server } = await addDeniedImportByAnEdit()
-      const reports = violationsOf(server)
-      expectViolationsAt(server, [deniedFileViolation])
-      for (const report of reports) {
-        expect(traceModules(report)).toEqual(['src/entry.ts', 'src/a.ts'])
-      }
-    },
-    timeout,
-  )
+  test('added by an edit of the importer is logged at its original import or surviving use, with a trace from the entry', async () => {
+    const { server } = await addDeniedImportByAnEdit()
+    const reports = violationsOf(server)
+    expectViolationsAt(server, [deniedFileViolation])
+    for (const report of reports) {
+      expect(traceModules(report)).toEqual(['src/entry.ts', 'src/a.ts'])
+    }
+  })
 
   // Source: review (`behavior: { dev, build }`, `behavior: 'error'` in dev).
   test.each<{ behavior: NonNullable<ImportProtectionOptions>['behavior'] }>([
@@ -237,164 +223,137 @@ describe('a client import of a denied file', () => {
       await rejection(server.load('/src/entry.ts'))
       expectViolationsAt(server, [deniedFileViolation])
     },
-    timeout,
   )
 
-  test(
-    'is mocked with behavior { build: "error" } (the dev default applies)',
-    async () => {
-      const server = await startProtectedDevServer(deniedFileApp, {
-        behavior: { build: 'error' },
-      })
-      const client = await server.load('/src/entry.ts')
-      expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-      expect(reportedViolations(server)).not.toEqual([])
-    },
-    timeout,
-  )
+  test('is mocked with behavior { build: "error" } (the dev default applies)', async () => {
+    const server = await startProtectedDevServer(deniedFileApp, {
+      behavior: { build: 'error' },
+    })
+    const client = await server.load('/src/entry.ts')
+    expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
+    expect(reportedViolations(server)).not.toEqual([])
+  })
 })
 
 describe('the trace of a client import of a denied file', () => {
   // A module under `src/routes` is not an entry: the trace goes on to the
   // router entry.
   // Source: mutation testing (route modules taken as entries).
-  test(
-    'leads from the router entry through a module of src/routes to the importer',
-    async () => {
-      const server = await startProtectedDevServer({
-        ...deniedFileApp,
-        'src/routes/page.ts': `export { read } from '../a'\n`,
-        'src/entry.ts': `export * from './routes/page'\n`,
-      })
-      await server.load('/src/entry.ts')
-      const reports = violationsOf(server)
-      expect(reports).not.toEqual([])
-      for (const report of reports) {
-        expect(traceModules(report)).toEqual([
-          'src/entry.ts',
-          'src/routes/page.ts',
-          'src/a.ts',
-        ])
-      }
-    },
-    timeout,
-  )
+  test('leads from the router entry through a module of src/routes to the importer', async () => {
+    const server = await startProtectedDevServer({
+      ...deniedFileApp,
+      'src/routes/page.ts': `export { read } from '../a'\n`,
+      'src/entry.ts': `export * from './routes/page'\n`,
+    })
+    await server.load('/src/entry.ts')
+    const reports = violationsOf(server)
+    expect(reports).not.toEqual([])
+    for (const report of reports) {
+      expect(traceModules(report)).toEqual([
+        'src/entry.ts',
+        'src/routes/page.ts',
+        'src/a.ts',
+      ])
+    }
+  })
 
   // Source: mutation testing (the dev server's module graph, which
   // still has the edges an edit drops from import protection's own graph).
-  test(
-    'with behavior "error", of an import added by an edit, leads from the router entry',
-    async () => {
-      const server = await startProtectedDevServer(
-        { ...deniedFileApp, 'src/a.ts': `export const read = () => 'plain'\n` },
-        { behavior: 'error' },
-      )
-      await server.load('/src/entry.ts')
-      await server.edit({ 'src/a.ts': deniedFileApp['src/a.ts'] })
-      await rejection(server.load('/src/entry.ts'))
-      // (one violation)
-      const [report, ...others] = distinctReports(server)
-      expect(others).toEqual([])
-      expectViolationsAt(server, [deniedFileViolation])
-      expect(traceModules(report!)).toEqual(['src/entry.ts', 'src/a.ts'])
-    },
-    timeout,
-  )
+  test('with behavior "error", of an import added by an edit, leads from the router entry', async () => {
+    const server = await startProtectedDevServer(
+      { ...deniedFileApp, 'src/a.ts': `export const read = () => 'plain'\n` },
+      { behavior: 'error' },
+    )
+    await server.load('/src/entry.ts')
+    await server.edit({ 'src/a.ts': deniedFileApp['src/a.ts'] })
+    await rejection(server.load('/src/entry.ts'))
+    // (one violation)
+    const [report, ...others] = distinctReports(server)
+    expect(others).toEqual([])
+    expectViolationsAt(server, [deniedFileViolation])
+    expect(traceModules(report!)).toEqual(['src/entry.ts', 'src/a.ts'])
+  })
 
   // `onViolation`'s event is the app's to keep (a collector, an overlay): its
   // trace stays the chain that brought the import once read, as main's
   // array did, though an edit later reaches the importer another way.
   // Source: Astra review of #8817, import protection B1 (the kept event's
   // trace named the new chain after an edit).
-  test(
-    "a kept onViolation event's trace stays the chain it was read with after an edit changes the chain",
-    async () => {
-      const server = await startProtectedDevServer({
-        ...deniedFileApp,
-        'src/left.ts': `export * from './a'\n`,
-        'src/entry.ts': `export * from './left'\n`,
-      })
-      await server.load('/src/entry.ts')
-      const [kept] = server.violations
-      expect(kept).toBeDefined()
-      const keptTrace = () =>
-        violationsOf({ root: server.root, violations: [kept!] }).map(
-          traceModules,
-        )
-      expect(keptTrace()).toEqual([['src/entry.ts', 'src/left.ts', 'src/a.ts']])
-      await server.edit({
-        'src/right.ts': `export * from './a'\n`,
-        'src/entry.ts': `export * from './right'\n`,
-        // (deleted in the same edit: the importer's plan of its old text,
-        // judged by the removal, held a stale path no rebuild took)
-        'src/left.ts': null,
-      })
-      await server.load('/src/entry.ts')
-      expect(keptTrace()).toEqual([['src/entry.ts', 'src/left.ts', 'src/a.ts']])
-    },
-    timeout,
-  )
+  test("a kept onViolation event's trace stays the chain it was read with after an edit changes the chain", async () => {
+    const server = await startProtectedDevServer({
+      ...deniedFileApp,
+      'src/left.ts': `export * from './a'\n`,
+      'src/entry.ts': `export * from './left'\n`,
+    })
+    await server.load('/src/entry.ts')
+    const [kept] = server.violations
+    expect(kept).toBeDefined()
+    const keptTrace = () =>
+      violationsOf({ root: server.root, violations: [kept!] }).map(traceModules)
+    expect(keptTrace()).toEqual([['src/entry.ts', 'src/left.ts', 'src/a.ts']])
+    await server.edit({
+      'src/right.ts': `export * from './a'\n`,
+      'src/entry.ts': `export * from './right'\n`,
+      // (deleted in the same edit: the importer's plan of its old text,
+      // judged by the removal, held a stale path no rebuild took)
+      'src/left.ts': null,
+    })
+    await server.load('/src/entry.ts')
+    expect(keptTrace()).toEqual([['src/entry.ts', 'src/left.ts', 'src/a.ts']])
+  })
 
   // In every Start app, a module imports the router entry: Start's client
   // runtime. The trace still starts at the router entry.
   // Source: mutation testing (the module graph trace does not stop at an
   // entry).
-  test(
-    'starts at the router entry when another module imports the router entry',
-    async () => {
-      const server = await startProtectedDevServer({
-        ...deniedFileApp,
-        'src/main.ts': `export * from './entry'\n`,
-      })
-      await server.load('/src/main.ts')
-      const reports = violationsOf(server)
-      expect(reports).not.toEqual([])
-      for (const report of reports) {
-        expect(traceModules(report)).toEqual(['src/entry.ts', 'src/a.ts'])
-      }
-    },
-    timeout,
-  )
+  test('starts at the router entry when another module imports the router entry', async () => {
+    const server = await startProtectedDevServer({
+      ...deniedFileApp,
+      'src/main.ts': `export * from './entry'\n`,
+    })
+    await server.load('/src/main.ts')
+    const reports = violationsOf(server)
+    expect(reports).not.toEqual([])
+    for (const report of reports) {
+      expect(traceModules(report)).toEqual(['src/entry.ts', 'src/a.ts'])
+    }
+  })
 
   // The dev twin of the build test in reported-location.test.ts "the trace is
   // a real import chain from the entry to the importer": any real chain will
   // do, not necessarily the shortest (SPEC J6.5).
   // Source: mutation testing (the module graph search revisits modules).
-  test(
-    'is a real import chain from the entry to the importer',
-    async () => {
-      const server = await startProtectedDevServer(
-        {
-          'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
-          'src/s.ts': `import { secret } from './secret.server'
+  test('is a real import chain from the entry to the importer', async () => {
+    const server = await startProtectedDevServer(
+      {
+        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+        'src/s.ts': `import { secret } from './secret.server'
 export const s = () => secret()
 `,
-          'src/c.ts': `import { s } from './s'\nexport const c = () => s()\n`,
-          'src/a.ts': `import { c } from './c'
+        'src/c.ts': `import { s } from './s'\nexport const c = () => s()\n`,
+        'src/a.ts': `import { c } from './c'
 import { s } from './s'
 export const page = () => c() + s()
 `,
-          'src/entry.ts': `export * from './a'\n`,
-        },
-        {},
-        // Without Vite's pre-transforms, the client transforms `src/c.ts`
-        // before `src/s.ts` (`load()` goes breadth first), so both chains
-        // are in the dev server's module graph when the violation is
-        // reported, whatever the timing.
-        { config: { server: { preTransformRequests: false } } },
-      )
-      await server.load('/src/entry.ts')
-      const reports = violationsOf(server)
-      expect(reports).not.toEqual([])
-      for (const report of reports) {
-        expect([
-          ['src/entry.ts', 'src/a.ts', 'src/s.ts'],
-          ['src/entry.ts', 'src/a.ts', 'src/c.ts', 'src/s.ts'],
-        ]).toContainEqual(traceModules(report))
-      }
-    },
-    timeout,
-  )
+        'src/entry.ts': `export * from './a'\n`,
+      },
+      {},
+      // Without Vite's pre-transforms, the client transforms `src/c.ts`
+      // before `src/s.ts` (`load()` goes breadth first), so both chains
+      // are in the dev server's module graph when the violation is
+      // reported, whatever the timing.
+      { config: { server: { preTransformRequests: false } } },
+    )
+    await server.load('/src/entry.ts')
+    const reports = violationsOf(server)
+    expect(reports).not.toEqual([])
+    for (const report of reports) {
+      expect([
+        ['src/entry.ts', 'src/a.ts', 'src/s.ts'],
+        ['src/entry.ts', 'src/a.ts', 'src/c.ts', 'src/s.ts'],
+      ]).toContainEqual(traceModules(report))
+    }
+  })
 })
 
 // Edits in the order people make them: a module, then the module importing
@@ -402,84 +361,72 @@ export const page = () => c() + s()
 // Source: mutation testing (dropping the edges of the first edit left
 // the importer's edges pointing at nothing, and the second edit's HMR
 // handling threw).
-test(
-  'an edit of a module, then of its importer, updates both without an error',
-  async () => {
-    const server = await startBrowserProtectedDevServer({
-      'src/b.ts': `export const b = () => 'b1'\n`,
-      'src/a.ts': `import { b } from './b'\nexport const a = () => 'a1' + b()\n`,
-      'src/entry.ts': `export * from './a'\n`,
-    })
-    await server.load('/src/entry.ts')
-    const logged = server.logs.length
-    const updates = [
-      ...(await server.edit({ 'src/b.ts': `export const b = () => 'b2'\n` })),
-    ]
-    await server.load('/src/entry.ts')
-    updates.push(
-      ...(await server.edit({
-        'src/a.ts': `import { b } from './b'\nexport const a = () => 'a2' + b()\n`,
-      })),
-    )
-    expect(updates.filter(({ type }) => type === 'error')).toEqual([])
-    expect(server.logs.slice(logged)).toEqual([])
-    expect(
-      (await runViteClient(server, '/src/entry.ts', 'return entry.a()')).result,
-    ).toBe('a2b2')
-  },
-  timeout,
-)
+test('an edit of a module, then of its importer, updates both without an error', async () => {
+  const server = await startBrowserProtectedDevServer({
+    'src/b.ts': `export const b = () => 'b1'\n`,
+    'src/a.ts': `import { b } from './b'\nexport const a = () => 'a1' + b()\n`,
+    'src/entry.ts': `export * from './a'\n`,
+  })
+  await server.load('/src/entry.ts')
+  const logged = server.logs.length
+  const updates = [
+    ...(await server.edit({ 'src/b.ts': `export const b = () => 'b2'\n` })),
+  ]
+  await server.load('/src/entry.ts')
+  updates.push(
+    ...(await server.edit({
+      'src/a.ts': `import { b } from './b'\nexport const a = () => 'a2' + b()\n`,
+    })),
+  )
+  expect(updates.filter(({ type }) => type === 'error')).toEqual([])
+  expect(server.logs.slice(logged)).toEqual([])
+  expect(
+    (await runViteClient(server, '/src/entry.ts', 'return entry.a()')).result,
+  ).toBe('a2b2')
+})
 
 // Import protection checks only JavaScript and TypeScript modules; edits of
 // the app's other modules update as usual.
 // Source: mutation testing (the edit of a module import protection never
 // compiled).
-test(
-  'an edit of a CSS module and a JSON module the app imports updates them without an error',
-  async () => {
-    const server = await startProtectedDevServer({
-      'src/style.css': `.page { color: red }\n`,
-      'src/data.json': `{ "count": 1 }\n`,
-      'src/entry.ts': `import './style.css'
+test('an edit of a CSS module and a JSON module the app imports updates them without an error', async () => {
+  const server = await startProtectedDevServer({
+    'src/style.css': `.page { color: red }\n`,
+    'src/data.json': `{ "count": 1 }\n`,
+    'src/entry.ts': `import './style.css'
 import data from './data.json'
 export const count = () => data.count
 `,
-    })
-    await server.load('/src/entry.ts')
-    const logged = server.logs.length
-    const updates = await server.edit({
-      'src/style.css': `.page { color: blue }\n`,
-      'src/data.json': `{ "count": 2 }\n`,
-    })
-    expect(updates.filter(({ type }) => type === 'error')).toEqual([])
-    expect(server.logs.slice(logged)).toEqual([])
-  },
-  timeout,
-)
+  })
+  await server.load('/src/entry.ts')
+  const logged = server.logs.length
+  const updates = await server.edit({
+    'src/style.css': `.page { color: blue }\n`,
+    'src/data.json': `{ "count": 2 }\n`,
+  })
+  expect(updates.filter(({ type }) => type === 'error')).toEqual([])
+  expect(server.logs.slice(logged)).toEqual([])
+})
 
 // A CSS file that another one `@import`s is in Vite's module graph only as
 // a file (a module without an id).
 // Source: mutation testing (such a module reached import protection's
 // HMR handling, which threw).
-test(
-  'an edit of a CSS file another CSS module @imports updates it without an error',
-  async () => {
-    const server = await startProtectedDevServer({
-      'src/base.css': `.page { color: red }\n`,
-      'src/style.css': `@import './base.css';\n.title { color: green }\n`,
-      'src/entry.ts': `import './style.css'\nexport const page = 1\n`,
-    })
-    await server.load('/src/entry.ts')
-    const logged = server.logs.length
-    const updates = await server.edit({
-      'src/base.css': `.page { color: blue }\n`,
-    })
-    expect(updates.filter(({ type }) => type === 'error')).toEqual([])
-    expect(updates).not.toEqual([])
-    expect(server.logs.slice(logged)).toEqual([])
-  },
-  timeout,
-)
+test('an edit of a CSS file another CSS module @imports updates it without an error', async () => {
+  const server = await startProtectedDevServer({
+    'src/base.css': `.page { color: red }\n`,
+    'src/style.css': `@import './base.css';\n.title { color: green }\n`,
+    'src/entry.ts': `import './style.css'\nexport const page = 1\n`,
+  })
+  await server.load('/src/entry.ts')
+  const logged = server.logs.length
+  const updates = await server.edit({
+    'src/base.css': `.page { color: blue }\n`,
+  })
+  expect(updates.filter(({ type }) => type === 'error')).toEqual([])
+  expect(updates).not.toEqual([])
+  expect(server.logs.slice(logged)).toEqual([])
+})
 
 describe('log', () => {
   /**
@@ -512,29 +459,21 @@ export const other = 1
     logsAroundAnEditRuns[log]()
 
   // Source: review (`log`).
-  test(
-    "'once' does not log a violation again after an edit",
-    async () => {
-      const { first, afterEdit } = await logsAroundAnEdit('once')
-      expect(first).toBeGreaterThan(0)
-      expect(afterEdit).toBe(0)
-    },
-    timeout,
-  )
+  test("'once' does not log a violation again after an edit", async () => {
+    const { first, afterEdit } = await logsAroundAnEdit('once')
+    expect(first).toBeGreaterThan(0)
+    expect(afterEdit).toBe(0)
+  })
 
   // On main, with `log: 'always'`, a violation is not logged again after an
   // edit of its module.
   // Source: found registering Start's entries in the dev harness; this test
   // passed while the harness registered no entry.
-  test(
-    "'always' logs a violation again after an edit",
-    async () => {
-      const { first, afterEdit } = await logsAroundAnEdit('always')
-      expect(first).toBeGreaterThan(0)
-      expect(afterEdit).toBeGreaterThan(0)
-    },
-    timeout,
-  )
+  test("'always' logs a violation again after an edit", async () => {
+    const { first, afterEdit } = await logsAroundAnEdit('always')
+    expect(first).toBeGreaterThan(0)
+    expect(afterEdit).toBeGreaterThan(0)
+  })
 
   /**
    * How many warnings naming the importer `src/a.ts` are printed when the
@@ -567,30 +506,21 @@ export const other = 1
 
   // Source: mutation testing (`log` regressions: the edit-based test above
   // is a pin).
-  test(
-    "'once' does not log a violation again when the dev server reloads every module",
-    async () => {
-      const { first, afterReload, askedAgain } = await logsAroundAReload('once')
-      expect(first).toBeGreaterThan(0)
-      expect(afterReload).toBe(0)
-      expect(askedAgain).toBe(0)
-    },
-    timeout,
-  )
+  test("'once' does not log a violation again when the dev server reloads every module", async () => {
+    const { first, afterReload, askedAgain } = await logsAroundAReload('once')
+    expect(first).toBeGreaterThan(0)
+    expect(afterReload).toBe(0)
+    expect(askedAgain).toBe(0)
+  })
 
   // Source: mutation testing, as above.
-  test(
-    "'always' logs a violation again when the dev server reloads every module",
-    async () => {
-      const { first, afterReload, askedAgain } =
-        await logsAroundAReload('always')
-      expect(first).toBeGreaterThan(0)
-      expect(afterReload).toBeGreaterThan(0)
-      // (each compile asks `onViolation`, those from a cached plan included)
-      expect(askedAgain).toBe(afterReload)
-    },
-    timeout,
-  )
+  test("'always' logs a violation again when the dev server reloads every module", async () => {
+    const { first, afterReload, askedAgain } = await logsAroundAReload('always')
+    expect(first).toBeGreaterThan(0)
+    expect(afterReload).toBeGreaterThan(0)
+    // (each compile asks `onViolation`, those from a cached plan included)
+    expect(askedAgain).toBe(afterReload)
+  })
 
   // A module that failed (`behavior: 'error'`) is not cached by Vite: the
   // next request compiles it again, from its cached plan. With `'always'`
@@ -613,56 +543,43 @@ export const other = 1
       await rejection(server.load('/src/entry.ts'))
       expect(server.violations).toHaveLength(1 + again)
     },
-    timeout,
   )
 
   // Source: mutation testing.
-  test(
-    "'always' does not log a violation again when the client loads other modules",
-    async () => {
-      const server = await startProtectedDevServer(
-        {
-          ...deniedFileApp,
-          'src/b.ts': `export const b = 1\n`,
-          'src/c.ts': `export const c = 1\n`,
-          'src/entry.ts': `export * from './a'
+  test("'always' does not log a violation again when the client loads other modules", async () => {
+    const server = await startProtectedDevServer(
+      {
+        ...deniedFileApp,
+        'src/b.ts': `export const b = 1\n`,
+        'src/c.ts': `export const c = 1\n`,
+        'src/entry.ts': `export * from './a'
 export { b } from './b'
 `,
-        },
-        { log: 'always' },
-      )
-      await server.load('/src/entry.ts')
-      const first = warningsNaming(server, 'src/a.ts').length
-      expect(first).toBeGreaterThan(0)
-      await server.load('/src/c.ts')
-      expect(warningsNaming(server, 'src/a.ts')).toHaveLength(first)
-    },
-    timeout,
-  )
+      },
+      { log: 'always' },
+    )
+    await server.load('/src/entry.ts')
+    const first = warningsNaming(server, 'src/a.ts').length
+    expect(first).toBeGreaterThan(0)
+    await server.load('/src/c.ts')
+    expect(warningsNaming(server, 'src/a.ts')).toHaveLength(first)
+  })
 
   // On main, every violation of a denied file appears twice in the dev server
   // output, the second time naming the resolved path as the import.
   // Source: found writing the `log` rows (review).
-  test(
-    "'once' logs one warning for one import",
-    async () => {
-      // ('once' is the default; the first load of `logsAroundAnEdit`)
-      expect((await logsAroundAnEdit('once')).first).toBe(1)
-    },
-    timeout,
-  )
+  test("'once' logs one warning for one import", async () => {
+    // ('once' is the default; the first load of `logsAroundAnEdit`)
+    expect((await logsAroundAnEdit('once')).first).toBe(1)
+  })
 
   // On main, with 'always', the dev server output repeats each violation of a
   // denied file three times per load of its module.
   // Source: mutation testing (the 'always' rows of the reload tests above).
-  test(
-    "'always' logs one warning for one import each time its module is loaded",
-    async () => {
-      // (the first load of `logsAroundAnEdit`)
-      expect((await logsAroundAnEdit('always')).first).toBe(1)
-    },
-    timeout,
-  )
+  test("'always' logs one warning for one import each time its module is loaded", async () => {
+    // (the first load of `logsAroundAnEdit`)
+    expect((await logsAroundAnEdit('always')).first).toBe(1)
+  })
 })
 
 describe('a client import of a denied specifier', () => {
@@ -681,46 +598,38 @@ export const request = () => getRequest()
   }
 
   // Source: mutation testing.
-  test(
-    'is logged at its original import or surviving use, alongside the denied file',
-    async () => {
-      const server = await startProtectedDevServer(deniedSpecifierApp)
-      await server.load('/src/entry.ts')
-      expectViolationsAt(server, [
-        { environment: 'client', use: 'src/a.ts:3:27', also: ['src/a.ts:1'] },
-        { environment: 'client', use: 'src/a.ts:4:30', also: ['src/a.ts:2'] },
-      ])
-    },
-    timeout,
-  )
+  test('is logged at its original import or surviving use, alongside the denied file', async () => {
+    const server = await startProtectedDevServer(deniedSpecifierApp)
+    await server.load('/src/entry.ts')
+    expectViolationsAt(server, [
+      { environment: 'client', use: 'src/a.ts:3:27', also: ['src/a.ts:1'] },
+      { environment: 'client', use: 'src/a.ts:4:30', also: ['src/a.ts:2'] },
+    ])
+  })
 
   // Source: mutation testing.
-  test(
-    'is a mock that reports its use in the browser console, naming the import, like the mock of the denied file',
-    async () => {
-      const server = await startBrowserProtectedDevServer(deniedSpecifierApp)
-      const { result, diagnostics } = await runViteClient(
-        server,
-        '/src/entry.ts',
-        `${probeMockPrelude}
+  test('is a mock that reports its use in the browser console, naming the import, like the mock of the denied file', async () => {
+    const server = await startBrowserProtectedDevServer(deniedSpecifierApp)
+    const { result, diagnostics } = await runViteClient(
+      server,
+      '/src/entry.ts',
+      `${probeMockPrelude}
 return [probeMock(entry.request(), 'MARK_SECRET'), probeMock(entry.read(), 'MARK_SECRET')]`,
-      )
-      expect(result).toEqual([safeMock, safeMock])
-      const access = { severity: 'error' } as const
-      expectMockAccess(diagnostics, {
-        ...access,
-        specifier: '@tanstack/react-start/server',
-        root: server.root,
-      })
-      expectMockAccess(diagnostics, {
-        ...access,
-        specifier: './secret.server',
-        file: 'src/secret.server.ts',
-        root: server.root,
-      })
-    },
-    timeout,
-  )
+    )
+    expect(result).toEqual([safeMock, safeMock])
+    const access = { severity: 'error' } as const
+    expectMockAccess(diagnostics, {
+      ...access,
+      specifier: '@tanstack/react-start/server',
+      root: server.root,
+    })
+    expectMockAccess(diagnostics, {
+      ...access,
+      specifier: './secret.server',
+      file: 'src/secret.server.ts',
+      root: server.root,
+    })
+  })
 
   // `mockAccess` (guide/import-protection.md): how the dev client mocks
   // report their use.
@@ -753,40 +662,35 @@ return [probeMock(entry.request(), 'MARK_SECRET'), probeMock(entry.read(), 'MARK
         })
       }
     },
-    timeout,
   )
 
   // Source: mutation testing (the names the mock exports, read from
   // the importer, after an edit of the importer).
-  test(
-    'added to an importer by an edit is a mock the edited module can import',
-    async () => {
-      const server = await startBrowserProtectedDevServer({
-        'src/a.ts': `import { getRequest } from '@tanstack/react-start/server'
+  test('added to an importer by an edit is a mock the edited module can import', async () => {
+    const server = await startBrowserProtectedDevServer({
+      'src/a.ts': `import { getRequest } from '@tanstack/react-start/server'
 export const read = () => [getRequest()]
 `,
-        'src/entry.ts': `export * from './a'\n`,
-      })
-      // (what the mocks log is silenced: the rows above check it)
-      const described = async () =>
-        (
-          await runViteClient(
-            server,
-            '/src/entry.ts',
-            `${describeValuePrelude}
+      'src/entry.ts': `export * from './a'\n`,
+    })
+    // (what the mocks log is silenced: the rows above check it)
+    const described = async () =>
+      (
+        await runViteClient(
+          server,
+          '/src/entry.ts',
+          `${describeValuePrelude}
 return entry.read().map((value) => describeValue(value, 'MARK_'))`,
-          )
-        ).result
-      expect(await described()).toEqual(['a safe mock'])
-      await server.edit({
-        'src/a.ts': `import { getRequest, getResponse } from '@tanstack/react-start/server'
+        )
+      ).result
+    expect(await described()).toEqual(['a safe mock'])
+    await server.edit({
+      'src/a.ts': `import { getRequest, getResponse } from '@tanstack/react-start/server'
 export const read = () => [getRequest(), getResponse()]
 `,
-      })
-      expect(await described()).toEqual(['a safe mock', 'a safe mock'])
-    },
-    timeout,
-  )
+    })
+    expect(await described()).toEqual(['a safe mock', 'a safe mock'])
+  })
 })
 
 // A module another Vite plugin compiles to JavaScript from a file that is
@@ -816,39 +720,33 @@ export const read = () => secret() + leak()
   // Source: mutation testing (the module has no compiled imports import
   // protection could check its violations against; nor can it tell whether its imports survived compiling, so a module it
   // imports is reachable through it).
-  test(
-    'importing a denied file, directly or through a module, gets the mock, and the dev server logs a warning at each importer',
-    async () => {
-      const leak = `import { secret } from './secret.server'
+  test('importing a denied file, directly or through a module, gets the mock, and the dev server logs a warning at each importer', async () => {
+    const leak = `import { secret } from './secret.server'
 export const leak = () => secret()
 `
-      const server = await startProtectedDevServer(
-        {
-          'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
-          'src/leak.ts': leak,
-          'src/page.mdx': page,
-          'src/entry.ts': `export * from './page.mdx'\n`,
-        },
-        {},
-        { plugins },
-      )
-      const client = await server.load('/src/entry.ts')
-      expect(Object.keys(client)).toContain('/src/page.mdx')
-      expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-      const importers = reportedViolations(server).map(
-        ({ importer }) => importer,
-      )
-      // (located at the import or the use)
-      expect(importers).toContainEqual(inPage())
-      expect(importers).toContainEqual(
-        originalLocation(locationIn('src/leak.ts', leak, 2, 'secret()'), 1),
-      )
-      for (const violation of violationsOf(server)) {
-        expectPrinted(server.diagnostics, server.root, violation, 'warning')
-      }
-    },
-    timeout,
-  )
+    const server = await startProtectedDevServer(
+      {
+        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+        'src/leak.ts': leak,
+        'src/page.mdx': page,
+        'src/entry.ts': `export * from './page.mdx'\n`,
+      },
+      {},
+      { plugins },
+    )
+    const client = await server.load('/src/entry.ts')
+    expect(Object.keys(client)).toContain('/src/page.mdx')
+    expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
+    const importers = reportedViolations(server).map(({ importer }) => importer)
+    // (located at the import or the use)
+    expect(importers).toContainEqual(inPage())
+    expect(importers).toContainEqual(
+      originalLocation(locationIn('src/leak.ts', leak, 2, 'secret()'), 1),
+    )
+    for (const violation of violationsOf(server)) {
+      expectPrinted(server.diagnostics, server.root, violation, 'warning')
+    }
+  })
 
   // Source: main's start-plugin-core src/vite/import-protection-plugin/plugin.ts:
   // 2116-2119: the transform cache records only `.[cm][tj]sx?` modules, so an
@@ -860,106 +758,90 @@ export const leak = () => secret()
   // warning for one import" pin above (src/import-protection/utils.ts:61, the
   // dedupe key includes the specifier), which this test also needs fixed.
   // On main, the user cannot navigate to the offending original source.
-  test(
-    'importing a denied file, the warning names the .mdx page, located in its original mapped source',
-    async () => {
-      const server = await startProtectedDevServer(
-        {
-          'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
-          'src/leak.ts': `export const leak = () => ''\n`,
-          'src/page.mdx': page,
-          'src/entry.ts': `export * from './page.mdx'\n`,
-        },
-        {},
-        { plugins },
-      )
-      await server.load('/src/entry.ts')
-      expect(
-        reportedViolations(server).map(({ importer }) => importer),
-      ).toEqual([inPage()])
-    },
-    timeout,
-  )
+  test('importing a denied file, the warning names the .mdx page, located in its original mapped source', async () => {
+    const server = await startProtectedDevServer(
+      {
+        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+        'src/leak.ts': `export const leak = () => ''\n`,
+        'src/page.mdx': page,
+        'src/entry.ts': `export * from './page.mdx'\n`,
+      },
+      {},
+      { plugins },
+    )
+    await server.load('/src/entry.ts')
+    expect(reportedViolations(server).map(({ importer }) => importer)).toEqual([
+      inPage(),
+    ])
+  })
 
   // On main, in dev, an `.mdx` (or other non-JS) module that imports a denied
   // specifier fails to load with that internal error, instead of getting the
   // mock and a warning.
   // Source: mutation testing.
-  test(
-    'importing a denied specifier gets the mock, and the dev server logs a warning naming it',
-    async () => {
-      const server = await startBrowserProtectedDevServer(
-        {
-          'src/page.mdx': `# Title
+  test('importing a denied specifier gets the mock, and the dev server logs a warning naming it', async () => {
+    const server = await startBrowserProtectedDevServer(
+      {
+        'src/page.mdx': `# Title
 import { getRequest } from '@tanstack/react-start/server'
 export const request = () => getRequest()
 `,
-          'src/entry.ts': `export * from './page.mdx'\n`,
-        },
-        {},
-        { plugins },
-      )
-      const { result } = await runViteClient(
-        server,
-        '/src/entry.ts',
-        `${probeMockPrelude}
+        'src/entry.ts': `export * from './page.mdx'\n`,
+      },
+      {},
+      { plugins },
+    )
+    const { result } = await runViteClient(
+      server,
+      '/src/entry.ts',
+      `${probeMockPrelude}
 return probeMock(entry.request(), 'MARK_')`,
-      )
-      expect(result).toEqual(safeMock)
-      // (the page, located at the import, line 2, or at the use
-      // `getRequest()`, 3:30, of the .mdx source)
-      expect(
-        reportedViolations(server).map(({ importer }) => importer),
-      ).toContainEqual(originalLocation('src/page.mdx:3:30', 2))
-    },
-    timeout,
-  )
+    )
+    expect(result).toEqual(safeMock)
+    // (the page, located at the import, line 2, or at the use
+    // `getRequest()`, 3:30, of the .mdx source)
+    expect(
+      reportedViolations(server).map(({ importer }) => importer),
+    ).toContainEqual(originalLocation('src/page.mdx:3:30', 2))
+  })
 })
 
 describe('onViolation and allowImport', () => {
   // What the client then gets is tested below.
   // Source: mutation testing.
-  test(
-    'allowImport returning true silences the warning; it receives the importer',
-    async () => {
-      const importers: Array<string> = []
-      const server = await startProtectedDevServer(deniedFileApp, {
-        allowImport: (info) => {
-          importers.push(info.importer)
-          return true
-        },
-      })
-      await server.load('/src/entry.ts')
-      expectNothingReportedAbout(server, ['src/a.ts', 'src/secret.server.ts'])
-      expect(
-        distinct(
-          importers.map((importer) => path.relative(server.root, importer)),
-        ),
-      ).toEqual(['src/a.ts'])
-    },
-    timeout,
-  )
+  test('allowImport returning true silences the warning; it receives the importer', async () => {
+    const importers: Array<string> = []
+    const server = await startProtectedDevServer(deniedFileApp, {
+      allowImport: (info) => {
+        importers.push(info.importer)
+        return true
+      },
+    })
+    await server.load('/src/entry.ts')
+    expectNothingReportedAbout(server, ['src/a.ts', 'src/secret.server.ts'])
+    expect(
+      distinct(
+        importers.map((importer) => path.relative(server.root, importer)),
+      ),
+    ).toEqual(['src/a.ts'])
+  })
 
   // Impact: an import a project allows with `allowImport` (documented:
   // guide/import-protection.md) would be a mock in the browser, whose calls
   // return mocks, without any warning.
   // Source: review.
-  test(
-    'allowImport returning true: the client gets the real module',
-    async () => {
-      const server = await startBrowserProtectedDevServer(deniedFileApp, {
-        allowImport: () => true,
-      })
-      // The real module's value, in the browser (a mock gives none)
-      const { result } = await runViteClient(
-        server,
-        '/src/entry.ts',
-        'return String(entry.read())',
-      )
-      expect(result).toBe('MARK_SECRET')
-    },
-    timeout,
-  )
+  test('allowImport returning true: the client gets the real module', async () => {
+    const server = await startBrowserProtectedDevServer(deniedFileApp, {
+      allowImport: () => true,
+    })
+    // The real module's value, in the browser (a mock gives none)
+    const { result } = await runViteClient(
+      server,
+      '/src/entry.ts',
+      'return String(entry.read())',
+    )
+    expect(result).toBe('MARK_SECRET')
+  })
 
   // Control for the pin below (same harness).
   test.each([
@@ -988,52 +870,43 @@ export const read = () => getRequest()
       expect(Object.keys(client)).toContain('/src/a.ts')
       expectNothingReportedAbout(server, ['src/a.ts'])
     },
-    timeout,
   )
 
   // Impact: an allowed import would be a mock in the browser.
   // Source: review (dev.test.ts "with behavior "error", an import of $name
   // it allows loads" passed with the mock).
-  test(
-    'with behavior "error", an import of a denied file it allows gets the real module',
-    async () => {
-      const server = await startBrowserProtectedDevServer(deniedFileApp, {
-        behavior: 'error',
-        allowImport: () => true,
-      })
-      // The real module's value, in the browser (a mock gives none)
-      const { result } = await runViteClient(
-        server,
-        '/src/entry.ts',
-        'return String(entry.read())',
-      )
-      expect(result).toBe('MARK_SECRET')
-    },
-    timeout,
-  )
+  test('with behavior "error", an import of a denied file it allows gets the real module', async () => {
+    const server = await startBrowserProtectedDevServer(deniedFileApp, {
+      behavior: 'error',
+      allowImport: () => true,
+    })
+    // The real module's value, in the browser (a mock gives none)
+    const { result } = await runViteClient(
+      server,
+      '/src/entry.ts',
+      'return String(entry.read())',
+    )
+    expect(result).toBe('MARK_SECRET')
+  })
 
   // `onViolation` only reports (guide/import-protection.md).
   // Source: mutation testing.
-  test(
-    'onViolation keeps the warning; it receives the importer',
-    async () => {
-      const importers: Array<string> = []
-      const server = await startProtectedDevServer(deniedFileApp, {
-        onViolation: (info) => {
-          importers.push((info as ViolationInfo).importer)
-        },
-      })
-      const client = await server.load('/src/entry.ts')
-      expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-      expectViolationsAt(server, [deniedFileViolation])
-      expect(
-        distinct(
-          importers.map((importer) => path.relative(server.root, importer)),
-        ),
-      ).toEqual(['src/a.ts'])
-    },
-    timeout,
-  )
+  test('onViolation keeps the warning; it receives the importer', async () => {
+    const importers: Array<string> = []
+    const server = await startProtectedDevServer(deniedFileApp, {
+      onViolation: (info) => {
+        importers.push((info as ViolationInfo).importer)
+      },
+    })
+    const client = await server.load('/src/entry.ts')
+    expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
+    expectViolationsAt(server, [deniedFileViolation])
+    expect(
+      distinct(
+        importers.map((importer) => path.relative(server.root, importer)),
+      ),
+    ).toEqual(['src/a.ts'])
+  })
 
   // Source: mutation testing.
   test.each<{ name: string; files: Record<string, string>; use: string }>([
@@ -1060,7 +933,6 @@ export const read = () => getRequest()
         { environment: 'client', use, also: ['src/a.ts:1'] },
       ])
     },
-    timeout,
   )
 })
 
@@ -1091,16 +963,12 @@ export const read = () => secret()
 
   // Control for the pins below (same harness): once the server knows the
   // module is server-only, its importers get a mock.
-  test(
-    'is mocked when the client loaded the module before its importer',
-    async () => {
-      const server = await startProtectedDevServer(markedApp(serverOnly))
-      await server.load('/src/b.ts')
-      const client = await server.load('/src/entry.ts')
-      expect(modulesContaining(client, 'MARK_B_CODE')).toEqual([])
-    },
-    timeout,
-  )
+  test('is mocked when the client loaded the module before its importer', async () => {
+    const server = await startProtectedDevServer(markedApp(serverOnly))
+    await server.load('/src/b.ts')
+    const client = await server.load('/src/entry.ts')
+    expect(modulesContaining(client, 'MARK_B_CODE')).toEqual([])
+  })
 
   // Source: mutation testing (the logging half of the pin below,
   // which passes).
@@ -1111,52 +979,37 @@ export const read = () => secret()
     return { server, client }
   })
 
-  test(
-    'is logged when the client loads the importer first',
-    async () => {
-      const { server } = await importerFirst()
-      expect(loggedViolations(server)).toContainEqual(markerReport('a', 'b'))
-    },
-    timeout,
-  )
+  test('is logged when the client loads the importer first', async () => {
+    const { server } = await importerFirst()
+    expect(loggedViolations(server)).toContainEqual(markerReport('a', 'b'))
+  })
 
   // Source: mutation testing (only the first marked module's
   // importers were checked).
-  test(
-    'the importers of each of several server-only-marked modules are logged when the client loads the importers first',
-    async () => {
-      const server = await startProtectedDevServer({
-        ...markedApp(serverOnly),
-        'src/d.ts': `${serverOnly}export const other = () => 'MARK_D_CODE'\n`,
-        'src/c.ts': `import { other } from './d'
+  test('the importers of each of several server-only-marked modules are logged when the client loads the importers first', async () => {
+    const server = await startProtectedDevServer({
+      ...markedApp(serverOnly),
+      'src/d.ts': `${serverOnly}export const other = () => 'MARK_D_CODE'\n`,
+      'src/c.ts': `import { other } from './d'
 export const peek = () => other()
 `,
-        'src/entry.ts': `export * from './a'\nexport * from './c'\n`,
-      })
-      await server.load('/src/entry.ts')
-      expect(loggedViolations(server)).toEqual(
-        expect.arrayContaining([
-          markerReport('a', 'b'),
-          markerReport('c', 'd'),
-        ]),
-      )
-    },
-    timeout,
-  )
+      'src/entry.ts': `export * from './a'\nexport * from './c'\n`,
+    })
+    await server.load('/src/entry.ts')
+    expect(loggedViolations(server)).toEqual(
+      expect.arrayContaining([markerReport('a', 'b'), markerReport('c', 'd')]),
+    )
+  })
 
   // On main, in dev, the browser runs the real code of server-only-marked
   // modules (in mock mode the import should be a mock), unlike the build, which
   // fails; whether the client gets the mock depends on load order.
   // Source: found writing the pin "after an edit adds the marker, the violation
   // is logged" below (review).
-  test(
-    'is mocked when the client loads the importer first',
-    async () => {
-      const { client } = await importerFirst()
-      expect(modulesContaining(client, 'MARK_B_CODE')).toEqual([])
-    },
-    timeout,
-  )
+  test('is mocked when the client loads the importer first', async () => {
+    const { client } = await importerFirst()
+    expect(modulesContaining(client, 'MARK_B_CODE')).toEqual([])
+  })
 
   // A file the user empties is an empty module once the save settled, with
   // no marker (an editor's in-place save, which empties the file for a
@@ -1164,45 +1017,37 @@ export const peek = () => other()
   // "a factory saved in place").
   // Source: review of 2026-11-09, round 2 (the emptied file kept its last
   // facts, marker included, until it held text again).
-  test(
-    'after an edit empties the marked module, its importer loads without a violation',
-    async () => {
-      const server = await startProtectedDevServer(markedApp(serverOnly), {
-        behavior: 'error',
-      })
-      await rejection(server.load('/src/entry.ts'))
-      await server.edit({ 'src/b.ts': '' })
-      const logged = server.violations.length
-      await server.load('/src/entry.ts')
-      expect(server.violations.slice(logged)).toEqual([])
-    },
-    timeout,
-  )
+  test('after an edit empties the marked module, its importer loads without a violation', async () => {
+    const server = await startProtectedDevServer(markedApp(serverOnly), {
+      behavior: 'error',
+    })
+    await rejection(server.load('/src/entry.ts'))
+    await server.edit({ 'src/b.ts': '' })
+    const logged = server.violations.length
+    await server.load('/src/entry.ts')
+    expect(server.violations.slice(logged)).toEqual([])
+  })
 })
 
 // Source: mutation testing (the SSR counterpart of the client control
 // above).
-test(
-  'an SSR import of a client-only-marked module the server already transformed is mocked and logged',
-  async () => {
-    const server = await startProtectedDevServer({
-      'src/b.ts': `import '@tanstack/react-start/client-only'
+test('an SSR import of a client-only-marked module the server already transformed is mocked and logged', async () => {
+  const server = await startProtectedDevServer({
+    'src/b.ts': `import '@tanstack/react-start/client-only'
 export const widget = () => 'MARK_B_CODE'
 `,
-      'src/a.ts': `import { widget } from './b'
+    'src/a.ts': `import { widget } from './b'
 export const read = () => widget()
 `,
-      'src/entry.ts': `export * from './a'\n`,
-    })
-    await server.load('/src/b.ts', { environment: 'ssr' })
-    const served = await server.load('/src/entry.ts', { environment: 'ssr' })
-    expect(modulesContaining(served, 'MARK_B_CODE')).toEqual([])
-    expect(relevantViolations(server, [clientOnlyImporter.a])).toContain(
-      violationLabel(clientOnlyImporter.a),
-    )
-  },
-  timeout,
-)
+    'src/entry.ts': `export * from './a'\n`,
+  })
+  await server.load('/src/b.ts', { environment: 'ssr' })
+  const served = await server.load('/src/entry.ts', { environment: 'ssr' })
+  expect(modulesContaining(served, 'MARK_B_CODE')).toEqual([])
+  expect(relevantViolations(server, [clientOnlyImporter.a])).toContain(
+    violationLabel(clientOnlyImporter.a),
+  )
+})
 
 /**
  * The SSR violations of an app whose `src/a.ts` imports the client-only
@@ -1219,53 +1064,45 @@ const clientOnlyImporter = {
 // Source: mutation testing (the SSR counterpart of the client
 // logging test "is logged at the importer's use when the client loads the
 // importer first").
-test(
-  "an SSR load of a client-only-marked module through its importer is logged at the importer's use or import",
-  async () => {
-    const server = await startProtectedDevServer({
-      'src/b.ts': `import '@tanstack/react-start/client-only'
+test("an SSR load of a client-only-marked module through its importer is logged at the importer's use or import", async () => {
+  const server = await startProtectedDevServer({
+    'src/b.ts': `import '@tanstack/react-start/client-only'
 export const widget = () => 'MARK_B_CODE'
 `,
-      'src/a.ts': `import { widget } from './b'
+    'src/a.ts': `import { widget } from './b'
 export const read = () => widget()
 `,
-      'src/entry.ts': `export * from './a'\n`,
-    })
-    await server.load('/src/entry.ts', { environment: 'ssr' })
-    const expected = [clientOnlyImporter.a, clientOnlyImporter.marker]
-    const logged = relevantViolations(server, expected)
-    expect(logged).toContain(violationLabel(clientOnlyImporter.a))
-    // (any other report is at the marker)
-    expect(
-      logged.filter(
-        (violation) => !expected.map(violationLabel).includes(violation),
-      ),
-    ).toEqual([])
-  },
-  timeout,
-)
+    'src/entry.ts': `export * from './a'\n`,
+  })
+  await server.load('/src/entry.ts', { environment: 'ssr' })
+  const expected = [clientOnlyImporter.a, clientOnlyImporter.marker]
+  const logged = relevantViolations(server, expected)
+  expect(logged).toContain(violationLabel(clientOnlyImporter.a))
+  // (any other report is at the marker)
+  expect(
+    logged.filter(
+      (violation) => !expected.map(violationLabel).includes(violation),
+    ),
+  ).toEqual([])
+})
 
 // The provider environment of a React Start app with RSC enabled (its
 // `rsc` environment, `tanstackStart({ rsc: { enabled: true } })`).
 // Source: mutation testing.
-test(
-  'the server fn provider environment (rsc) mocks and logs an import of a .client file',
-  async () => {
-    const server = await startRscProtectedDevServer({
-      'src/widget.client.ts': `export const widget = () => 'MARK_CLIENT'\n`,
-      'src/fn.ts': `import { widget } from './widget.client'
+test('the server fn provider environment (rsc) mocks and logs an import of a .client file', async () => {
+  const server = await startRscProtectedDevServer({
+    'src/widget.client.ts': `export const widget = () => 'MARK_CLIENT'\n`,
+    'src/fn.ts': `import { widget } from './widget.client'
 export const read = () => widget()
 `,
-      'src/entry.ts': `export * from './fn'\n`,
-    })
-    const served = await server.load('/src/entry.ts', { environment: 'rsc' })
-    expect(modulesContaining(served, 'MARK_CLIENT')).toEqual([])
-    expect(loggedViolations(server)).toEqual([
-      originalLocation('server src/fn.ts:2:27', 1),
-    ])
-  },
-  timeout,
-)
+    'src/entry.ts': `export * from './fn'\n`,
+  })
+  const served = await server.load('/src/entry.ts', { environment: 'rsc' })
+  expect(modulesContaining(served, 'MARK_CLIENT')).toEqual([])
+  expect(loggedViolations(server)).toEqual([
+    originalLocation('server src/fn.ts:2:27', 1),
+  ])
+})
 
 // Dependencies (SPEC J6.10): a dependency's marker is honoured like the
 // app's, whatever `excludeFiles` says (it skips file-name rules only). The
@@ -1302,34 +1139,30 @@ export const read = () => query()
   test.each<[string, Record<string, unknown>]>([
     ['by default', {}],
     ['with excludeFiles: []', { client: { excludeFiles: [] } }],
-  ])(
-    '%s, is logged, and the client gets a safe mock',
-    async (_, rules) => {
-      const server = await startBrowserProtectedDevServer(
-        app,
-        { ...rules, mockAccess: 'off' },
-        options,
-      )
-      const { result } = await runViteClient(
-        server,
-        '/src/entry.ts',
-        `${probeMockPrelude}
+  ])('%s, is logged, and the client gets a safe mock', async (_, rules) => {
+    const server = await startBrowserProtectedDevServer(
+      app,
+      { ...rules, mockAccess: 'off' },
+      options,
+    )
+    const { result } = await runViteClient(
+      server,
+      '/src/entry.ts',
+      `${probeMockPrelude}
 return probeMock(entry.read(), 'MARK_LIB')`,
-      )
-      expect(result).toEqual(safeMock)
-      // (at the importer's import or use, or at the dependency's marker
-      // import, SPEC J6.5)
-      expect(loggedViolations(server)).toEqual([
-        originalLocation('client src/a.ts:2:27', 1, {
-          others: [
-            'node_modules/db-lib/index.js:1',
-            'node_modules/db-lib/index.js',
-          ],
-        }),
-      ])
-    },
-    timeout,
-  )
+    )
+    expect(result).toEqual(safeMock)
+    // (at the importer's import or use, or at the dependency's marker
+    // import, SPEC J6.5)
+    expect(loggedViolations(server)).toEqual([
+      originalLocation('client src/a.ts:2:27', 1, {
+        others: [
+          'node_modules/db-lib/index.js:1',
+          'node_modules/db-lib/index.js',
+        ],
+      }),
+    ])
+  })
 })
 
 // The violations a dev server logs for a module both environments load do
@@ -1369,7 +1202,6 @@ export const read = () => [secret(), widget()]
         },
       ])
     },
-    timeout,
   )
 })
 
@@ -1424,17 +1256,13 @@ export const read = () => widget()
   }
 
   // Control for the pins below (same harness): a safe mock, silent.
-  test(
-    'off: the server gets a safe mock, and using it is not reported',
-    async () => {
-      expect(await useOnTheServer('off')).toEqual({
-        read: 'a safe mock',
-        loggedWith: [],
-        unidentified: [],
-      })
-    },
-    timeout,
-  )
+  test('off: the server gets a safe mock, and using it is not reported', async () => {
+    expect(await useOnTheServer('off')).toEqual({
+      read: 'a safe mock',
+      loggedWith: [],
+      unidentified: [],
+    })
+  })
 
   // On main, on the server (SSR, the server fn provider), code that runs on a
   // mocked client-only import does so without any console diagnostic; the
@@ -1454,24 +1282,19 @@ export const read = () => widget()
         unidentified: [],
       })
     },
-    timeout,
   )
 })
 
 describe('reachability from the router entry', () => {
   // Source: mutation testing.
-  test(
-    'only a leak is logged, not the imports a server fn factory uses inside .server()',
-    async () => {
-      const server = await startProtectedDevServer(serverFnFactoryApp())
-      const client = await server.load('/src/entry.ts')
-      expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-      expect(loggedViolations(server)).toEqual([
-        originalLocation('client src/leak.ts:2:27', 1),
-      ])
-    },
-    timeout,
-  )
+  test('only a leak is logged, not the imports a server fn factory uses inside .server()', async () => {
+    const server = await startProtectedDevServer(serverFnFactoryApp())
+    const client = await server.load('/src/entry.ts')
+    expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
+    expect(loggedViolations(server)).toEqual([
+      originalLocation('client src/leak.ts:2:27', 1),
+    ])
+  })
 
   /**
    * `serverFnFactoryApp` without the leak, whose server fn factory module
@@ -1503,23 +1326,19 @@ export const createSecretFn = createServerFn().middleware([mw])
   // helper is never transformed for the client, and nothing is logged.
   // Source: harness realism: the harness used to turn
   // pre-transform requests off for every test.
-  test(
-    'with preTransformRequests off, a helper a server fn factory module uses only inside .server() is not logged',
-    async () => {
-      const server = await startProtectedDevServer(
-        handlerOnlyHelperApp(),
-        {},
-        { config: { server: { preTransformRequests: false } } },
-      )
-      const client = await server.load('/src/entry.ts')
-      // (what the transforms Vite runs in the background log)
-      await server.idle()
-      expect(Object.keys(client)).not.toContain('/src/helper.ts')
-      expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-      expectNothingReportedAbout(server, ['src/helper.ts'])
-    },
-    timeout,
-  )
+  test('with preTransformRequests off, a helper a server fn factory module uses only inside .server() is not logged', async () => {
+    const server = await startProtectedDevServer(
+      handlerOnlyHelperApp(),
+      {},
+      { config: { server: { preTransformRequests: false } } },
+    )
+    const client = await server.load('/src/entry.ts')
+    // (what the transforms Vite runs in the background log)
+    await server.idle()
+    expect(Object.keys(client)).not.toContain('/src/helper.ts')
+    expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
+    expectNothingReportedAbout(server, ['src/helper.ts'])
+  })
 
   /**
    * Orders two transforms of the client environment the way a loaded
@@ -1558,89 +1377,73 @@ export const createSecretFn = createServerFn().middleware([mw])
   // helper).
   // Source: mutation testing, hidden while the harness turned pre-transform
   // requests off.
-  test(
-    'a helper a server fn factory module uses only inside .server() is not logged',
-    async () => {
-      const server = await startProtectedDevServer(
-        handlerOnlyHelperApp(),
-        {},
-        { plugins: [helperBeforeFactory()] },
-      )
-      const client = await server.load('/src/entry.ts')
-      // (what the transforms Vite runs in the background log)
-      await server.idle()
-      expect(Object.keys(client)).not.toContain('/src/helper.ts')
-      expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-      expectNothingReportedAbout(server, ['src/helper.ts'])
-    },
-    timeout,
-  )
+  test('a helper a server fn factory module uses only inside .server() is not logged', async () => {
+    const server = await startProtectedDevServer(
+      handlerOnlyHelperApp(),
+      {},
+      { plugins: [helperBeforeFactory()] },
+    )
+    const client = await server.load('/src/entry.ts')
+    // (what the transforms Vite runs in the background log)
+    await server.idle()
+    expect(Object.keys(client)).not.toContain('/src/helper.ts')
+    expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
+    expectNothingReportedAbout(server, ['src/helper.ts'])
+  })
 
   // The start entry (`src/start.ts`) is an entry like the router entry: the
   // client loads it, and so what it imports.
   // Source: mutation testing.
-  test(
-    'a denied import reached only from the start entry is mocked and logged',
-    async () => {
-      const server = await startProtectedDevServer({
-        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
-        'src/leak.ts': `import { secret } from './secret.server'
+  test('a denied import reached only from the start entry is mocked and logged', async () => {
+    const server = await startProtectedDevServer({
+      'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+      'src/leak.ts': `import { secret } from './secret.server'
 export const leak = () => secret()
 `,
-        'src/start.ts': `import { leak } from './leak'
+      'src/start.ts': `import { leak } from './leak'
 export const startInstance = { leak }
 `,
-        'src/entry.ts': `export const getRouter = () => undefined\n`,
-      })
-      const client = await server.load('/src/start.ts')
-      expect(Object.keys(client)).toContain('/src/leak.ts')
-      expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-      expect(loggedViolations(server)).toEqual([
-        originalLocation('client src/leak.ts:2:27', 1),
-      ])
-    },
-    timeout,
-  )
+      'src/entry.ts': `export const getRouter = () => undefined\n`,
+    })
+    const client = await server.load('/src/start.ts')
+    expect(Object.keys(client)).toContain('/src/leak.ts')
+    expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
+    expect(loggedViolations(server)).toEqual([
+      originalLocation('client src/leak.ts:2:27', 1),
+    ])
+  })
 
   // Source: mutation testing; a control of the harness
   // registering Start's router entry: the factory module is a module the
   // Start compiler looked up, whose violations are only logged once they
   // are known to be reachable from an entry (without the entry, this test
   // fails).
-  test(
-    'a server fn factory module that also calls a denied import at the top level is logged',
-    async () => {
-      const server = await startProtectedDevServer(
-        serverFnFactoryApp(factoryTopLevelCall),
-      )
-      await server.load('/src/entry.ts')
-      expect(loggedViolations(server)).toContainEqual(
-        originalLocation('client src/factory.ts:9:24', 2),
-      )
-    },
-    timeout,
-  )
+  test('a server fn factory module that also calls a denied import at the top level is logged', async () => {
+    const server = await startProtectedDevServer(
+      serverFnFactoryApp(factoryTopLevelCall),
+    )
+    await server.load('/src/entry.ts')
+    expect(loggedViolations(server)).toContainEqual(
+      originalLocation('client src/factory.ts:9:24', 2),
+    )
+  })
 
   // Source: mutation testing (the factory module's violations found when
   // the Start compiler looked it up, which include the imports used inside
   // `.server()`, were logged without waiting for its compiled imports).
-  test(
-    'a server fn factory module reports the surviving denied import at its original import or use',
-    async () => {
-      const tail = `export const secret = getSecret()\n`
-      const server = await startProtectedDevServer(serverFnFactoryApp(tail))
-      await server.load('/src/entry.ts')
-      await server.idle()
-      expect(loggedViolations(server).sort()).toEqual([
-        originalLocation(
-          `client src/factory.ts:9:${tail.indexOf('getSecret') + 1}`,
-          3,
-        ),
-        originalLocation('client src/leak.ts:2:27', 1),
-      ])
-    },
-    timeout,
-  )
+  test('a server fn factory module reports the surviving denied import at its original import or use', async () => {
+    const tail = `export const secret = getSecret()\n`
+    const server = await startProtectedDevServer(serverFnFactoryApp(tail))
+    await server.load('/src/entry.ts')
+    await server.idle()
+    expect(loggedViolations(server).sort()).toEqual([
+      originalLocation(
+        `client src/factory.ts:9:${tail.indexOf('getSecret') + 1}`,
+        3,
+      ),
+      originalLocation('client src/leak.ts:2:27', 1),
+    ])
+  })
 
   /**
    * `serverFnFactoryApp` without the leak, whose server fn factory module
@@ -1674,46 +1477,35 @@ ${factoryTopLevelCall}`
 
   // Source: mutation testing (the client's edge from a module the Start
   // compiler looked up to the modules it imports).
-  test(
-    'a denied import of a module a server fn factory module re-exports is logged, with a trace to the use',
-    async () => {
-      const { reports, printed, use } = await reExportedByAFactory()
-      expect(printed).toHaveLength(1)
-      expect(reports[0]!.trace.map(({ at }) => at)).toEqual([
-        expect.stringMatching(/^src\/entry\.ts\b/),
-        expect.stringMatching(/^src\/usage\.ts\b/),
-        expect.stringMatching(/^src\/factory\.ts\b/),
-        originalLocation(use, 1),
-      ])
-    },
-    timeout,
-  )
+  test('a denied import of a module a server fn factory module re-exports is logged, with a trace to the use', async () => {
+    const { reports, printed, use } = await reExportedByAFactory()
+    expect(printed).toHaveLength(1)
+    expect(reports[0]!.trace.map(({ at }) => at)).toEqual([
+      expect.stringMatching(/^src\/entry\.ts\b/),
+      expect.stringMatching(/^src\/usage\.ts\b/),
+      expect.stringMatching(/^src\/factory\.ts\b/),
+      originalLocation(use, 1),
+    ])
+  })
 
   // On main, in dev, the warning for a module a server fn factory module
   // re-exports names `other.ts:2:24` instead of `src/other.ts:2:24` (low:
   // diagnostics only; an editor link does not open the file).
   // Source: found writing the test above.
-  test(
-    'a denied import of a module a server fn factory module re-exports is reported at its original import or use, with its path',
-    async () => {
-      for (const preTransformRequests of [false, true]) {
-        const { reports, use } =
-          await reExportedByAFactory(preTransformRequests)
-        expect(reports.map(({ importer }) => importer)).toEqual([
-          originalLocation(use, 1),
-        ])
-      }
-    },
-    timeout,
-  )
+  test('a denied import of a module a server fn factory module re-exports is reported at its original import or use, with its path', async () => {
+    for (const preTransformRequests of [false, true]) {
+      const { reports, use } = await reExportedByAFactory(preTransformRequests)
+      expect(reports.map(({ importer }) => importer)).toEqual([
+        originalLocation(use, 1),
+      ])
+    }
+  })
 
   // Source: mutation testing. The factory module's
   // violations wait for its compiled imports (the Start compiler looked it
   // up), and its denied file import comes before its denied specifier.
-  test(
-    'a server fn factory module calling a denied file and a denied specifier at the top level reports both at their original imports or uses',
-    async () => {
-      const factory = `import { createMiddleware, createServerFn } from '@tanstack/react-start'
+  test('a server fn factory module calling a denied file and a denied specifier at the top level reports both at their original imports or uses', async () => {
+    const factory = `import { createMiddleware, createServerFn } from '@tanstack/react-start'
 import { getSecret } from './secret.server'
 import { getRequest } from '@tanstack/react-start/server'
 const mw = createMiddleware({ type: 'function' }).server(({ next }) => {
@@ -1723,26 +1515,24 @@ export const createSecretFn = createServerFn().middleware([mw])
 export const secret = getSecret()
 export const request = getRequest()
 `
-      const server = await startProtectedDevServer({
-        ...serverFnFactoryApp(),
-        'src/factory.ts': factory,
-        'src/entry.ts': `export { fn } from './usage'\n`,
-      })
-      const client = await server.load('/src/entry.ts')
-      expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-      expect(loggedViolations(server).sort()).toEqual([
-        originalLocation(
-          `client ${locationIn('src/factory.ts', factory, 8, 'getSecret')}`,
-          2,
-        ),
-        originalLocation(
-          `client ${locationIn('src/factory.ts', factory, 9, 'getRequest')}`,
-          3,
-        ),
-      ])
-    },
-    timeout,
-  )
+    const server = await startProtectedDevServer({
+      ...serverFnFactoryApp(),
+      'src/factory.ts': factory,
+      'src/entry.ts': `export { fn } from './usage'\n`,
+    })
+    const client = await server.load('/src/entry.ts')
+    expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
+    expect(loggedViolations(server).sort()).toEqual([
+      originalLocation(
+        `client ${locationIn('src/factory.ts', factory, 8, 'getSecret')}`,
+        2,
+      ),
+      originalLocation(
+        `client ${locationIn('src/factory.ts', factory, 9, 'getRequest')}`,
+        3,
+      ),
+    ])
+  })
 
   /**
    * `src/p.ts` uses the denied file `src/secret.server.ts` and the denied
@@ -1809,58 +1599,50 @@ export const q = () => [read(), request(), slow]
 
   // Source: mutation testing (the dev 'unknown'-reachability fallback: some
   // edges to the module lack transform data).
-  test(
-    'a module served while its only importer is still being transformed has its denied imports mocked and logged at their original imports or uses',
-    async () => {
-      const { server, served } = await serveWhileItsImporterTransforms()
-      expect(modulesContaining(served, 'MARK_SECRET')).toEqual([])
-      const p = overlapApp['src/p.ts']
-      expectViolationsAt(server, [
-        {
-          environment: 'client',
-          use: locationIn('src/p.ts', p, 3, 'secret()'),
-          also: ['src/p.ts:1'],
-        },
-        {
-          environment: 'client',
-          use: locationIn('src/p.ts', p, 4, 'getRequest()'),
-          also: ['src/p.ts:2'],
-        },
-      ])
-      // Source: mutation testing (the trace from Vite's
-      // module graph, which does not have the importer yet, replaced it).
-      for (const report of violationsOf(server)) {
-        expect(
-          report.trace.map(({ at }) => at.replace(/(?::\d+)+$/, '')),
-        ).toEqual(['src/entry.ts', 'src/q.ts', 'src/p.ts'])
-      }
-    },
-    timeout,
-  )
+  test('a module served while its only importer is still being transformed has its denied imports mocked and logged at their original imports or uses', async () => {
+    const { server, served } = await serveWhileItsImporterTransforms()
+    expect(modulesContaining(served, 'MARK_SECRET')).toEqual([])
+    const p = overlapApp['src/p.ts']
+    expectViolationsAt(server, [
+      {
+        environment: 'client',
+        use: locationIn('src/p.ts', p, 3, 'secret()'),
+        also: ['src/p.ts:1'],
+      },
+      {
+        environment: 'client',
+        use: locationIn('src/p.ts', p, 4, 'getRequest()'),
+        also: ['src/p.ts:2'],
+      },
+    ])
+    // Source: mutation testing (the trace from Vite's
+    // module graph, which does not have the importer yet, replaced it).
+    for (const report of violationsOf(server)) {
+      expect(
+        report.trace.map(({ at }) => at.replace(/(?::\d+)+$/, '')),
+      ).toEqual(['src/entry.ts', 'src/q.ts', 'src/p.ts'])
+    }
+  })
 
   // On main, in dev (mock mode), denied imports of warmed-up modules are mocked
   // without any warning (the build still reports them).
   // Source: mutation testing (looking for edges without transform data); the
   // control is "a client import of a denied file is mocked, and the dev server
   // logs a warning naming the importer at the use".
-  test(
-    'a denied import of a module warmed up before its importers is logged once the client loads the app',
-    async () => {
-      const server = await startProtectedDevServer(
-        deniedFileApp,
-        {},
-        { config: { server: { warmup: { clientFiles: ['./src/a.ts'] } } } },
-      )
-      // (waits for the warmup's transform of the module)
-      await server.transform('/src/a.ts')
-      const client = await server.load('/src/entry.ts')
-      expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-      expect(loggedViolations(server)).toEqual([
-        originalLocation(`client ${deniedFileUse}`, 1),
-      ])
-    },
-    timeout,
-  )
+  test('a denied import of a module warmed up before its importers is logged once the client loads the app', async () => {
+    const server = await startProtectedDevServer(
+      deniedFileApp,
+      {},
+      { config: { server: { warmup: { clientFiles: ['./src/a.ts'] } } } },
+    )
+    // (waits for the warmup's transform of the module)
+    await server.transform('/src/a.ts')
+    const client = await server.load('/src/entry.ts')
+    expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
+    expect(loggedViolations(server)).toEqual([
+      originalLocation(`client ${deniedFileUse}`, 1),
+    ])
+  })
 
   /**
    * `src/late.ts` uses the denied file `src/secret.server.ts`; `src/a.ts`,
@@ -1892,29 +1674,21 @@ export const read = () => secret()
   }
 
   // Control for the pin below (same harness).
-  test(
-    'a denied import of a module the client loads after the server rendered is logged',
-    async () => {
-      expect(await logsOfALateModule(false)).toEqual([
-        originalLocation('client src/late.ts:2:27', 1),
-      ])
-    },
-    timeout,
-  )
+  test('a denied import of a module the client loads after the server rendered is logged', async () => {
+    expect(await logsOfALateModule(false)).toEqual([
+      originalLocation('client src/late.ts:2:27', 1),
+    ])
+  })
 
   // On main, with that Vite option, dev import protection mocks the denied
   // imports of modules loaded after the first server request without any
   // warning (low: opt-in option).
   // Source: mutation testing (clearEnvState mutants).
-  test(
-    'with perEnvironmentStartEndDuringDev, a denied import of a module the client loads after the server rendered is logged',
-    async () => {
-      expect(await logsOfALateModule(true)).toEqual([
-        originalLocation('client src/late.ts:2:27', 1),
-      ])
-    },
-    timeout,
-  )
+  test('with perEnvironmentStartEndDuringDev, a denied import of a module the client loads after the server rendered is logged', async () => {
+    expect(await logsOfALateModule(true)).toEqual([
+      originalLocation('client src/late.ts:2:27', 1),
+    ])
+  })
 })
 
 describe("an app's client entry, with Start's whole plugin", () => {
@@ -1954,56 +1728,48 @@ export const leak = () => secret()
 
   // The router entry counts; its client entry twin is pinned in
   // dev-page.test.ts.
-  test(
-    'a denied import of a module the router entry imports is mocked and logged',
-    async () => {
-      const server = await startApp(leakApp('src/router.ts'))
-      const client = await server.load('/src/router.ts')
-      expect(Object.keys(client)).toContain('/src/leak.ts')
-      expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-      expect(loggedViolations(server)).toEqual([
-        originalLocation(`client ${leakUse}`, 1),
-      ])
-    },
-    timeout,
-  )
+  test('a denied import of a module the router entry imports is mocked and logged', async () => {
+    const server = await startApp(leakApp('src/router.ts'))
+    const client = await server.load('/src/router.ts')
+    expect(Object.keys(client)).toContain('/src/leak.ts')
+    expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
+    expect(loggedViolations(server)).toEqual([
+      originalLocation(`client ${leakUse}`, 1),
+    ])
+  })
 
   // The `importProtection` option of `tanstackStart()` reaches the plugin
   // (the adapter harness above wires the plugin by hand): `onViolation`
   // receives the violation, `mockAccess: 'off'` silences the mock's use.
   // Source: review.
-  test(
-    "Start's plugin passes the importProtection option on: onViolation and mockAccess apply",
-    async () => {
-      const violations: Array<ViolationInfo> = []
-      const server = await startDevServer({
-        browser: true,
-        plugins: [clientFixturePlugin],
-        start: {
-          importProtection: {
-            mockAccess: 'off',
-            onViolation: (info) => {
-              violations.push(info as ViolationInfo)
-            },
+  test("Start's plugin passes the importProtection option on: onViolation and mockAccess apply", async () => {
+    const violations: Array<ViolationInfo> = []
+    const server = await startDevServer({
+      browser: true,
+      plugins: [clientFixturePlugin],
+      start: {
+        importProtection: {
+          mockAccess: 'off',
+          onViolation: (info) => {
+            violations.push(info as ViolationInfo)
           },
         },
-        files: leakApp('src/router.ts'),
-        config: { server: { hmr: false } },
-      })
-      const { result, diagnostics } = await runViteClient(
-        server,
-        '/src/router.ts',
-        `${probeMockPrelude}
+      },
+      files: leakApp('src/router.ts'),
+      config: { server: { hmr: false } },
+    })
+    const { result, diagnostics } = await runViteClient(
+      server,
+      '/src/router.ts',
+      `${probeMockPrelude}
 return probeMock(entry.getRouter()(), 'MARK_')`,
-      )
-      expect(result).toEqual(safeMock)
-      expect(warningsAndErrors(diagnostics)).toEqual([])
-      expect(receivedViolations(violations, server.root)).toEqual([
-        originalLocation(`client ${leakUse}`, 1),
-      ])
-    },
-    timeout,
-  )
+    )
+    expect(result).toEqual(safeMock)
+    expect(warningsAndErrors(diagnostics)).toEqual([])
+    expect(receivedViolations(violations, server.root)).toEqual([
+      originalLocation(`client ${leakUse}`, 1),
+    ])
+  })
 
   // The app's client entry, loaded by a real page: dev-page.test.ts.
 })
@@ -2036,18 +1802,12 @@ export default { fetch: () => new Response(String(handler())) }
 
   // The router entry counts; its server entry twin is pinned in
   // dev-page.test.ts.
-  test(
-    'a client-only import of a module the router entry imports is mocked on the server and logged',
-    async () => {
-      const server = await startApp(handlerApp('src/router.ts'))
-      const router = await server.import('/src/router.ts')
-      expect(String(router.getRouter()())).not.toContain('MARK_CLIENT')
-      expect(loggedViolations(server)).toEqual([
-        originalLocation(handlerUse, 1),
-      ])
-    },
-    timeout,
-  )
+  test('a client-only import of a module the router entry imports is mocked on the server and logged', async () => {
+    const server = await startApp(handlerApp('src/router.ts'))
+    const router = await server.import('/src/router.ts')
+    expect(String(router.getRouter()())).not.toContain('MARK_CLIENT')
+    expect(loggedViolations(server)).toEqual([originalLocation(handlerUse, 1)])
+  })
 
   // The app's server entry, run by a request: dev-page.test.ts.
 })
@@ -2082,129 +1842,104 @@ describe('full-bundle dev', () => {
         originalLocation(`client ${deniedFileUse}`, 1),
       ])
     },
-    timeout,
   )
 
   // Source: mutation testing (full-bundle dev had no import-protection test).
-  test(
-    'denied imports are mocked in the client bundle, and the dev server logs each at its original import or use',
-    async () => {
-      const x = `import { getRequest } from '@tanstack/react-start/server'
+  test('denied imports are mocked in the client bundle, and the dev server logs each at its original import or use', async () => {
+    const x = `import { getRequest } from '@tanstack/react-start/server'
 export const request = () => getRequest()
 `
-      const server = await startProtectedDevServer(
-        {
-          ...deniedFileApp,
-          'src/x.ts': x,
-          'src/entry.ts': `export * from './a'\nexport * from './x'\n`,
-        },
-        {},
-        { bundledDev: { entry: 'src/entry.ts' } },
-      )
-      const bundle = await server.clientBundle()
-      expect(modulesContaining(bundle, 'MARK_SECRET')).toEqual([])
-      expect(loggedViolations(server).sort()).toEqual([
-        originalLocation(`client ${deniedFileUse}`, 1),
-        originalLocation(
-          `client ${locationIn('src/x.ts', x, 2, 'getRequest()')}`,
-          1,
-        ),
-      ])
-    },
-    timeout,
-  )
+    const server = await startProtectedDevServer(
+      {
+        ...deniedFileApp,
+        'src/x.ts': x,
+        'src/entry.ts': `export * from './a'\nexport * from './x'\n`,
+      },
+      {},
+      { bundledDev: { entry: 'src/entry.ts' } },
+    )
+    const bundle = await server.clientBundle()
+    expect(modulesContaining(bundle, 'MARK_SECRET')).toEqual([])
+    expect(loggedViolations(server).sort()).toEqual([
+      originalLocation(`client ${deniedFileUse}`, 1),
+      originalLocation(
+        `client ${locationIn('src/x.ts', x, 2, 'getRequest()')}`,
+        1,
+      ),
+    ])
+  })
 
   /** The modules of the trace of each violation of `recorded`. */
   const traces = (recorded: Recorded) =>
     violationsOf(recorded).map(traceModules)
 
   // Source: mutation testing (every importer taken as an entry).
-  test(
-    'the trace of a denied file imported through a chain of modules leads from the router entry',
-    async () => {
-      const server = await startProtectedDevServer(
-        {
-          'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
-          'src/lib/a.ts': `import { secret } from '../secret.server'
+  test('the trace of a denied file imported through a chain of modules leads from the router entry', async () => {
+    const server = await startProtectedDevServer(
+      {
+        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+        'src/lib/a.ts': `import { secret } from '../secret.server'
 export const read = () => secret()
 `,
-          'src/b.ts': `export { read } from './lib/a'\n`,
-          'src/entry.ts': `export * from './b'\n`,
-        },
-        {},
-        { bundledDev: { entry: 'src/entry.ts' } },
-      )
-      await server.clientBundle()
-      const logged = traces(server)
-      expect(logged).not.toEqual([])
-      for (const trace of logged) {
-        expect(trace).toEqual(['src/entry.ts', 'src/b.ts', 'src/lib/a.ts'])
-      }
-    },
-    timeout,
-  )
+        'src/b.ts': `export { read } from './lib/a'\n`,
+        'src/entry.ts': `export * from './b'\n`,
+      },
+      {},
+      { bundledDev: { entry: 'src/entry.ts' } },
+    )
+    await server.clientBundle()
+    const logged = traces(server)
+    expect(logged).not.toEqual([])
+    for (const trace of logged) {
+      expect(trace).toEqual(['src/entry.ts', 'src/b.ts', 'src/lib/a.ts'])
+    }
+  })
 
   // On main, in full-bundle dev, the trace of a violation under a route starts
   // at the route module: it does not show how the app reaches the route
   // (unbundled dev and builds start at the router entry).
   // Source: mutation testing.
-  test(
-    'the trace of a denied file imported from a module of src/routes leads from the router entry',
-    async () => {
-      const server = await startProtectedDevServer(
-        {
-          ...deniedFileApp,
-          'src/routes/page.ts': `export { read } from '../a'\n`,
-          'src/entry.ts': `export * from './routes/page'\n`,
-        },
-        {},
-        { bundledDev: { entry: 'src/entry.ts' } },
-      )
-      await server.clientBundle()
-      const logged = traces(server)
-      expect(logged).not.toEqual([])
-      for (const trace of logged) {
-        expect(trace).toEqual([
-          'src/entry.ts',
-          'src/routes/page.ts',
-          'src/a.ts',
-        ])
-      }
-    },
-    timeout,
-  )
+  test('the trace of a denied file imported from a module of src/routes leads from the router entry', async () => {
+    const server = await startProtectedDevServer(
+      {
+        ...deniedFileApp,
+        'src/routes/page.ts': `export { read } from '../a'\n`,
+        'src/entry.ts': `export * from './routes/page'\n`,
+      },
+      {},
+      { bundledDev: { entry: 'src/entry.ts' } },
+    )
+    await server.clientBundle()
+    const logged = traces(server)
+    expect(logged).not.toEqual([])
+    for (const trace of logged) {
+      expect(trace).toEqual(['src/entry.ts', 'src/routes/page.ts', 'src/a.ts'])
+    }
+  })
 
   // Full-bundle dev bundles only the client: the server still loads modules
   // one by one, and its traces do not change.
   // Source: mutation testing (route modules taken as server entries).
-  test(
-    'the SSR trace of a .client file imported from a module of src/routes leads from the router entry',
-    async () => {
-      const server = await startProtectedDevServer(
-        {
-          'src/widget.client.ts': `export const widget = () => 'MARK_CLIENT'\n`,
-          'src/a.ts': `import { widget } from './widget.client'
+  test('the SSR trace of a .client file imported from a module of src/routes leads from the router entry', async () => {
+    const server = await startProtectedDevServer(
+      {
+        'src/widget.client.ts': `export const widget = () => 'MARK_CLIENT'\n`,
+        'src/a.ts': `import { widget } from './widget.client'
 export const read = () => widget()
 `,
-          'src/routes/page.ts': `export { read } from '../a'\n`,
-          'src/entry.ts': `export * from './routes/page'\n`,
-        },
-        {},
-        { bundledDev: { entry: 'src/entry.ts' } },
-      )
-      await server.load('/src/entry.ts', { environment: 'ssr' })
-      const logged = traces(server)
-      expect(logged).not.toEqual([])
-      for (const trace of logged) {
-        expect(trace).toEqual([
-          'src/entry.ts',
-          'src/routes/page.ts',
-          'src/a.ts',
-        ])
-      }
-    },
-    timeout,
-  )
+        'src/routes/page.ts': `export { read } from '../a'\n`,
+        'src/entry.ts': `export * from './routes/page'\n`,
+      },
+      {},
+      { bundledDev: { entry: 'src/entry.ts' } },
+    )
+    await server.load('/src/entry.ts', { environment: 'ssr' })
+    const logged = traces(server)
+    expect(logged).not.toEqual([])
+    for (const trace of logged) {
+      expect(trace).toEqual(['src/entry.ts', 'src/routes/page.ts', 'src/a.ts'])
+    }
+  })
 
   /**
    * An app whose server fn factory module is a denied file
@@ -2226,100 +1961,88 @@ export const fn = createSecretFn().handler(async () => 'data')
 
   // Source: mutation testing (the mock the Start compiler's lookup of the
   // denied factory module gets).
-  test(
-    'a server fn built with a factory of a denied file gets the mock in the client bundle and is logged at its original import or use',
-    async () => {
-      const server = await startProtectedDevServer(
-        deniedFactoryApp,
-        {},
-        { bundledDev: { entry: 'src/entry.ts' } },
-      )
-      const bundle = await server.clientBundle()
-      expect(modulesContaining(bundle, 'MARK_SECRET')).toEqual([])
-      expect(loggedViolations(server)).toContainEqual(
-        originalLocation(`client ${deniedFactoryUse}`, 1),
-      )
-    },
-    timeout,
-  )
+  test('a server fn built with a factory of a denied file gets the mock in the client bundle and is logged at its original import or use', async () => {
+    const server = await startProtectedDevServer(
+      deniedFactoryApp,
+      {},
+      { bundledDev: { entry: 'src/entry.ts' } },
+    )
+    const bundle = await server.clientBundle()
+    expect(modulesContaining(bundle, 'MARK_SECRET')).toEqual([])
+    expect(loggedViolations(server)).toContainEqual(
+      originalLocation(`client ${deniedFactoryUse}`, 1),
+    )
+  })
 
   // On main, in full-bundle dev with `mockAccess: 'off'`, an app with a server
   // fn built from a factory in a denied file fails to bundle the client
   // (UNLOADABLE_DEPENDENCY).
   // Source: mutation testing.
-  test(
-    'with mockAccess off, a server fn built with a factory of a denied file gets the mock in the client bundle and is logged at its original import or use',
-    async () => {
-      const server = await startProtectedDevServer(
-        deniedFactoryApp,
-        { mockAccess: 'off' },
-        { bundledDev: { entry: 'src/entry.ts' } },
-      )
-      const bundle = await server.clientBundle()
-      expect(modulesContaining(bundle, 'MARK_SECRET')).toEqual([])
-      expect(loggedViolations(server)).toContainEqual(
-        originalLocation(`client ${deniedFactoryUse}`, 1),
-      )
-    },
-    timeout,
-  )
+  test('with mockAccess off, a server fn built with a factory of a denied file gets the mock in the client bundle and is logged at its original import or use', async () => {
+    const server = await startProtectedDevServer(
+      deniedFactoryApp,
+      { mockAccess: 'off' },
+      { bundledDev: { entry: 'src/entry.ts' } },
+    )
+    const bundle = await server.clientBundle()
+    expect(modulesContaining(bundle, 'MARK_SECRET')).toEqual([])
+    expect(loggedViolations(server)).toContainEqual(
+      originalLocation(`client ${deniedFactoryUse}`, 1),
+    )
+  })
 
   // Start's virtual client entry, the bundle's input, imports the app's
   // `src/client.tsx`, which may import modules before the router entry's
   // imports reach them.
   // Source: mutation testing (the violations of a module the bundle
   // reaches before the router entry does are kept until it does).
-  test(
-    'a denied import of a module the bundle input imports before the router entry reaches it is logged at its original import or use',
-    async () => {
-      let release!: () => void
-      const released = new Promise<void>((resolve) => {
-        release = resolve
-      })
-      // Holds the router entry until the bundle has asked for `src/a.ts`'s
-      // import of the denied file (its resolution, which happens whatever
-      // the compiler then serves: the real file, a mock, a virtual module),
-      // or for at most 5 s: fix-agnostic, and it never hangs.
-      const slowEntry: Plugin = {
-        name: 'slow-entry',
-        enforce: 'pre',
-        resolveId(source, importer) {
-          if (source === './secret.server' && importer?.endsWith('/src/a.ts')) {
-            release()
-          }
-          return null
-        },
-        async transform(_code, id) {
-          if (id.endsWith('/src/entry.ts')) {
-            await Promise.race([
-              released,
-              new Promise((resolve) => setTimeout(resolve, 5_000)),
-            ])
-          }
-          return null
-        },
-      }
-      const server = await startProtectedDevServer(
-        {
-          ...deniedFileApp,
-          'src/page.ts': `export { read } from './a'\n`,
-          'src/entry.ts': `export { read } from './page'\n`,
-          'src/client.ts': `import { read } from './page'
+  test('a denied import of a module the bundle input imports before the router entry reaches it is logged at its original import or use', async () => {
+    let release!: () => void
+    const released = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    // Holds the router entry until the bundle has asked for `src/a.ts`'s
+    // import of the denied file (its resolution, which happens whatever
+    // the compiler then serves: the real file, a mock, a virtual module),
+    // or for at most 5 s: fix-agnostic, and it never hangs.
+    const slowEntry: Plugin = {
+      name: 'slow-entry',
+      enforce: 'pre',
+      resolveId(source, importer) {
+        if (source === './secret.server' && importer?.endsWith('/src/a.ts')) {
+          release()
+        }
+        return null
+      },
+      async transform(_code, id) {
+        if (id.endsWith('/src/entry.ts')) {
+          await Promise.race([
+            released,
+            new Promise((resolve) => setTimeout(resolve, 5_000)),
+          ])
+        }
+        return null
+      },
+    }
+    const server = await startProtectedDevServer(
+      {
+        ...deniedFileApp,
+        'src/page.ts': `export { read } from './a'\n`,
+        'src/entry.ts': `export { read } from './page'\n`,
+        'src/client.ts': `import { read } from './page'
 import * as router from './entry'
 export const app = [read, router]
 `,
-        },
-        {},
-        { bundledDev: { entry: 'src/client.ts' }, plugins: [slowEntry] },
-      )
-      const bundle = await server.clientBundle()
-      expect(modulesContaining(bundle, 'MARK_SECRET')).toEqual([])
-      expect(loggedViolations(server)).toEqual([
-        originalLocation(`client ${deniedFileUse}`, 1),
-      ])
-    },
-    timeout,
-  )
+      },
+      {},
+      { bundledDev: { entry: 'src/client.ts' }, plugins: [slowEntry] },
+    )
+    const bundle = await server.clientBundle()
+    expect(modulesContaining(bundle, 'MARK_SECRET')).toEqual([])
+    expect(loggedViolations(server)).toEqual([
+      originalLocation(`client ${deniedFileUse}`, 1),
+    ])
+  })
 })
 
 // A split route component, rendered by a real page: dev-page.test.ts.
@@ -2328,10 +2051,8 @@ export const app = [read, router]
 // violation is located in the route file as the user wrote it.
 // Source: mutation testing (the route module's source map without
 // the source text, so import protection showed the compiled module).
-test(
-  "a denied import used in a route module is located in the route file's source, with Start's whole plugin",
-  async () => {
-    const route = `import { createFileRoute } from '@tanstack/react-router'
+test("a denied import used in a route module is located in the route file's source, with Start's whole plugin", async () => {
+  const route = `import { createFileRoute } from '@tanstack/react-router'
 import { secret } from '../secret.server' /* ORIGINAL_IMPORT */
 
 // a comment that compiling drops
@@ -2340,23 +2061,21 @@ export const Route = createFileRoute('/')({
   component: () => 'page',
 })
 `
-    const server = await startRecordingApp({
-      'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
-      'src/routes/index.tsx': route,
-      'src/router.ts': `import { routeTree } from './routeTree.gen'
+  const server = await startRecordingApp({
+    'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+    'src/routes/index.tsx': route,
+    'src/router.ts': `import { routeTree } from './routeTree.gen'
 export const getRouter = () => ({ routeTree })
 `,
-    })
-    await server.load('/src/router.ts')
-    await server.idle()
-    const use = locationIn('src/routes/index.tsx', route, 6, 'secret()')
-    // At the use or the import (SPEC J6.5).
-    expectViolationsAt(server, [
-      { environment: 'client', use, also: ['src/routes/index.tsx:2'] },
-    ])
-  },
-  timeout,
-)
+  })
+  await server.load('/src/router.ts')
+  await server.idle()
+  const use = locationIn('src/routes/index.tsx', route, 6, 'secret()')
+  // At the use or the import (SPEC J6.5).
+  expectViolationsAt(server, [
+    { environment: 'client', use, also: ['src/routes/index.tsx:2'] },
+  ])
+})
 
 describe('diagnostics', () => {
   // Source: mutation testing (the served code of a JSX module
@@ -2428,66 +2147,57 @@ export const Page = () => <div>{String(1)}</div>
       }
       expect(inA).toEqual([originalLocation(expected, 1)])
     },
-    timeout,
   )
 
   // On main, in dev, the warning for a denied file imported through an alias in
   // a JSX module points at a line that is not in the source (here 4:77 of a
   // two-line module).
   // Source: mutation testing (that late source map capture).
-  test(
-    'in a JSX module, a use of a denied file imported through a subpath import alias is located on its source line',
-    async () => {
-      const server = await startProtectedDevServer({
-        'package.json': JSON.stringify({
-          name: 'app',
-          type: 'module',
-          imports: { '#secret': './src/secret.server.ts' },
-        }),
-        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
-        'src/a.tsx': `import { secret } from '#secret'
+  test('in a JSX module, a use of a denied file imported through a subpath import alias is located on its source line', async () => {
+    const server = await startProtectedDevServer({
+      'package.json': JSON.stringify({
+        name: 'app',
+        type: 'module',
+        imports: { '#secret': './src/secret.server.ts' },
+      }),
+      'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+      'src/a.tsx': `import { secret } from '#secret'
 export const Page = () => <div>{String(secret())}</div>
 `,
-        'src/entry.ts': `export * from './a'\n`,
-      })
-      const client = await server.load('/src/entry.ts')
-      expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
-      // (the reports with a location: the one naming the resolved path
-      // has none, see the 'once' pin of `log`)
-      expect(
-        loggedViolations(server).filter((v) => /:\d+:\d+$/.test(v)),
-      ).toEqual([originalLocation('client src/a.tsx:2:40', 1)])
-    },
-    timeout,
-  )
+      'src/entry.ts': `export * from './a'\n`,
+    })
+    const client = await server.load('/src/entry.ts')
+    expect(modulesContaining(client, 'MARK_SECRET')).toEqual([])
+    // (the reports with a location: the one naming the resolved path
+    // has none, see the 'once' pin of `log`)
+    expect(loggedViolations(server).filter((v) => /:\d+:\d+$/.test(v))).toEqual(
+      [originalLocation('client src/a.tsx:2:40', 1)],
+    )
+  })
 
   // Source: mutation testing (a pattern rule cannot be found in
   // the module's code as text, unlike the specifiers of the rows above).
-  test(
-    'in a JSX module, a use of a specifier denied by a custom pattern rule (client) is located on its source line',
-    async () => {
-      const server = await startProtectedDevServer(
-        {
-          'node_modules/@acme/private/package.json': JSON.stringify({
-            name: '@acme/private',
-            type: 'module',
-            exports: { '.': './index.js' },
-          }),
-          'node_modules/@acme/private/index.js': `export const secret = () => 'MARK_SECRET'\n`,
-          'src/a.tsx': `import { secret } from '@acme/private'
+  test('in a JSX module, a use of a specifier denied by a custom pattern rule (client) is located on its source line', async () => {
+    const server = await startProtectedDevServer(
+      {
+        'node_modules/@acme/private/package.json': JSON.stringify({
+          name: '@acme/private',
+          type: 'module',
+          exports: { '.': './index.js' },
+        }),
+        'node_modules/@acme/private/index.js': `export const secret = () => 'MARK_SECRET'\n`,
+        'src/a.tsx': `import { secret } from '@acme/private'
 export const Page = () => <div>{String(secret())}</div>
 `,
-          'src/entry.ts': `export * from './a'\n`,
-        },
-        { client: { specifiers: ['@acme/*'] } },
-      )
-      await server.load('/src/entry.ts')
-      expect(loggedViolations(server)).toEqual([
-        originalLocation('client src/a.tsx:2:40', 1),
-      ])
-    },
-    timeout,
-  )
+        'src/entry.ts': `export * from './a'\n`,
+      },
+      { client: { specifiers: ['@acme/*'] } },
+    )
+    await server.load('/src/entry.ts')
+    expect(loggedViolations(server)).toEqual([
+      originalLocation('client src/a.tsx:2:40', 1),
+    ])
+  })
 
   /**
    * The client imports `src/secret.server.ts` through a chain of modules
@@ -2520,33 +2230,25 @@ export const read = () => secret()
   // Source: mutation testing (the trace from Vite's module graph, which dev
   // import protection prefers when it is longer than its own: here, its own
   // stops at `maxTraceDepth`).
-  test(
-    'with maxTraceDepth, the trace ends at the importer, each step naming the import of the next',
-    async () => {
-      for (const trace of await cutTraces()) {
-        expect(trace.at(-1)?.file).toBe('src/b.ts')
-        for (const [index, step] of trace.slice(0, -1).entries()) {
-          expect(step.imports).toBe(
-            `./${path.basename(trace[index + 1]!.file, '.ts')}`,
-          )
-        }
+  test('with maxTraceDepth, the trace ends at the importer, each step naming the import of the next', async () => {
+    for (const trace of await cutTraces()) {
+      expect(trace.at(-1)?.file).toBe('src/b.ts')
+      for (const [index, step] of trace.slice(0, -1).entries()) {
+        expect(step.imports).toBe(
+          `./${path.basename(trace[index + 1]!.file, '.ts')}`,
+        )
       }
-    },
-    timeout,
-  )
+    }
+  })
 
   // On main, in dev, `maxTraceDepth` does not cut traces (low: diagnostics
   // only).
   // Source: mutation testing (module graph trace mutants).
-  test(
-    'with maxTraceDepth, a deeper trace is cut, keeping the importer',
-    async () => {
-      // (which steps a cut keeps, besides the importer, is not specified)
-      for (const trace of await cutTraces()) {
-        expect(trace.length).toBeLessThanOrEqual(1 + 1)
-        expect(trace.at(-1)?.file).toBe('src/b.ts')
-      }
-    },
-    timeout,
-  )
+  test('with maxTraceDepth, a deeper trace is cut, keeping the importer', async () => {
+    // (which steps a cut keeps, besides the importer, is not specified)
+    for (const trace of await cutTraces()) {
+      expect(trace.length).toBeLessThanOrEqual(1 + 1)
+      expect(trace.at(-1)?.file).toBe('src/b.ts')
+    }
+  })
 })

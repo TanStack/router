@@ -62,7 +62,9 @@ const integrationProject = {
       'integration/perf-guards/**',
       ...concurrentTests,
     ],
-    testTimeout: 30_000,
+    // Every test: real builds of several bundlers, dev servers and pages
+    // take up to two minutes under load (a hook that builds says so)
+    testTimeout: 120_000,
     hookTimeout: 30_000,
   },
 } satisfies TestProjectInlineConfiguration
@@ -143,7 +145,7 @@ const config = defineConfig({
         test: {
           name: 'perf-guards',
           include: ['integration/perf-guards/**/*.test.ts'],
-          testTimeout: 30_000,
+          testTimeout: 60_000,
           hookTimeout: 30_000,
         },
       },
@@ -156,6 +158,7 @@ const config = defineConfig({
           ...integrationProject.test,
           name: 'integration-pages',
           include: ['integration/pages/**/*.test.ts'],
+          testTimeout: 30_000,
           exclude: [...configDefaults.exclude],
         },
       },

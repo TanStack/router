@@ -10,8 +10,6 @@
 import { describe, expect, test } from 'vitest'
 import { build, clientMountEntry, head, routeApp } from '../build-harness'
 
-const timeout = 120_000
-
 type Grouping = Array<Array<'loader' | 'component'>>
 
 /** The two ways to put the loader and the component in groups of their own. */
@@ -70,61 +68,49 @@ return await load({})`,
 
 describe.each(['vite', 'rspack'] as const)('a %s build', (bundler) => {
   describe.each(groupings)('grouped by %s', (_, { plugin, inFile }) => {
-    test(
-      'shows the count a split loader updates in the split component',
-      async () => {
-        const r = await run(
-          bundler,
-          route(
-            `  loader: () => 'data ' + count++,
+    test('shows the count a split loader updates in the split component', async () => {
+      const r = await run(
+        bundler,
+        route(
+          `  loader: () => 'data ' + count++,
   component: () => <p>MARK_PAGE c{count}</p>,`,
-            inFile,
-          ),
-          plugin,
-          'loader-first',
-        )
-        expect(r).toEqual({ data: 'data 0', text: 'MARK_PAGE c1' })
-      },
-      timeout,
-    )
+          inFile,
+        ),
+        plugin,
+        'loader-first',
+      )
+      expect(r).toEqual({ data: 'data 0', text: 'MARK_PAGE c1' })
+    })
 
-    test(
-      'returns from a split loader the count the split component updates',
-      async () => {
-        const r = await run(
-          bundler,
-          route(
-            `  loader: () => 'data ' + count,
+    test('returns from a split loader the count the split component updates', async () => {
+      const r = await run(
+        bundler,
+        route(
+          `  loader: () => 'data ' + count,
   component: () => {
     count++
     return <p>MARK_PAGE c{count}</p>
   },`,
-            inFile,
-          ),
-          plugin,
-          'component-first',
-        )
-        expect(r).toEqual({ data: 'data 1', text: 'MARK_PAGE c1' })
-      },
-      timeout,
-    )
+          inFile,
+        ),
+        plugin,
+        'component-first',
+      )
+      expect(r).toEqual({ data: 'data 1', text: 'MARK_PAGE c1' })
+    })
 
-    test(
-      "shows the count an object loader's split handler updates in the split component",
-      async () => {
-        const r = await run(
-          bundler,
-          route(
-            `  loader: { handler: () => 'data ' + count++, staleReloadMode: 'blocking' },
+    test("shows the count an object loader's split handler updates in the split component", async () => {
+      const r = await run(
+        bundler,
+        route(
+          `  loader: { handler: () => 'data ' + count++, staleReloadMode: 'blocking' },
   component: () => <p>MARK_PAGE c{count}</p>,`,
-            inFile,
-          ),
-          plugin,
-          'loader-first',
-        )
-        expect(r).toEqual({ data: 'data 0', text: 'MARK_PAGE c1' })
-      },
-      timeout,
-    )
+          inFile,
+        ),
+        plugin,
+        'loader-first',
+      )
+      expect(r).toEqual({ data: 'data 0', text: 'MARK_PAGE c1' })
+    })
   })
 })

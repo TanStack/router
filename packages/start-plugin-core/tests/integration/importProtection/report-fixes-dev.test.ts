@@ -32,8 +32,6 @@ import {
 } from './client-pages'
 import type { RsbuildPlugin } from '@rsbuild/core'
 
-const timeout = 60_000
-
 /**
  * The location of each compilation error and warning, as Rsbuild reads it
  * from its stats to print `File: <moduleName>:<loc>` (`:1:1` without one).
@@ -70,57 +68,53 @@ const pluginDist = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '../../../dist',
 )
-const compileTimeout = timeout
+const compileTimeout = 60_000
 
 const denied = {
   'src/lib/db.server.ts': `export const db = () => 'MARK_DB'\n`,
 }
 
 describe('rsbuild dev, behavior error', () => {
-  test(
-    "the importer's failure names the import's position and none of the plugin's own files",
-    async () => {
-      const recorder = violationRecorder({ behavior: 'error' })
-      const { plugin, seen } = recordLocations()
-      const server = await startBrowserRsbuildDevServer({
-        compileTimeout,
-        importProtection: recorder.importProtection,
-        config: { plugins: [plugin] },
-        files: {
-          ...denied,
-          'src/entry.ts': `export const one = 1
+  test("the importer's failure names the import's position and none of the plugin's own files", async () => {
+    const recorder = violationRecorder({ behavior: 'error' })
+    const { plugin, seen } = recordLocations()
+    const server = await startBrowserRsbuildDevServer({
+      compileTimeout,
+      importProtection: recorder.importProtection,
+      config: { plugins: [plugin] },
+      files: {
+        ...denied,
+        'src/entry.ts': `export const one = 1
 import { db } from './lib/db.server'
 console.log(db())
 `,
-        },
-      })
-      // (the importer fails to build: the page throws the denial)
-      await expect(runRsbuildClient(server)).rejects.toThrow(
-        '[import-protection] Import denied',
-      )
-      const reported = { file: 'src/entry.ts', root: server.root }
-      expectDiagnostic(server.diagnostics, {
-        ...reported,
-        severity: 'error',
-        position: { line: 2, column: 20 },
-      })
-      expectNoDiagnostic(
-        server.diagnostics.filter(({ text }) => text.includes(pluginDist)),
-        reported,
-      )
-      // the compilation's location of the failure (Rsbuild's `File:` line)
-      expect(
-        seen
-          .filter(
-            (e) =>
-              e.moduleName?.replace(/^\.\//, '') === 'src/entry.ts' &&
-              e.message.includes('[import-protection]'),
-          )
-          .map(({ severity, loc }) => ({ severity, loc })),
-      ).toContainEqual({ severity: 'error', loc: '2:20' })
-    },
-    timeout,
-  )
+      },
+    })
+    // (the importer fails to build: the page throws the denial)
+    await expect(runRsbuildClient(server)).rejects.toThrow(
+      '[import-protection] Import denied',
+    )
+    const reported = { file: 'src/entry.ts', root: server.root }
+    expectDiagnostic(server.diagnostics, {
+      ...reported,
+      severity: 'error',
+      position: { line: 2, column: 20 },
+    })
+    expectNoDiagnostic(
+      server.diagnostics.filter(({ text }) => text.includes(pluginDist)),
+      reported,
+    )
+    // the compilation's location of the failure (Rsbuild's `File:` line)
+    expect(
+      seen
+        .filter(
+          (e) =>
+            e.moduleName?.replace(/^\.\//, '') === 'src/entry.ts' &&
+            e.message.includes('[import-protection]'),
+        )
+        .map(({ severity, loc }) => ({ severity, loc })),
+    ).toContainEqual({ severity: 'error', loc: '2:20' })
+  })
 })
 
 const globbing = {
@@ -170,14 +164,10 @@ describe.each([
     },
   },
 ])('$host', ({ run }) => {
-  test(
-    'a negative pattern naming the denied file leaves it out: nothing is reported, and the page runs without it',
-    async () => {
-      const { server, recorder, result } = await run()
-      expect(result).toEqual(['./lib/util.ts'])
-      expect(recorder.violations).toEqual([])
-      expect(problemsNaming(server, ['src/lib/db.server.ts'])).toEqual([])
-    },
-    timeout,
-  )
+  test('a negative pattern naming the denied file leaves it out: nothing is reported, and the page runs without it', async () => {
+    const { server, recorder, result } = await run()
+    expect(result).toEqual(['./lib/util.ts'])
+    expect(recorder.violations).toEqual([])
+    expect(problemsNaming(server, ['src/lib/db.server.ts'])).toEqual([])
+  })
 })

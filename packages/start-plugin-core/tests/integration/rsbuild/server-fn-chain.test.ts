@@ -13,8 +13,6 @@ import { describe, expect, test } from 'vitest'
 import { buildStart } from '../../build-start'
 import { rsbuildRscLinks } from '../../start-plugins'
 
-const timeout = 120_000
-
 const root = {
   'src/router.tsx': `import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
@@ -90,6 +88,5 @@ describe('Rsbuild build with RSC, a chain of server fns each only the previous o
         ].join(' '),
       })
     },
-    timeout,
   )
 })

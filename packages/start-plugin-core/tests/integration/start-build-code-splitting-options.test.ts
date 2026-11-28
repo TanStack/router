@@ -18,8 +18,6 @@ import { buildStart } from '../build-start'
 import { routeFiles } from './start-build-route-app'
 import type { StartBuild } from '../build-harness'
 
-const timeout = 60_000
-
 describe.each(startBundlers)('%s build', (bundler) => {
   // Start passes the router options through to the code splitter of each
   // build (only replacing the options it owns: the route options it deletes
@@ -121,7 +119,6 @@ return {
         ssr: (await ssr.run(script)).result,
       }).toEqual({ client: runs, ssr: runs })
     },
-    timeout,
   )
 
   // `codeSplittingOptions.deleteNodes` erases its options from the route
@@ -129,40 +126,36 @@ return {
   // server-only options (`ssr`, `server`, `headers`) instead and keeps the
   // user's (as main did on both bundlers; Start on Rsbuild ignored the
   // option on the server).
-  test(
-    'router.codeSplittingOptions.deleteNodes: the server build erases the options, the client build erases ssr instead',
-    async () => {
-      const { client, ssr } = await buildStart({
-        bundler,
-        files: {
-          ...routeFiles,
-          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+  test('router.codeSplittingOptions.deleteNodes: the server build erases the options, the client build erases ssr instead', async () => {
+    const { client, ssr } = await buildStart({
+      bundler,
+      files: {
+        ...routeFiles,
+        'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({
   ssr: true,
   staticData: { marker: 'MARK_STATIC' },
   component: () => 'MARK_COMPONENT',
 })
 `,
-        },
-        entry: 'src/entry.ts',
-        start: {
-          router: { codeSplittingOptions: { deleteNodes: ['staticData'] } },
-        },
-      })
-      const script = `const route = Object.values(entry.getRouter().routeTree.children).find(
+      },
+      entry: 'src/entry.ts',
+      start: {
+        router: { codeSplittingOptions: { deleteNodes: ['staticData'] } },
+      },
+    })
+    const script = `const route = Object.values(entry.getRouter().routeTree.children).find(
   (candidate) => candidate.options.id === '/',
 )
 return { staticData: route.options.staticData ?? null, ssr: route.options.ssr ?? null }`
-      expect({
-        client: (await client.run(script)).result,
-        ssr: (await ssr.run(script)).result,
-      }).toEqual({
-        client: { staticData: { marker: 'MARK_STATIC' }, ssr: null },
-        ssr: { staticData: null, ssr: true },
-      })
-    },
-    timeout,
-  )
+    expect({
+      client: (await client.run(script)).result,
+      ssr: (await ssr.run(script)).result,
+    }).toEqual({
+      client: { staticData: { marker: 'MARK_STATIC' }, ssr: null },
+      ssr: { staticData: null, ssr: true },
+    })
+  })
 
   // A loader that is a server fn, in a chunk of its own: each build
   // compiles it, and the client's loader calls the server's. Written in
@@ -244,31 +237,23 @@ return requestsOf((options) => (typeof loader === 'function' ? loader : loader.h
       // id) loads on demand, not with the app
       expect(built.client.where(id)).toBe('lazy')
     },
-    timeout,
   )
   // The client splits it (its call of the server fn, by id, loads on
   // demand); only the server's module keeps it, where Start hoists the
   // handler: nothing to tell the user (Fable's review of the
   // implementation, 8).
-  test(
-    'router.codeSplittingOptions: a loader that is a server fn written in place is split on the client, runs on the server, and nothing is reported',
-    async () => {
-      const built = await buildSplitLoader(
-        routeModule(
-          '',
-          `createServerFn().handler(async () => 'MARK_LOADER_FN')`,
-        ),
-      )
-      const { result, id } = await callServerFnLoader(built)
-      expect(result).toBe('MARK_LOADER_FN')
-      expect(built.client.where(id)).toBe('lazy')
-      expectNoDiagnostic(problems(built.diagnostics), {
-        file: 'src/routes/index.tsx',
-        root: built.root,
-      })
-    },
-    timeout,
-  )
+  test('router.codeSplittingOptions: a loader that is a server fn written in place is split on the client, runs on the server, and nothing is reported', async () => {
+    const built = await buildSplitLoader(
+      routeModule('', `createServerFn().handler(async () => 'MARK_LOADER_FN')`),
+    )
+    const { result, id } = await callServerFnLoader(built)
+    expect(result).toBe('MARK_LOADER_FN')
+    expect(built.client.where(id)).toBe('lazy')
+    expectNoDiagnostic(problems(built.diagnostics), {
+      file: 'src/routes/index.tsx',
+      root: built.root,
+    })
+  })
   test.each([
     {
       name: 'written in place',
@@ -285,7 +270,6 @@ return requestsOf((options) => (typeof loader === 'function' ? loader : loader.h
       const built = await buildSplitLoader(routeModule(declarations, loader))
       expect(await runServerFnLoader(built)).toBe('MARK_LOADER_FN')
     },
-    timeout,
   )
 
   test.each([
@@ -340,6 +324,5 @@ ${callByIdExports}`,
         ).result,
       ).toBe('MARK_NESTED_FN')
     },
-    timeout,
   )
 })

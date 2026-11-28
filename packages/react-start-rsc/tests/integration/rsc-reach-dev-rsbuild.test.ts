@@ -28,4 +28,4 @@ test('Rsbuild dev with RSC: every server fn the client calls answers after a fre
     files: reachFiles,
   })
   await expectReachHistory(signal, server, () => server.restart())
-}, 120_000)
+})

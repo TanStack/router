@@ -27,7 +27,7 @@ let hosts: HydrateHost
 const openHosts = closeAfterAll()
 beforeAll(async () => {
   hosts = await openHosts(() => createHydrateHost())
-}, 60_000)
+})
 
 const head = `import { Hydrate } from '@tanstack/react-start'
 import { load } from '@tanstack/react-start/hydration'
@@ -75,8 +75,6 @@ export function Page() {
       expect(client.html).toContain(`<p>${names.map(value).join('|')}</p>`)
       expect(client.html).toContain('<b>nested</b>')
     },
-    // A failed split module makes the dev server reload the page (runs again)
-    20_000,
   )
 
   // On main, the boundary throws "Route is not defined" when it hydrates.

@@ -19,7 +19,6 @@ const groupings: Array<{ name: string; groupings: CodeSplitGroupings }> = [
 it.each(groupings)(
   'preserves executable route contracts with $name',
   assertRuntimeContracts,
-  30_000,
 )
 
 // Bug on main (more in known-bugs-code-splitter.test.ts): shared extraction
@@ -30,7 +29,7 @@ it('preserves executable route contracts with shared named-default declarations'
     groupings: [['component'], ['loader']],
     syntax: 'named-default',
   })
-}, 30_000)
+})
 
 async function assertRuntimeContracts({
   groupings,

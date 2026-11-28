@@ -16,8 +16,6 @@ import {
 } from './route-hmr-two-routers-cases'
 import type { TargetFramework } from '../route-app'
 
-const timeout = 90_000
-
 const loaderRoute = (target: TargetFramework, version: string) =>
   `import { createFileRoute } from '@tanstack/${target}-router'
 export const Route = createFileRoute('/')({
@@ -39,7 +37,6 @@ describe.each(hosts)(
       { order: 'widget-first', autoCodeSplitting: true },
     ] as const)(
       "an eager route file's loader edits show in the app's route ($order, autoCodeSplitting: $autoCodeSplitting)",
-      { timeout },
       async ({ order, autoCodeSplitting }, { expect, openRouteHmrPage }) => {
         const app = await openRouteHmrPage({
           bundler,
@@ -104,30 +101,29 @@ ${mount[target]("document.getElementById('app')!", 'router')}
 describe.each(hosts)(
   '$bundler $target: a second router whose constructor threw',
   ({ bundler, target }) => {
-    it(
-      "leaves the app's route edits in place",
-      { timeout },
-      async ({ expect, openRouteHmrPage }) => {
-        const app = await openRouteHmrPage({
-          bundler,
-          target,
-          files: {
-            'main.tsx': brokenWidget(target),
-            'routes/index.tsx': shownRoute(target, 'v1'),
-          },
-          ready: 'v1',
+    it("leaves the app's route edits in place", async ({
+      expect,
+      openRouteHmrPage,
+    }) => {
+      const app = await openRouteHmrPage({
+        bundler,
+        target,
+        files: {
+          'main.tsx': brokenWidget(target),
+          'routes/index.tsx': shownRoute(target, 'v1'),
+        },
+        ready: 'v1',
+      })
+      for (const n of [2, 3]) {
+        const result = await app.edit(
+          { 'routes/index.tsx': shownRoute(target, `v${n}`) },
+          `v${n}`,
+        )
+        expect({ errors: result.errors, loads: app.loads() }).toEqual({
+          errors: [],
+          loads: 1,
         })
-        for (const n of [2, 3]) {
-          const result = await app.edit(
-            { 'routes/index.tsx': shownRoute(target, `v${n}`) },
-            `v${n}`,
-          )
-          expect({ errors: result.errors, loads: app.loads() }).toEqual({
-            errors: [],
-            loads: 1,
-          })
-        }
-      },
-    )
+      }
+    })
   },
 )

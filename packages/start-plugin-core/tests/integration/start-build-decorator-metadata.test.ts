@@ -15,8 +15,6 @@ import { describe, expect, test } from 'vitest'
 import { startBundlers } from '../build-harness'
 import { buildStart } from '../build-start'
 
-const timeout = 60_000
-
 const tsconfig = JSON.stringify({
   compilerOptions: {
     target: 'ES2022',
@@ -159,34 +157,29 @@ describe.each(startBundlers)('%s build', (bundler) => {
         recorded,
       )
     },
-    timeout,
   )
 
   // (case 1 of the comparison with main, Astra's round 3: a shadowing
   // binding only server code reads leaves with its call)
-  test(
-    "a metadata global's name of the module only server code reads leaves with its call",
-    async () => {
-      const build = await buildStart({
-        ...options(bundler),
-        files: {
-          'src/dep.server.ts': server,
-          'src/module.ts': `${head}import { setup } from './dep.server'
+  test("a metadata global's name of the module only server code reads leaves with its call", async () => {
+    const build = await buildStart({
+      ...options(bundler),
+      files: {
+        'src/dep.server.ts': server,
+        'src/module.ts': `${head}import { setup } from './dep.server'
 const Number = setup()
 export const getIt = createServerOnlyFn(() => Number)
 export class Entity {
   @seen name!: string
 }
 ${tail}`,
-          'src/entry.ts': `export { recorded } from './module'\n`,
-          'tsconfig.json': tsconfig,
-        },
-      })
-      expect({
-        recorded: (await build.client.run('return entry.recorded()')).result,
-        setup: build.client.where('MARK_SETUP_SERVER'),
-      }).toEqual({ recorded: 'String', setup: 'nowhere' })
-    },
-    timeout,
-  )
+        'src/entry.ts': `export { recorded } from './module'\n`,
+        'tsconfig.json': tsconfig,
+      },
+    })
+    expect({
+      recorded: (await build.client.run('return entry.recorded()')).result,
+      setup: build.client.where('MARK_SETUP_SERVER'),
+    }).toEqual({ recorded: 'String', setup: 'nowhere' })
+  })
 })

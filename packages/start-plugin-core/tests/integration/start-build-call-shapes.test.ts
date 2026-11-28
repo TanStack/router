@@ -41,8 +41,6 @@ import { buildStart } from '../build-start'
 import { expectSourceError } from './source-errors'
 import type { StartBuild, StartBundler } from '../build-harness'
 
-const timeout = 60_000
-
 /** What the client and SSR runs of a shape gave. */
 interface Observed {
   /** Where the shape's server-only module is in the client bundle. */
@@ -527,7 +525,6 @@ describe.each(startBundlers)('%s build', (bundler) => {
     async (shape) => {
       await expectWorksOrRejected(shape)
     },
-    timeout,
   )
 
   /** A recognised form: the shape must work (no rejection). */
@@ -550,7 +547,6 @@ describe.each(startBundlers)('%s build', (bundler) => {
     async (shape) => {
       await expectRecognised(shape)
     },
-    timeout,
   )
 
   // Source: main's start-compiler/compiler.ts `KindDetectionPatterns` and
@@ -564,7 +560,6 @@ describe.each(startBundlers)('%s build', (bundler) => {
     async (shape) => {
       await expectRecognised(shape)
     },
-    timeout,
   )
 
   // On main, the server fn cannot be called, and the SSR build's server entry
@@ -578,6 +573,5 @@ describe.each(startBundlers)('%s build', (bundler) => {
     async (shape) => {
       await expectWorksOrRejected(shape)
     },
-    timeout,
   )
 })

@@ -24,8 +24,6 @@ import { buildStart } from '../../build-start'
 import { workerPlugin } from './worker-plugin'
 import type { StartBuild } from '../../build-harness'
 
-const timeout = 60_000
-
 const files = {
   'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 import { secret } from './db.server'
@@ -59,39 +57,31 @@ describe('Rsbuild build: modules of a child compiler of the client', () => {
         },
       }),
     )
-  }, timeout)
+  }, 60_000)
 
   const workerCode = () =>
     fs.readFileSync(path.join(build.client.outDir, 'worker.js'), 'utf8')
 
-  test(
-    'a server function in a worker is its client call: no handler, no server module',
-    () => {
-      const code = workerCode()
-      expect(code).not.toContain('MARK_HANDLER')
-      expect(code).not.toContain('MARK_DB_SECRET')
-    },
-    timeout,
-  )
+  test('a server function in a worker is its client call: no handler, no server module', () => {
+    const code = workerCode()
+    expect(code).not.toContain('MARK_HANDLER')
+    expect(code).not.toContain('MARK_DB_SECRET')
+  })
 
-  test(
-    'the worker calls the server function, which runs on the server',
-    async () => {
-      const url = (
-        await build.client.run(`const worker = new Worker('/worker.js')
+  test('the worker calls the server function, which runs on the server', async () => {
+    const url = (
+      await build.client.run(`const worker = new Worker('/worker.js')
 return await new Promise((resolve, reject) => {
   worker.onmessage = (event) => resolve(event.data)
   worker.onerror = (event) => reject(new Error(event.message))
   worker.postMessage(null)
 })`)
-      ).result
-      const { result } = await build.ssr.run(
-        `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
-      )
-      expect(result).toBe('MARK_HANDLER:MARK_DB_SECRET')
-    },
-    timeout,
-  )
+    ).result
+    const { result } = await build.ssr.run(
+      `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+    )
+    expect(result).toBe('MARK_HANDLER:MARK_DB_SECRET')
+  })
 })
 
 describe('Rsbuild build: import protection in a child compiler of the client', () => {
@@ -152,38 +142,33 @@ self.onmessage = () => {
         },
       ])
     },
-    timeout,
   )
 
-  test(
-    'a worker reaching a .server file through a pattern import fails the build, naming the file',
-    async () => {
-      const built = await buildStart({
-        ...config,
-        files: {
-          'src/server/db.server.ts': `export const secret = () => 'MARK_DB_SECRET'
+  test('a worker reaching a .server file through a pattern import fails the build, naming the file', async () => {
+    const built = await buildStart({
+      ...config,
+      files: {
+        'src/server/db.server.ts': `export const secret = () => 'MARK_DB_SECRET'
 `,
-          'src/worker.ts': `const modules = import.meta.webpackContext('./server', { regExp: /\\.ts$/ })
+        'src/worker.ts': `const modules = import.meta.webpackContext('./server', { regExp: /\\.ts$/ })
 self.onmessage = () => {
   self.postMessage(modules.keys().map((key) => modules(key).secret()))
 }
 `,
-          'src/entry.ts': `export const ready = true
+        'src/entry.ts': `export const ready = true
 `,
-        },
-        start: { importProtection: { behavior: 'mock' } },
-      }).catch((error: unknown) => error)
-      expect(built, 'the build fails').toBeInstanceOf(StartBuildError)
-      const error = built as StartBuildError
-      expectDiagnostic(error.diagnostics, {
-        severity: 'error',
-        file: 'src/server/db.server.ts',
-        root: error.root,
-      })
-      expect(
-        error.violations.map((v) => path.relative(error.root, v.importer)),
-      ).toEqual([path.join('src', 'server', 'db.server.ts')])
-    },
-    timeout,
-  )
+      },
+      start: { importProtection: { behavior: 'mock' } },
+    }).catch((error: unknown) => error)
+    expect(built, 'the build fails').toBeInstanceOf(StartBuildError)
+    const error = built as StartBuildError
+    expectDiagnostic(error.diagnostics, {
+      severity: 'error',
+      file: 'src/server/db.server.ts',
+      root: error.root,
+    })
+    expect(
+      error.violations.map((v) => path.relative(error.root, v.importer)),
+    ).toEqual([path.join('src', 'server', 'db.server.ts')])
+  })
 })

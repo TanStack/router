@@ -18,8 +18,6 @@ import {
   violationRecorder,
 } from '../../importProtection/start-apps'
 
-const timeout = 30_000
-
 const secretServer = {
   'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
 }
@@ -125,26 +123,22 @@ hydrateRoot(document, createElement(StartClient))
   // A denied import reached only from the app's client entry, which Start's
   // dev client entry loads, is mocked and logged as the build reports it.
   // Source: mutation testing (looking for edges without transform data).
-  test(
-    "the page runs the app's client entry; its denied import is a safe mock, and logged",
-    async () => {
-      const { browser, server } = await openApp(clientEntryApp)
-      expect(
-        await browser.page.evaluate(`(() => {
+  test("the page runs the app's client entry; its denied import is a safe mock, and logged", async () => {
+    const { browser, server } = await openApp(clientEntryApp)
+    expect(
+      await browser.page.evaluate(`(() => {
 ${describeValuePrelude}
 return describeValue(window.leaked(), 'MARK_SECRET')
 })()`),
-      ).toBe('a safe mock')
-      expectViolationsAt(server, [
-        {
-          environment: 'client',
-          use: locationIn('src/leak.ts', leak, 2, 'secret()'),
-          also: ['src/leak.ts:1'],
-        },
-      ])
-    },
-    timeout,
-  )
+    ).toBe('a safe mock')
+    expectViolationsAt(server, [
+      {
+        environment: 'client',
+        use: locationIn('src/leak.ts', leak, 2, 'secret()'),
+        also: ['src/leak.ts:1'],
+      },
+    ])
+  })
 })
 
 describe("an app's server entry", () => {
@@ -179,21 +173,17 @@ export default { fetch: () => new Response(String(handler())) }
   // custom server entry (`src/server.ts`) is mocked on the server without any
   // warning (the request returns the mock's value).
   // Source: mutation testing.
-  test(
-    'a client-only import of a module the server entry imports is mocked on the server and logged',
-    async () => {
-      const { server, response } = await request(serverEntryApp(handler))
-      expect(response.body).not.toContain('MARK_CLIENT')
-      expectViolationsAt(server, [
-        {
-          environment: 'server',
-          use: locationIn('src/handler.ts', handler, 2, 'widget()'),
-          also: ['src/handler.ts:1'],
-        },
-      ])
-    },
-    timeout,
-  )
+  test('a client-only import of a module the server entry imports is mocked on the server and logged', async () => {
+    const { server, response } = await request(serverEntryApp(handler))
+    expect(response.body).not.toContain('MARK_CLIENT')
+    expectViolationsAt(server, [
+      {
+        environment: 'server',
+        use: locationIn('src/handler.ts', handler, 2, 'widget()'),
+        also: ['src/handler.ts:1'],
+      },
+    ])
+  })
 })
 
 // The router plugin splits a route's component into a module of its own,
@@ -216,29 +206,25 @@ export const Route = createFileRoute('/')({
   // Source: mutation testing (the cache of compiled split modules: the
   // denied import, and the import of the module using the denied file, are
   // only in the split module).
-  test(
-    'using a denied file, directly or through a module, renders with the mock, and the dev server logs a warning at each use or import',
-    async () => {
-      const { server, browser } = await openApp({
-        ...pageApp(route),
-        ...secretServer,
-        'src/widget.ts': widget,
-      })
-      await browser.waitForText('MARK_RENDERED', { selector: '#app' })
-      expect(await browser.text('#app')).not.toContain('MARK_SECRET')
-      expectViolationsAt(server, [
-        {
-          environment: 'client',
-          use: locationIn('src/routes/index.tsx', route, 6, 'secret()'),
-          also: ['src/routes/index.tsx:2'],
-        },
-        {
-          environment: 'client',
-          use: locationIn('src/widget.ts', widget, 2, 'secret()'),
-          also: ['src/widget.ts:1'],
-        },
-      ])
-    },
-    timeout,
-  )
+  test('using a denied file, directly or through a module, renders with the mock, and the dev server logs a warning at each use or import', async () => {
+    const { server, browser } = await openApp({
+      ...pageApp(route),
+      ...secretServer,
+      'src/widget.ts': widget,
+    })
+    await browser.waitForText('MARK_RENDERED', { selector: '#app' })
+    expect(await browser.text('#app')).not.toContain('MARK_SECRET')
+    expectViolationsAt(server, [
+      {
+        environment: 'client',
+        use: locationIn('src/routes/index.tsx', route, 6, 'secret()'),
+        also: ['src/routes/index.tsx:2'],
+      },
+      {
+        environment: 'client',
+        use: locationIn('src/widget.ts', widget, 2, 'secret()'),
+        also: ['src/widget.ts:1'],
+      },
+    ])
+  })
 })

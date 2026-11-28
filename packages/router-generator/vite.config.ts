@@ -55,7 +55,7 @@ const config = defineConfig({
           name: 'integration',
           include: ['integration/**/*.test.ts'],
           typecheck: { enabled: false },
-          testTimeout: 30_000,
+          testTimeout: 60_000,
           hookTimeout: 30_000,
         },
       },

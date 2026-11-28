@@ -34,7 +34,7 @@ let hosts: HydrateHost
 const openHosts = closeAfterAll()
 beforeAll(async () => {
   hosts = await openHosts(() => createHydrateHost())
-}, 60_000)
+})
 
 const head = `import { Hydrate } from '@tanstack/react-start'
 import { load } from '@tanstack/react-start/hydration'
@@ -167,8 +167,6 @@ export function Page() {
       )
       expect(client.html).toContain(rendered)
     },
-    // The page may keep loading boundaries that do not exist (the impact)
-    20_000,
   )
 
   // On main, a local component named `Hydrate` is split into a lazy chunk.

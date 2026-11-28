@@ -14,8 +14,6 @@
 import { describe } from 'vitest'
 import { it } from '../test'
 
-const timeout = 90_000
-
 /**
  * A route file of `target` at `/` whose loader and component name the
  * version of the file; the component declares its own `Page`, which Solid
@@ -41,7 +39,6 @@ describe.each([
 ] as const)('$bundler: a $target app', ({ bundler, target }) => {
   it.for([true, false])(
     'shows the new code of an edited route file in place (autoCodeSplitting: %s)',
-    { timeout },
     async (autoCodeSplitting: boolean, { expect, openRouteHmrPage }) => {
       const app = await openRouteHmrPage({
         bundler,
@@ -90,7 +87,6 @@ function Root() {
 describe.each(['vite', 'rsbuild'] as const)('%s: a solid app', (bundler) => {
   it.for([true, false])(
     'shows the new code of an edited root route in place (autoCodeSplitting: %s)',
-    { timeout },
     async (autoCodeSplitting: boolean, { expect, openRouteHmrPage }) => {
       const app = await openRouteHmrPage({
         bundler,

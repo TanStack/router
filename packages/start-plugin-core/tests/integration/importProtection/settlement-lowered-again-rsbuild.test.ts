@@ -40,8 +40,6 @@ import {
 } from '../../importProtection/start-apps'
 import type { Recorded } from '../../importProtection/start-apps'
 
-const timeout = 120_000
-
 /** What a fixture renders for a mock (`describeValue`: by what it does, never by its label, SPEC §5.18). */
 const mock = 'a safe mock'
 
@@ -243,25 +241,20 @@ describe('Rsbuild build, a denied file the settlement lowers, which comes back g
         reported: contexts,
       })
     },
-    timeout,
   )
 })
 
 describe('rsbuild build --watch, an edit after which the settlement lowers a denied file twice', () => {
-  test(
-    'the rebuild serves what a fresh build serves',
-    async () => {
-      const built = await build(clean, {
-        'src/routes/index.tsx': route('SWITCH', 'readA', 'grantB'),
-      })
-      expect(await served(built)).toEqual({
-        status: 200,
-        label: [`SWITCH ${mock} / B:C:${mock}`],
-        reported: contexts,
-      })
-    },
-    timeout,
-  )
+  test('the rebuild serves what a fresh build serves', async () => {
+    const built = await build(clean, {
+      'src/routes/index.tsx': route('SWITCH', 'readA', 'grantB'),
+    })
+    expect(await served(built)).toEqual({
+      status: 200,
+      label: [`SWITCH ${mock} / B:C:${mock}`],
+      reported: contexts,
+    })
+  })
 })
 
 describe('Rsbuild dev, a denied file the settlement lowers twice', () => {
@@ -286,44 +279,36 @@ describe('Rsbuild dev, a denied file the settlement lowers twice', () => {
     return { server, page }
   }
 
-  test(
-    'cold: the first load serves both contexts their mock, no error',
-    async () => {
-      const { page } = await start(cold)
-      expect(await page(0)).toEqual({
+  test('cold: the first load serves both contexts their mock, no error', async () => {
+    const { page } = await start(cold)
+    expect(await page(0)).toEqual({
+      status: 200,
+      label: [`SWITCH ${mock} / B:C:${mock}`],
+      errors: [],
+      reported: ['src/a.client.ts', 'src/low.client.ts'],
+    })
+  })
+
+  test('clean: after the switch and a touch, the page is what a fresh server serves, no error', async () => {
+    const { server, page } = await start(clean)
+    expect(await page(0)).toEqual({
+      status: 200,
+      label: ['LIVE A:LOW_REAL / LOW_REAL'],
+      errors: [],
+      reported: [],
+    })
+    for (const tag of ['SWITCH', 'TOUCH']) {
+      const since = server.diagnostics.length
+      await server.edit({
+        'src/routes/index.tsx': route(tag, 'readA', 'grantB'),
+      })
+      expect({ tag, ...(await page(since)) }).toEqual({
+        tag,
         status: 200,
-        label: [`SWITCH ${mock} / B:C:${mock}`],
+        label: [`${tag} ${mock} / B:C:${mock}`],
         errors: [],
         reported: ['src/a.client.ts', 'src/low.client.ts'],
       })
-    },
-    timeout,
-  )
-
-  test(
-    'clean: after the switch and a touch, the page is what a fresh server serves, no error',
-    async () => {
-      const { server, page } = await start(clean)
-      expect(await page(0)).toEqual({
-        status: 200,
-        label: ['LIVE A:LOW_REAL / LOW_REAL'],
-        errors: [],
-        reported: [],
-      })
-      for (const tag of ['SWITCH', 'TOUCH']) {
-        const since = server.diagnostics.length
-        await server.edit({
-          'src/routes/index.tsx': route(tag, 'readA', 'grantB'),
-        })
-        expect({ tag, ...(await page(since)) }).toEqual({
-          tag,
-          status: 200,
-          label: [`${tag} ${mock} / B:C:${mock}`],
-          errors: [],
-          reported: ['src/a.client.ts', 'src/low.client.ts'],
-        })
-      }
-    },
-    timeout,
-  )
+    }
+  })
 })

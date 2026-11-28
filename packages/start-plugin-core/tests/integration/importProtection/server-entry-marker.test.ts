@@ -24,8 +24,6 @@ import {
 import type { StartBundler } from '../../build-harness'
 import type { TestPackage } from '../../package-layouts'
 
-const timeout = 60_000
-
 type Framework = 'react' | 'solid' | 'vue'
 const frameworks: ReadonlyArray<Framework> = ['react', 'solid', 'vue']
 
@@ -93,7 +91,6 @@ describe.each(startBundlers)('%s build', (bundler: StartBundler) => {
         expect(importer).toMatch(/^node_modules\/req-lib\/index\.js:1:/)
       }
     },
-    timeout,
   )
 
   // Source: node_modules policy, decision 12 (B); the reviews' `@shop-on/i18n`
@@ -121,79 +118,66 @@ export const host = createIsomorphicFn()
       expect(build.client.where(SERVER_RUNTIME)).toBe('nowhere')
       expect(reportedViolations(build)).toEqual([])
     },
-    timeout,
   )
 
   // On main, Rsbuild fails on `node:async_hooks` for an import the client
   // drops; Vite builds with four warnings.
   // Source: node_modules policy, decision 12 (B); its study's second row.
-  test(
-    'react: a package barrel whose unused export uses the server entry builds, with no warning',
-    async () => {
-      const pkg = reqLib('react', (start) => ({
-        'index.js': `export { host } from './host.js'\nexport const SAFE = 'MARK_SAFE'\n`,
-        'host.js': `import { getRequestHeaders } from '${start}/server'\nexport const host = () => getRequestHeaders().get('host')\n`,
-      }))
-      const build = await buildWith(
-        bundler,
-        'react',
-        pkg,
-        `import { SAFE } from 'req-lib'\nexport const read = () => SAFE\n`,
-      )
-      expect(
-        (await build.client.run(`return String(entry.read())`)).result,
-      ).toBe('MARK_SAFE')
-      expect(build.client.where(SERVER_RUNTIME)).toBe('nowhere')
-      expect(problems(build.diagnostics).map(({ text }) => text)).toEqual([])
-    },
-    timeout,
-  )
+  test('react: a package barrel whose unused export uses the server entry builds, with no warning', async () => {
+    const pkg = reqLib('react', (start) => ({
+      'index.js': `export { host } from './host.js'\nexport const SAFE = 'MARK_SAFE'\n`,
+      'host.js': `import { getRequestHeaders } from '${start}/server'\nexport const host = () => getRequestHeaders().get('host')\n`,
+    }))
+    const build = await buildWith(
+      bundler,
+      'react',
+      pkg,
+      `import { SAFE } from 'req-lib'\nexport const read = () => SAFE\n`,
+    )
+    expect((await build.client.run(`return String(entry.read())`)).result).toBe(
+      'MARK_SAFE',
+    )
+    expect(build.client.where(SERVER_RUNTIME)).toBe('nowhere')
+    expect(problems(build.diagnostics).map(({ text }) => text)).toEqual([])
+  })
 
   // `@tanstack/react-form-start`'s shape: the entry read inside a server fn's
   // handler, which the client compile erases.
   // Source: node_modules policy, decision 12 (B); the study's section 4.2.
-  test(
-    'react: a package server fn whose handler reads the request builds, with nothing of the server runtime in the client',
-    async () => {
-      const pkg = reqLib('react', (start) => ({
-        'index.js': `import { createServerFn } from '${start}'
+  test('react: a package server fn whose handler reads the request builds, with nothing of the server runtime in the client', async () => {
+    const pkg = reqLib('react', (start) => ({
+      'index.js': `import { createServerFn } from '${start}'
 import { getRequestHeaders } from '${start}/server'
 export const hostFn = createServerFn().handler(async () => getRequestHeaders().get('host'))
 `,
-      }))
-      const build = await buildWith(
-        bundler,
-        'react',
-        pkg,
-        `import { hostFn } from 'req-lib'\nexport const read = () => typeof hostFn\n`,
-      )
-      expect(build.client.where(SERVER_RUNTIME)).toBe('nowhere')
-      expect(reportedViolations(build)).toEqual([])
-    },
-    timeout,
-  )
+    }))
+    const build = await buildWith(
+      bundler,
+      'react',
+      pkg,
+      `import { hostFn } from 'req-lib'\nexport const read = () => typeof hostFn\n`,
+    )
+    expect(build.client.where(SERVER_RUNTIME)).toBe('nowhere')
+    expect(reportedViolations(build)).toEqual([])
+  })
 
   // A workspace file outside the app's source directory may import the
   // entry's types.
   // Source: node_modules policy, decision 12 (B); the study's table.
-  test(
-    'react: a workspace module importing only types of the server entry builds',
-    async () => {
-      const build = await buildStart({
-        bundler,
-        files: {
-          'shared/handler.ts': `import type { RequestHandler } from '@tanstack/react-start/server'
+  test('react: a workspace module importing only types of the server entry builds', async () => {
+    const build = await buildStart({
+      bundler,
+      files: {
+        'shared/handler.ts': `import type { RequestHandler } from '@tanstack/react-start/server'
 export const describe = (h: RequestHandler<any> | null) => (h === null ? 'MARK_NONE' : 'set')
 `,
-          'src/entry.ts': `import { describe } from '../shared/handler'\nexport const read = () => describe(null)\n`,
-        },
-        entry: 'src/entry.ts',
-      })
-      expect(
-        (await build.client.run(`return String(entry.read())`)).result,
-      ).toBe('MARK_NONE')
-      expect(reportedViolations(build)).toEqual([])
-    },
-    timeout,
-  )
+        'src/entry.ts': `import { describe } from '../shared/handler'\nexport const read = () => describe(null)\n`,
+      },
+      entry: 'src/entry.ts',
+    })
+    expect((await build.client.run(`return String(entry.read())`)).result).toBe(
+      'MARK_NONE',
+    )
+    expect(reportedViolations(build)).toEqual([])
+  })
 })

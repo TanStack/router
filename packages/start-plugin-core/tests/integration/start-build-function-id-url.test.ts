@@ -28,8 +28,6 @@ import {
 } from '../build-harness'
 import { buildStart } from '../build-start'
 
-const timeout = 60_000
-
 /** Ids the URL never carried whole, by file. */
 const refused: Record<string, string> = {
   'src/slash.ts': 'users/get',
@@ -95,76 +93,68 @@ function app(ids: Record<string, string>) {
 }
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  test(
-    'an id the URL never carried whole fails the build, naming the file',
-    async () => {
-      const ids = { ...refused, ...deprecated, ...fine }
-      const outcome = await buildStart({ bundler, ...app(ids) }).then(
-        () => ({ built: true as const }),
-        (error: unknown) => {
-          if (!(error instanceof StartBuildError)) {
-            throw error
-          }
-          return { built: false as const, error }
-        },
-      )
-      if (outcome.built) {
-        expect.fail('the build succeeded')
-      }
-      const { diagnostics, root } = outcome.error
-      for (const file of Object.keys(ids)) {
-        if (file in refused) {
-          expectDiagnostic(diagnostics, { severity: 'error', file, root })
-        } else {
-          expectNoDiagnostic(
-            diagnostics,
-            { severity: 'error', file, root },
-            `errors naming ${file}`,
-          )
+  test('an id the URL never carried whole fails the build, naming the file', async () => {
+    const ids = { ...refused, ...deprecated, ...fine }
+    const outcome = await buildStart({ bundler, ...app(ids) }).then(
+      () => ({ built: true as const }),
+      (error: unknown) => {
+        if (!(error instanceof StartBuildError)) {
+          throw error
         }
+        return { built: false as const, error }
+      },
+    )
+    if (outcome.built) {
+      expect.fail('the build succeeded')
+    }
+    const { diagnostics, root } = outcome.error
+    for (const file of Object.keys(ids)) {
+      if (file in refused) {
+        expectDiagnostic(diagnostics, { severity: 'error', file, root })
+      } else {
+        expectNoDiagnostic(
+          diagnostics,
+          { severity: 'error', file, root },
+          `errors naming ${file}`,
+        )
       }
-    },
-    timeout,
-  )
+    }
+  })
 
-  test(
-    'a deprecated id builds with a warning naming the file, and reaches its handler',
-    async () => {
-      const ids = { ...deprecated, ...fine }
-      const { client, ssr, diagnostics, root } = await buildStart({
-        bundler,
-        ...app(ids),
+  test('a deprecated id builds with a warning naming the file, and reaches its handler', async () => {
+    const ids = { ...deprecated, ...fine }
+    const { client, ssr, diagnostics, root } = await buildStart({
+      bundler,
+      ...app(ids),
+    })
+    for (const file of Object.keys(ids)) {
+      const warnings = findDiagnostics(diagnostics, {
+        severity: 'warning',
+        file,
+        root,
       })
-      for (const file of Object.keys(ids)) {
-        const warnings = findDiagnostics(diagnostics, {
-          severity: 'warning',
-          file,
-          root,
-        })
-        expect(warnings.length > 0, `a warning naming ${file}`).toBe(
-          file in deprecated,
-        )
-      }
-      const urls = (
-        await client.run(
-          `return [${Object.keys(ids).map((_, index) => `entry.fn${index}.url`)}]`,
-        )
-      ).result as Array<string>
-      expect(
-        (
-          await ssr.run(
-            `${callByIdPrelude}const called = []
+      expect(warnings.length > 0, `a warning naming ${file}`).toBe(
+        file in deprecated,
+      )
+    }
+    const urls = (
+      await client.run(
+        `return [${Object.keys(ids).map((_, index) => `entry.fn${index}.url`)}]`,
+      )
+    ).result as Array<string>
+    expect(
+      (
+        await ssr.run(
+          `${callByIdPrelude}const called = []
 for (const url of ${JSON.stringify(urls)}) {
   const id = serverFnId(url)
   called.push([id, await callById(id)])
 }
 return called`,
-          )
-        ).result,
-      ).toEqual(Object.entries(ids).map(([file, id]) => [id, file]))
-    },
-    timeout,
-  )
+        )
+      ).result,
+    ).toEqual(Object.entries(ids).map(([file, id]) => [id, file]))
+  })
 
   test.each([
     {
@@ -179,46 +169,42 @@ return called`,
         createHash('sha1').update(`${filename}--${functionName}`).digest('hex'),
       builds: true,
     },
-  ])(
-    '$name',
-    async ({ id, builds }) => {
-      const files = app({ 'src/named.ts': 'unused' })
-      const built = await buildStart({
-        bundler,
-        ...files,
-        start: { serverFns: { generateFunctionId: id } },
-      }).then(
-        (build) => build,
-        (error: unknown) => {
-          if (!(error instanceof StartBuildError)) {
-            throw error
-          }
-          return error
-        },
-      )
-      if (!builds) {
-        expect(built).toBeInstanceOf(StartBuildError)
-        expectDiagnostic((built as StartBuildError).diagnostics, {
-          severity: 'error',
-          file: 'src/named.ts',
-          root: (built as StartBuildError).root,
-        })
-        return
-      }
-      if (built instanceof StartBuildError) {
-        throw built
-      }
-      const url = (await built.client.run(`return entry.fn0.url`)).result
-      expect(
-        (
-          await built.ssr.run(
-            `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
-          )
-        ).result,
-      ).toBe('src/named.ts')
-    },
-    timeout,
-  )
+  ])('$name', async ({ id, builds }) => {
+    const files = app({ 'src/named.ts': 'unused' })
+    const built = await buildStart({
+      bundler,
+      ...files,
+      start: { serverFns: { generateFunctionId: id } },
+    }).then(
+      (build) => build,
+      (error: unknown) => {
+        if (!(error instanceof StartBuildError)) {
+          throw error
+        }
+        return error
+      },
+    )
+    if (!builds) {
+      expect(built).toBeInstanceOf(StartBuildError)
+      expectDiagnostic((built as StartBuildError).diagnostics, {
+        severity: 'error',
+        file: 'src/named.ts',
+        root: (built as StartBuildError).root,
+      })
+      return
+    }
+    if (built instanceof StartBuildError) {
+      throw built
+    }
+    const url = (await built.client.run(`return entry.fn0.url`)).result
+    expect(
+      (
+        await built.ssr.run(
+          `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+        )
+      ).result,
+    ).toBe('src/named.ts')
+  })
 })
 
 interface IdInput {

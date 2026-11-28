@@ -18,8 +18,6 @@ import {
 } from '../build-harness'
 import type { StartBuild } from '../build-harness'
 
-const timeout = 60_000
-
 const files = {
   'src/db.server.js': `export const db = { user: () => 'MARK_USER' }\n`,
   'src/fns.jsx': `import { createServerFn } from '@tanstack/react-start'
@@ -73,68 +71,60 @@ beforeAll(async () => {
       entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
     }),
   )
-}, timeout)
+}, 60_000)
 
-test(
-  'vite build: a .jsx server fn module and a .jsx route file: the client calls by id without the handler, the route component is lazy and renders',
-  async () => {
-    const { client, ssr } = build
-    expect({
-      handler: client.where('MARK_USER'),
-      page: client.where('MARK_JSX_PAGE'),
-    }).toEqual({ handler: 'nowhere', page: 'lazy' })
-    const clientRun = (
-      await client.run(`${requestsOfPrelude}return {
+test('vite build: a .jsx server fn module and a .jsx route file: the client calls by id without the handler, the route component is lazy and renders', async () => {
+  const { client, ssr } = build
+  expect({
+    handler: client.where('MARK_USER'),
+    page: client.where('MARK_JSX_PAGE'),
+  }).toEqual({ handler: 'nowhere', page: 'lazy' })
+  const clientRun = (
+    await client.run(`${requestsOfPrelude}return {
   url: entry.getUser.url,
   requests: await requestsOf(entry.getUser),
   badge: entry.renderToString(entry.createElement(entry.Badge, { name: 'Ada' })),
   page: await entry.renderPath(entry.getRouter().routeTree, '/'),
 }`)
-    ).result as {
-      url: string
-      requests: Array<unknown>
-      badge: string
-      page: string
-    }
-    expect(clientRun.requests).toEqual([{ url: clientRun.url, method: 'GET' }])
-    expect(clientRun.badge).toBe('<span class="badge">Ada</span>')
-    expect(clientRun.page).toContain(
-      'MARK_JSX_PAGE <span class="badge">Ada</span>',
-    )
-    const { result } = await ssr.run(`${callByIdPrelude}return {
+  ).result as {
+    url: string
+    requests: Array<unknown>
+    badge: string
+    page: string
+  }
+  expect(clientRun.requests).toEqual([{ url: clientRun.url, method: 'GET' }])
+  expect(clientRun.badge).toBe('<span class="badge">Ada</span>')
+  expect(clientRun.page).toContain(
+    'MARK_JSX_PAGE <span class="badge">Ada</span>',
+  )
+  const { result } = await ssr.run(`${callByIdPrelude}return {
   byId: await callById(serverFnId(${JSON.stringify(clientRun.url)})),
   page: await entry.renderPath(entry.getRouter().routeTree, '/'),
 }`)
-    expect(result).toEqual({
-      byId: 'MARK_USER',
-      page: expect.stringContaining(
-        'MARK_JSX_PAGE <span class="badge">Ada</span>',
-      ),
-    })
-  },
-  timeout,
-)
+  expect(result).toEqual({
+    byId: 'MARK_USER',
+    page: expect.stringContaining(
+      'MARK_JSX_PAGE <span class="badge">Ada</span>',
+    ),
+  })
+})
 
-test(
-  'vite build: a server fn builder reused as middleware: the client runs auth.client() and has no auth.server() code; the server runs auth.server() then the handler',
-  async () => {
-    const { client, ssr } = build
-    expect(client.where(/MARK_AUDIT_USER|audit\.server/)).toBe('nowhere')
-    const clientRun = (
-      await client.run(`${requestsOfPrelude}const requests = await requestsOf(entry.whoAmI)
+test('vite build: a server fn builder reused as middleware: the client runs auth.client() and has no auth.server() code; the server runs auth.server() then the handler', async () => {
+  const { client, ssr } = build
+  expect(client.where(/MARK_AUDIT_USER|audit\.server/)).toBe('nowhere')
+  const clientRun = (
+    await client.run(`${requestsOfPrelude}const requests = await requestsOf(entry.whoAmI)
 return {
   url: entry.whoAmI.url,
   requests: requests.length,
   clientCalls: globalThis.__clientCalls,
 }`)
-    ).result as { url: string; requests: number; clientCalls: Array<string> }
-    expect(clientRun.requests).toBe(1)
-    expect(clientRun.clientCalls).toEqual(['auth'])
-    const { result } = await ssr.run(`${callByIdPrelude}return {
+  ).result as { url: string; requests: number; clientCalls: Array<string> }
+  expect(clientRun.requests).toBe(1)
+  expect(clientRun.clientCalls).toEqual(['auth'])
+  const { result } = await ssr.run(`${callByIdPrelude}return {
   byId: await callById(serverFnId(${JSON.stringify(clientRun.url)})),
   ssr: await entry.whoAmI(),
 }`)
-    expect(result).toEqual({ byId: 'MARK_AUDIT_USER', ssr: 'MARK_AUDIT_USER' })
-  },
-  timeout,
-)
+  expect(result).toEqual({ byId: 'MARK_AUDIT_USER', ssr: 'MARK_AUDIT_USER' })
+})

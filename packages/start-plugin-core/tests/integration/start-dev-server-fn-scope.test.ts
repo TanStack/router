@@ -167,58 +167,38 @@ describe('vite dev: by-id requests', () => {
     expect(decode(appId).f).toBe('src/fns.ts')
   }, timeout)
 
-  test(
-    'the app fn the client compiled answers (control)',
-    async () => {
-      expect(await call(appId)).toBe('MARK_APP')
-    },
-    timeout,
-  )
+  test('the app fn the client compiled answers (control)', async () => {
+    expect(await call(appId)).toBe('MARK_APP')
+  })
 
-  test(
-    'an id naming a file in src that nothing imports compiles it and answers',
-    async () => {
-      expect(await call(naming('src/other.ts'))).toBe('MARK_OTHER')
-    },
-    timeout,
-  )
+  test('an id naming a file in src that nothing imports compiles it and answers', async () => {
+    expect(await call(naming('src/other.ts'))).toBe('MARK_OTHER')
+  })
 
   // Each case requests the forged id, then the id naming the file it reaches
   // (a compile on the forged request would have registered that one): both
   // are refused and the module never runs.
-  test.each(outOfScope)(
-    'refuses %s',
-    async (_, forged, reached) => {
-      const file = forged === 'ABSOLUTE' ? server.file(reached) : forged
-      expect(await call(naming(file))).toBe('refused')
-      expect(await call(naming(reached))).toBe('refused')
-      const name = /MARK_(\w+)/.exec(await server.read(reached))![1]
-      expect(ran()).not.toContain(name)
-    },
-    timeout,
-  )
+  test.each(outOfScope)('refuses %s', async (_, forged, reached) => {
+    const file = forged === 'ABSOLUTE' ? server.file(reached) : forged
+    expect(await call(naming(file))).toBe('refused')
+    expect(await call(naming(reached))).toBe('refused')
+    const name = /MARK_(\w+)/.exec(await server.read(reached))![1]
+    expect(ran()).not.toContain(name)
+  })
 
-  test(
-    'a package fn answers once the client compiled its module in the session',
-    async () => {
-      const id = naming('node_modules/lib-pkg/fns.js')
-      expect(await call(id)).toBe('refused')
-      expect(await clientId('/node_modules/lib-pkg/fns.js')).toBe(id)
-      expect(await call(id)).toBe('MARK_LIB')
-    },
-    timeout,
-  )
+  test('a package fn answers once the client compiled its module in the session', async () => {
+    const id = naming('node_modules/lib-pkg/fns.js')
+    expect(await call(id)).toBe('refused')
+    expect(await clientId('/node_modules/lib-pkg/fns.js')).toBe(id)
+    expect(await call(id)).toBe('MARK_LIB')
+  })
 
   // Last: it restarts the server. A page left open across the restart calls
   // the id it holds; the new server has compiled nothing.
-  test(
-    'an app fn id from before a restart answers on the new server',
-    async () => {
-      await server.vite.restart()
-      expect(await call(appId)).toBe('MARK_APP')
-    },
-    timeout,
-  )
+  test('an app fn id from before a restart answers on the new server', async () => {
+    await server.vite.restart()
+    expect(await call(appId)).toBe('MARK_APP')
+  })
 })
 
 /**
@@ -246,25 +226,17 @@ describe('rsbuild dev: by-id requests', () => {
     )
   }, timeout)
 
-  test(
-    'the app fn the client compiled answers (control)',
-    async () => {
-      expect(await call(naming('src/fns.ts'))).toBe('MARK_APP')
-    },
-    timeout,
-  )
+  test('the app fn the client compiled answers (control)', async () => {
+    expect(await call(naming('src/fns.ts'))).toBe('MARK_APP')
+  })
 
   test.each([
     ['a file in src that nothing imports', 'src/other.ts', 'src/other.ts'],
     ...outOfScope,
-  ])(
-    'refuses %s',
-    async (_, forged, reached) => {
-      const file =
-        forged === 'ABSOLUTE' ? path.join(server.root, reached) : forged
-      expect(await call(naming(file))).toBe('refused')
-      expect(await call(naming(reached))).toBe('refused')
-    },
-    timeout,
-  )
+  ])('refuses %s', async (_, forged, reached) => {
+    const file =
+      forged === 'ABSOLUTE' ? path.join(server.root, reached) : forged
+    expect(await call(naming(file))).toBe('refused')
+    expect(await call(naming(reached))).toBe('refused')
+  })
 })

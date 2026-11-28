@@ -34,8 +34,6 @@ import {
   routeHead,
 } from '../build-harness'
 
-const timeout = 60_000
-
 const route = `${routeHead()}import { label } from '../lib/label'
 const shared = { label }
 function Page() {
@@ -96,7 +94,6 @@ test.each(builds)(
     expect(app.where('MARK_PAGE ')).toBe('lazy')
     await expectRouteFileNamedOnce(app.root, app.outDir)
   },
-  timeout,
 )
 
 // An asset of the app named like a map is the app's (a game level, here):
@@ -130,7 +127,6 @@ test.each(['rspack', 'webpack'] as const)(
     )
     await expectRouteFileNamedOnce(app.root, app.outDir)
   },
-  timeout,
 )
 
 // The app names the sources of its maps (`devtoolModuleFilenameTemplate`):
@@ -210,7 +206,6 @@ test.each(templateBuilds)(
       positionAt(route, tokenOffsets(route, { string: 'MARK_PAGE ' })[0]!).line,
     )
   },
-  timeout,
 )
 
 // After an edit in watch mode, the maps hold the route file as it is now.
@@ -235,7 +230,6 @@ test.each(['rspack', 'webpack'] as const)(
     expect(app.where('MARK_PAGE_V2 ')).toBe('lazy')
     expectRouteText(await emittedMaps(app.outDir), edited)
   },
-  timeout,
 )
 
 /**
@@ -285,55 +279,43 @@ async function viteBuild(
   return { root: app.root, outDir }
 }
 
-test(
-  'a Vite 7 build names the route file once in every map',
-  async () => {
-    const vite = await viteVersions.find((v) => v.major === 7)!.load()
-    const { root, outDir } = await viteBuild(vite)
-    await expectRouteFileNamedOnce(root, outDir)
-  },
-  timeout,
-)
+test('a Vite 7 build names the route file once in every map', async () => {
+  const vite = await viteVersions.find((v) => v.major === 7)!.load()
+  const { root, outDir } = await viteBuild(vite)
+  await expectRouteFileNamedOnce(root, outDir)
+})
 
 // The app's own `sourcemapPathTransform` still names the sources, once,
 // from the file's name.
-test(
-  'a Vite build with its own sourcemapPathTransform names the route file once, through it',
-  async () => {
-    const vite = await import('vite')
-    const seen: Array<string> = []
-    const { outDir } = await viteBuild(vite, {
-      sourcemapPathTransform: (source: string) => {
-        seen.push(source)
-        return `${source}?from-app`
-      },
-    })
-    const routeSources = seen.filter((s) => s.includes('routes/index.tsx'))
-    expect(routeSources.length).toBeGreaterThan(0)
-    // (the app's transform sees the file's name, without the compiler's query)
-    for (const source of routeSources) {
-      expect(source).not.toContain('?')
-    }
-    // a query the app adds is the app's: it stays
-    const named = (await emittedMaps(outDir)).flatMap(({ map }) =>
-      map.sources.filter((s) => s?.includes('routes/index.tsx')),
-    )
-    expect(named.length).toBeGreaterThan(0)
-    for (const source of named) {
-      expect(source).toMatch(/routes\/index\.tsx\?from-app$/)
-    }
-  },
-  timeout,
-)
+test('a Vite build with its own sourcemapPathTransform names the route file once, through it', async () => {
+  const vite = await import('vite')
+  const seen: Array<string> = []
+  const { outDir } = await viteBuild(vite, {
+    sourcemapPathTransform: (source: string) => {
+      seen.push(source)
+      return `${source}?from-app`
+    },
+  })
+  const routeSources = seen.filter((s) => s.includes('routes/index.tsx'))
+  expect(routeSources.length).toBeGreaterThan(0)
+  // (the app's transform sees the file's name, without the compiler's query)
+  for (const source of routeSources) {
+    expect(source).not.toContain('?')
+  }
+  // a query the app adds is the app's: it stays
+  const named = (await emittedMaps(outDir)).flatMap(({ map }) =>
+    map.sources.filter((s) => s?.includes('routes/index.tsx')),
+  )
+  expect(named.length).toBeGreaterThan(0)
+  for (const source of named) {
+    expect(source).toMatch(/routes\/index\.tsx\?from-app$/)
+  }
+})
 
-test(
-  'an Rsbuild build names the route file once in every map',
-  async () => {
-    const app = await buildWithRsbuild({
-      files,
-      rsbuildConfig: { output: { sourceMap: { js: 'source-map' } } },
-    })
-    await expectRouteFileNamedOnce(app.root, app.outDir)
-  },
-  timeout,
-)
+test('an Rsbuild build names the route file once in every map', async () => {
+  const app = await buildWithRsbuild({
+    files,
+    rsbuildConfig: { output: { sourceMap: { js: 'source-map' } } },
+  })
+  await expectRouteFileNamedOnce(app.root, app.outDir)
+})

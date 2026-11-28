@@ -9,8 +9,6 @@ import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { StartBuildError, startBundlers } from '../build-harness'
 import { buildStart } from '../build-start'
 
-const timeout = 60_000
-
 /** The app's root route: the route file is one the generator lists. */
 const root = {
   'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
@@ -67,23 +65,18 @@ export const Route = createFileRoute('/x')({ component: () => <p>{String(!!extra
         position: { line: 2 },
       })
     },
-    timeout,
   )
 
-  test(
-    "the error's fix, everything on the route bound to `Route`, builds without `server` in the client",
-    async () => {
-      const result = await build(
-        bundler,
-        `export const Route = createFileRoute('/x')({
+  test("the error's fix, everything on the route bound to `Route`, builds without `server` in the client", async () => {
+    const result = await build(
+      bundler,
+      `export const Route = createFileRoute('/x')({
   ${server},
   component: () => <p>MARK_PAGE</p>,
 })
 `,
-      )
-      expect(result.client.where('MARK_SERVER_SECRET')).toBe('nowhere')
-      expect(result.client.where('MARK_PAGE')).not.toBe('nowhere')
-    },
-    timeout,
-  )
+    )
+    expect(result.client.where('MARK_SERVER_SECRET')).toBe('nowhere')
+    expect(result.client.where('MARK_PAGE')).not.toBe('nowhere')
+  })
 })

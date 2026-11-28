@@ -12,8 +12,6 @@ import { buildStart } from '../../build-start'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 import type { RsbuildPlugin } from '@rsbuild/core'
 
-const timeout = 60_000
-
 interface Located {
   severity: 'error' | 'warning'
   moduleName?: string
@@ -86,123 +84,107 @@ const at = (source: string, needle: string) => {
 }
 
 describe('rsbuild build', () => {
-  test(
-    'a compile error is located at its position',
-    async () => {
-      const { plugin, seen } = recordLocations()
-      await expect(
-        buildStart({
-          bundler: 'rsbuild',
-          files: {
-            'src/wrap.ts': wrapSource,
-            'src/fns.ts': escapingSource,
-            'src/entry.ts': `export { reveal } from './fns'\n`,
-          },
-          entry: 'src/entry.ts',
-          rsbuildConfig: { plugins: [plugin] },
-        }),
-      ).rejects.toBeInstanceOf(StartBuildError)
-      expect(locationsOf(seen, 'src/fns.ts', /createServerFn|builder/)).toEqual(
-        [{ severity: 'error', loc: at(escapingSource, 'createServerFn())') }],
-      )
-    },
-    timeout,
-  )
-
-  test(
-    'a compile warning is located at its position',
-    async () => {
-      const { plugin, seen } = recordLocations()
-      await buildStart({
+  test('a compile error is located at its position', async () => {
+    const { plugin, seen } = recordLocations()
+    await expect(
+      buildStart({
         bundler: 'rsbuild',
         files: {
-          'src/role.ts': serverParamSource,
-          'src/entry.ts': `export { requireRole } from './role'\n`,
+          'src/wrap.ts': wrapSource,
+          'src/fns.ts': escapingSource,
+          'src/entry.ts': `export { reveal } from './fns'\n`,
         },
         entry: 'src/entry.ts',
         rsbuildConfig: { plugins: [plugin] },
-      })
-      const located = locationsOf(seen, 'src/role.ts', /`role`/)
-      expect(located).not.toEqual([])
-      expect(located).toEqual(
-        located.map(() => ({
-          severity: 'warning',
-          loc: at(serverParamSource, 'role: string'),
-        })),
-      )
-    },
-    timeout,
-  )
+      }),
+    ).rejects.toBeInstanceOf(StartBuildError)
+    expect(locationsOf(seen, 'src/fns.ts', /createServerFn|builder/)).toEqual([
+      { severity: 'error', loc: at(escapingSource, 'createServerFn())') },
+    ])
+  })
+
+  test('a compile warning is located at its position', async () => {
+    const { plugin, seen } = recordLocations()
+    await buildStart({
+      bundler: 'rsbuild',
+      files: {
+        'src/role.ts': serverParamSource,
+        'src/entry.ts': `export { requireRole } from './role'\n`,
+      },
+      entry: 'src/entry.ts',
+      rsbuildConfig: { plugins: [plugin] },
+    })
+    const located = locationsOf(seen, 'src/role.ts', /`role`/)
+    expect(located).not.toEqual([])
+    expect(located).toEqual(
+      located.map(() => ({
+        severity: 'warning',
+        loc: at(serverParamSource, 'role: string'),
+      })),
+    )
+  })
 
   // Rsbuild prints a loader's error or warning without the plugin's name,
   // so a Start message that names no tool of its own gets Start's tag; one
   // that does (a route's `[tanstack-router]`) keeps it alone.
   // Source: diagnostics spike (2026-11-24), inventory flag 14 (one tag rule).
-  test(
-    "a compile error and a warning say they are Start's",
-    async () => {
-      const { plugin, seen } = recordLocations()
-      await expect(
-        buildStart({
-          bundler: 'rsbuild',
-          files: {
-            'src/wrap.ts': wrapSource,
-            'src/fns.ts': escapingSource,
-            'src/role.ts': serverParamSource,
-            'src/entry.ts': `export { reveal } from './fns'\nexport { requireRole } from './role'\n`,
-          },
-          entry: 'src/entry.ts',
-          rsbuildConfig: { plugins: [plugin] },
-        }),
-      ).rejects.toBeInstanceOf(StartBuildError)
-      const ours = seen.filter(({ moduleName }) =>
-        /src\/(?:fns|role)\.ts$/.test(moduleName ?? ''),
-      )
-      expect(ours.map(({ severity }) => severity).sort()).toEqual(
-        expect.arrayContaining(['error', 'warning']),
-      )
-      for (const { message } of ours) {
-        expect(message).toContain('[tanstack-start] ')
-        expect(message).not.toContain('[tanstack-start] [')
-      }
-    },
-    timeout,
-  )
-})
-
-describe('rsbuild dev', () => {
-  test(
-    'a compile error and a warning are located at their positions',
-    async () => {
-      const { plugin, seen } = recordLocations()
-      await startRsbuildStartDevServer({
+  test("a compile error and a warning say they are Start's", async () => {
+    const { plugin, seen } = recordLocations()
+    await expect(
+      buildStart({
+        bundler: 'rsbuild',
         files: {
           'src/wrap.ts': wrapSource,
           'src/fns.ts': escapingSource,
           'src/role.ts': serverParamSource,
-          'src/entry.ts': `export { reveal } from './fns'
+          'src/entry.ts': `export { reveal } from './fns'\nexport { requireRole } from './role'\n`,
+        },
+        entry: 'src/entry.ts',
+        rsbuildConfig: { plugins: [plugin] },
+      }),
+    ).rejects.toBeInstanceOf(StartBuildError)
+    const ours = seen.filter(({ moduleName }) =>
+      /src\/(?:fns|role)\.ts$/.test(moduleName ?? ''),
+    )
+    expect(ours.map(({ severity }) => severity).sort()).toEqual(
+      expect.arrayContaining(['error', 'warning']),
+    )
+    for (const { message } of ours) {
+      expect(message).toContain('[tanstack-start] ')
+      expect(message).not.toContain('[tanstack-start] [')
+    }
+  })
+})
+
+describe('rsbuild dev', () => {
+  test('a compile error and a warning are located at their positions', async () => {
+    const { plugin, seen } = recordLocations()
+    await startRsbuildStartDevServer({
+      files: {
+        'src/wrap.ts': wrapSource,
+        'src/fns.ts': escapingSource,
+        'src/role.ts': serverParamSource,
+        'src/entry.ts': `export { reveal } from './fns'
 export { requireRole } from './role'
 `,
-        },
-        config: { plugins: [plugin] },
-      })
-      expect(
-        locationsOf(seen, 'src/fns.ts', /createServerFn|builder/).filter(
-          ({ severity }) => severity === 'error',
-        ),
-      ).toContainEqual({
-        severity: 'error',
-        loc: at(escapingSource, 'createServerFn())'),
-      })
-      const warnings = locationsOf(seen, 'src/role.ts', /`role`/)
-      expect(warnings).not.toEqual([])
-      expect(warnings).toEqual(
-        warnings.map(() => ({
-          severity: 'warning',
-          loc: at(serverParamSource, 'role: string'),
-        })),
-      )
-    },
-    timeout,
-  )
+      },
+      config: { plugins: [plugin] },
+    })
+    expect(
+      locationsOf(seen, 'src/fns.ts', /createServerFn|builder/).filter(
+        ({ severity }) => severity === 'error',
+      ),
+    ).toContainEqual({
+      severity: 'error',
+      loc: at(escapingSource, 'createServerFn())'),
+    })
+    const warnings = locationsOf(seen, 'src/role.ts', /`role`/)
+    expect(warnings).not.toEqual([])
+    expect(warnings).toEqual(
+      warnings.map(() => ({
+        severity: 'warning',
+        loc: at(serverParamSource, 'role: string'),
+      })),
+    )
+  })
 })

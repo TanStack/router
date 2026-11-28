@@ -18,7 +18,6 @@ import {
   entry,
   fns,
   start,
-  timeout,
   unresolvedImport,
 } from './start-build-settlement-app'
 
@@ -32,20 +31,16 @@ export { greet } from './moved'
   }
   // The control: a build of the edited app answers the id with the moved
   // function.
-  test(
-    'a build of the app after the move answers the id with the moved function',
-    async () => {
-      const build = await buildStart({
-        bundler: 'vite',
-        files: { ...app, ...moved },
-        entry,
-        start,
-      })
-      const { result } = await build.ssr.run(callGreet)
-      expect(result).toBe('MARK_MOVED')
-    },
-    timeout,
-  )
+  test('a build of the app after the move answers the id with the moved function', async () => {
+    const build = await buildStart({
+      bundler: 'vite',
+      files: { ...app, ...moved },
+      entry,
+      start,
+    })
+    const { result } = await build.ssr.run(callGreet)
+    expect(result).toBe('MARK_MOVED')
+  })
 
   // `greet` keeps its custom id while its definition moves to another
   // module (the client imports it from there): the rebuilt server answers
@@ -66,7 +61,6 @@ export { greet } from './moved'
       const { result } = await build.ssr.run(callGreet)
       expect(result).toBe('MARK_MOVED')
     },
-    timeout,
   )
 })
 
@@ -77,55 +71,48 @@ describe('hand-ordered builds: a client rebuild fails before the server builds',
   // before `builder.environments.ssr`"). The previous client build is the
   // one on disk: the server answers its call.
   // Source: whole-PR review S4-02 (V-41, Astra's `probe.mjs registry`).
-  test(
-    'S4-02: the server answers the call of the last written client build',
-    async () => {
-      const build = await buildStart({
-        bundler: 'vite',
-        files: app,
-        entry,
-        start,
-        viteConfig: { environments: { client: { build: { watch: {} } } } },
-        viteBuild: async (builder) => {
-          const watcher = (await builder.build(
-            builder.environments.client!,
-          )) as unknown as {
-            on: (
-              event: 'event',
-              listener: (e: { code: string }) => void,
-            ) => void
-            close: () => Promise<void>
-          }
-          /** Resolves at the watcher's next event `code`; rejects after 20 s. */
-          const next = (code: string) =>
-            new Promise<void>((resolve, reject) => {
-              const timer = setTimeout(
-                () => reject(new Error(`test: no ${code} of the client`)),
-                20_000,
-              )
-              watcher.on('event', (e) => {
-                if (e.code === code) {
-                  clearTimeout(timer)
-                  resolve()
-                }
-              })
+  test('S4-02: the server answers the call of the last written client build', async () => {
+    const build = await buildStart({
+      bundler: 'vite',
+      files: app,
+      entry,
+      start,
+      viteConfig: { environments: { client: { build: { watch: {} } } } },
+      viteBuild: async (builder) => {
+        const watcher = (await builder.build(
+          builder.environments.client!,
+        )) as unknown as {
+          on: (event: 'event', listener: (e: { code: string }) => void) => void
+          close: () => Promise<void>
+        }
+        /** Resolves at the watcher's next event `code`; rejects after 20 s. */
+        const next = (code: string) =>
+          new Promise<void>((resolve, reject) => {
+            const timer = setTimeout(
+              () => reject(new Error(`test: no ${code} of the client`)),
+              20_000,
+            )
+            watcher.on('event', (e) => {
+              if (e.code === code) {
+                clearTimeout(timer)
+                resolve()
+              }
             })
-          try {
-            await next('BUNDLE_END')
-            const failed = next('ERROR')
-            for (const [file, text] of Object.entries(unresolvedImport)) {
-              await writeFile(path.join(builder.config.root, file), text)
-            }
-            await failed
-          } finally {
-            await watcher.close()
+          })
+        try {
+          await next('BUNDLE_END')
+          const failed = next('ERROR')
+          for (const [file, text] of Object.entries(unresolvedImport)) {
+            await writeFile(path.join(builder.config.root, file), text)
           }
-          await builder.build(builder.environments.ssr!)
-        },
-      })
-      const { result } = await build.ssr.run(callGreet)
-      expect(result).toBe('MARK_GREET')
-    },
-    timeout,
-  )
+          await failed
+        } finally {
+          await watcher.close()
+        }
+        await builder.build(builder.environments.ssr!)
+      },
+    })
+    const { result } = await build.ssr.run(callGreet)
+    expect(result).toBe('MARK_GREET')
+  })
 })

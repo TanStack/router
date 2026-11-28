@@ -11,15 +11,12 @@ import { buildStart } from '../../build-start'
 import { rsbuildRscLinks } from '../../start-plugins'
 import { expectBothLayers, layersFiles } from './rsc-layers-app'
 
-const timeout = 120_000
-
 // (`warm`: the second of two builds, restored from the first's cache)
 test.for([
   { kind: 'cold', builds: 1 },
   { kind: 'warm', builds: 2 },
 ])(
   'a $kind build: a server fn module and a client component of both layers serve each layer its role',
-  { timeout },
   async ({ builds }) => {
     const build = await buildStart({
       bundler: 'rsbuild',

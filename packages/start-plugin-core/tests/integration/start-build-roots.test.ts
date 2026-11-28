@@ -19,8 +19,6 @@ import {
 } from './start-compose-app'
 import type { StartBuildOptions } from '../build-harness'
 
-const timeout = 60_000
-
 /**
  * A monorepo (the files of `StartBuildOptions.workspace`) whose
  * `node_modules` holds a Start library (a peer dependency on Start, hoisted)
@@ -62,33 +60,25 @@ export const libFn = createServerFn().handler(async () => 'MARK_LIB_HANDLER')
 // On main, the library stays external in the SSR build: Node loads it
 // uncompiled, and its server fn returns undefined during SSR.
 describe('Vite build of an app whose Start library is hoisted above it', () => {
-  test(
-    "a relative root: the library's server fn runs during SSR",
-    async () => {
-      const { ssr } = await buildStart({
-        ...hoistedLibrary,
-        viteConfig: { root: '.' },
-      })
-      expect((await ssr.run(`return await entry.libFn()`)).result).toBe(
-        'MARK_LIB_HANDLER',
-      )
-    },
-    timeout,
-  )
+  test("a relative root: the library's server fn runs during SSR", async () => {
+    const { ssr } = await buildStart({
+      ...hoistedLibrary,
+      viteConfig: { root: '.' },
+    })
+    expect((await ssr.run(`return await entry.libFn()`)).result).toBe(
+      'MARK_LIB_HANDLER',
+    )
+  })
 
-  test(
-    "a root through a symbolic link: the library's server fn runs during SSR",
-    async () => {
-      const { ssr } = await buildStart({
-        ...hoistedLibrary,
-        root: (app) => path.join(app, '../../../link/web'),
-      })
-      expect((await ssr.run(`return await entry.libFn()`)).result).toBe(
-        'MARK_LIB_HANDLER',
-      )
-    },
-    timeout,
-  )
+  test("a root through a symbolic link: the library's server fn runs during SSR", async () => {
+    const { ssr } = await buildStart({
+      ...hoistedLibrary,
+      root: (app) => path.join(app, '../../../link/web'),
+    })
+    expect((await ssr.run(`return await entry.libFn()`)).result).toBe(
+      'MARK_LIB_HANDLER',
+    )
+  })
 })
 
 /** A page app whose `/` loader calls a server fn the SSR entry exposes. */
@@ -139,27 +129,19 @@ async function servedApp(options: Partial<StartBuildOptions>) {
 // On main, the build fails (Start's entries and virtual modules are not found).
 describe('Rsbuild build of an app with a configured root', () => {
   // Control: the app's absolute directory.
-  test(
-    'an absolute root: renders its page and serves its server fn by id',
-    async () => {
-      expect(await servedApp({})).toEqual({
-        status: 200,
-        html: expect.stringContaining('MARK_INDEX MARK_FN'),
-        byId: 'MARK_FN',
-      })
-    },
-    timeout,
-  )
+  test('an absolute root: renders its page and serves its server fn by id', async () => {
+    expect(await servedApp({})).toEqual({
+      status: 200,
+      html: expect.stringContaining('MARK_INDEX MARK_FN'),
+      byId: 'MARK_FN',
+    })
+  })
 
-  test(
-    'a relative root: renders its page and serves its server fn by id',
-    async () => {
-      expect(await servedApp({ rsbuildConfig: { root: '.' } })).toEqual({
-        status: 200,
-        html: expect.stringContaining('MARK_INDEX MARK_FN'),
-        byId: 'MARK_FN',
-      })
-    },
-    timeout,
-  )
+  test('a relative root: renders its page and serves its server fn by id', async () => {
+    expect(await servedApp({ rsbuildConfig: { root: '.' } })).toEqual({
+      status: 200,
+      html: expect.stringContaining('MARK_INDEX MARK_FN'),
+      byId: 'MARK_FN',
+    })
+  })
 })

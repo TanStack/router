@@ -47,8 +47,6 @@ import { rsbuildEntries } from './route-css-cases'
 import type { RsbuildConfig } from '@rsbuild/core'
 import type { StartBundler } from '../build-harness'
 
-const timeout = 60_000
-
 const head = `import { createFileRoute } from '@tanstack/react-router'\n`
 
 /** A CSS module whose rule carries the marker `MARK_CSS_<name>`. */
@@ -638,7 +636,7 @@ export function routeAssetsSuite(
       )
       url = (await built.preview()).url
       shell = await linkedMarkers(url, '/no-such-route')
-    }, timeout)
+    }, 60_000)
 
     test('the page of an unknown path links no code or CSS only a route or a boundary needs', () => {
       expect({
@@ -648,30 +646,26 @@ export function routeAssetsSuite(
     })
 
     for (const [pathname, { needs, may }] of Object.entries(routes)) {
-      test(
-        `the page of ${pathname} links what the route renders and nothing another route or a lazy boundary needs`,
-        async () => {
-          const linked = await linkedMarkers(url, pathname)
-          const missing: Assets = { js: [], css: [] }
-          const foreign: Assets = { js: [], css: [] }
-          for (const kind of ['js', 'css'] as const) {
-            const allowed = new Set([
-              ...needs[kind],
-              ...(may?.[kind] ?? []),
-              ...shell[kind],
-            ])
-            missing[kind] = needs[kind].filter(
-              (name) => !linked[kind].includes(name),
-            )
-            foreign[kind] = linked[kind].filter((name) => !allowed.has(name))
-          }
-          expect({ missing, foreign }).toEqual({
-            missing: { js: [], css: [] },
-            foreign: { js: [], css: [] },
-          })
-        },
-        timeout,
-      )
+      test(`the page of ${pathname} links what the route renders and nothing another route or a lazy boundary needs`, async () => {
+        const linked = await linkedMarkers(url, pathname)
+        const missing: Assets = { js: [], css: [] }
+        const foreign: Assets = { js: [], css: [] }
+        for (const kind of ['js', 'css'] as const) {
+          const allowed = new Set([
+            ...needs[kind],
+            ...(may?.[kind] ?? []),
+            ...shell[kind],
+          ])
+          missing[kind] = needs[kind].filter(
+            (name) => !linked[kind].includes(name),
+          )
+          foreign[kind] = linked[kind].filter((name) => !allowed.has(name))
+        }
+        expect({ missing, foreign }).toEqual({
+          missing: { js: [], css: [] },
+          foreign: { js: [], css: [] },
+        })
+      })
     }
   })
 }

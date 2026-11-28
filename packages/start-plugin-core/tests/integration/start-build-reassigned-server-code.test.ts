@@ -27,8 +27,6 @@ import {
   startPageEntries,
 } from './start-compose-app'
 
-const timeout = 60_000
-
 const routeHead = `import { createFileRoute } from '@tanstack/react-router'
 import { createServerOnlyFn } from '@tanstack/react-start'
 `
@@ -104,15 +102,12 @@ describe.each(startBundlers)('%s build', (bundler) => {
         refusal,
       )
     },
-    timeout,
   )
 
-  test(
-    'the same by one `const` builds, and no server code reaches the client',
-    async () => {
-      const build = await buildStart({
-        bundler,
-        files: appWith(`${routeHead}const get = import.meta.env.DEV
+  test('the same by one `const` builds, and no server code reaches the client', async () => {
+    const build = await buildStart({
+      bundler,
+      files: appWith(`${routeHead}const get = import.meta.env.DEV
   ? () => new Response('MARK_SERVER_FIRST')
   : () => new Response('MARK_SERVER_SECOND')
 ${controls}export const Route = createFileRoute('/')({
@@ -120,22 +115,20 @@ ${controls}export const Route = createFileRoute('/')({
   component: () => <p>MARK_HOME</p>,
 })
 `),
-        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-      })
-      expect({
-        first: build.client.where('MARK_SERVER_FIRST'),
-        second: build.client.where('MARK_SERVER_SECOND'),
-        kept: build.client.where('MARK_SERVER_KEPT'),
-        inPlace: build.client.where('MARK_SERVER_IN_PLACE'),
-        page: build.client.where('MARK_HOME') === 'nowhere',
-      }).toEqual({
-        first: 'nowhere',
-        second: 'nowhere',
-        kept: 'nowhere',
-        inPlace: 'nowhere',
-        page: false,
-      })
-    },
-    timeout,
-  )
+      entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+    })
+    expect({
+      first: build.client.where('MARK_SERVER_FIRST'),
+      second: build.client.where('MARK_SERVER_SECOND'),
+      kept: build.client.where('MARK_SERVER_KEPT'),
+      inPlace: build.client.where('MARK_SERVER_IN_PLACE'),
+      page: build.client.where('MARK_HOME') === 'nowhere',
+    }).toEqual({
+      first: 'nowhere',
+      second: 'nowhere',
+      kept: 'nowhere',
+      inPlace: 'nowhere',
+      page: false,
+    })
+  })
 })

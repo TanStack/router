@@ -20,8 +20,6 @@ import { describe, expect, test } from 'vitest'
 import { recorder, summary } from './rsc-environments-app'
 import { startRscRsbuildDevServer } from './rsc-serial'
 
-const timeout = 60_000
-
 const route = (
   from: string,
 ) => `import { createFileRoute } from '@tanstack/react-router'
@@ -59,75 +57,71 @@ async function label(url: string): Promise<string | undefined> {
 }
 
 describe('Rsbuild dev with RSC, a denied file in a layer of the user', () => {
-  test(
-    "an exempt file's import of it is real, after an edit of it too; a checked file's is mocked and reported",
-    async () => {
-      const { violations, start } = recorder('mock')
-      const server = await startRscRsbuildDevServer({
-        browser: true,
-        start: {
-          importProtection: {
-            ...start.importProtection,
-            exclude: ['**/feature.ts'],
+  test("an exempt file's import of it is real, after an edit of it too; a checked file's is mocked and reported", async () => {
+    const { violations, start } = recorder('mock')
+    const server = await startRscRsbuildDevServer({
+      browser: true,
+      start: {
+        importProtection: {
+          ...start.importProtection,
+          exclude: ['**/feature.ts'],
+        },
+      },
+      config: {
+        tools: {
+          rspack: (
+            config: { module: { rules?: Array<unknown> } },
+            { environment }: { environment: { name: string } },
+          ) => {
+            if (environment.name === 'ssr') {
+              ;(config.module.rules ??= []).push({
+                test: /private\.client\.ts$/,
+                layer: 'reports',
+              })
+            }
           },
         },
-        config: {
-          tools: {
-            rspack: (
-              config: { module: { rules?: Array<unknown> } },
-              { environment }: { environment: { name: string } },
-            ) => {
-              if (environment.name === 'ssr') {
-                ;(config.module.rules ??= []).push({
-                  test: /private\.client\.ts$/,
-                  layer: 'reports',
-                })
-              }
-            },
-          },
-        },
-        files: {
-          'src/routes/index.tsx': route('feature'),
-          'src/feature.ts': importer,
-          'src/private.client.ts': `export const denied = () => 'EXPECTED_ROUTE_LABEL'\n`,
-        },
+      },
+      files: {
+        'src/routes/index.tsx': route('feature'),
+        'src/feature.ts': importer,
+        'src/private.client.ts': `export const denied = () => 'EXPECTED_ROUTE_LABEL'\n`,
+      },
+    })
+    /** The warnings the server printed of the file. */
+    const printed = () =>
+      findDiagnostics(server.diagnostics, {
+        severity: 'warning',
+        file: 'src/private.client.ts',
       })
-      /** The warnings the server printed of the file. */
-      const printed = () =>
-        findDiagnostics(server.diagnostics, {
-          severity: 'warning',
-          file: 'src/private.client.ts',
-        })
-      expect(await label(server.url!)).toBe('EXPECTED_ROUTE_LABEL')
-      expect({ violations, printed: printed() }).toEqual({
-        violations: [],
-        printed: [],
-      })
-      await server.edit({
-        'src/private.client.ts': `export const denied = () => 'EDITED_ROUTE_LABEL'\n`,
-      })
-      expect(await label(server.url!)).toBe('EDITED_ROUTE_LABEL')
-      expect({ violations, printed: printed() }).toEqual({
-        violations: [],
-        printed: [],
-      })
-      await server.edit({
-        'src/pattern.ts': patternImporter,
-        'src/routes/index.tsx': route('pattern'),
-      })
-      expect(await label(server.url!)).toBe('[import-protection mock]')
-      expect(summary(violations)).toEqual([
-        'ssr server file private.client.ts -> src/private.client.ts',
-      ])
-      await server.edit({
-        'src/checked.ts': importer,
-        'src/routes/index.tsx': route('checked'),
-      })
-      expect(await label(server.url!)).toBe('[import-protection mock]')
-      expect(summary(violations)).toContain(
-        'ssr server file checked.ts -> ./private.client',
-      )
-    },
-    timeout,
-  )
+    expect(await label(server.url!)).toBe('EXPECTED_ROUTE_LABEL')
+    expect({ violations, printed: printed() }).toEqual({
+      violations: [],
+      printed: [],
+    })
+    await server.edit({
+      'src/private.client.ts': `export const denied = () => 'EDITED_ROUTE_LABEL'\n`,
+    })
+    expect(await label(server.url!)).toBe('EDITED_ROUTE_LABEL')
+    expect({ violations, printed: printed() }).toEqual({
+      violations: [],
+      printed: [],
+    })
+    await server.edit({
+      'src/pattern.ts': patternImporter,
+      'src/routes/index.tsx': route('pattern'),
+    })
+    expect(await label(server.url!)).toBe('[import-protection mock]')
+    expect(summary(violations)).toEqual([
+      'ssr server file private.client.ts -> src/private.client.ts',
+    ])
+    await server.edit({
+      'src/checked.ts': importer,
+      'src/routes/index.tsx': route('checked'),
+    })
+    expect(await label(server.url!)).toBe('[import-protection mock]')
+    expect(summary(violations)).toContain(
+      'ssr server file checked.ts -> ./private.client',
+    )
+  })
 })

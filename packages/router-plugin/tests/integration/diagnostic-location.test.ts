@@ -24,8 +24,6 @@ import { tanstackRouter as webpackRouter } from '../../src/webpack'
 import { build, rootRoute, routeApp } from '../build-harness'
 import type { RsbuildPlugin } from '@rsbuild/core'
 
-const timeout = 60_000
-
 const routers = { rspack: rspackRouter, webpack: webpackRouter } as const
 
 /** The apps live next to the other harness apps, where imports resolve. */
@@ -122,119 +120,103 @@ export const Route = createFileRoute('/')({
 })
 `
 
-test(
-  'vite build: a compile warning is located at its position',
-  async () => {
-    const app = await build({
-      bundler: 'vite',
-      env: 'client',
-      files: routeApp(thisMethod, { env: 'client' }),
-    })
-    expectDiagnostic(app.warnings, {
-      severity: 'warning',
-      file: 'routes/index.tsx',
-      root: app.root,
-      position: diagnosticPosition(thisMethod, 'component()'),
-    })
-  },
-  timeout,
-)
+test('vite build: a compile warning is located at its position', async () => {
+  const app = await build({
+    bundler: 'vite',
+    env: 'client',
+    files: routeApp(thisMethod, { env: 'client' }),
+  })
+  expectDiagnostic(app.warnings, {
+    severity: 'warning',
+    file: 'routes/index.tsx',
+    root: app.root,
+    position: diagnosticPosition(thisMethod, 'component()'),
+  })
+})
 
 describe.each(['webpack', 'rspack'] as const)('%s build', (bundler) => {
-  test(
-    'a compile warning is located at its position',
-    async () => {
-      const { plugin, seen } = recordLocations()
-      await build({
+  test('a compile warning is located at its position', async () => {
+    const { plugin, seen } = recordLocations()
+    await build({
+      bundler,
+      env: 'client',
+      files: routeApp(opaqueOptions, { env: 'client' }),
+      routerPlugins: (config) => [routers[bundler](config), plugin],
+    })
+    const located = locationsOf(seen, 'warning')
+    expect(located).not.toEqual([])
+    expect(located).toEqual(located.map(() => opaqueOptionsAt))
+  })
+
+  test('a compile error is located at its position', async () => {
+    const { plugin, seen } = recordLocations()
+    await expect(
+      build({
         bundler,
         env: 'client',
-        files: routeApp(opaqueOptions, { env: 'client' }),
+        files: routeApp(invalidGroupings, { env: 'client' }),
         routerPlugins: (config) => [routers[bundler](config), plugin],
-      })
-      const located = locationsOf(seen, 'warning')
-      expect(located).not.toEqual([])
-      expect(located).toEqual(located.map(() => opaqueOptionsAt))
-    },
-    timeout,
-  )
-
-  test(
-    'a compile error is located at its position',
-    async () => {
-      const { plugin, seen } = recordLocations()
-      await expect(
-        build({
-          bundler,
-          env: 'client',
-          files: routeApp(invalidGroupings, { env: 'client' }),
-          routerPlugins: (config) => [routers[bundler](config), plugin],
-        }),
-      ).rejects.toBeInstanceOf(BuildError)
-      const located = locationsOf(seen, 'error')
-      expect(located).not.toEqual([])
-      expect(located).toEqual(located.map(() => invalidGroupingsAt))
-    },
-    timeout,
-  )
+      }),
+    ).rejects.toBeInstanceOf(BuildError)
+    const located = locationsOf(seen, 'error')
+    expect(located).not.toEqual([])
+    expect(located).toEqual(located.map(() => invalidGroupingsAt))
+  })
 })
 
 describe('rsbuild dev server', () => {
-  test(
-    'a compile error and a warning are located at their positions',
-    async () => {
-      const seen: Array<Located> = []
-      const recorder: RsbuildPlugin = {
-        name: 'test:diagnostic-locations',
-        setup(api) {
-          api.onAfterEnvironmentCompile(({ stats }) =>
-            readStats(stats as StatsLike | undefined, seen),
-          )
-        },
-      }
-      const serve = async (route: string) => {
-        const server = await closeAtEnd(() =>
-          createRsbuildDevServer({
-            dir: appsDir,
-            prefix: '.diagnostic-location-rsbuild-',
-            entry: 'main.tsx',
-            files: {
-              'main.tsx': `import { Route } from './routes/index'\n;(globalThis as any).__route = Route\n`,
-              'routes/__root.tsx': rootRoute,
-              'routes/index.tsx': route,
-            },
-            plugins: ({ root }) => [
-              pluginReact({ fastRefresh: false }),
-              recorder,
-              {
-                name: 'diagnostic-location-router',
-                setup(api) {
-                  api.modifyRspackConfig((config) => {
-                    config.plugins.push(
-                      rspackRouter({
-                        target: 'react',
-                        autoCodeSplitting: true,
-                        routesDirectory: path.join(root, 'routes'),
-                        generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
-                      }),
-                    )
-                  })
-                },
-              },
-            ],
-          }),
+  test('a compile error and a warning are located at their positions', async () => {
+    const seen: Array<Located> = []
+    const recorder: RsbuildPlugin = {
+      name: 'test:diagnostic-locations',
+      setup(api) {
+        api.onAfterEnvironmentCompile(({ stats }) =>
+          readStats(stats as StatsLike | undefined, seen),
         )
-        await server.settle()
-      }
-      await serve(opaqueOptions)
-      const warnings = locationsOf(seen, 'warning')
-      expect(warnings).not.toEqual([])
-      expect(warnings).toEqual(warnings.map(() => opaqueOptionsAt))
-      seen.length = 0
-      await serve(invalidGroupings)
-      const errors = locationsOf(seen, 'error')
-      expect(errors).not.toEqual([])
-      expect(errors).toEqual(errors.map(() => invalidGroupingsAt))
-    },
-    timeout,
-  )
+      },
+    }
+    const serve = async (route: string) => {
+      const server = await closeAtEnd(() =>
+        createRsbuildDevServer({
+          dir: appsDir,
+          prefix: '.diagnostic-location-rsbuild-',
+          entry: 'main.tsx',
+          files: {
+            'main.tsx': `import { Route } from './routes/index'\n;(globalThis as any).__route = Route\n`,
+            'routes/__root.tsx': rootRoute,
+            'routes/index.tsx': route,
+          },
+          plugins: ({ root }) => [
+            pluginReact({ fastRefresh: false }),
+            recorder,
+            {
+              name: 'diagnostic-location-router',
+              setup(api) {
+                api.modifyRspackConfig((config) => {
+                  config.plugins.push(
+                    rspackRouter({
+                      target: 'react',
+                      autoCodeSplitting: true,
+                      routesDirectory: path.join(root, 'routes'),
+                      generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
+                    }),
+                  )
+                })
+              },
+            },
+          ],
+        }),
+      )
+      await server.settle()
+    }
+    await serve(opaqueOptions)
+    const warnings = locationsOf(seen, 'warning')
+    expect(warnings).not.toEqual([])
+    expect(warnings).toEqual(warnings.map(() => opaqueOptionsAt))
+    seen.length = 0
+    await serve(invalidGroupings)
+    const errors = locationsOf(seen, 'error')
+    expect(errors).not.toEqual([])
+    expect(errors).toEqual(errors.map(() => invalidGroupingsAt))
+  })
 })

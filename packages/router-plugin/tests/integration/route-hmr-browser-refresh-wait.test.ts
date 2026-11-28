@@ -18,8 +18,6 @@ import { describe } from 'vitest'
 import { it } from '../test'
 import type { RouteHmrPage } from '../route-hmr-page'
 
-const timeout = 90_000
-
 const inPlace = { reloaded: false, errors: [] }
 
 /** The index route: a loader and a component that counts its clicks. */
@@ -117,36 +115,35 @@ async function clickOnce(app: RouteHmrPage) {
 describe.each(['vite', 'rsbuild'] as const)(
   '%s: a loader edit of a React route',
   (bundler) => {
-    it(
-      'whose component is split shows the new data without waiting for React Refresh, keeping the component state',
-      { timeout },
-      async ({ expect, openRouteHmrPage }) => {
-        const app = await openRouteHmrPage({
-          bundler,
-          files: { 'routes/index.tsx': route('v1') },
-          ready: 'page data v1 count 0',
-        })
-        await clickOnce(app)
-        const { clock } = app.page.page
-        await clock.install()
-        await clock.pauseAt(Date.now() + 1_000)
-        try {
-          expect(
-            await app.edit(
-              { 'routes/index.tsx': route('v2') },
-              'page data v2 count 1',
-            ),
-          ).toEqual(inPlace)
-        } finally {
-          await clock.resume()
-        }
-        // React Refresh's pass, once it runs, changes nothing
-        await app.click('button')
-        await app.page.waitForText('page data v2 count 2', {
-          selector: '#app',
-        })
-      },
-    )
+    it('whose component is split shows the new data without waiting for React Refresh, keeping the component state', async ({
+      expect,
+      openRouteHmrPage,
+    }) => {
+      const app = await openRouteHmrPage({
+        bundler,
+        files: { 'routes/index.tsx': route('v1') },
+        ready: 'page data v1 count 0',
+      })
+      await clickOnce(app)
+      const { clock } = app.page.page
+      await clock.install()
+      await clock.pauseAt(Date.now() + 1_000)
+      try {
+        expect(
+          await app.edit(
+            { 'routes/index.tsx': route('v2') },
+            'page data v2 count 1',
+          ),
+        ).toEqual(inPlace)
+      } finally {
+        await clock.resume()
+      }
+      // React Refresh's pass, once it runs, changes nothing
+      await app.click('button')
+      await app.page.waitForText('page data v2 count 2', {
+        selector: '#app',
+      })
+    })
 
     it.for([
       { name: 'an unsplit route', autoCodeSplitting: false, options: '' },
@@ -157,7 +154,6 @@ describe.each(['vite', 'rsbuild'] as const)(
       },
     ])(
       'of $name keeps the component state',
-      { timeout },
       async ({ autoCodeSplitting, options }, { expect, openRouteHmrPage }) => {
         const app = await openRouteHmrPage({
           bundler,
@@ -175,91 +171,89 @@ describe.each(['vite', 'rsbuild'] as const)(
       },
     )
 
-    it(
-      'held for React Refresh does not override a newer update applied at once',
-      { timeout },
-      async ({ expect, openRouteHmrPage }) => {
-        const app = await openRouteHmrPage({
-          bundler,
-          pluginOptions: { autoCodeSplitting: false },
-          files: { ...evaluationFiles, 'routes/index.ts': tsRoute(1) },
-          ready: 'evaluated 1 data L1card',
-        })
-        const { clock } = app.page.page
-        await clock.install()
-        await clock.pauseAt(Date.now() + 1_000)
-        try {
-          // evaluated, held until the refresh pass or its bound (timers)
-          expect(
-            await app.edit(
-              { 'routes/index.ts': tsRoute(2) },
-              'evaluated 1,2 data L1card',
-            ),
-          ).toEqual(inPlace)
-          // holds no component: applies at once
-          expect(
-            await app.edit(
-              { 'routes/index.ts': tsRoute(3) },
-              /^evaluated 1,2,3 data L3$/,
-            ),
-          ).toEqual(inPlace)
-          // the held update's timers run: it is older than the route's
-          // latest evaluation, which stays
-          await clock.runFor(1_000)
-        } finally {
-          await clock.resume()
-        }
+    it('held for React Refresh does not override a newer update applied at once', async ({
+      expect,
+      openRouteHmrPage,
+    }) => {
+      const app = await openRouteHmrPage({
+        bundler,
+        pluginOptions: { autoCodeSplitting: false },
+        files: { ...evaluationFiles, 'routes/index.ts': tsRoute(1) },
+        ready: 'evaluated 1 data L1card',
+      })
+      const { clock } = app.page.page
+      await clock.install()
+      await clock.pauseAt(Date.now() + 1_000)
+      try {
+        // evaluated, held until the refresh pass or its bound (timers)
         expect(
-          await app.evaluate(`(() => {
+          await app.edit(
+            { 'routes/index.ts': tsRoute(2) },
+            'evaluated 1,2 data L1card',
+          ),
+        ).toEqual(inPlace)
+        // holds no component: applies at once
+        expect(
+          await app.edit(
+            { 'routes/index.ts': tsRoute(3) },
+            /^evaluated 1,2,3 data L3$/,
+          ),
+        ).toEqual(inPlace)
+        // the held update's timers run: it is older than the route's
+        // latest evaluation, which stays
+        await clock.runFor(1_000)
+      } finally {
+        await clock.resume()
+      }
+      expect(
+        await app.evaluate(`(() => {
             const options = window.__APP_ROUTER__.routesById['/'].options
             return { loader: options.loader(), component: 'component' in options }
           })()`),
-        ).toEqual({ loader: 'L3', component: false })
-        await app.page.waitForText(/^evaluated 1,2,3 data L3$/, {
-          selector: '#app',
-        })
-      },
-    )
+      ).toEqual({ loader: 'L3', component: false })
+      await app.page.waitForText(/^evaluated 1,2,3 data L3$/, {
+        selector: '#app',
+      })
+    })
 
     // Bug: the older update's commit loaded its own options, and the newer
     // one, seeing the route not loaded, never applied. Impact: the page kept
     // the previous save's component until the next save or a reload.
-    it(
-      'of a lazy route file held for React Refresh leaves the newest of two held updates applied',
-      { timeout },
-      async ({ expect, openRouteHmrPage }) => {
-        const app = await openRouteHmrPage({
-          bundler,
-          files: { ...lazyFiles, 'routes/index.lazy.ts': tsLazyFile(1) },
-          ready: 'evaluated 1 data Lcard 1',
-        })
-        const { clock } = app.page.page
-        await clock.install()
-        await clock.pauseAt(Date.now() + 1_000)
-        try {
-          // each evaluated, held until the refresh pass or its bound (timers)
-          for (const version of [2, 3]) {
-            expect(
-              await app.edit(
-                { 'routes/index.lazy.ts': tsLazyFile(version) },
-                `evaluated ${[1, 2, 3].slice(0, version).join(',')} data Lcard 1`,
-              ),
-            ).toEqual(inPlace)
-          }
-          await clock.runFor(1_000)
-        } finally {
-          await clock.resume()
+    it('of a lazy route file held for React Refresh leaves the newest of two held updates applied', async ({
+      expect,
+      openRouteHmrPage,
+    }) => {
+      const app = await openRouteHmrPage({
+        bundler,
+        files: { ...lazyFiles, 'routes/index.lazy.ts': tsLazyFile(1) },
+        ready: 'evaluated 1 data Lcard 1',
+      })
+      const { clock } = app.page.page
+      await clock.install()
+      await clock.pauseAt(Date.now() + 1_000)
+      try {
+        // each evaluated, held until the refresh pass or its bound (timers)
+        for (const version of [2, 3]) {
+          expect(
+            await app.edit(
+              { 'routes/index.lazy.ts': tsLazyFile(version) },
+              `evaluated ${[1, 2, 3].slice(0, version).join(',')} data Lcard 1`,
+            ),
+          ).toEqual(inPlace)
         }
-        expect(
-          await app.evaluate(
-            `window.__APP_ROUTER__.routesById['/'].options.component.name`,
-          ),
-        ).toBe('Card3')
-        await app.page.waitForText('evaluated 1,2,3 data Lcard 3', {
-          selector: '#app',
-        })
-        expect(app.loads()).toBe(1)
-      },
-    )
+        await clock.runFor(1_000)
+      } finally {
+        await clock.resume()
+      }
+      expect(
+        await app.evaluate(
+          `window.__APP_ROUTER__.routesById['/'].options.component.name`,
+        ),
+      ).toBe('Card3')
+      await app.page.waitForText('evaluated 1,2,3 data Lcard 3', {
+        selector: '#app',
+      })
+      expect(app.loads()).toBe(1)
+    })
   },
 )

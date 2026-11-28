@@ -32,7 +32,6 @@ const layouts = Object.fromEntries(
 // error, and later edits of the new layout never showed either.
 describe.each(['react', 'solid'] as const)(
   'vite, %s: a same-named component imported from another module',
-  { timeout: 60_000 },
   (target) => {
     test.for([
       {
@@ -122,7 +121,6 @@ export const Route = createFileRoute('/')({ component: flag ? Wide : Narrow })
 `
   test.for([false, true])(
     'flipping the condition shows the other component (autoCodeSplitting: %s)',
-    { timeout: 60_000 },
     async (autoCodeSplitting, { expect, openRouteHmrPage }) => {
       const app = await openRouteHmrPage({
         pluginOptions: { autoCodeSplitting },
@@ -149,40 +147,35 @@ function Page() {
 }
 export const Route = createFileRoute('/')({ component: Object.freeze(memo(Page)) })
 `
-  test(
-    'renders, and an edit shows',
-    { timeout: 60_000 },
-    async ({ expect, openRouteHmrPage }) => {
-      const app = await openRouteHmrPage({
-        files: { 'routes/index.tsx': route('v1') },
-        ready: 'frozen page v1',
-      })
-      const edited = await app.edit(
-        { 'routes/index.tsx': route('v2') },
-        'frozen page v2',
-      )
-      expect(edited.errors).toEqual([])
-    },
-  )
+  test('renders, and an edit shows', async ({ expect, openRouteHmrPage }) => {
+    const app = await openRouteHmrPage({
+      files: { 'routes/index.tsx': route('v1') },
+      ready: 'frozen page v1',
+    })
+    const edited = await app.edit(
+      { 'routes/index.tsx': route('v2') },
+      'frozen page v2',
+    )
+    expect(edited.errors).toEqual([])
+  })
 
   // A frozen component another module exports: the chunk that reads it
   // marks nothing on it (a mark would throw as the chunk evaluates)
-  test(
-    'given as a named import renders',
-    { timeout: 60_000 },
-    async ({ expect, openRouteHmrPage }) => {
-      const app = await openRouteHmrPage({
-        files: {
-          'page.tsx': `export const Page = Object.freeze(() => <p>frozen page</p>)\n`,
-          'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+  test('given as a named import renders', async ({
+    expect,
+    openRouteHmrPage,
+  }) => {
+    const app = await openRouteHmrPage({
+      files: {
+        'page.tsx': `export const Page = Object.freeze(() => <p>frozen page</p>)\n`,
+        'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { Page } from '../page'
 export const Route = createFileRoute('/')({ component: Page })
 `,
-        },
-        ready: 'frozen page',
-      })
-      // (split: the chunk reads the frozen component)
-      expect(app.splitOutputs()).toBeGreaterThan(0)
-    },
-  )
+      },
+      ready: 'frozen page',
+    })
+    // (split: the chunk reads the frozen component)
+    expect(app.splitOutputs()).toBeGreaterThan(0)
+  })
 })

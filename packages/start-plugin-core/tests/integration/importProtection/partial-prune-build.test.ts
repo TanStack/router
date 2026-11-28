@@ -23,76 +23,62 @@ import {
 } from './partial-prune-cases'
 import { importersIn } from './hosts'
 
-const timeout = 90_000
-
 describe.each(startBundlers)('%s build', (bundler) => {
-  test(
-    'mock mode: each partly kept import gets the mock, and its importer is reported',
-    async () => {
-      const built = await buildStart({
+  test('mock mode: each partly kept import gets the mock, and its importer is reported', async () => {
+    const built = await buildStart({
+      bundler,
+      files: partialPruneApp,
+      entry: 'src/entry.ts',
+      start: {
+        importProtection: { ...partialPruneProtection, behavior: 'mock' },
+      },
+    })
+    const { result } = await built.client.run(
+      `${describeValuePrelude}${readLeaks}`,
+    )
+    expect({
+      ...(result as object),
+      realCode: built.client.where(realMark),
+      reported: importersIn(built, 'client'),
+      serverRealCode: built.ssr.where(clientMark),
+      serverReported: importersIn(built, 'server'),
+    }).toEqual({
+      ...mockedLeaks,
+      realCode: 'nowhere',
+      reported: expectedImporters,
+      serverRealCode: 'nowhere',
+      serverReported: expectedServerImporters,
+    })
+  })
+
+  test('error mode: the build fails, naming the importer of each partly kept import', async () => {
+    const error = await rejection(
+      buildStart({
         bundler,
         files: partialPruneApp,
         entry: 'src/entry.ts',
         start: {
-          importProtection: { ...partialPruneProtection, behavior: 'mock' },
+          importProtection: { ...partialPruneProtection, behavior: 'error' },
         },
-      })
-      const { result } = await built.client.run(
-        `${describeValuePrelude}${readLeaks}`,
-      )
-      expect({
-        ...(result as object),
-        realCode: built.client.where(realMark),
-        reported: importersIn(built, 'client'),
-        serverRealCode: built.ssr.where(clientMark),
-        serverReported: importersIn(built, 'server'),
-      }).toEqual({
-        ...mockedLeaks,
-        realCode: 'nowhere',
-        reported: expectedImporters,
-        serverRealCode: 'nowhere',
-        serverReported: expectedServerImporters,
-      })
-    },
-    timeout,
-  )
+      }),
+    )
+    expect(importersIn(error, 'client')).toEqual(expectedImporters)
+  })
 
-  test(
-    'error mode: the build fails, naming the importer of each partly kept import',
-    async () => {
-      const error = await rejection(
-        buildStart({
-          bundler,
-          files: partialPruneApp,
-          entry: 'src/entry.ts',
-          start: {
-            importProtection: { ...partialPruneProtection, behavior: 'error' },
-          },
-        }),
-      )
-      expect(importersIn(error, 'client')).toEqual(expectedImporters)
-    },
-    timeout,
-  )
-
-  test(
-    'error mode: the build fails, naming the importer of a partly kept import on the server',
-    async () => {
-      const error = await rejection(
-        buildStart({
-          bundler,
-          files: serverCaseApp,
-          entry: 'src/entry.ts',
-          start: {
-            importProtection: { ...partialPruneProtection, behavior: 'error' },
-          },
-        }),
-      )
-      expect({
-        client: importersIn(error, 'client'),
-        server: importersIn(error, 'server'),
-      }).toEqual({ client: [], server: expectedServerImporters })
-    },
-    timeout,
-  )
+  test('error mode: the build fails, naming the importer of a partly kept import on the server', async () => {
+    const error = await rejection(
+      buildStart({
+        bundler,
+        files: serverCaseApp,
+        entry: 'src/entry.ts',
+        start: {
+          importProtection: { ...partialPruneProtection, behavior: 'error' },
+        },
+      }),
+    )
+    expect({
+      client: importersIn(error, 'client'),
+      server: importersIn(error, 'server'),
+    }).toEqual({ client: [], server: expectedServerImporters })
+  })
 })

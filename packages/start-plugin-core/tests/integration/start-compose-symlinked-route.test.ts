@@ -17,8 +17,6 @@ import {
   startPageEntries,
 } from './start-compose-app'
 
-const timeout = 60_000
-
 // the component's module imports the stylesheet: it loads with the split
 // component, and the server's manifest attributes it to the route
 const route = `import { createFileRoute } from '@tanstack/react-router'
@@ -44,7 +42,6 @@ export const Page = () => <p className="alpha">MARK_ALPHA</p>
 describe.each(startBundlers)('%s build, served', (bundler) => {
   test.for([false, true])(
     'the document of the route links its stylesheet (route file symlinked: %s)',
-    { timeout },
     async (linked: boolean) => {
       const build = await buildStart({
         bundler,

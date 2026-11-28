@@ -69,7 +69,6 @@ test.each(['webpack', 'rspack'] as const)(
       'the route tree after the watch session closed',
     ).toBe(tree)
   },
-  60_000,
 )
 
 /** A virtual route config with `page.js` at `pagePath`, evaluated slowly. */
@@ -134,7 +133,6 @@ export { default as routeConfigSource } from './routes.ts?source'
         .filter((path) => path !== '/second'),
     ).toEqual([])
   },
-  60_000,
 )
 
 /** A virtual route config with `contact.js` at `/contact`, or the root alone. */
@@ -216,5 +214,4 @@ export { Route as contact } from './routes/contact.js'
         .filter((build) => build.error || build.errors.length),
     ).toEqual([])
   },
-  60_000,
 )

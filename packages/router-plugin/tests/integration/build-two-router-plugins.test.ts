@@ -13,7 +13,6 @@ import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import { describe, expect, test } from 'vitest'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
 import { build, buildWithRsbuild, head, rootRoute } from '../build-harness'
-import { timeout } from '../production-bundle'
 import type { RouterPluginOptions } from '../build-harness'
 import type { BuildResult } from '@tanstack/compiler-test-utils/build-harness'
 
@@ -45,46 +44,38 @@ function expectBothSplit(app: BuildResult) {
 }
 
 describe.each(['vite', 'webpack', 'rspack'] as const)('%s', (bundler) => {
-  test(
-    'each instance splits its own tree',
-    async () => {
-      const { tanstackRouter } = await import(`../../src/${bundler}`)
-      const app = await build({
-        bundler,
-        env: 'client',
-        files,
-        routerPlugins: (config) => [
-          tanstackRouter(config),
-          tanstackRouter(widgetOptions(path.dirname(config.routesDirectory!))),
-        ],
-      })
-      expectBothSplit(app)
-    },
-    timeout,
-  )
-})
-
-test(
-  'rsbuild: each instance splits its own tree',
-  async () => {
-    const { tanstackRouter } = await import('../../src/rspack')
-    const { root } = await closeAtEnd(
-      () =>
-        createApp({
-          dir: harnessDir,
-          files,
-        }),
-      (opened) => opened.dispose(),
-    )
-    // (the app exists: the second instance's options name its root)
-    const app = await buildWithRsbuild({
-      root,
-      files: {},
-      rsbuildConfig: {
-        tools: { rspack: { plugins: [tanstackRouter(widgetOptions(root))] } },
-      },
+  test('each instance splits its own tree', async () => {
+    const { tanstackRouter } = await import(`../../src/${bundler}`)
+    const app = await build({
+      bundler,
+      env: 'client',
+      files,
+      routerPlugins: (config) => [
+        tanstackRouter(config),
+        tanstackRouter(widgetOptions(path.dirname(config.routesDirectory!))),
+      ],
     })
     expectBothSplit(app)
-  },
-  timeout,
-)
+  })
+})
+
+test('rsbuild: each instance splits its own tree', async () => {
+  const { tanstackRouter } = await import('../../src/rspack')
+  const { root } = await closeAtEnd(
+    () =>
+      createApp({
+        dir: harnessDir,
+        files,
+      }),
+    (opened) => opened.dispose(),
+  )
+  // (the app exists: the second instance's options name its root)
+  const app = await buildWithRsbuild({
+    root,
+    files: {},
+    rsbuildConfig: {
+      tools: { rspack: { plugins: [tanstackRouter(widgetOptions(root))] } },
+    },
+  })
+  expectBothSplit(app)
+})

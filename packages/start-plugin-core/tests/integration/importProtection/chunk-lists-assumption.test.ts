@@ -19,8 +19,6 @@ import { startBundlers } from '../../build-harness'
 import { buildStart } from '../../build-start'
 import { importersIn } from './hosts'
 
-const timeout = 120_000
-
 /** The denied file of an importer: `src/lib/<name>.server.ts`. */
 const deniedA = `export const a = () => 'MARK_A'
 export const unused = 1
@@ -84,25 +82,21 @@ const mockOf = (importer: string) =>
   )
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  test(
-    "a mock is in the output exactly when the bundler's graph says it survived",
-    async () => {
-      const build = await buildStart({
-        bundler,
-        files,
-        entry: 'src/entry.ts',
-        start: { importProtection: { behavior: 'mock', mockAccess: 'warn' } },
-      })
-      const reported = importersIn(build, 'client')
-      const inText = importers.filter(
-        (importer) => build.client.where(mockOf(importer)) !== 'nowhere',
-      )
-      const survived = ['src/effect.ts', 'src/lazy.ts', 'src/used.ts']
-      expect({ reported, inText: inText.sort() }).toEqual({
-        reported: survived,
-        inText: survived,
-      })
-    },
-    timeout,
-  )
+  test("a mock is in the output exactly when the bundler's graph says it survived", async () => {
+    const build = await buildStart({
+      bundler,
+      files,
+      entry: 'src/entry.ts',
+      start: { importProtection: { behavior: 'mock', mockAccess: 'warn' } },
+    })
+    const reported = importersIn(build, 'client')
+    const inText = importers.filter(
+      (importer) => build.client.where(mockOf(importer)) !== 'nowhere',
+    )
+    const survived = ['src/effect.ts', 'src/lazy.ts', 'src/used.ts']
+    expect({ reported, inText: inText.sort() }).toEqual({
+      reported: survived,
+      inText: survived,
+    })
+  })
 })

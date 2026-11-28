@@ -23,8 +23,6 @@ import { inPlace } from '../route-hmr-edit'
 import { test } from '../test'
 import type { RouteHmrPage } from '../route-hmr-page'
 
-const timeout = 90_000
-
 const FILE = 'routes/index.tsx'
 
 /**
@@ -61,12 +59,12 @@ async function expectSharedModuleLoaded(
 describe.each(['vite', 'rsbuild'] as const)(
   '%s: a React route whose split options share a binding',
   (bundler) => {
-    test(
-      'an edit of the shared component, then of the inline route component, shows in place',
-      { timeout },
-      async ({ expect, openRouteHmrPage }) => {
-        const route = (page: string, badge: string) =>
-          `import { createFileRoute } from '@tanstack/react-router'
+    test('an edit of the shared component, then of the inline route component, shows in place', async ({
+      expect,
+      openRouteHmrPage,
+    }) => {
+      const route = (page: string, badge: string) =>
+        `import { createFileRoute } from '@tanstack/react-router'
 function Badge() {
   return <i>badge ${badge}</i>
 }
@@ -75,29 +73,28 @@ export const Route = createFileRoute('/')({
   errorComponent: () => <Badge />,
 })
 `
-        const app = await openRouteHmrPage({
-          bundler,
-          files: { [FILE]: route('v1', 'v1') },
-          ready: 'page v1 badge v1',
-        })
-        await expectSharedModuleLoaded(expect, app, bundler)
-        expect(
-          await app.edit({ [FILE]: route('v1', 'v2') }, 'page v1 badge v2'),
-          'edit of the shared component',
-        ).toEqual(inPlace)
-        expect(
-          await app.edit({ [FILE]: route('v2', 'v2') }, 'page v2 badge v2'),
-          'edit of the route component',
-        ).toEqual(inPlace)
-      },
-    )
+      const app = await openRouteHmrPage({
+        bundler,
+        files: { [FILE]: route('v1', 'v1') },
+        ready: 'page v1 badge v1',
+      })
+      await expectSharedModuleLoaded(expect, app, bundler)
+      expect(
+        await app.edit({ [FILE]: route('v1', 'v2') }, 'page v1 badge v2'),
+        'edit of the shared component',
+      ).toEqual(inPlace)
+      expect(
+        await app.edit({ [FILE]: route('v2', 'v2') }, 'page v2 badge v2'),
+        'edit of the route component',
+      ).toEqual(inPlace)
+    })
 
-    test(
-      'an edit of the shared component, then of the route component, keeps the route component state',
-      { timeout },
-      async ({ expect, openRouteHmrPage }) => {
-        const route = (page: string, badge: string) =>
-          `import { createFileRoute } from '@tanstack/react-router'
+    test('an edit of the shared component, then of the route component, keeps the route component state', async ({
+      expect,
+      openRouteHmrPage,
+    }) => {
+      const route = (page: string, badge: string) =>
+        `import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 function Badge() {
   return <i>badge ${badge}</i>
@@ -111,32 +108,31 @@ export const Route = createFileRoute('/')({
   errorComponent: () => <p>failed <Badge /></p>,
 })
 `
-        const app = await openRouteHmrPage({
-          bundler,
-          files: { [FILE]: route('v1', 'v1') },
-          ready: 'page v1 count 0 badge v1',
-        })
-        await expectSharedModuleLoaded(expect, app, bundler)
-        await app.click('button')
-        await app.page.waitForText('page v1 count 1 badge v1', {
-          selector: '#app',
-        })
-        expect(
-          await app.edit(
-            { [FILE]: route('v1', 'v2') },
-            'page v1 count 1 badge v2',
-          ),
-          'edit of the shared component',
-        ).toEqual(inPlace)
-        expect(
-          await app.edit(
-            { [FILE]: route('v2', 'v2') },
-            'page v2 count 1 badge v2',
-          ),
-          'edit of the route component',
-        ).toEqual(inPlace)
-      },
-    )
+      const app = await openRouteHmrPage({
+        bundler,
+        files: { [FILE]: route('v1', 'v1') },
+        ready: 'page v1 count 0 badge v1',
+      })
+      await expectSharedModuleLoaded(expect, app, bundler)
+      await app.click('button')
+      await app.page.waitForText('page v1 count 1 badge v1', {
+        selector: '#app',
+      })
+      expect(
+        await app.edit(
+          { [FILE]: route('v1', 'v2') },
+          'page v1 count 1 badge v2',
+        ),
+        'edit of the shared component',
+      ).toEqual(inPlace)
+      expect(
+        await app.edit(
+          { [FILE]: route('v2', 'v2') },
+          'page v2 count 1 badge v2',
+        ),
+        'edit of the route component',
+      ).toEqual(inPlace)
+    })
 
     // The unshared equivalent (a value the component and the loader read):
     // route-hmr-browser.test.ts "a value the loader and the component
@@ -156,7 +152,6 @@ export const Route = createFileRoute('/')({
       },
     ])(
       'an edit of a shared plain helper ($name) shows in place, keeping the route component state',
-      { timeout },
       async ({ helper, read }, { expect, openRouteHmrPage }) => {
         const route = (v: string) =>
           `import { createFileRoute } from '@tanstack/react-router'

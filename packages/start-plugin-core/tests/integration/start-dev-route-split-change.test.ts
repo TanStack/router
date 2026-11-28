@@ -19,8 +19,6 @@ import { openTestPage } from '../test-page'
 import { startDevServer } from '../dev-server'
 import { reactApp } from './hydrate-dev-edits'
 
-const timeout = 90_000
-
 const route = (text: string, exported = false) =>
   `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({ component: Page })
@@ -37,47 +35,39 @@ const app = {
 }
 
 describe('Vite dev, Start: route edits after the split layout changed and changed back', () => {
-  test(
-    'the component exported, then not: a text edit applies in place',
-    async () => {
-      const server = await startDevServer({
-        start: {},
-        browser: true,
-        plugins: [react()],
-        files: app,
-      })
-      const page = await openTestPage(server.url!)
-      const inFlight = trackRequests(page)
-      await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
-      await page.waitForText('text-v1', { selector: '[data-probe=page]' })
-      const shows = async (
-        files: Record<string, string>,
-        text: string,
-        { mayReload = false } = {},
-      ) => {
-        const loads = page.loads()
-        await server.edit(files)
-        await settlePage(server, page, inFlight)
-        await page.waitForText(text, { selector: '[data-probe=page]' })
-        if (!mayReload) {
-          expect(page.loads(), `the edit to ${text} reloaded the page`).toBe(
-            loads,
-          )
-        }
+  test('the component exported, then not: a text edit applies in place', async () => {
+    const server = await startDevServer({
+      start: {},
+      browser: true,
+      plugins: [react()],
+      files: app,
+    })
+    const page = await openTestPage(server.url!)
+    const inFlight = trackRequests(page)
+    await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
+    await page.waitForText('text-v1', { selector: '[data-probe=page]' })
+    const shows = async (
+      files: Record<string, string>,
+      text: string,
+      { mayReload = false } = {},
+    ) => {
+      const loads = page.loads()
+      await server.edit(files)
+      await settlePage(server, page, inFlight)
+      await page.waitForText(text, { selector: '[data-probe=page]' })
+      if (!mayReload) {
+        expect(page.loads(), `the edit to ${text} reloaded the page`).toBe(
+          loads,
+        )
       }
-      // Exporting the component adds an export of the module: plugin-react
-      // validates the route file's own exports and reloads, as on main
-      await shows(
-        { 'src/routes/index.tsx': route('text-v2', true) },
-        'text-v2',
-        {
-          mayReload: true,
-        },
-      )
-      await shows({ 'src/routes/index.tsx': route('text-v3') }, 'text-v3')
-      await shows({ 'src/routes/index.tsx': route('text-v4') }, 'text-v4')
-      expect(page.errors).toEqual([])
-    },
-    timeout,
-  )
+    }
+    // Exporting the component adds an export of the module: plugin-react
+    // validates the route file's own exports and reloads, as on main
+    await shows({ 'src/routes/index.tsx': route('text-v2', true) }, 'text-v2', {
+      mayReload: true,
+    })
+    await shows({ 'src/routes/index.tsx': route('text-v3') }, 'text-v3')
+    await shows({ 'src/routes/index.tsx': route('text-v4') }, 'text-v4')
+    expect(page.errors).toEqual([])
+  })
 })

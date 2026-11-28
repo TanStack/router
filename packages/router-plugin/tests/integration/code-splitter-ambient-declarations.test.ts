@@ -66,15 +66,11 @@ describe('a split component reads a member of an ambient enum the route module d
     // (Rsbuild's SWC inlines no `declare enum`: there both modules read the
     // global, which this app does not define)
     { declaration: 'export declare enum Flags { On = 1 }', bundler: 'vite' },
-  ])(
-    '$declaration ($bundler)',
-    async ({ declaration, bundler }) => {
-      expect(await loaderAndComponent(bundler, declaration)).toEqual([
-        1,
-        '<p>1</p>',
-        'function',
-      ])
-    },
-    60_000,
-  )
+  ])('$declaration ($bundler)', async ({ declaration, bundler }) => {
+    expect(await loaderAndComponent(bundler, declaration)).toEqual([
+      1,
+      '<p>1</p>',
+      'function',
+    ])
+  })
 })

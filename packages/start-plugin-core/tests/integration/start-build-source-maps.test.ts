@@ -14,8 +14,6 @@ import { buildStart } from '../build-start'
 import type { StartBundler } from '../build-harness'
 import type { InlineConfig } from 'vite'
 
-const timeout = 60_000
-
 /** 1-based line of the first occurrence of `needle` in `code`. */
 function lineOf(code: string, needle: string) {
   return code.slice(0, code.indexOf(needle)).split('\n').length
@@ -66,48 +64,43 @@ describe.each(startBundlers)('%s build', (bundler) => {
         text: fns,
       })
     },
-    timeout,
   )
 
   // Import protection rewrites the denied import of the module (mock mode),
   // and compiling drops the type-only lines before the throw.
-  test(
-    'client, mock mode: a throw in a module whose denied import is mocked maps to its line in the source file (minified)',
-    async () => {
-      const { client } = await buildStart({
-        bundler,
-        minify: true,
-        sourcemap: true,
-        files: {
-          'node_modules/db-lib/package.json': JSON.stringify({
-            name: 'db-lib',
-            type: 'module',
-            exports: { '.': './index.js' },
-          }),
-          'node_modules/db-lib/index.js': `export const secret = 1\n`,
-          'src/fail.ts': mockedImporter,
-          'src/entry.ts': `export { fail } from './fail'\n`,
+  test('client, mock mode: a throw in a module whose denied import is mocked maps to its line in the source file (minified)', async () => {
+    const { client } = await buildStart({
+      bundler,
+      minify: true,
+      sourcemap: true,
+      files: {
+        'node_modules/db-lib/package.json': JSON.stringify({
+          name: 'db-lib',
+          type: 'module',
+          exports: { '.': './index.js' },
+        }),
+        'node_modules/db-lib/index.js': `export const secret = 1\n`,
+        'src/fail.ts': mockedImporter,
+        'src/entry.ts': `export { fail } from './fail'\n`,
+      },
+      entry: 'src/entry.ts',
+      start: {
+        importProtection: {
+          behavior: 'mock',
+          client: { specifiers: ['db-lib'] },
         },
-        entry: 'src/entry.ts',
-        start: {
-          importProtection: {
-            behavior: 'mock',
-            client: { specifiers: ['db-lib'] },
-          },
-        },
-      })
-      const { result: stack } = await client.run(
-        `try { entry.fail() } catch (error) { return error.stack }`,
-      )
-      expect(stack).toMatch(/MARK_THROW/)
-      const { file, line } = originalFrameOf(client, stack as string) ?? {}
-      expect({ file, line }).toEqual({
-        file: 'src/fail.ts',
-        line: lineOf(mockedImporter, 'throw new Error'),
-      })
-    },
-    timeout,
-  )
+      },
+    })
+    const { result: stack } = await client.run(
+      `try { entry.fail() } catch (error) { return error.stack }`,
+    )
+    expect(stack).toMatch(/MARK_THROW/)
+    const { file, line } = originalFrameOf(client, stack as string) ?? {}
+    expect({ file, line }).toEqual({
+      file: 'src/fail.ts',
+      line: lineOf(mockedImporter, 'throw new Error'),
+    })
+  })
 })
 
 const mockedImporter = `import { secret } from 'db-lib'
@@ -181,21 +174,16 @@ try {
 test.each(builds)(
   'vite build: client: a throw in a split route component maps to its line in the route file ($name)',
   (options) => expectRouteThrowMapsToRouteFile('vite', options),
-  timeout,
 )
 
 // The harness builds for `esnext`; Vite's default client target lowers
 // newer syntax, which moves code around once more.
 // Source: review.
-test(
-  "vite build with Vite's default client target: client: a throw in a split route component maps to its line in the route file (minified)",
-  () =>
-    expectRouteThrowMapsToRouteFile('vite', {
-      minify: true,
-      viteConfig: viteDefaultClientTarget,
-    }),
-  timeout,
-)
+test("vite build with Vite's default client target: client: a throw in a split route component maps to its line in the route file (minified)", () =>
+  expectRouteThrowMapsToRouteFile('vite', {
+    minify: true,
+    viteConfig: viteDefaultClientTarget,
+  }))
 
 // The router compiler's Rspack loader passes its source map on, so Rsbuild
 // maps the chunk to the route file (unplugin's transform loader dropped it
@@ -203,5 +191,4 @@ test(
 test.each(builds)(
   'rsbuild build: client: a throw in a split route component maps to its line in the route file ($name)',
   (options) => expectRouteThrowMapsToRouteFile('rsbuild', options),
-  timeout,
 )

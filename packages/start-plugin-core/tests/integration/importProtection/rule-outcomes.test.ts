@@ -14,7 +14,6 @@ import { originalLocation } from '../../importProtection/original-location'
 import { runViteClient, startBrowserProtectedDevServer } from './client-pages'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'
 
-const timeout = 60_000
 const packageFiles = (name: string) => ({
   [`node_modules/${name}/package.json`]: JSON.stringify({
     name,
@@ -69,7 +68,6 @@ describe.each(startBundlers)('%s public import rules', (bundler) => {
         originalLocation('client src/entry.ts:2:21', 1),
       ])
     },
-    timeout,
   )
 
   test.each(['private-sdk-ui', 'private-sdk2'])(
@@ -92,7 +90,6 @@ describe.each(startBundlers)('%s public import rules', (bundler) => {
         `REAL_${name}`,
       )
     },
-    timeout,
   )
 
   test.skipIf(process.platform !== 'linux')(
@@ -117,70 +114,61 @@ describe.each(startBundlers)('%s public import rules', (bundler) => {
         'REAL_private-sdk',
       )
     },
-    timeout,
   )
 
-  test(
-    'inherited member names of a mocked import remain safe to consume',
-    async () => {
-      const build = await buildStart({
-        bundler,
-        entry: 'src/entry.ts',
-        files: {
-          'src/private.server.ts': `export default () => 'MARK_SECRET'\n`,
-          'src/entry.ts': `import mock from './private.server'\nexport { mock }\n`,
-        },
-        start: { importProtection: { behavior: 'mock', mockAccess: 'off' } },
-      })
-      const { client } = build
-      expect(violationsOf(inEnvironment(build, 'client'))).toHaveLength(1)
-      expect(client.where('MARK_SECRET')).toBe('nowhere')
-      expect(
-        (
-          await client.run(`${probeMockPrelude}
+  test('inherited member names of a mocked import remain safe to consume', async () => {
+    const build = await buildStart({
+      bundler,
+      entry: 'src/entry.ts',
+      files: {
+        'src/private.server.ts': `export default () => 'MARK_SECRET'\n`,
+        'src/entry.ts': `import mock from './private.server'\nexport { mock }\n`,
+      },
+      start: { importProtection: { behavior: 'mock', mockAccess: 'off' } },
+    })
+    const { client } = build
+    expect(violationsOf(inEnvironment(build, 'client'))).toHaveLength(1)
+    expect(client.where('MARK_SECRET')).toBe('nowhere')
+    expect(
+      (
+        await client.run(`${probeMockPrelude}
 const mock = entry.mock
 mock.constructor.member()
 mock.__proto__.member()
 return [probeMock(mock.constructor), probeMock(mock.__proto__)]`)
-        ).result,
-      ).toEqual([safeMock, safeMock])
-    },
-    timeout,
-  )
+      ).result,
+    ).toEqual([safeMock, safeMock])
+  })
 })
 
 // A bare side-effect import is reachable user code in dev too (no build
 // tree-shaking can remove it before the adapter sees the edge).
-test(
-  'an extglob denies a bare client import of private-sdk',
-  async () => {
-    const files = {
-      ...packageFiles('private-sdk'),
-      'src/entry.ts': `import 'private-sdk'\nexport const live = 1\n`,
-    }
-    const server = await startProtectedDevServer(files, {
-      behavior: 'error',
-      client: { specifiers: ['@(private-sdk|internal-sdk)'] },
-    })
-    await rejection(server.load('/src/entry.ts'))
-    // (each time the dev server resolves the import, with behavior "error")
-    const reported = violationsOf(server)
-    expect(reported).not.toEqual([])
-    for (const violation of reported) {
-      expect(violation).toEqual(
-        expect.objectContaining({
-          environment: 'client',
-          specifier: 'private-sdk',
-        }),
-      )
-    }
-    // (at the bare import, line 1)
-    expect(receivedViolations(server.violations, server.root)).toEqual([
-      originalLocation('client src/entry.ts:1:1', 1),
-    ])
-  },
-  timeout,
-)
+test('an extglob denies a bare client import of private-sdk', async () => {
+  const files = {
+    ...packageFiles('private-sdk'),
+    'src/entry.ts': `import 'private-sdk'\nexport const live = 1\n`,
+  }
+  const server = await startProtectedDevServer(files, {
+    behavior: 'error',
+    client: { specifiers: ['@(private-sdk|internal-sdk)'] },
+  })
+  await rejection(server.load('/src/entry.ts'))
+  // (each time the dev server resolves the import, with behavior "error")
+  const reported = violationsOf(server)
+  expect(reported).not.toEqual([])
+  for (const violation of reported) {
+    expect(violation).toEqual(
+      expect.objectContaining({
+        environment: 'client',
+        specifier: 'private-sdk',
+      }),
+    )
+  }
+  // (at the bare import, line 1)
+  expect(receivedViolations(server.violations, server.root)).toEqual([
+    originalLocation('client src/entry.ts:1:1', 1),
+  ])
+})
 
 // J6.11: stateful RegExp flags must not make repeated public edges alternate
 // between permitted and denied.
@@ -215,5 +203,4 @@ return entry.readAll().map((value) => probeMock(value, 'REAL_private-sdk'))`,
       ),
     )
   },
-  timeout,
 )

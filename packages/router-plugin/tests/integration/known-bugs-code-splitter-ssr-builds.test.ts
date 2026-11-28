@@ -43,7 +43,6 @@ return [...loaded, await entry.render(entry.Route.options.component)]`,
     async ({ route, script, expected }) => {
       expect(await buildAndRun(route, script)).toEqual(expected)
     },
-    30_000,
   )
   // The entry re-exports `count` next to `Route`, as the script reads it.
   test.each([
@@ -73,7 +72,6 @@ return [await entry.render(component), await entry.render(component), entry.coun
         }),
       ).toEqual(expected)
     },
-    30_000,
   )
 })
 
@@ -120,7 +118,7 @@ export async function load() {
         },
       ),
     ).toEqual([null, 'loaded'])
-  }, 30_000)
+  })
 
   // Bug: the object form `loader: { handler }` cannot be split: the virtual
   // compiler throws "Unexpected splitNode type ☝️: ObjectExpression".
@@ -144,7 +142,6 @@ export async function load() {
         'loaded',
       ])
     },
-    30_000,
   )
 })
 
@@ -212,7 +209,7 @@ describe('app paths', () => {
         `an app in a directory named after ${name}`,
       ).toBe('<p>index</p>')
     }
-  }, 60_000)
+  })
 })
 
 describe('code that reads a split binding', () => {
@@ -249,7 +246,6 @@ PostsPage.title = 'Posts'
       )
       expect(result).toEqual(['Posts', '<p>posts</p>'])
     },
-    60_000,
   )
 
   // Bug: an imported component read by a split and an unsplit option: main
@@ -309,7 +305,6 @@ export default Page
           split: true,
         })
       },
-      60_000,
     )
   })
 })

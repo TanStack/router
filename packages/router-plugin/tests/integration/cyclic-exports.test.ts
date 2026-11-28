@@ -16,8 +16,6 @@ import { tanstackRouter } from '../../src/vite'
 import { build, buildWithRsbuild, head, rootRoute } from '../build-harness'
 import type { BuildResult } from '@tanstack/compiler-test-utils/build-harness'
 
-const timeout = 60_000
-
 const shapes = {
   'a base reading its subclass': {
     source: `export class Z { o() { return A } }
@@ -124,26 +122,22 @@ describe.each(Object.keys(builds))('on %s', (bundler) => {
     '%s',
     (name) => {
       const shape = shapes[name]
-      test(
-        'runs when the entry imports both exports',
-        async () => {
-          const app = await builds[bundler]!({
-            'routes/__root.tsx': rootRoute,
-            'routes/index.tsx': route(shape),
-            'entry.ts': entries(shape)['both exports'],
-          })
-          try {
-            const { result } = await app.run(
-              `const html = await entry.render(entry.Route.options.component)
+      test('runs when the entry imports both exports', async () => {
+        const app = await builds[bundler]!({
+          'routes/__root.tsx': rootRoute,
+          'routes/index.tsx': route(shape),
+          'entry.ts': entries(shape)['both exports'],
+        })
+        try {
+          const { result } = await app.run(
+            `const html = await entry.render(entry.Route.options.component)
 return [html, new entry.${shape.names[1]}() instanceof entry.${shape.names[0]}]`,
-            )
-            expect(result).toEqual(['<p>MARK_CYCLE_END</p>', true])
-          } finally {
-            await app.dispose()
-          }
-        },
-        timeout,
-      )
+          )
+          expect(result).toEqual(['<p>MARK_CYCLE_END</p>', true])
+        } finally {
+          await app.dispose()
+        }
+      })
     },
   )
 })
@@ -199,6 +193,5 @@ console.log(await entry.render(entry.Route.options.component))`,
       )
       expect(stdout.trim().split('\n').at(-1)).toBe('<p>MARK_CYCLE_END</p>')
     },
-    timeout,
   )
 })

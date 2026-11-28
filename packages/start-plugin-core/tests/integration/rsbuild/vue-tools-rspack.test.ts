@@ -15,8 +15,6 @@ import { closeAfterAll } from '../../file-end'
 import { buildStartShared, callByIdPrelude } from '../../build-harness'
 import type { StartBuild } from '../../build-harness'
 
-const timeout = 120_000
-
 /** vue-loader for Rspack, the one `@rsbuild/plugin-vue` uses. */
 const vueLoader = createRequire(
   createRequire(import.meta.url).resolve('@rsbuild/plugin-vue'),
@@ -110,7 +108,7 @@ describe.each([
         },
       }),
     )
-  }, timeout)
+  }, 120_000)
 
   test('a server fn of a plain <script> keeps its handler on the server, and the client calls it by id', async () => {
     expect(build.client.where('MARK_PLAIN')).toBe('nowhere')

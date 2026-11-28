@@ -14,8 +14,6 @@ import {
   twoRouters,
 } from './route-hmr-two-routers-cases'
 
-const timeout = 90_000
-
 const widgetLazy = (target: string) =>
   `import { createLazyRoute } from '@tanstack/${target}-router'
 export const Route = createLazyRoute('/')({ component: WidgetPage })
@@ -29,7 +27,6 @@ describe.each(hosts)(
   ({ bundler, target }) => {
     it.for(['widget-last', 'widget-first'] as const)(
       "a lazy route file's edits show in the app's route and leave the other router's alone (%s)",
-      { timeout },
       async (order, { expect, openRouteHmrPage }) => {
         const app = await openRouteHmrPage({
           bundler,

@@ -20,8 +20,6 @@ import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { rebuildModules } from '@tanstack/router-utils/compiler'
 import type { Rspack } from '@rsbuild/core'
 
-const timeout = 30_000
-
 interface LoaderState {
   /** Output per file name, instead of the file's text. */
   swap: Record<string, string>
@@ -153,89 +151,79 @@ const graph = {
 }
 
 describe(`Rspack ${rspack.rspackVersion}: rebuildModule calls of one tick`, () => {
-  test(
-    "are one pass: the entry module's callback comes once every module that stayed was built",
-    async () => {
-      const atEntry = await secondFinishMake(
-        graph,
-        // a.js no longer imports h.js: h.js leaves the graph
-        { swap: { 'a.js': 'export const a = 2\n' }, second: [] },
-        (compilation, moduleOf, runs) =>
-          // (what had run when the entry's callback came, once every
-          // callback came, or by the deadline)
-          new Promise<Array<string> | null>((resolve) => {
-            const names = ['entry.js', 'a.js', 'h.js', 'k.js']
-            let built: Array<string> | null = null
-            let called = 0
-            const timer = setTimeout(() => resolve(built), 10_000)
-            for (const name of names) {
-              compilation.rebuildModule(moduleOf(name), () => {
-                if (name === 'entry.js') {
-                  built = runs()
-                }
-                if (++called === names.length) {
-                  clearTimeout(timer)
-                  resolve(built)
-                }
-              })
-            }
-          }),
-      )
-      expect(atEntry?.sort()).toEqual(['a.js', 'entry.js', 'k.js'])
-    },
-    timeout,
-  )
-
-  test(
-    'rebuildModules settles when rebuilds remove modules or change their rule, and the graph holds the new builds',
-    async () => {
-      const result = await secondFinishMake(
-        {
-          ...graph,
-          'entry.js': `import { a } from './a.js'\nimport { k } from './k.js'\nimport { m } from './mid.js'\nconsole.log(a, k, m)\n`,
-          'mid.js': `import { x } from './x.js'\nexport const m = x\n`,
-          'x.js': `export const x = 1\n`,
-        },
-        {
-          swap: {
-            'a.js': 'export const a = 2\n',
-            'k.js': 'export const k = 2\n',
-          },
-          second: ['x.js'],
-        },
-        async (compilation, moduleOf) => {
-          const stale = ['h.js', 'a.js', 'x.js', 'k.js']
-          const modules = new Set(stale.map(moduleOf))
-          await rebuildModules(
-            compilation,
-            new Set([...modules].map((m) => resourceOf(m)!)),
-            (r) => r,
-          )
-          const built = new Map<string, Array<string>>()
-          for (const m of compilation.modules) {
-            const resource = resourceOf(m)
-            if (resource) {
-              const name = path.basename(resource)
-              built.set(name, [
-                ...(built.get(name) ?? []),
-                String(m.originalSource()?.source() ?? ''),
-              ])
-            }
+  test("are one pass: the entry module's callback comes once every module that stayed was built", async () => {
+    const atEntry = await secondFinishMake(
+      graph,
+      // a.js no longer imports h.js: h.js leaves the graph
+      { swap: { 'a.js': 'export const a = 2\n' }, second: [] },
+      (compilation, moduleOf, runs) =>
+        // (what had run when the entry's callback came, once every
+        // callback came, or by the deadline)
+        new Promise<Array<string> | null>((resolve) => {
+          const names = ['entry.js', 'a.js', 'h.js', 'k.js']
+          let built: Array<string> | null = null
+          let called = 0
+          const timer = setTimeout(() => resolve(built), 10_000)
+          for (const name of names) {
+            compilation.rebuildModule(moduleOf(name), () => {
+              if (name === 'entry.js') {
+                built = runs()
+              }
+              if (++called === names.length) {
+                clearTimeout(timer)
+                resolve(built)
+              }
+            })
           }
-          return Object.fromEntries(built)
+        }),
+    )
+    expect(atEntry?.sort()).toEqual(['a.js', 'entry.js', 'k.js'])
+  })
+
+  test('rebuildModules settles when rebuilds remove modules or change their rule, and the graph holds the new builds', async () => {
+    const result = await secondFinishMake(
+      {
+        ...graph,
+        'entry.js': `import { a } from './a.js'\nimport { k } from './k.js'\nimport { m } from './mid.js'\nconsole.log(a, k, m)\n`,
+        'mid.js': `import { x } from './x.js'\nexport const m = x\n`,
+        'x.js': `export const x = 1\n`,
+      },
+      {
+        swap: {
+          'a.js': 'export const a = 2\n',
+          'k.js': 'export const k = 2\n',
         },
-      )
-      expect(result['h.js']).toBeUndefined()
-      expect(result['a.js']).toEqual([
-        expect.stringContaining('export const a = 2'),
-      ])
-      expect(result['k.js']).toEqual([
-        expect.stringContaining('export const k = 2'),
-      ])
-      expect(result['x.js']).toEqual([
-        expect.stringContaining('/*second:x.js*/'),
-      ])
-    },
-    timeout,
-  )
+        second: ['x.js'],
+      },
+      async (compilation, moduleOf) => {
+        const stale = ['h.js', 'a.js', 'x.js', 'k.js']
+        const modules = new Set(stale.map(moduleOf))
+        await rebuildModules(
+          compilation,
+          new Set([...modules].map((m) => resourceOf(m)!)),
+          (r) => r,
+        )
+        const built = new Map<string, Array<string>>()
+        for (const m of compilation.modules) {
+          const resource = resourceOf(m)
+          if (resource) {
+            const name = path.basename(resource)
+            built.set(name, [
+              ...(built.get(name) ?? []),
+              String(m.originalSource()?.source() ?? ''),
+            ])
+          }
+        }
+        return Object.fromEntries(built)
+      },
+    )
+    expect(result['h.js']).toBeUndefined()
+    expect(result['a.js']).toEqual([
+      expect.stringContaining('export const a = 2'),
+    ])
+    expect(result['k.js']).toEqual([
+      expect.stringContaining('export const k = 2'),
+    ])
+    expect(result['x.js']).toEqual([expect.stringContaining('/*second:x.js*/')])
+  })
 })

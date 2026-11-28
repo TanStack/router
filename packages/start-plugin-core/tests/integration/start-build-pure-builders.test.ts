@@ -32,8 +32,6 @@ import {
 } from '../build-harness'
 import { buildStart } from '../build-start'
 
-const timeout = 120_000
-
 /** A client middleware sending `tag` (a marker the client output keeps). */
 const tagging = (tag: string) =>
   `createMiddleware({ type: 'function' }).client(({ next }) => next({ sendContext: { tag: '${tag}' } }))`
@@ -135,74 +133,68 @@ const lazyPaths = [
 ]
 
 describe.each(startBundlers)('a %s client build', (bundler) => {
-  test(
-    "loads Start's builder chains with the chunk that reads them, one instance each",
-    async () => {
-      const build = await buildStart({ bundler, files })
-      const reported = build.client.warnings
-      const warnings = (path: string) =>
-        findDiagnostics(reported, {
-          file: `src/routes/${path}.tsx`,
-          root: build.root,
-        })
-      // the server build agrees: nothing reported, the isomorphic fn's
-      // server implementation loads with the SSR chunk of the component
-      expect(
-        Object.fromEntries(
-          lazyPaths.map((path) => [
-            path,
-            findDiagnostics(build.ssr.warnings, {
-              file: `src/routes/${path}.tsx`,
-              root: build.root,
-            }),
-          ]),
-        ),
-      ).toEqual(Object.fromEntries(lazyPaths.map((path) => [path, []])))
-      expect(build.ssr.where('SERVER_isomorphic')).toBe('lazy')
-      // one module: Rolldown emits a module two chunks import as a chunk of
-      // its own (Rspack copies a small one into both chunks under one module
-      // id, which its runtime evaluates once)
-      const holding = (marker: string) =>
-        bundler === 'vite'
-          ? build.client.chunks.filter((c) => c.code.includes(marker)).length
-          : 1
-      expect(
-        Object.fromEntries(
-          lazyPaths.map((path) => [
-            path,
-            {
-              where: build.client.where(`MARK_${path}`),
-              chunks: holding(`MARK_${path}`),
-              warnings: warnings(path),
-            },
-          ]),
-        ),
-      ).toEqual(
-        Object.fromEntries(
-          lazyPaths.map((path) => [
-            path,
-            { where: 'lazy', chunks: 1, warnings: [] },
-          ]),
-        ),
-      )
-    },
-    timeout,
-  )
+  test("loads Start's builder chains with the chunk that reads them, one instance each", async () => {
+    const build = await buildStart({ bundler, files })
+    const reported = build.client.warnings
+    const warnings = (path: string) =>
+      findDiagnostics(reported, {
+        file: `src/routes/${path}.tsx`,
+        root: build.root,
+      })
+    // the server build agrees: nothing reported, the isomorphic fn's
+    // server implementation loads with the SSR chunk of the component
+    expect(
+      Object.fromEntries(
+        lazyPaths.map((path) => [
+          path,
+          findDiagnostics(build.ssr.warnings, {
+            file: `src/routes/${path}.tsx`,
+            root: build.root,
+          }),
+        ]),
+      ),
+    ).toEqual(Object.fromEntries(lazyPaths.map((path) => [path, []])))
+    expect(build.ssr.where('SERVER_isomorphic')).toBe('lazy')
+    // one module: Rolldown emits a module two chunks import as a chunk of
+    // its own (Rspack copies a small one into both chunks under one module
+    // id, which its runtime evaluates once)
+    const holding = (marker: string) =>
+      bundler === 'vite'
+        ? build.client.chunks.filter((c) => c.code.includes(marker)).length
+        : 1
+    expect(
+      Object.fromEntries(
+        lazyPaths.map((path) => [
+          path,
+          {
+            where: build.client.where(`MARK_${path}`),
+            chunks: holding(`MARK_${path}`),
+            warnings: warnings(path),
+          },
+        ]),
+      ),
+    ).toEqual(
+      Object.fromEntries(
+        lazyPaths.map((path) => [
+          path,
+          { where: 'lazy', chunks: 1, warnings: [] },
+        ]),
+      ),
+    )
+  })
 })
 
 describe.each(startBundlers)(
   'a %s client build of exported chains',
   (bundler) => {
-    test(
-      'loads the server fns split code reads, each module importing the client stub itself',
-      async () => {
-        const build = await buildStart({
-          bundler,
-          files: {
-            'src/router.tsx': files['src/router.tsx'],
-            'entry.ts': `export { Panel } from './src/panel'\n`,
-            // a plain module whose Hydrate children read two exported server fns
-            'src/panel.tsx': `import { Hydrate, createServerFn } from '@tanstack/react-start'
+    test('loads the server fns split code reads, each module importing the client stub itself', async () => {
+      const build = await buildStart({
+        bundler,
+        files: {
+          'src/router.tsx': files['src/router.tsx'],
+          'entry.ts': `export { Panel } from './src/panel'\n`,
+          // a plain module whose Hydrate children read two exported server fns
+          'src/panel.tsx': `import { Hydrate, createServerFn } from '@tanstack/react-start'
 import { interaction } from '@tanstack/react-start/hydration'
 export const first = createServerFn().handler(() => 'first')
 export const second = createServerFn().handler(() => 'second')
@@ -214,15 +206,15 @@ export function Panel() {
   )
 }
 `,
-            // an exported object holding a server fn the split component reads
-            'src/routes/copied-fn.tsx': `import { createFileRoute } from '@tanstack/react-router'
+          // an exported object holding a server fn the split component reads
+          'src/routes/copied-fn.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 export const actions = { make: createServerFn().handler(() => 'made') }
 export const Route = createFileRoute('/copied-fn')({
   component: () => <p data-url={actions.make.url}>MARK_copied-fn</p>,
 })
 `,
-            'src/routes/two-exported.tsx': `import { createFileRoute } from '@tanstack/react-router'
+          'src/routes/two-exported.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 export const Route = createFileRoute('/two-exported')({
   component: Page,
@@ -233,8 +225,8 @@ function Page() {
   return <p data-first={first.url} data-second={second.url}>MARK_page</p>
 }
 `,
-            // the route module keeps a stub too (the loader's server fn)
-            'src/routes/with-kept.tsx': `import { createFileRoute } from '@tanstack/react-router'
+          // the route module keeps a stub too (the loader's server fn)
+          'src/routes/with-kept.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 const kept = createServerFn().handler(() => 'kept')
 const local = createServerFn().handler(() => 'local')
@@ -247,8 +239,8 @@ function Page() {
   return <p data-local={local.url} data-exported={exported.url}>MARK_with-kept</p>
 }
 `,
-            // two split options, each reading a server fn of its own
-            'src/routes/two-chunks.tsx': `import { createFileRoute } from '@tanstack/react-router'
+          // two split options, each reading a server fn of its own
+          'src/routes/two-chunks.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 const first = createServerFn().handler(() => 'first')
 const second = createServerFn().handler(() => 'second')
@@ -257,37 +249,35 @@ export const Route = createFileRoute('/two-chunks')({
   errorComponent: () => <p data-url={second.url}>MARK_two-chunks-error</p>,
 })
 `,
+        },
+      })
+      for (const marker of [
+        'MARK_page',
+        'MARK_with-kept',
+        'MARK_two-chunks',
+        'MARK_two-chunks-error',
+        'MARK_panel',
+        'MARK_copied-fn',
+      ]) {
+        expect(build.client.where(marker), marker).toBe('lazy')
+      }
+      for (const path of [
+        'routes/two-exported',
+        'routes/with-kept',
+        'routes/two-chunks',
+        'routes/copied-fn',
+        'panel',
+      ]) {
+        expectNoDiagnostic(
+          build.client.warnings,
+          {
+            file: `src/${path}.tsx`,
+            root: build.root,
           },
-        })
-        for (const marker of [
-          'MARK_page',
-          'MARK_with-kept',
-          'MARK_two-chunks',
-          'MARK_two-chunks-error',
-          'MARK_panel',
-          'MARK_copied-fn',
-        ]) {
-          expect(build.client.where(marker), marker).toBe('lazy')
-        }
-        for (const path of [
-          'routes/two-exported',
-          'routes/with-kept',
-          'routes/two-chunks',
-          'routes/copied-fn',
-          'panel',
-        ]) {
-          expectNoDiagnostic(
-            build.client.warnings,
-            {
-              file: `src/${path}.tsx`,
-              root: build.root,
-            },
-            path,
-          )
-        }
-      },
-      timeout,
-    )
+          path,
+        )
+      }
+    })
   },
 )
 /** A middleware sending `MARK_nested` to the handler, as an inline chain. */
@@ -352,17 +342,15 @@ ${callByIdExports}`,
 }
 
 describe.each(startBundlers)('a %s build', (bundler) => {
-  test(
-    'runs a hoisted server fn whose options are a builder chain, and a shared middleware once per call',
-    async () => {
-      const build = await buildStart({
-        bundler,
-        files: serverFiles,
-        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
-      })
-      const url = (await build.client.run('return entry.lookups.lookup.url'))
-        .result
-      const { result } = await build.ssr.run(`${callByIdPrelude}
+  test('runs a hoisted server fn whose options are a builder chain, and a shared middleware once per call', async () => {
+    const build = await buildStart({
+      bundler,
+      files: serverFiles,
+      entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+    })
+    const url = (await build.client.run('return entry.lookups.lookup.url'))
+      .result
+    const { result } = await build.ssr.run(`${callByIdPrelude}
 const runs = () => globalThis.__runs ?? 0
 const lookup = await callById(serverFnId(${JSON.stringify(url)}))
 const before = runs()
@@ -376,13 +364,11 @@ return {
   rendered: html.includes('MARK_identity'),
   hoisted: (await hoisted.text()).includes('MARK_hoisted'),
 }`)
-      expect(result).toEqual({
-        lookup: 'MARK_nested',
-        runs: 1,
-        rendered: true,
-        hoisted: true,
-      })
-    },
-    timeout,
-  )
+    expect(result).toEqual({
+      lookup: 'MARK_nested',
+      runs: 1,
+      rendered: true,
+      hoisted: true,
+    })
+  })
 })

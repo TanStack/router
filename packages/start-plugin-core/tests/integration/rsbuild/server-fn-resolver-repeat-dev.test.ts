@@ -20,23 +20,17 @@ import {
   resolverRepeatRspack,
 } from './resolver-repeat-app'
 
-const timeout = 60_000
-
 describe('Rsbuild dev with RSC, a server function resolver that goes back to an earlier content', () => {
-  test(
-    "the compile fails, naming the differing function's provider",
-    async () => {
-      const server = await startRsbuildRscApp(resolverRepeatFiles, {
-        tools: { rspack: resolverRepeatRspack },
-      })
-      await fetch(new URL('/', server.url))
-      expectDiagnostic(server.diagnostics, {
-        severity: 'error',
-        file: 'src/fn1.ts',
-        times: 1,
-        root: server.root,
-      })
-    },
-    timeout,
-  )
+  test("the compile fails, naming the differing function's provider", async () => {
+    const server = await startRsbuildRscApp(resolverRepeatFiles, {
+      tools: { rspack: resolverRepeatRspack },
+    })
+    await fetch(new URL('/', server.url))
+    expectDiagnostic(server.diagnostics, {
+      severity: 'error',
+      file: 'src/fn1.ts',
+      times: 1,
+      root: server.root,
+    })
+  })
 })

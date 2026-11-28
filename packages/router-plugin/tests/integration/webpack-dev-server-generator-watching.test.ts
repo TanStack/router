@@ -20,7 +20,6 @@ test.each([false, true])(
   async (linked) => {
     await expectRegistryChangeRecompilesRoute('webpack', linked)
   },
-  45_000,
 )
 
 // A route symlink pointed at another file changes the registry (the real
@@ -28,4 +27,4 @@ test.each([false, true])(
 // compiled as the route.
 test('a route symlink pointed at another file serves that file as the route', async () => {
   await expectRetargetedSymlinkServedAsRoute('webpack')
-}, 45_000)
+})

@@ -17,8 +17,6 @@ import {
 } from '../../importProtection/start-apps'
 import type { ExpectedViolation } from '../../importProtection/start-apps'
 
-const timeout = 60_000
-
 /** URLs of the served modules that contain `marker`. */
 function modulesContaining(modules: Record<string, string>, marker: string) {
   return Object.keys(modules).filter((url) => modules[url]!.includes(marker))
@@ -42,22 +40,18 @@ const markerViolation: ExpectedViolation = {
 describe('Vite dev: an edit that marks an imported module server-only', () => {
   // Source: design 3 step 2 review (is the module reported twice on Vite,
   // whose host takes its stale set before any module is compiled again?).
-  test(
-    'the importer unchanged: reported once, at the import, and the importer gets the mock',
-    async () => {
-      const server = await startProtectedDevServer(markedApp(''))
-      expect(
-        modulesContaining(await server.load('/src/entry.ts'), 'MARK_B_CODE'),
-      ).not.toEqual([])
-      expect(server.violations).toEqual([])
-      await server.edit({ 'src/b.ts': markedApp(marker)['src/b.ts'] })
-      expect(
-        modulesContaining(await server.load('/src/entry.ts'), 'MARK_B_CODE'),
-      ).toEqual([])
-      expect(relevantViolations(server, [markerViolation])).toEqual([
-        violationLabel(markerViolation),
-      ])
-    },
-    timeout,
-  )
+  test('the importer unchanged: reported once, at the import, and the importer gets the mock', async () => {
+    const server = await startProtectedDevServer(markedApp(''))
+    expect(
+      modulesContaining(await server.load('/src/entry.ts'), 'MARK_B_CODE'),
+    ).not.toEqual([])
+    expect(server.violations).toEqual([])
+    await server.edit({ 'src/b.ts': markedApp(marker)['src/b.ts'] })
+    expect(
+      modulesContaining(await server.load('/src/entry.ts'), 'MARK_B_CODE'),
+    ).toEqual([])
+    expect(relevantViolations(server, [markerViolation])).toEqual([
+      violationLabel(markerViolation),
+    ])
+  })
 })

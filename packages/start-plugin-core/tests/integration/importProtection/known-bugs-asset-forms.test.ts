@@ -9,8 +9,6 @@ import { expect, test } from 'vitest'
 import { buildStart } from '../../build-start'
 import { importersIn } from './hosts'
 
-const timeout = 60_000
-
 const CANARY = 'CANARY_DENIED_TEXT'
 
 const secrets = `export const s = '${CANARY}'\n`
@@ -58,26 +56,22 @@ test.fails.each<[string, string, Record<string, string>]>([
       'src/bad.ts': `import '@tanstack/react-start/server-only'\nconst = {{ ${CANARY}\n`,
     },
   ],
-])(
-  'vite build: %s is mocked and reported',
-  async (_name, entry, files) => {
-    const result = await buildStart({
-      bundler: 'vite',
-      files: {
-        ...files,
-        'src/entry.ts': entry,
-        'src/router.ts': `import './entry'
+])('vite build: %s is mocked and reported', async (_name, entry, files) => {
+  const result = await buildStart({
+    bundler: 'vite',
+    files: {
+      ...files,
+      'src/entry.ts': entry,
+      'src/router.ts': `import './entry'
 export const getRouter = () => undefined
 `,
-      },
-      entry: 'src/entry.ts',
-      start: { importProtection: { behavior: 'mock', mockAccess: 'off' } },
-    })
-    expect(await emitsCanary(result.client.outDir)).toBe(false)
-    expect(importersIn(result, 'client')).toEqual(['src/entry.ts'])
-  },
-  timeout,
-)
+    },
+    entry: 'src/entry.ts',
+    start: { importProtection: { behavior: 'mock', mockAccess: 'off' } },
+  })
+  expect(await emitsCanary(result.client.outDir)).toBe(false)
+  expect(importersIn(result, 'client')).toEqual(['src/entry.ts'])
+})
 
 test.fails(
   'rsbuild build: a denied JSON file, plain webpackContext, is mocked and reported',
@@ -99,5 +93,4 @@ export const getRouter = () => undefined
     expect(await emitsCanary(result.client.outDir)).toBe(false)
     expect(importersIn(result, 'client')).toEqual(['src/entry.ts'])
   },
-  timeout,
 )

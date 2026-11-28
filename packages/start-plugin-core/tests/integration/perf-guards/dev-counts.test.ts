@@ -15,8 +15,6 @@ import { compilerStats } from '@tanstack/router-utils/compiler'
 import { startDevServer } from '../../dev-server'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 
-const timeout = 30_000
-
 const factory = `import { createServerFn } from '@tanstack/react-start'
 export const base = createServerFn()
 `
@@ -29,44 +27,40 @@ describe('Rsbuild dev: modules the app stops importing', () => {
   // benchmarks/compiler-perf `--scenarios soak --soak-bundlers rsbuild`).
   // Measured through the documented stats knob (TSR_COMPILER_STATS=1); other
   // sessions alive in this worker are idle, so the change is this server's.
-  test(
-    'leave no plans or raw facts behind once deleted',
-    async () => {
-      vi.stubEnv('TSR_COMPILER_STATS', '1')
-      onTestFinished(() => {
-        vi.unstubAllEnvs()
+  test('leave no plans or raw facts behind once deleted', async () => {
+    vi.stubEnv('TSR_COMPILER_STATS', '1')
+    onTestFinished(() => {
+      vi.unstubAllEnvs()
+    })
+    const server = await startRsbuildStartDevServer({
+      compileTimeout: 10_000,
+      files: {
+        'src/a.ts': `export const a = 'MARK_a'\n`,
+        'src/entry.ts': `export { a } from './a'\n`,
+      },
+    })
+    const counts = () => {
+      const s: Record<string, number> = compilerStats()['start:rsbuild'] ?? {}
+      return { plans: s.plans ?? 0, rawFacts: s.rawFacts ?? 0 }
+    }
+    const before = counts()
+    for (let i = 0; i < 3; i++) {
+      // a file nothing imports yet: Rspack does not watch it, no compile
+      await server.write({
+        [`src/m${i}.ts`]: `export const m = 'MARK_m${i}'\n`,
       })
-      const server = await startRsbuildStartDevServer({
-        compileTimeout: 10_000,
-        files: {
-          'src/a.ts': `export const a = 'MARK_a'\n`,
-          'src/entry.ts': `export { a } from './a'\n`,
-        },
+      await server.edit({
+        'src/entry.ts': `export { a } from './a'\nexport { m } from './m${i}'\n`,
       })
-      const counts = () => {
-        const s: Record<string, number> = compilerStats()['start:rsbuild'] ?? {}
-        return { plans: s.plans ?? 0, rawFacts: s.rawFacts ?? 0 }
-      }
-      const before = counts()
-      for (let i = 0; i < 3; i++) {
-        // a file nothing imports yet: Rspack does not watch it, no compile
-        await server.write({
-          [`src/m${i}.ts`]: `export const m = 'MARK_m${i}'\n`,
-        })
-        await server.edit({
-          'src/entry.ts': `export { a } from './a'\nexport { m } from './m${i}'\n`,
-        })
-        await server.edit({ 'src/entry.ts': `export { a } from './a'\n` })
-        // deleted once nothing imports it: Rspack reports no removal either
-        await server.write({ [`src/m${i}.ts`]: null })
-      }
-      expect(server.errors).toEqual([])
-      const after = counts()
-      expect(after.plans).toBeLessThanOrEqual(before.plans)
-      expect(after.rawFacts).toBeLessThanOrEqual(before.rawFacts)
-    },
-    timeout,
-  )
+      await server.edit({ 'src/entry.ts': `export { a } from './a'\n` })
+      // deleted once nothing imports it: Rspack reports no removal either
+      await server.write({ [`src/m${i}.ts`]: null })
+    }
+    expect(server.errors).toEqual([])
+    const after = counts()
+    expect(after.plans).toBeLessThanOrEqual(before.plans)
+    expect(after.rawFacts).toBeLessThanOrEqual(before.rawFacts)
+  })
 })
 
 describe('Vite dev: dependents whose output is unchanged', () => {
@@ -75,60 +69,56 @@ describe('Vite dev: dependents whose output is unchanged', () => {
   // edit; neither the next SSR import nor the next page load compiles it
   // again, also when the dependents import each other and are compiled at
   // the same time.
-  test(
-    'are compiled once per environment',
-    async () => {
-      const names = Array.from({ length: 40 }, (_, i) => `d${i}`)
-      const counts: Record<string, Record<string, number>> = {
-        client: {},
-        ssr: {},
-      }
-      let counting = false
-      const server = await startDevServer({
-        plugins: [
-          {
-            name: 'count-transforms',
-            transform(_code, id) {
-              const name = /\/src\/(d\d+)\.ts$/.exec(id)?.[1]
-              if (counting && name) {
-                const env = counts[this.environment.name]!
-                env[name] = (env[name] ?? 0) + 1
-              }
-            },
+  test('are compiled once per environment', async () => {
+    const names = Array.from({ length: 40 }, (_, i) => `d${i}`)
+    const counts: Record<string, Record<string, number>> = {
+      client: {},
+      ssr: {},
+    }
+    let counting = false
+    const server = await startDevServer({
+      plugins: [
+        {
+          name: 'count-transforms',
+          transform(_code, id) {
+            const name = /\/src\/(d\d+)\.ts$/.exec(id)?.[1]
+            if (counting && name) {
+              const env = counts[this.environment.name]!
+              env[name] = (env[name] ?? 0) + 1
+            }
           },
-        ],
-        files: {
-          'src/fa.ts': factory,
-          'src/fb.ts': factory,
-          'src/lib.ts': `export { base } from './fa'\n`,
-          ...Object.fromEntries(
-            names.map((name, i) => [
-              `src/${name}.ts`,
-              `import { base } from './lib'
+        },
+      ],
+      files: {
+        'src/fa.ts': factory,
+        'src/fb.ts': factory,
+        'src/lib.ts': `export { base } from './fa'\n`,
+        ...Object.fromEntries(
+          names.map((name, i) => [
+            `src/${name}.ts`,
+            `import { base } from './lib'
 ${i > 0 ? `import { fn as first } from './d0'\nexport const p = first\n` : ''}export const fn = base.handler(async () => '${name}')
 `,
-            ]),
-          ),
-          'src/entry.ts': names
-            .map((name) => `export { fn as ${name} } from './${name}'\n`)
-            .join(''),
-        },
-      })
-      await server.import('/src/entry.ts')
-      await server.load('/src/entry.ts')
-      await server.idle()
+          ]),
+        ),
+        'src/entry.ts': names
+          .map((name) => `export { fn as ${name} } from './${name}'\n`)
+          .join(''),
+      },
+    })
+    await server.import('/src/entry.ts')
+    await server.load('/src/entry.ts')
+    await server.idle()
 
-      counting = true
-      await server.edit({ 'src/lib.ts': `export { base } from './fb'\n` })
-      await server.import('/src/entry.ts')
-      await server.load('/src/entry.ts')
-      await server.idle()
+    counting = true
+    await server.edit({ 'src/lib.ts': `export { base } from './fb'\n` })
+    await server.import('/src/entry.ts')
+    await server.load('/src/entry.ts')
+    await server.idle()
 
-      const once = Object.fromEntries(names.map((name) => [name, 1]))
-      expect(counts).toEqual({ client: once, ssr: once })
-    },
-    timeout,
-  )
+    const once = Object.fromEntries(names.map((name) => [name, 1]))
+    expect(counts).toEqual({ client: once, ssr: once })
+  })
 })
 
 describe('Vite dev: an empty save of a file nothing reads', () => {
@@ -137,32 +127,28 @@ describe('Vite dev: an empty save of a file nothing reads', () => {
   // text a plan or a raw fact depends on. A file nothing imports is read once
   // per hook either way: the wait cost every such save about 100 ms in the
   // hot update. Source: Astra review H9.
-  test(
-    'is read as often as an ordinary save',
-    async () => {
-      vi.stubEnv('TSR_COMPILER_STATS', '1')
-      onTestFinished(() => {
-        vi.unstubAllEnvs()
-      })
-      const server = await startDevServer({
-        files: {
-          'src/a.ts': `export const a = 'MARK_a'\n`,
-          'src/notes.ts': `export const notes = 0\n`,
-        },
-      })
-      await server.transform('/src/a.ts')
-      const reads = () => compilerStats()['start:vite']?.eventReads ?? 0
-      const readsOf = async (text: string) => {
-        const before = reads()
-        await server.edit({ 'src/notes.ts': text })
-        return reads() - before
-      }
-      const ordinary = await readsOf(`export const notes = 1\n`)
-      expect(ordinary).toBeGreaterThan(0)
-      expect(await readsOf('')).toBe(ordinary)
-    },
-    timeout,
-  )
+  test('is read as often as an ordinary save', async () => {
+    vi.stubEnv('TSR_COMPILER_STATS', '1')
+    onTestFinished(() => {
+      vi.unstubAllEnvs()
+    })
+    const server = await startDevServer({
+      files: {
+        'src/a.ts': `export const a = 'MARK_a'\n`,
+        'src/notes.ts': `export const notes = 0\n`,
+      },
+    })
+    await server.transform('/src/a.ts')
+    const reads = () => compilerStats()['start:vite']?.eventReads ?? 0
+    const readsOf = async (text: string) => {
+      const before = reads()
+      await server.edit({ 'src/notes.ts': text })
+      return reads() - before
+    }
+    const ordinary = await readsOf(`export const notes = 1\n`)
+    expect(ordinary).toBeGreaterThan(0)
+    expect(await readsOf('')).toBe(ordinary)
+  })
 })
 
 describe('Vite dev: a module removed with the module it imports', () => {
@@ -176,59 +162,55 @@ describe('Vite dev: a module removed with the module it imports', () => {
   // Start's hot update. Found on CI's loaded agents (Linux x64 and arm64,
   // Windows x64: `createServerFn.test.ts`, a shared package removed after
   // its test).
-  test(
-    'leaves no stale path',
-    async () => {
-      let importerRemoved!: () => void
-      const removed = new Promise<void>((resolve) => {
-        importerRemoved = resolve
-      })
-      const server = await startDevServer({
-        plugins: [
-          {
-            name: 'slow-resolution-of-a-removed-import',
-            enforce: 'pre',
-            async resolveId(source, importer) {
-              if (
-                source === './db.server' &&
-                importer !== undefined &&
-                !existsSync(path.join(path.dirname(importer), 'db.server.ts'))
-              ) {
-                await removed
-              }
-              return null
-            },
-            hotUpdate({ file, type }) {
-              if (type === 'delete' && file.endsWith('/src/fn.ts')) {
-                importerRemoved()
-              }
-            },
+  test('leaves no stale path', async () => {
+    let importerRemoved!: () => void
+    const removed = new Promise<void>((resolve) => {
+      importerRemoved = resolve
+    })
+    const server = await startDevServer({
+      plugins: [
+        {
+          name: 'slow-resolution-of-a-removed-import',
+          enforce: 'pre',
+          async resolveId(source, importer) {
+            if (
+              source === './db.server' &&
+              importer !== undefined &&
+              !existsSync(path.join(path.dirname(importer), 'db.server.ts'))
+            ) {
+              await removed
+            }
+            return null
           },
-        ],
-        files: {
-          'src/fn.ts': `import { createServerFn } from '@tanstack/react-start'
+          hotUpdate({ file, type }) {
+            if (type === 'delete' && file.endsWith('/src/fn.ts')) {
+              importerRemoved()
+            }
+          },
+        },
+      ],
+      files: {
+        'src/fn.ts': `import { createServerFn } from '@tanstack/react-start'
 import { db } from './db.server'
 export const fn = createServerFn().handler(async () => db.x())
 `,
-          'src/db.server.ts': `export const db = { x: () => 'MARK_db' }\n`,
-          'src/entry.ts': `export { fn } from './fn'\n`,
-        },
-      })
-      await server.import('/src/entry.ts')
-      await server.load('/src/entry.ts')
-      await server.idle()
-      await server.edit({ 'src/entry.ts': `export const none = 0\n` })
-      await server.import('/src/entry.ts')
-      await server.load('/src/entry.ts')
-      await server.idle()
+        'src/db.server.ts': `export const db = { x: () => 'MARK_db' }\n`,
+        'src/entry.ts': `export { fn } from './fn'\n`,
+      },
+    })
+    await server.import('/src/entry.ts')
+    await server.load('/src/entry.ts')
+    await server.idle()
+    await server.edit({ 'src/entry.ts': `export const none = 0\n` })
+    await server.import('/src/entry.ts')
+    await server.load('/src/entry.ts')
+    await server.idle()
 
-      await server.write({ 'src/db.server.ts': null })
-      await server.write({ 'src/fn.ts': null })
-      await server.settle()
-      expect(compilerStats()['start:vite']?.stalePaths ?? 0).toBe(0)
-    },
-    timeout,
-  )
+    await server.write({ 'src/db.server.ts': null })
+    await server.write({ 'src/fn.ts': null })
+    await server.settle()
+    expect(compilerStats()['start:vite']?.stalePaths ?? 0).toBe(0)
+  })
 })
 
 /** A server fn of a file named `name`, and its client-visible tag. */
@@ -308,27 +290,23 @@ describe('Vite dev: a module whose import moves to another file, the old one rem
   // (`importProtection/dev.test.ts`) with the old file deleted in the same
   // edit: the file's stale-path self-check failed. Two steps, so that the
   // importer's event comes first, as the watcher reported it there.
-  test(
-    'leaves no stale path, and a file created later reloads nothing',
-    async () => {
-      const server = await startLeft()
-      await moveImport(server)
-      await removeLeft(server)
-      // (what the removal logs is not this row's subject)
-      const since = server.logs.length
-      expect((await server.import('/src/entry.ts')).tag).toBe('MARK_right')
-      await server.load('/src/entry.ts')
-      await server.idle()
-      expect(server.stale()).toBe(0)
+  test('leaves no stale path, and a file created later reloads nothing', async () => {
+    const server = await startLeft()
+    await moveImport(server)
+    await removeLeft(server)
+    // (what the removal logs is not this row's subject)
+    const since = server.logs.length
+    expect((await server.import('/src/entry.ts')).tag).toBe('MARK_right')
+    await server.load('/src/entry.ts')
+    await server.idle()
+    expect(server.stale()).toBe(0)
 
-      expect(await createOther(server)).toEqual([])
-      // the old file back: nothing reads it
-      await server.edit({ 'src/left.ts': serverFnFile('left') })
-      expect((await server.import('/src/entry.ts')).tag).toBe('MARK_right')
-      expect(server.logs.slice(since)).toEqual([])
-    },
-    timeout,
-  )
+    expect(await createOther(server)).toEqual([])
+    // the old file back: nothing reads it
+    await server.edit({ 'src/left.ts': serverFnFile('left') })
+    expect((await server.import('/src/entry.ts')).tag).toBe('MARK_right')
+    expect(server.logs.slice(since)).toEqual([])
+  })
 
   // The same with the importer requested again in one environment only (a
   // page open and no SSR request, or a server route called and no page
@@ -356,7 +334,6 @@ describe('Vite dev: a module whose import moves to another file, the old one rem
       expect(await createOther(server)).toEqual([])
       await leftBack(server)
     },
-    timeout,
   )
 
   // Nothing requested between the edits (no page open, no SSR request):
@@ -375,40 +352,31 @@ describe('Vite dev: a module whose import moves to another file, the old one rem
       expect.soft(server.stale()).toBe(0)
       expect(await createOther(server)).toEqual([])
     },
-    timeout,
   )
 
   // The old file back (an undo, a branch switch) wakes nothing: no
   // environment's importer reads it any more.
-  test(
-    'the old file back, nothing requested: SSR does not reload, the importer serves the new file',
-    async () => {
-      const server = await startLeft()
-      await moveImport(server)
-      await removeLeft(server)
-      await leftBack(server)
-      expect(await server.ssrTag()).toBe('MARK_right')
-      expect(server.stale()).toBe(0)
-    },
-    timeout,
-  )
+  test('the old file back, nothing requested: SSR does not reload, the importer serves the new file', async () => {
+    const server = await startLeft()
+    await moveImport(server)
+    await removeLeft(server)
+    await leftBack(server)
+    expect(await server.ssrTag()).toBe('MARK_right')
+    expect(server.stale()).toBe(0)
+  })
 
   // The three files written at once (a checkout): the watcher reports them
   // in its own order, and every order leaves no stale path.
-  test(
-    'all in one edit, nothing requested: no stale path, a file created later updates nothing',
-    async () => {
-      const server = await startLeft()
-      await server.edit({
-        'src/right.ts': serverFnFile('right'),
-        'src/entry.ts': reExport('right'),
-        'src/left.ts': null,
-      })
-      expect.soft(server.stale()).toBe(0)
-      expect(await createOther(server)).toEqual([])
-    },
-    timeout,
-  )
+  test('all in one edit, nothing requested: no stale path, a file created later updates nothing', async () => {
+    const server = await startLeft()
+    await server.edit({
+      'src/right.ts': serverFnFile('right'),
+      'src/entry.ts': reExport('right'),
+      'src/left.ts': null,
+    })
+    expect.soft(server.stale()).toBe(0)
+    expect(await createOther(server)).toEqual([])
+  })
 })
 
 describe('Vite dev: a module whose import is removed and comes back', () => {
@@ -419,26 +387,22 @@ describe('Vite dev: a module whose import is removed and comes back', () => {
   test.each([
     ['', false],
     [', the importer edited meanwhile', true],
-  ])(
-    'serves the file back%s',
-    async (_, editImporter) => {
-      const server = await startLeft()
-      await removeLeft(server)
-      expect(server.stale()).toBe(0)
-      expect(await createOther(server)).toEqual([])
-      if (editImporter) {
-        // still importing it: its next compile records the failed import
-        await server.edit({ 'src/entry.ts': `// edited\n${reExport('left')}` })
-      }
-      await server.edit({ 'src/left.ts': serverFnFile('back') })
-      expect(await server.ssrTag()).toBe('MARK_back')
-      const client = await server.load('/src/entry.ts')
-      expect(client['/src/left.ts']).toContain('MARK_back')
-      await server.idle()
-      expect(server.stale()).toBe(0)
-    },
-    timeout,
-  )
+  ])('serves the file back%s', async (_, editImporter) => {
+    const server = await startLeft()
+    await removeLeft(server)
+    expect(server.stale()).toBe(0)
+    expect(await createOther(server)).toEqual([])
+    if (editImporter) {
+      // still importing it: its next compile records the failed import
+      await server.edit({ 'src/entry.ts': `// edited\n${reExport('left')}` })
+    }
+    await server.edit({ 'src/left.ts': serverFnFile('back') })
+    expect(await server.ssrTag()).toBe('MARK_back')
+    const client = await server.load('/src/entry.ts')
+    expect(client['/src/left.ts']).toContain('MARK_back')
+    await server.idle()
+    expect(server.stale()).toBe(0)
+  })
 })
 
 describe('Vite dev: a module whose removed import its client output does not import', () => {
@@ -450,37 +414,33 @@ describe('Vite dev: a module whose removed import its client output does not imp
   // `page.ts` waited for the file); the file's return builds `page.ts` again
   // (its failed import resolves). Source: Astra's second stale-set review
   // (an unrelated creation reloaded the page).
-  test(
-    'the removal updates it, a file created later updates nothing, the file back updates it',
-    async () => {
-      const stale = staleSince('start:vite')
-      const server = await startDevServer({
-        files: {
-          'src/left.ts': `export const left = 'MARK_left'\n`,
-          'src/page.ts': `import { createServerFn } from '@tanstack/react-start'
+  test('the removal updates it, a file created later updates nothing, the file back updates it', async () => {
+    const stale = staleSince('start:vite')
+    const server = await startDevServer({
+      files: {
+        'src/left.ts': `export const left = 'MARK_left'\n`,
+        'src/page.ts': `import { createServerFn } from '@tanstack/react-start'
 import { left } from './left'
 export const fn = createServerFn().handler(async () => left)
 `,
-        },
-      })
-      const client = (sent: Array<{ environment: string; type: string }>) =>
-        sent.filter((m) => m.environment === 'client' && m.type !== 'custom')
-      await server.load('/src/page.ts')
-      await server.idle()
-      expect(client(await server.edit({ 'src/left.ts': null }))).not.toEqual([])
-      // (the page fetches it again)
-      await server.load('/src/page.ts')
-      await server.idle()
-      expect(stale()).toBe(0)
-      expect(await createOther(server)).toEqual([])
-      expect(
-        client(
-          await server.edit({ 'src/left.ts': `export const left = 'back'\n` }),
-        ),
-      ).not.toEqual([])
-    },
-    timeout,
-  )
+      },
+    })
+    const client = (sent: Array<{ environment: string; type: string }>) =>
+      sent.filter((m) => m.environment === 'client' && m.type !== 'custom')
+    await server.load('/src/page.ts')
+    await server.idle()
+    expect(client(await server.edit({ 'src/left.ts': null }))).not.toEqual([])
+    // (the page fetches it again)
+    await server.load('/src/page.ts')
+    await server.idle()
+    expect(stale()).toBe(0)
+    expect(await createOther(server)).toEqual([])
+    expect(
+      client(
+        await server.edit({ 'src/left.ts': `export const left = 'back'\n` }),
+      ),
+    ).not.toEqual([])
+  })
 })
 
 /**
@@ -537,85 +497,72 @@ describe('Vite dev: an MDX module whose import moves to another file, the old on
       expect(await createOther(server)).toEqual([])
       expect(await server.ssrTag()).toBe('MARK_right')
     },
-    timeout,
   )
 })
 
 describe('A module saved with the same text, then its import edited', () => {
   // The first event of the importer in the session reads a text its plans
   // were compiled from: they stay, with the rows its import's events find.
-  test(
-    'Vite: serves the edited import',
-    async () => {
-      const server = await startLeft()
-      await server.edit({ 'src/entry.ts': reExport('left') })
-      await server.edit({ 'src/left.ts': serverFnFile('edited') })
-      expect(await server.ssrTag()).toBe('MARK_edited')
-      const client = await server.load('/src/entry.ts')
-      expect(client['/src/left.ts']).toContain('MARK_edited')
-      await server.idle()
-      expect(server.stale()).toBe(0)
-    },
-    timeout,
-  )
+  test('Vite: serves the edited import', async () => {
+    const server = await startLeft()
+    await server.edit({ 'src/entry.ts': reExport('left') })
+    await server.edit({ 'src/left.ts': serverFnFile('edited') })
+    expect(await server.ssrTag()).toBe('MARK_edited')
+    const client = await server.load('/src/entry.ts')
+    expect(client['/src/left.ts']).toContain('MARK_edited')
+    await server.idle()
+    expect(server.stale()).toBe(0)
+  })
 
-  test(
-    'Rsbuild: serves the edited import',
-    async () => {
-      const stale = staleSince('start:rsbuild')
-      const server = await startRsbuildStartDevServer({
-        compileTimeout: 10_000,
-        files: {
-          'src/left.ts': serverFnFile('left'),
-          'src/entry.ts': reExport('left'),
-        },
-      })
-      const output = async () =>
-        Object.values(await server.outputs('client')).join('\n')
-      expect(await output()).toContain('MARK_left')
-      await server.edit({ 'src/entry.ts': reExport('left') })
-      await server.edit({ 'src/left.ts': serverFnFile('edited') })
-      expect(server.errors).toEqual([])
-      expect(await output()).toContain('MARK_edited')
-      expect(await output()).not.toContain('MARK_left')
-      expect(stale()).toBe(0)
-    },
-    timeout,
-  )
+  test('Rsbuild: serves the edited import', async () => {
+    const stale = staleSince('start:rsbuild')
+    const server = await startRsbuildStartDevServer({
+      compileTimeout: 10_000,
+      files: {
+        'src/left.ts': serverFnFile('left'),
+        'src/entry.ts': reExport('left'),
+      },
+    })
+    const output = async () =>
+      Object.values(await server.outputs('client')).join('\n')
+    expect(await output()).toContain('MARK_left')
+    await server.edit({ 'src/entry.ts': reExport('left') })
+    await server.edit({ 'src/left.ts': serverFnFile('edited') })
+    expect(server.errors).toEqual([])
+    expect(await output()).toContain('MARK_edited')
+    expect(await output()).not.toContain('MARK_left')
+    expect(stale()).toBe(0)
+  })
 })
 
 describe('Rsbuild dev: a module whose import moves to another file, the old one removed, in one edit', () => {
   // The importer's own event ends its plan of the old text; the compile of
   // the edit builds it once, and a later compile does not build it again.
-  test(
-    'builds the importer once, and no later compile builds it',
-    async () => {
-      const stale = staleSince('start:rsbuild')
-      const server = await startRsbuildStartDevServer({
-        compileTimeout: 10_000,
-        files: {
-          'src/left.ts': serverFnFile('left'),
-          'src/fns.ts': reExport('left'),
-          'src/other.ts': `export const other = 0\n`,
-          'src/entry.ts': `export * from './fns'\nexport { other } from './other'\n`,
-        },
-      })
-      await server.edit({
-        'src/right.ts': serverFnFile('right'),
-        'src/fns.ts': reExport('right'),
-        'src/left.ts': null,
-      })
-      expect(server.errors).toEqual([])
-      expect(server.rebuilt).toContain('src/fns.ts')
-      const output = Object.values(await server.outputs('client')).join('\n')
-      expect(output).toContain('MARK_right')
-      expect(output).not.toContain('MARK_left')
+  test('builds the importer once, and no later compile builds it', async () => {
+    const stale = staleSince('start:rsbuild')
+    const server = await startRsbuildStartDevServer({
+      compileTimeout: 10_000,
+      files: {
+        'src/left.ts': serverFnFile('left'),
+        'src/fns.ts': reExport('left'),
+        'src/other.ts': `export const other = 0\n`,
+        'src/entry.ts': `export * from './fns'\nexport { other } from './other'\n`,
+      },
+    })
+    await server.edit({
+      'src/right.ts': serverFnFile('right'),
+      'src/fns.ts': reExport('right'),
+      'src/left.ts': null,
+    })
+    expect(server.errors).toEqual([])
+    expect(server.rebuilt).toContain('src/fns.ts')
+    const output = Object.values(await server.outputs('client')).join('\n')
+    expect(output).toContain('MARK_right')
+    expect(output).not.toContain('MARK_left')
 
-      await server.edit({ 'src/other.ts': `export const other = 1\n` })
-      expect(server.rebuilt).toContain('src/other.ts')
-      expect(server.rebuilt).not.toContain('src/fns.ts')
-      expect(stale()).toBe(0)
-    },
-    timeout,
-  )
+    await server.edit({ 'src/other.ts': `export const other = 1\n` })
+    expect(server.rebuilt).toContain('src/other.ts')
+    expect(server.rebuilt).not.toContain('src/fns.ts')
+    expect(stale()).toBe(0)
+  })
 })

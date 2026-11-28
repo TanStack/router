@@ -146,7 +146,6 @@ describe('Rsbuild build with RSC and a user layer whose rule resolves with a con
     },
   ])(
     'an import Start judges ($judged) renders $label',
-    { timeout },
     async ({ judged, label, resolved }) => {
       const { asked, start } = recorder('mock', () => true)
       const server = await startRscRsbuildPreviewServer({

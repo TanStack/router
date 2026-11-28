@@ -29,8 +29,6 @@ import {
   secretServerModule,
 } from './hosts'
 
-const timeout = 30_000
-
 /** Pre-bundled up front, as Vite does for an app that installed them. */
 const config = {
   optimizeDeps: {
@@ -121,48 +119,32 @@ return describeValue(window.liveSecret(), 'MARK_SECRET')
 describe.each(pageSteps)('step $step (live use: $live)', ({ step, live }) => {
   const outcome = async () => (await run())[step - 1]!
 
-  test(
-    'the page shows the edit without a full reload, and never the secret',
-    async () => {
-      const { text, loads } = await outcome()
-      expect({
-        clientBranch: text.includes('MARK_CLIENT_BRANCH'),
-        secret: text.includes('MARK_SECRET'),
-        loads,
-      }).toEqual({
-        clientBranch: true,
-        secret: false,
-        loads: 1,
-      })
-    },
-    timeout,
-  )
+  test('the page shows the edit without a full reload, and never the secret', async () => {
+    const { text, loads } = await outcome()
+    expect({
+      clientBranch: text.includes('MARK_CLIENT_BRANCH'),
+      secret: text.includes('MARK_SECRET'),
+      loads,
+    }).toEqual({
+      clientBranch: true,
+      secret: false,
+      loads: 1,
+    })
+  })
 
-  test(
-    'no module the client loads contains the secret',
-    async () => {
-      expect((await outcome()).servedSecret).toBe(false)
-    },
-    timeout,
-  )
+  test('no module the client loads contains the secret', async () => {
+    expect((await outcome()).servedSecret).toBe(false)
+  })
 
   if (live) {
-    test(
-      'the live use reads a safe mock',
-      async () => {
-        expect((await outcome()).live).toBe('a safe mock')
-      },
-      timeout,
-    )
+    test('the live use reads a safe mock', async () => {
+      expect((await outcome()).live).toBe('a safe mock')
+    })
   }
 
   // On main, a server-only import a developer adds to a component while the dev
   // server runs is mocked in the page without any warning.
-  test(
-    'the step reports its violations, and only those',
-    async () => {
-      expect((await outcome()).reported).toEqual(live ? ['src/widget.tsx'] : [])
-    },
-    timeout,
-  )
+  test('the step reports its violations, and only those', async () => {
+    expect((await outcome()).reported).toEqual(live ? ['src/widget.tsx'] : [])
+  })
 })

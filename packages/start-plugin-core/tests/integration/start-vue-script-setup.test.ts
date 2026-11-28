@@ -335,7 +335,6 @@ describe('vite build with Vue devtools', () => {
       )
       expect(outcome).toBeInstanceOf(StartBuildError)
     },
-    60_000,
   )
 
   // (one build of every recipe, each with its own marker)
@@ -353,7 +352,6 @@ describe('vite build with Vue devtools', () => {
       )
       expect((await recipeBuild).client.where(mark)).toBe('nowhere')
     },
-    60_000,
   )
 })
 
@@ -397,5 +395,5 @@ impl = (): string => 'MARK_SERVER_SECRET_2'`,
       root: error.root,
       position: { line: 5 },
     })
-  }, 60_000)
+  })
 })

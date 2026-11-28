@@ -22,7 +22,6 @@ import { batchCases } from '../batch-build'
 import { build, buildWithRsbuild, head, rootRoute } from '../build-harness'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
-const timeout = 120_000
 
 /**
  * The entry: the route, the exports of the route file the test names
@@ -440,13 +439,9 @@ const suite = (
 ) =>
   describe(title, () => {
     for (const c of cases) {
-      test(
-        c.name,
-        async () => {
-          expect(await run(c)).toEqual(c.expected)
-        },
-        timeout,
-      )
+      test(c.name, async () => {
+        expect(await run(c)).toEqual(c.expected)
+      })
     }
   })
 

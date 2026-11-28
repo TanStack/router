@@ -27,8 +27,6 @@ import { rootDocument, routerFile } from './start-compose-app'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
 
-const timeout = 60_000
-
 const fnsHead = `import { createServerFn } from '@tanstack/react-start'
 import { db } from './db'
 `
@@ -119,48 +117,40 @@ async function serverCodeInPage(page: BrowserPage) {
 }
 
 describe.each(Object.keys(servers))('%s dev', (bundler) => {
-  test(
-    'a handler held in a reassigned `let` is refused at the argument, and no server code reaches the page',
-    async () => {
-      const server = await servers[bundler]!(reassigned)
-      const page = await openTestPage(server.url)
-      // what the page got once the dev server answered and compiled
-      await page.page.waitForLoadState('networkidle')
-      expectDiagnostic(server.diagnostics, {
-        severity: 'error',
-        file: 'src/fns.ts',
-        root: server.root,
-        position: { line: 5 },
-      })
-      const { holding, ran } = await serverCodeInPage(page)
-      expect({ holding, ran }).toEqual({ holding: [], ran: false })
-    },
-    timeout,
-  )
+  test('a handler held in a reassigned `let` is refused at the argument, and no server code reaches the page', async () => {
+    const server = await servers[bundler]!(reassigned)
+    const page = await openTestPage(server.url)
+    // what the page got once the dev server answered and compiled
+    await page.page.waitForLoadState('networkidle')
+    expectDiagnostic(server.diagnostics, {
+      severity: 'error',
+      file: 'src/fns.ts',
+      root: server.root,
+      position: { line: 5 },
+    })
+    const { holding, ran } = await serverCodeInPage(page)
+    expect({ holding, ran }).toEqual({ holding: [], ran: false })
+  })
 
-  test(
-    'the `const` the error suggests serves no server code and calls the chosen handler',
-    async () => {
-      const server = await servers[bundler]!(rewritten)
-      const page = await openTestPage(server.url)
-      await page.waitForText('hydrated', {
-        selector: '[data-testid=hydrated]',
-      })
-      await page.page.locator('[data-testid=probe]').click()
-      await page.waitForText(/got=/, { selector: '[data-testid=probe]' })
-      const { scripts, holding, ran } = await serverCodeInPage(page)
-      expect(scripts).toBeGreaterThan(0)
-      expect({
-        holding,
-        ran,
-        answer: await page.text('[data-testid=probe]'),
-      }).toEqual({ holding: [], ran: false, answer: 'got=MARK_DB_X' })
-      expectNoDiagnostic(server.diagnostics, {
-        severity: 'error',
-        file: 'src/fns.ts',
-        root: server.root,
-      })
-    },
-    timeout,
-  )
+  test('the `const` the error suggests serves no server code and calls the chosen handler', async () => {
+    const server = await servers[bundler]!(rewritten)
+    const page = await openTestPage(server.url)
+    await page.waitForText('hydrated', {
+      selector: '[data-testid=hydrated]',
+    })
+    await page.page.locator('[data-testid=probe]').click()
+    await page.waitForText(/got=/, { selector: '[data-testid=probe]' })
+    const { scripts, holding, ran } = await serverCodeInPage(page)
+    expect(scripts).toBeGreaterThan(0)
+    expect({
+      holding,
+      ran,
+      answer: await page.text('[data-testid=probe]'),
+    }).toEqual({ holding: [], ran: false, answer: 'got=MARK_DB_X' })
+    expectNoDiagnostic(server.diagnostics, {
+      severity: 'error',
+      file: 'src/fns.ts',
+      root: server.root,
+    })
+  })
 })

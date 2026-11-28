@@ -12,8 +12,6 @@ import { describe, expect, test } from 'vitest'
 import { inPlace } from '../route-hmr-edit'
 import { openRouteHmrPage } from '../serial'
 
-const timeout = 60_000
-
 const route = (
   text: string,
   exported = false,
@@ -30,83 +28,68 @@ ${exported ? 'export ' : ''}function Page() {
 ${written ? "Page.displayName = 'Page'\n" : ''}`
 
 describe('Vite dev: route edits after the split layout changed and changed back', () => {
-  test(
-    'the component exported, then not: a text edit applies in place',
-    async () => {
-      const app = await openRouteHmrPage({
-        files: { 'routes/index.tsx': route('text-v1') },
-        ready: 'text-v1',
-      })
-      expect(app.splitOutputs()).toBeGreaterThan(0)
-      // Exporting the component adds an export of the module: plugin-react
-      // validates the route file's own exports and reloads, as on main
-      expect(
-        (
-          await app.edit(
-            { 'routes/index.tsx': route('text-v2', true) },
-            'text-v2',
-          )
-        ).errors,
-      ).toEqual([])
-      expect(
-        await app.edit({ 'routes/index.tsx': route('text-v3') }, 'text-v3'),
-      ).toEqual(inPlace)
-      expect(
-        await app.edit({ 'routes/index.tsx': route('text-v4') }, 'text-v4'),
-      ).toEqual(inPlace)
-    },
-    timeout,
-  )
-
-  test(
-    'the component unsplit, then split again: each edit applies in place',
-    async () => {
-      const app = await openRouteHmrPage({
-        files: { 'routes/index.tsx': route('text-v1') },
-        ready: 'text-v1',
-      })
-      expect(
+  test('the component exported, then not: a text edit applies in place', async () => {
+    const app = await openRouteHmrPage({
+      files: { 'routes/index.tsx': route('text-v1') },
+      ready: 'text-v1',
+    })
+    expect(app.splitOutputs()).toBeGreaterThan(0)
+    // Exporting the component adds an export of the module: plugin-react
+    // validates the route file's own exports and reloads, as on main
+    expect(
+      (
         await app.edit(
-          { 'routes/index.tsx': route('text-v2', false, true) },
+          { 'routes/index.tsx': route('text-v2', true) },
           'text-v2',
-        ),
-      ).toEqual(inPlace)
-      expect(
-        await app.edit({ 'routes/index.tsx': route('text-v3') }, 'text-v3'),
-      ).toEqual(inPlace)
-      expect(
-        await app.edit({ 'routes/index.tsx': route('text-v4') }, 'text-v4'),
-      ).toEqual(inPlace)
-    },
-    timeout,
-  )
+        )
+      ).errors,
+    ).toEqual([])
+    expect(
+      await app.edit({ 'routes/index.tsx': route('text-v3') }, 'text-v3'),
+    ).toEqual(inPlace)
+    expect(
+      await app.edit({ 'routes/index.tsx': route('text-v4') }, 'text-v4'),
+    ).toEqual(inPlace)
+  })
 
-  test(
-    'the exported component written, then not: each edit applies in place',
-    async () => {
-      const app = await openRouteHmrPage({
-        files: { 'routes/index.tsx': route('text-v1', true) },
-        ready: 'text-v1',
-      })
-      expect(
-        await app.edit(
-          { 'routes/index.tsx': route('text-v2', true, false, true) },
-          'text-v2',
-        ),
-      ).toEqual(inPlace)
-      expect(
-        await app.edit(
-          { 'routes/index.tsx': route('text-v3', true, false, true) },
-          'text-v3',
-        ),
-      ).toEqual(inPlace)
-      expect(
-        await app.edit(
-          { 'routes/index.tsx': route('text-v4', true) },
-          'text-v4',
-        ),
-      ).toEqual(inPlace)
-    },
-    timeout,
-  )
+  test('the component unsplit, then split again: each edit applies in place', async () => {
+    const app = await openRouteHmrPage({
+      files: { 'routes/index.tsx': route('text-v1') },
+      ready: 'text-v1',
+    })
+    expect(
+      await app.edit(
+        { 'routes/index.tsx': route('text-v2', false, true) },
+        'text-v2',
+      ),
+    ).toEqual(inPlace)
+    expect(
+      await app.edit({ 'routes/index.tsx': route('text-v3') }, 'text-v3'),
+    ).toEqual(inPlace)
+    expect(
+      await app.edit({ 'routes/index.tsx': route('text-v4') }, 'text-v4'),
+    ).toEqual(inPlace)
+  })
+
+  test('the exported component written, then not: each edit applies in place', async () => {
+    const app = await openRouteHmrPage({
+      files: { 'routes/index.tsx': route('text-v1', true) },
+      ready: 'text-v1',
+    })
+    expect(
+      await app.edit(
+        { 'routes/index.tsx': route('text-v2', true, false, true) },
+        'text-v2',
+      ),
+    ).toEqual(inPlace)
+    expect(
+      await app.edit(
+        { 'routes/index.tsx': route('text-v3', true, false, true) },
+        'text-v3',
+      ),
+    ).toEqual(inPlace)
+    expect(
+      await app.edit({ 'routes/index.tsx': route('text-v4', true) }, 'text-v4'),
+    ).toEqual(inPlace)
+  })
 })

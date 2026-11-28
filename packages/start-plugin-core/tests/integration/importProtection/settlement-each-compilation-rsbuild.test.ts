@@ -53,8 +53,6 @@ import {
 } from '../../importProtection/start-apps'
 import type { Recorded } from '../../importProtection/start-apps'
 
-const timeout = 120_000
-
 /** What a fixture renders for a mock (`describeValue`: by what it does, never by its label, SPEC §5.18). */
 const mock = 'a safe mock'
 
@@ -256,7 +254,6 @@ export const read = () => files('./w.client.ts').value()
         ),
       ).toEqual(expected)
     },
-    timeout,
   )
 
   test.each<{ when: When }>([{ when: 'make' }, { when: 'processAssets' }])(
@@ -276,76 +273,63 @@ export const read = () => files('./w.client.ts').value()
         ),
       ).toEqual(expected)
     },
-    timeout,
   )
 
-  test(
-    'Rsbuild build, the child failing before its settlement, the plugin failing with it: the violation is reported',
-    async () => {
-      const error = await buildStart({
-        bundler: 'rsbuild',
-        files: childFiles(false),
-        entry: 'src/entry.ts',
-        rsbuildConfig: {
-          environments: environments('make', 'propagate'),
-        } as never,
-        start: { importProtection } as never,
-      }).catch((e: unknown) => e)
-      expect(error, 'the build fails').toBeInstanceOf(StartBuildError)
-      expect(mocked(error as StartBuildError)).toEqual(['src/w.client.ts'])
-    },
-    timeout,
-  )
+  test('Rsbuild build, the child failing before its settlement, the plugin failing with it: the violation is reported', async () => {
+    const error = await buildStart({
+      bundler: 'rsbuild',
+      files: childFiles(false),
+      entry: 'src/entry.ts',
+      rsbuildConfig: {
+        environments: environments('make', 'propagate'),
+      } as never,
+      start: { importProtection } as never,
+    }).catch((e: unknown) => e)
+    expect(error, 'the build fails').toBeInstanceOf(StartBuildError)
+    expect(mocked(error as StartBuildError)).toEqual(['src/w.client.ts'])
+  })
 
-  test(
-    'rsbuild build --watch, an edit of the route: the rebuild fails with the context',
-    async () => {
-      expect(
-        await failure(
-          buildStart({
-            bundler: 'rsbuild',
-            files: childFiles(true),
-            entry: 'src/entry.ts',
-            rsbuildConfig: { environments: environments('make') } as never,
-            start: { importProtection } as never,
-            watchEdits: edited,
-          }),
-        ),
-      ).toEqual(expected)
-    },
-    timeout,
-  )
+  test('rsbuild build --watch, an edit of the route: the rebuild fails with the context', async () => {
+    expect(
+      await failure(
+        buildStart({
+          bundler: 'rsbuild',
+          files: childFiles(true),
+          entry: 'src/entry.ts',
+          rsbuildConfig: { environments: environments('make') } as never,
+          start: { importProtection } as never,
+          watchEdits: edited,
+        }),
+      ),
+    ).toEqual(expected)
+  })
 
-  test(
-    'Rsbuild dev: the first compile and the one after an edit of the route fail with the context',
-    async () => {
-      const recorder = violationRecorder(importProtection)
-      const server = await startRsbuildStartDevServer({
-        browser: true,
-        config: {
-          tools: { htmlPlugin: false },
-          environments: environments('make'),
-        } as never,
-        start: { importProtection: recorder.importProtection },
-        files: childFiles(true),
-      })
-      const state = async (since: number) => {
-        await fetch(new URL('/', server.url))
-        const errors = reportedErrors(server, since)
-        return {
-          errors: settlementErrors(errors),
-          reported: mocked({ root: server.root, ...recorder }),
-          context: errors.some((text) => text.includes('src/w.client.ts')),
-          traces: traces({ root: server.root, ...recorder }),
-        }
+  test('Rsbuild dev: the first compile and the one after an edit of the route fail with the context', async () => {
+    const recorder = violationRecorder(importProtection)
+    const server = await startRsbuildStartDevServer({
+      browser: true,
+      config: {
+        tools: { htmlPlugin: false },
+        environments: environments('make'),
+      } as never,
+      start: { importProtection: recorder.importProtection },
+      files: childFiles(true),
+    })
+    const state = async (since: number) => {
+      await fetch(new URL('/', server.url))
+      const errors = reportedErrors(server, since)
+      return {
+        errors: settlementErrors(errors),
+        reported: mocked({ root: server.root, ...recorder }),
+        context: errors.some((text) => text.includes('src/w.client.ts')),
+        traces: traces({ root: server.root, ...recorder }),
       }
-      expect(await state(0)).toEqual(expected)
-      const since = server.diagnostics.length
-      await server.edit(edited)
-      expect(await state(since)).toEqual(expected)
-    },
-    timeout,
-  )
+    }
+    expect(await state(0)).toEqual(expected)
+    const since = server.diagnostics.length
+    await server.edit(edited)
+    expect(await state(since)).toEqual(expected)
+  })
 
   describe('what a child requested is reported into the run that ran it', () => {
     /** A promise of the end of `ms` milliseconds. */
@@ -473,180 +457,159 @@ export const read = () => files('./w.client.ts').value()
           error instanceof StartBuildError ? error.errors : error,
       )
 
-    test(
-      'a child run in a done tap after Start’s, failing before its settlement, the plugin going on: the run fails with the context, the next one builds',
-      async () => {
-        const outcomes: Array<Outcome> = []
-        const last = await twoRuns(
-          firstRunChild({ when: 'done', aborted: 'recover', outcomes }),
-        )
-        expect({ outcomes, last }).toEqual({
-          outcomes: [true, false],
-          last: 'built',
-        })
-      },
-      timeout,
-    )
+    test('a child run in a done tap after Start’s, failing before its settlement, the plugin going on: the run fails with the context, the next one builds', async () => {
+      const outcomes: Array<Outcome> = []
+      const last = await twoRuns(
+        firstRunChild({ when: 'done', aborted: 'recover', outcomes }),
+      )
+      expect({ outcomes, last }).toEqual({
+        outcomes: [true, false],
+        last: 'built',
+      })
+    })
 
-    test(
-      'a child failing before its settlement, the plugin failing with it, onViolation answering after the next run began or 250 ms: the next run begins once it answered, and builds',
-      async () => {
-        const outcomes: Array<Outcome> = []
-        const events: Array<string> = []
-        let nextCompilation = () => {}
-        const last = await twoRuns(
-          firstRunChild({
-            when: 'make',
-            aborted: 'propagate',
-            outcomes,
-            onCompilation: () => {
-              events.push('compilation')
-              nextCompilation()
-            },
-          }),
-          async () => {
-            await Promise.race([
-              new Promise<void>((resolve) => {
-                nextCompilation = resolve
-              }),
-              delay(answerBound),
-            ])
-            events.push('answered')
+    test('a child failing before its settlement, the plugin failing with it, onViolation answering after the next run began or 250 ms: the next run begins once it answered, and builds', async () => {
+      const outcomes: Array<Outcome> = []
+      const events: Array<string> = []
+      let nextCompilation = () => {}
+      const last = await twoRuns(
+        firstRunChild({
+          when: 'make',
+          aborted: 'propagate',
+          outcomes,
+          onCompilation: () => {
+            events.push('compilation')
+            nextCompilation()
           },
-        )
-        expect({ outcomes, events, last }).toEqual({
-          outcomes: ['failed', false],
-          events: ['compilation', 'answered', 'compilation'],
-          last: 'built',
-        })
-      },
-      timeout,
-    )
+        }),
+        async () => {
+          await Promise.race([
+            new Promise<void>((resolve) => {
+              nextCompilation = resolve
+            }),
+            delay(answerBound),
+          ])
+          events.push('answered')
+        },
+      )
+      expect({ outcomes, events, last }).toEqual({
+        outcomes: ['failed', false],
+        events: ['compilation', 'answered', 'compilation'],
+        last: 'built',
+      })
+    })
 
-    test(
-      'a child failing before its settlement with two violations, the plugin failing with it, onViolation rejecting: both are told, the next run builds, and nothing is left unhandled',
-      async () => {
-        const unhandled: Array<unknown> = []
-        const listener = (reason: unknown) => {
-          unhandled.push(String(reason))
-        }
-        process.on('unhandledRejection', listener)
-        try {
-          const outcomes: Array<Outcome> = []
-          const told: Array<string> = []
-          const last = await twoRuns(
-            firstRunChild({ when: 'make', aborted: 'propagate', outcomes }),
-            (info) => {
-              told.push(info.specifier)
-              return Promise.reject(new Error('CALLBACK_REJECTED'))
-            },
-            {
-              // (`two.ts`, checked, imports two denied files)
-              'src/r.ts': `import { read } from './two'
+    test('a child failing before its settlement with two violations, the plugin failing with it, onViolation rejecting: both are told, the next run builds, and nothing is left unhandled', async () => {
+      const unhandled: Array<unknown> = []
+      const listener = (reason: unknown) => {
+        unhandled.push(String(reason))
+      }
+      process.on('unhandledRejection', listener)
+      try {
+        const outcomes: Array<Outcome> = []
+        const told: Array<string> = []
+        const last = await twoRuns(
+          firstRunChild({ when: 'make', aborted: 'propagate', outcomes }),
+          (info) => {
+            told.push(info.specifier)
+            return Promise.reject(new Error('CALLBACK_REJECTED'))
+          },
+          {
+            // (`two.ts`, checked, imports two denied files)
+            'src/r.ts': `import { read } from './two'
 ;(globalThis as any).readHeld = () => String(read())
 export {}
 `,
-              'src/two.ts': `import { value as w } from './w.client'
+            'src/two.ts': `import { value as w } from './w.client'
 import { value as v } from './v.client'
 export const read = () => w() + v()
 `,
-              'src/v.client.ts': `export const value = () => 'OTHER_BODY'\n`,
-            },
-          )
-          // (a rejection is unhandled once the microtasks after it ran)
-          await delay(0)
-          expect({ outcomes, told: told.sort(), last, unhandled }).toEqual({
-            outcomes: ['failed', false],
-            told: ['./v.client', './w.client'],
-            last: 'built',
-            unhandled: [],
-          })
-        } finally {
-          process.off('unhandledRejection', listener)
-        }
-      },
-      timeout,
-    )
-
-    test(
-      'Rsbuild build, a child failing before its settlement, the plugin failing with it, onViolation answering after the build returned or 250 ms: the build returns once it answered',
-      async () => {
-        const events: Array<string> = []
-        let returned = () => {}
-        const build = buildStart({
-          bundler: 'rsbuild',
-          files: childFiles(false),
-          entry: 'src/entry.ts',
-          rsbuildConfig: {
-            environments: firstRunChild({
-              when: 'make',
-              aborted: 'propagate',
-              outcomes: [],
-            }),
-          } as never,
-          start: {
-            importProtection: {
-              ...importProtection,
-              onViolation: async () => {
-                await Promise.race([
-                  new Promise<void>((resolve) => {
-                    returned = resolve
-                  }),
-                  delay(answerBound),
-                ])
-                events.push('answered')
-              },
-            },
-          },
-        })
-        const error = await build.then(
-          () => null,
-          (e: unknown) => {
-            events.push('returned')
-            returned()
-            return e
+            'src/v.client.ts': `export const value = () => 'OTHER_BODY'\n`,
           },
         )
-        expect(error, 'the build fails').toBeInstanceOf(StartBuildError)
-        expect(events).toEqual(['answered', 'returned'])
-      },
-      timeout,
-    )
+        // (a rejection is unhandled once the microtasks after it ran)
+        await delay(0)
+        expect({ outcomes, told: told.sort(), last, unhandled }).toEqual({
+          outcomes: ['failed', false],
+          told: ['./v.client', './w.client'],
+          last: 'built',
+          unhandled: [],
+        })
+      } finally {
+        process.off('unhandledRejection', listener)
+      }
+    })
 
-    test(
-      'Rsbuild build, side-effect-free, the child reading a barrel that imports the denied file and re-exports its binding: the build fails with one error of the violation',
-      async () => {
-        // (Rspack resolves the barrel's import of the denied file twice when
-        // the package is side-effect-free: the import and the re-export)
-        const error = await buildStart({
-          bundler: 'rsbuild',
-          files: {
-            ...childFiles(false),
-            'src/r.ts': `import { read } from './relay'
+    test('Rsbuild build, a child failing before its settlement, the plugin failing with it, onViolation answering after the build returned or 250 ms: the build returns once it answered', async () => {
+      const events: Array<string> = []
+      let returned = () => {}
+      const build = buildStart({
+        bundler: 'rsbuild',
+        files: childFiles(false),
+        entry: 'src/entry.ts',
+        rsbuildConfig: {
+          environments: firstRunChild({
+            when: 'make',
+            aborted: 'propagate',
+            outcomes: [],
+          }),
+        } as never,
+        start: {
+          importProtection: {
+            ...importProtection,
+            onViolation: async () => {
+              await Promise.race([
+                new Promise<void>((resolve) => {
+                  returned = resolve
+                }),
+                delay(answerBound),
+              ])
+              events.push('answered')
+            },
+          },
+        },
+      })
+      const error = await build.then(
+        () => null,
+        (e: unknown) => {
+          events.push('returned')
+          returned()
+          return e
+        },
+      )
+      expect(error, 'the build fails').toBeInstanceOf(StartBuildError)
+      expect(events).toEqual(['answered', 'returned'])
+    })
+
+    test('Rsbuild build, side-effect-free, the child reading a barrel that imports the denied file and re-exports its binding: the build fails with one error of the violation', async () => {
+      // (Rspack resolves the barrel's import of the denied file twice when
+      // the package is side-effect-free: the import and the re-export)
+      const error = await buildStart({
+        bundler: 'rsbuild',
+        files: {
+          ...childFiles(false),
+          'src/r.ts': `import { read } from './relay'
 ;(globalThis as any).readHeld = () => String(read())
 export {}
 `,
-            'src/relay.ts': `import { read } from './w.client'
+          'src/relay.ts': `import { read } from './w.client'
 export { read }
 `,
-            'src/w.client.ts': `export const read = () => 'CHILD_BODY'\n`,
-          },
-          sideEffects: false,
-          entry: 'src/entry.ts',
-          rsbuildConfig: { environments: environments('make') } as never,
-          start: { importProtection } as never,
-        }).catch((e: unknown) => e)
-        expect(error, 'the build fails').toBeInstanceOf(StartBuildError)
-        const failed = error as StartBuildError
-        expect({
-          errors: failed.errors.filter((text) =>
-            text.includes('src/w.client.ts'),
-          ).length,
-          told: failed.violations.length,
-        }).toEqual({ errors: 1, told: 1 })
-      },
-      timeout,
-    )
+          'src/w.client.ts': `export const read = () => 'CHILD_BODY'\n`,
+        },
+        sideEffects: false,
+        entry: 'src/entry.ts',
+        rsbuildConfig: { environments: environments('make') } as never,
+        start: { importProtection } as never,
+      }).catch((e: unknown) => e)
+      expect(error, 'the build fails').toBeInstanceOf(StartBuildError)
+      const failed = error as StartBuildError
+      expect({
+        errors: failed.errors.filter((text) => text.includes('src/w.client.ts'))
+          .length,
+        told: failed.violations.length,
+      }).toEqual({ errors: 1, told: 1 })
+    })
   })
 })
 
@@ -749,65 +712,47 @@ export const run = () => describeValue(marker())
     errors: [],
   })
 
-  test(
-    'Rsbuild build: the provided module serves the mock',
-    async () => {
-      expect(await served(await build())).toEqual(expected('FIRST'))
-    },
-    timeout,
-  )
+  test('Rsbuild build: the provided module serves the mock', async () => {
+    expect(await served(await build())).toEqual(expected('FIRST'))
+  })
 
-  test(
-    'Rsbuild build on the persistent cache: the second build serves the mock',
-    async () => {
-      expect(await served(await build({ builds: 2 }))).toEqual(
-        expected('FIRST'),
-      )
-    },
-    timeout,
-  )
+  test('Rsbuild build on the persistent cache: the second build serves the mock', async () => {
+    expect(await served(await build({ builds: 2 }))).toEqual(expected('FIRST'))
+  })
 
-  test(
-    'rsbuild build --watch, a caption edit: the rebuild serves the mock',
-    async () => {
-      expect(await served(await build({ watchEdits: edited }))).toEqual(
-        expected('SECOND'),
-      )
-    },
-    timeout,
-  )
+  test('rsbuild build --watch, a caption edit: the rebuild serves the mock', async () => {
+    expect(await served(await build({ watchEdits: edited }))).toEqual(
+      expected('SECOND'),
+    )
+  })
 
-  test(
-    'Rsbuild dev: the first load and the one after a caption edit serve the mock',
-    async () => {
-      const recorder = violationRecorder(importProtection)
-      const server = await startRsbuildStartDevServer({
-        browser: true,
-        config: { tools: { htmlPlugin: false }, environments } as never,
-        start: { importProtection: recorder.importProtection },
-        files,
-      })
-      const page = async (since: number) => {
-        const response = await fetch(new URL('/', server.url))
-        return {
-          status: response.status,
-          label: texts(await response.text(), 'label'),
-          errors: reportedErrors(server, since),
-        }
+  test('Rsbuild dev: the first load and the one after a caption edit serve the mock', async () => {
+    const recorder = violationRecorder(importProtection)
+    const server = await startRsbuildStartDevServer({
+      browser: true,
+      config: { tools: { htmlPlugin: false }, environments } as never,
+      start: { importProtection: recorder.importProtection },
+      files,
+    })
+    const page = async (since: number) => {
+      const response = await fetch(new URL('/', server.url))
+      return {
+        status: response.status,
+        label: texts(await response.text(), 'label'),
+        errors: reportedErrors(server, since),
       }
-      expect(await page(0)).toEqual({
-        status: 200,
-        label: [`FIRST ${mock}`],
-        errors: [],
-      })
-      const since = server.diagnostics.length
-      await server.edit(edited)
-      expect(await page(since)).toEqual({
-        status: 200,
-        label: [`SECOND ${mock}`],
-        errors: [],
-      })
-    },
-    timeout,
-  )
+    }
+    expect(await page(0)).toEqual({
+      status: 200,
+      label: [`FIRST ${mock}`],
+      errors: [],
+    })
+    const since = server.diagnostics.length
+    await server.edit(edited)
+    expect(await page(since)).toEqual({
+      status: 200,
+      label: [`SECOND ${mock}`],
+      errors: [],
+    })
+  })
 })

@@ -12,8 +12,6 @@ import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { startBundlers } from '../build-harness'
 import { buildStart } from '../build-start'
 
-const timeout = 60_000
-
 const shared = `export const shared = {
   staleTime: 1,
   server: { handlers: { GET: () => new Response('MARK_SPREAD_SERVER') } },
@@ -84,7 +82,6 @@ describe.each(startBundlers)('%s build', (bundler) => {
       }
       expect(result.client.where('MARK_SPREAD_SERVER')).not.toBe('nowhere')
     },
-    timeout,
   )
 
   test.each([
@@ -104,154 +101,125 @@ describe.each(startBundlers)('%s build', (bundler) => {
       )
       expect(said.size).toBe(1)
     },
-    timeout,
   )
 
-  test(
-    'options written to after their declaration warn, and what they hold ships',
-    async () => {
-      const result = await buildStart({
-        bundler,
-        files: {
-          ...root,
-          'src/routes/x.tsx': `import { createFileRoute } from '@tanstack/react-router'
+  test('options written to after their declaration warn, and what they hold ships', async () => {
+    const result = await buildStart({
+      bundler,
+      files: {
+        ...root,
+        'src/routes/x.tsx': `import { createFileRoute } from '@tanstack/react-router'
 const options: any = { ${component} }
 options.server = { handlers: { GET: () => new Response('MARK_SPREAD_SERVER') } }
 export const Route = createFileRoute('/x')(options)
 `,
-          'src/entry.ts': `export { Route } from './routes/x'\n`,
-        },
-        entry: 'src/entry.ts',
-      })
-      expectDiagnostic(result.diagnostics, {
-        severity: 'warning',
-        file: 'src/routes/x.tsx',
-      })
-    },
-    timeout,
-  )
+        'src/entry.ts': `export { Route } from './routes/x'\n`,
+      },
+      entry: 'src/entry.ts',
+    })
+    expectDiagnostic(result.diagnostics, {
+      severity: 'warning',
+      file: 'src/routes/x.tsx',
+    })
+  })
 
   // Source: KNOWN-BUGS "A write to the route options through another name
   // of the object is not seen" (the literal's `server` was removed, the
   // write's stayed in the client, nothing reported)
-  test(
-    'options written through another name of their object warn',
-    async () => {
-      const result = await buildStart({
-        bundler,
-        files: {
-          ...root,
-          'src/admin-helper.ts': `export const readSecret = () => 'MARK_WRITTEN_SERVER'\n`,
-          'src/routes/x.tsx': `import { createFileRoute } from '@tanstack/react-router'
+  test('options written through another name of their object warn', async () => {
+    const result = await buildStart({
+      bundler,
+      files: {
+        ...root,
+        'src/admin-helper.ts': `export const readSecret = () => 'MARK_WRITTEN_SERVER'\n`,
+        'src/routes/x.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { readSecret } from '../admin-helper'
 const a: any = { ${component}, server: { handlers: { GET: () => new Response('none') } } }
 const z = a
 z.server = { handlers: { GET: () => new Response(readSecret()) } }
 export const Route = createFileRoute('/x')(a)
 `,
-          'src/entry.ts': `export { Route } from './routes/x'\n`,
-        },
-        entry: 'src/entry.ts',
-      })
-      expectDiagnostic(result.diagnostics, {
-        severity: 'warning',
-        file: 'src/routes/x.tsx',
-      })
-      expect(result.client.where('MARK_PAGE')).not.toBe('lazy')
-    },
-    timeout,
-  )
+        'src/entry.ts': `export { Route } from './routes/x'\n`,
+      },
+      entry: 'src/entry.ts',
+    })
+    expectDiagnostic(result.diagnostics, {
+      severity: 'warning',
+      file: 'src/routes/x.tsx',
+    })
+    expect(result.client.where('MARK_PAGE')).not.toBe('lazy')
+  })
 
-  test(
-    'options named through a chain of consts used nowhere else are split, and their server options removed',
-    async () => {
-      const result = await buildStart({
-        bundler,
-        files: {
-          ...root,
-          'src/admin-helper.ts': `export const readSecret = () => 'MARK_WRITTEN_SERVER'\n`,
-          'src/routes/x.tsx': `import { createFileRoute } from '@tanstack/react-router'
+  test('options named through a chain of consts used nowhere else are split, and their server options removed', async () => {
+    const result = await buildStart({
+      bundler,
+      files: {
+        ...root,
+        'src/admin-helper.ts': `export const readSecret = () => 'MARK_WRITTEN_SERVER'\n`,
+        'src/routes/x.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { readSecret } from '../admin-helper'
 const a = { ${component}, ${serverOption} }
 const options = a
 export const Route = createFileRoute('/x')(options)
 `,
-          'src/entry.ts': `export { Route } from './routes/x'\n`,
-        },
-        entry: 'src/entry.ts',
-      })
-      expect({
-        page: result.client.where('MARK_PAGE'),
-        server: result.client.where('MARK_WRITTEN_SERVER'),
-      }).toEqual({ page: 'lazy', server: 'nowhere' })
-      expectNoProblems(result.diagnostics)
-    },
-    timeout,
-  )
+        'src/entry.ts': `export { Route } from './routes/x'\n`,
+      },
+      entry: 'src/entry.ts',
+    })
+    expect({
+      page: result.client.where('MARK_PAGE'),
+      server: result.client.where('MARK_WRITTEN_SERVER'),
+    }).toEqual({ page: 'lazy', server: 'nowhere' })
+    expectNoProblems(result.diagnostics)
+  })
 
-  test(
-    'a property written next to the spread is split, and server options written next to it are removed',
-    async () => {
-      const result = await build(
-        bundler,
-        `{ ...shared, ${component}, ssr: () => { console.log('MARK_WRITTEN_SSR'); return true }, headers: () => ({ a: 'MARK_WRITTEN_HEADERS' }) }`,
-        clean,
-      )
-      expect({
-        page: result.client.where('MARK_PAGE'),
-        ssr: result.client.where('MARK_WRITTEN_SSR'),
-        headers: result.client.where('MARK_WRITTEN_HEADERS'),
-      }).toEqual({ page: 'lazy', ssr: 'nowhere', headers: 'nowhere' })
-    },
-    timeout,
-  )
+  test('a property written next to the spread is split, and server options written next to it are removed', async () => {
+    const result = await build(
+      bundler,
+      `{ ...shared, ${component}, ssr: () => { console.log('MARK_WRITTEN_SSR'); return true }, headers: () => ({ a: 'MARK_WRITTEN_HEADERS' }) }`,
+      clean,
+    )
+    expect({
+      page: result.client.where('MARK_PAGE'),
+      ssr: result.client.where('MARK_WRITTEN_SSR'),
+      headers: result.client.where('MARK_WRITTEN_HEADERS'),
+    }).toEqual({ page: 'lazy', ssr: 'nowhere', headers: 'nowhere' })
+  })
 
-  test(
-    '`server` written after the spread is removed and still wins over the spread’s',
-    async () => {
-      const result = await build(
-        bundler,
-        `{ ...shared, ${serverOption}, ${component} }`,
-      )
-      expect(result.client.where('MARK_WRITTEN_SERVER')).toBe('nowhere')
-      const { result: server } = await result.client.run(
-        `return String(entry.Route.options.server)`,
-      )
-      expect(server).toBe('undefined')
-    },
-    timeout,
-  )
+  test('`server` written after the spread is removed and still wins over the spread’s', async () => {
+    const result = await build(
+      bundler,
+      `{ ...shared, ${serverOption}, ${component} }`,
+    )
+    expect(result.client.where('MARK_WRITTEN_SERVER')).toBe('nowhere')
+    const { result: server } = await result.client.run(
+      `return String(entry.Route.options.server)`,
+    )
+    expect(server).toBe('undefined')
+  })
 
-  test(
-    '`server` written before the spread is removed, and the spread’s wins as written',
-    async () => {
-      const result = await build(
-        bundler,
-        `{ ${serverOption}, ...shared, ${component} }`,
-      )
-      expect(result.client.where('MARK_WRITTEN_SERVER')).toBe('nowhere')
-      const { result: server } = await result.client.run(
-        `return typeof entry.Route.options.server?.handlers?.GET`,
-      )
-      expect(server).toBe('function')
-    },
-    timeout,
-  )
+  test('`server` written before the spread is removed, and the spread’s wins as written', async () => {
+    const result = await build(
+      bundler,
+      `{ ${serverOption}, ...shared, ${component} }`,
+    )
+    expect(result.client.where('MARK_WRITTEN_SERVER')).toBe('nowhere')
+    const { result: server } = await result.client.run(
+      `return typeof entry.Route.options.server?.handlers?.GET`,
+    )
+    expect(server).toBe('function')
+  })
 
-  test(
-    '`server` written after a computed key is removed and still wins over it',
-    async () => {
-      const result = await build(
-        bundler,
-        `{ [key]: shared.staleTime, ${serverOption}, ${component} }`,
-        clean,
-      )
-      expect(result.client.where('MARK_WRITTEN_SERVER')).toBe('nowhere')
-      const { result: server } = await result.client.run(
-        `return String(entry.Route.options.server)`,
-      )
-      expect(server).toBe('undefined')
-    },
-    timeout,
-  )
+  test('`server` written after a computed key is removed and still wins over it', async () => {
+    const result = await build(
+      bundler,
+      `{ [key]: shared.staleTime, ${serverOption}, ${component} }`,
+      clean,
+    )
+    expect(result.client.where('MARK_WRITTEN_SERVER')).toBe('nowhere')
+    const { result: server } = await result.client.run(
+      `return String(entry.Route.options.server)`,
+    )
+    expect(server).toBe('undefined')
+  })
 })

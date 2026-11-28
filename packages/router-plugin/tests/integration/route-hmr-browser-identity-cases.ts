@@ -293,7 +293,6 @@ async function countOf(page: { text: (selector: string) => Promise<string> }) {
 export function identitySuite(bundler: Bundler) {
   describe.each([false, true])(
     `${bundler}, react, autoCodeSplitting: %s`,
-    { timeout: 60_000 },
     (autoCodeSplitting) => {
       const run = async (
         row: Row,

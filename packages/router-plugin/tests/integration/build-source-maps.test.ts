@@ -25,8 +25,6 @@ import type { RouterPluginOptions } from '../build-harness'
 
 const appsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 
-const timeout = 60_000
-
 const route = `${routeHead()}import { label } from '../lib/label'
 const shared = { label }
 function Page(): never {
@@ -209,33 +207,28 @@ describe('vite', () => {
   test.each(builds)(
     'a throw in a split component maps to its line in the route file ($name)',
     (options) => expectThrowMapsToRouteFile('vite', options),
-    timeout,
   )
 
   // A plugin that transforms the route file before the router plugin (here
   // Babel erasing TypeScript, with its own map): the maps compose, and the
   // frame still resolves to the user's line and column.
-  test(
-    'a throw in a split component maps to its line in the route file through the map of a plugin before the router plugin (unminified)',
-    async () => {
-      const [{ default: babel }, { tanstackRouter }] = await Promise.all([
-        import('@rolldown/plugin-babel'),
-        import('../../src/vite'),
-      ])
-      // @ts-expect-error -- the preset ships no type declarations
-      const { default: typescript } = await import('@babel/preset-typescript')
-      await expectThrowMapsToRouteFile('vite', {
-        minify: false,
-        routerPlugins: (config) => [
-          babel({
-            presets: [[typescript, { allExtensions: true, isTSX: true }]],
-          }),
-          tanstackRouter(config),
-        ],
-      })
-    },
-    timeout,
-  )
+  test('a throw in a split component maps to its line in the route file through the map of a plugin before the router plugin (unminified)', async () => {
+    const [{ default: babel }, { tanstackRouter }] = await Promise.all([
+      import('@rolldown/plugin-babel'),
+      import('../../src/vite'),
+    ])
+    // @ts-expect-error -- the preset ships no type declarations
+    const { default: typescript } = await import('@babel/preset-typescript')
+    await expectThrowMapsToRouteFile('vite', {
+      minify: false,
+      routerPlugins: (config) => [
+        babel({
+          presets: [[typescript, { allExtensions: true, isTSX: true }]],
+        }),
+        tanstackRouter(config),
+      ],
+    })
+  })
 
   // Code the splitter leaves in the route module, and code it moves into the
   // module the route module and a chunk share, map back the same way.
@@ -243,7 +236,6 @@ describe('vite', () => {
     'a throw in $name maps to its line and column in the route file',
     ({ route: source, marker }) =>
       expectModuleThrowMapsToRouteFile('vite', source, marker),
-    timeout,
   )
 })
 
@@ -257,26 +249,22 @@ describe.each(['solid', 'vue'] as const)('vite, %s', (framework) => {
 }
 export const Route = createFileRoute('/')({ component: Page })
 `
-  test(
-    'a frame in a split component maps to its line and column in the route file (unminified)',
-    async () => {
-      const app = await build({
-        bundler: 'vite',
-        env: 'client',
-        framework,
-        minify: false,
-        sourcemap: true,
-        files: routeApp(frameworkRoute, { env: 'client', framework }),
-      })
-      expect(app.where('MARK_PAGE_STACK')).toBe('lazy')
-      const { result: stack } = await app.run(
-        'await entry.mount(entry.Route.options.component)\nreturn globalThis.__stack',
-      )
-      expect(stack).toMatch(/MARK_PAGE_STACK/)
-      expectFrameAtThrow(app, stack, frameworkRoute, { minify: false })
-    },
-    timeout,
-  )
+  test('a frame in a split component maps to its line and column in the route file (unminified)', async () => {
+    const app = await build({
+      bundler: 'vite',
+      env: 'client',
+      framework,
+      minify: false,
+      sourcemap: true,
+      files: routeApp(frameworkRoute, { env: 'client', framework }),
+    })
+    expect(app.where('MARK_PAGE_STACK')).toBe('lazy')
+    const { result: stack } = await app.run(
+      'await entry.mount(entry.Route.options.component)\nreturn globalThis.__stack',
+    )
+    expect(stack).toMatch(/MARK_PAGE_STACK/)
+    expectFrameAtThrow(app, stack, frameworkRoute, { minify: false })
+  })
 })
 
 // Bug: unplugin's webpack and Rspack transform loaders drop the source map
@@ -298,52 +286,44 @@ describe.each(['rspack', 'webpack'] as const)('%s', (bundler) => {
   test.each(builds)(
     'a throw in a split component maps to its line in the route file ($name)',
     (options) => expectThrowMapsToRouteFile(bundler, options),
-    timeout,
   )
 
   // A development build hot-updates the modules whose code changed, which
   // these bundlers tell by a module's code and map: the file's text reaches
   // the emitted map another way than a production build's.
-  test(
-    'a throw in a split component maps to its line in the route file (development build)',
-    () =>
-      expectThrowMapsToRouteFile(bundler, {
-        minify: false,
-        mode: 'development',
-      }),
-    timeout,
-  )
+  test('a throw in a split component maps to its line in the route file (development build)', () =>
+    expectThrowMapsToRouteFile(bundler, {
+      minify: false,
+      mode: 'development',
+    }))
 
   test.each(moduleThrows)(
     'a throw in $name maps to its line and column in the route file',
     ({ route: source, marker }) =>
       expectModuleThrowMapsToRouteFile(bundler, source, marker),
-    timeout,
   )
 
   // A loader before the router's handing it an index map (a map of
   // `sections`, which the source map format allows): the router composes it
   // like any other input map.
-  test(
-    'a throw in the route module maps to its line in the route file through an index map an earlier loader passes',
-    async () => {
-      const source = `${routeHead()}export const Route = createFileRoute('/')({
+  test('a throw in the route module maps to its line in the route file through an index map an earlier loader passes', async () => {
+    const source = `${routeHead()}export const Route = createFileRoute('/')({
   loader: () => {
     throw new Error('MARK_LOADER_THROW')
   },
   component: () => <p>page</p>,
 })
 `
-      const app = await build({
-        bundler,
+    const app = await build({
+      bundler,
+      env: 'client',
+      minify: false,
+      sourcemap: true,
+      files: routeApp(source, {
         env: 'client',
-        minify: false,
-        sourcemap: true,
-        files: routeApp(source, {
-          env: 'client',
-          files: {
-            'entry.ts': `export * from './routes/index'\n`,
-            'index-map-loader.cjs': `module.exports = function (code) {
+        files: {
+          'entry.ts': `export * from './routes/index'\n`,
+          'index-map-loader.cjs': `module.exports = function (code) {
   const lines = code.split('\\n')
   const mappings = lines.map((_, i) => (i === 0 ? 'AAAA' : 'AACA')).join(';')
   const map = {
@@ -359,40 +339,33 @@ describe.each(['rspack', 'webpack'] as const)('%s', (bundler) => {
   })
 }
 `,
-          },
-        }),
-        configure: (options) => {
-          const rules = (options.module as { rules: Array<unknown> }).rules
-          rules.push({
-            test: /routes[\\/]index\.tsx$/,
-            enforce: 'pre',
-            loader: path.join(
-              options.context as string,
-              'index-map-loader.cjs',
-            ),
-          })
         },
-      })
-      const { result: stack } = await app.run(
-        `try { entry.Route.options.loader() } catch (error) { return error.stack }`,
-      )
-      expect(stack).toMatch('MARK_LOADER_THROW')
-      const { line } = originalFrameOf(app, stack as string) ?? {}
-      expect(line).toBe(
-        source.slice(0, source.indexOf('new Error(')).split('\n').length,
-      )
-    },
-    timeout,
-  )
+      }),
+      configure: (options) => {
+        const rules = (options.module as { rules: Array<unknown> }).rules
+        rules.push({
+          test: /routes[\\/]index\.tsx$/,
+          enforce: 'pre',
+          loader: path.join(options.context as string, 'index-map-loader.cjs'),
+        })
+      },
+    })
+    const { result: stack } = await app.run(
+      `try { entry.Route.options.loader() } catch (error) { return error.stack }`,
+    )
+    expect(stack).toMatch('MARK_LOADER_THROW')
+    const { line } = originalFrameOf(app, stack as string) ?? {}
+    expect(line).toBe(
+      source.slice(0, source.indexOf('new Error(')).split('\n').length,
+    )
+  })
 
   // A raw U+2028 inside a string of the component the splitter moves out of
   // the route module: these bundlers' maps count lines at LF only (as editors
   // and devtools show the file), so the loader's throw below it still maps
   // to its line.
-  test(
-    'a throw below a raw line separator in a string maps to its line and column in the route file',
-    async () => {
-      const source = `${routeHead()}function Page() {
+  test('a throw below a raw line separator in a string maps to its line and column in the route file', async () => {
+    const source = `${routeHead()}function Page() {
   return <p>{'MARK_LS \u2028 text'}</p>
 }
 export const Route = createFileRoute('/')({
@@ -402,30 +375,28 @@ export const Route = createFileRoute('/')({
   component: Page,
 })
 `
-      const app = await build({
-        bundler,
+    const app = await build({
+      bundler,
+      env: 'client',
+      minify: false,
+      sourcemap: true,
+      files: routeApp(source, {
         env: 'client',
-        minify: false,
-        sourcemap: true,
-        files: routeApp(source, {
-          env: 'client',
-          files: { 'entry.ts': `export * from './routes/index'\n` },
-        }),
-      })
-      const { result: stack } = await app.run(
-        `try { entry.Route.options.loader() } catch (error) { return error.stack }`,
-      )
-      expect(stack).toMatch('MARK_LOADER_THROW')
-      const { line, column } = originalFrameOf(app, stack as string) ?? {}
-      const offset = source.indexOf('new Error(')
-      const lineStart = source.lastIndexOf('\n', offset) + 1
-      expect({ line, column }).toEqual({
-        line: source.slice(0, offset).split('\n').length,
-        column: offset - lineStart + 1,
-      })
-    },
-    timeout,
-  )
+        files: { 'entry.ts': `export * from './routes/index'\n` },
+      }),
+    })
+    const { result: stack } = await app.run(
+      `try { entry.Route.options.loader() } catch (error) { return error.stack }`,
+    )
+    expect(stack).toMatch('MARK_LOADER_THROW')
+    const { line, column } = originalFrameOf(app, stack as string) ?? {}
+    const offset = source.indexOf('new Error(')
+    const lineStart = source.lastIndexOf('\n', offset) + 1
+    expect({ line, column }).toEqual({
+      line: source.slice(0, offset).split('\n').length,
+      column: offset - lineStart + 1,
+    })
+  })
 })
 
 /**

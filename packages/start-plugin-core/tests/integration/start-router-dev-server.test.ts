@@ -23,8 +23,6 @@ import {
 } from './start-router-server-only-switch'
 import type { ServerOnlySwitchServer } from './start-router-server-only-switch'
 
-const timeout = 30_000
-
 /** Pre-bundled up front, as Vite does for an app that installed them. */
 const pageAppConfig = {
   optimizeDeps: {
@@ -61,22 +59,14 @@ async function startPageServer(): Promise<ServerOnlySwitchServer> {
 
 describe('Vite dev: a route switching between page and server-only', () => {
   // Source: mutation testing.
-  test(
-    'the page follows a route that becomes a page, loses its handlers and becomes server-only again',
-    async () => {
-      await switchBetweenServerOnlyAndPage(await startPageServer())
-    },
-    timeout,
-  )
+  test('the page follows a route that becomes a page, loses its handlers and becomes server-only again', async () => {
+    await switchBetweenServerOnlyAndPage(await startPageServer())
+  })
 
   // Source: mutation testing.
-  test(
-    'a route that becomes a page before the client loaded the route tree is in the client route tree',
-    async () => {
-      await pageBeforeTheClientLoadedTheTree(await startPageServer())
-    },
-    timeout,
-  )
+  test('a route that becomes a page before the client loaded the route tree is in the client route tree', async () => {
+    await pageBeforeTheClientLoadedTheTree(await startPageServer())
+  })
 })
 
 describe('Vite dev: route HMR in a real page', () => {
@@ -186,6 +176,5 @@ export const Route = createRootRoute()
       expect(browser.loads()).toBe(1)
       expect(browser.errors).toEqual([])
     },
-    timeout,
   )
 })

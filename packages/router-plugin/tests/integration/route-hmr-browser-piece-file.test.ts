@@ -13,7 +13,6 @@ import { describe } from 'vitest'
 import { it } from '../test'
 import type { TargetFramework } from '../route-app'
 
-const timeout = 60_000
 const inPlace = { reloaded: false, errors: [] }
 
 /** The route's component in a file of its own, showing its loader data (`none` without a loader). */
@@ -67,43 +66,39 @@ describe.each([
   { bundler: 'vite', target: 'react' },
   { bundler: 'rsbuild', target: 'solid' },
 ] as const)('$bundler: a $target app', ({ bundler, target }) => {
-  it(
-    'keeps the component of its own file across route file edits, and an option the edit removes is gone',
-    { timeout },
-    async ({ expect, openRouteHmrPage }) => {
-      const [pieceFile, piece] = pieces[target]
-      const app = await openRouteHmrPage({
-        bundler,
-        target,
-        files: {
-          'routes/index.ts': route(target, undefined, true),
-          [pieceFile]: piece,
-        },
-        ready: 'Piece none',
-      })
-      expect(await app.evaluate(liveOptionKeys)).toEqual(['staticData'])
-      // A loader added and `staticData` (an option of the first evaluation)
-      // removed: the piece stays and shows the loader's data
-      expect(
-        await app.edit(
-          { 'routes/index.ts': route(target, 'two') },
-          'Piece two',
-        ),
-      ).toEqual(inPlace)
-      expect(await app.evaluate(liveOptionKeys)).toEqual(['loader'])
-      expect(
-        await app.edit(
-          { 'routes/index.ts': route(target, 'three') },
-          'Piece three',
-        ),
-      ).toEqual(inPlace)
-      // The loader removed (an option only later evaluations had)
-      expect(
-        await app.edit({ 'routes/index.ts': route(target) }, 'Piece none'),
-      ).toEqual(inPlace)
-      expect(await app.evaluate(liveOptionKeys)).toEqual([])
-      expect(await app.page.text('#app')).toBe('Piece none')
-      expect(app.loads()).toBe(1)
-    },
-  )
+  it('keeps the component of its own file across route file edits, and an option the edit removes is gone', async ({
+    expect,
+    openRouteHmrPage,
+  }) => {
+    const [pieceFile, piece] = pieces[target]
+    const app = await openRouteHmrPage({
+      bundler,
+      target,
+      files: {
+        'routes/index.ts': route(target, undefined, true),
+        [pieceFile]: piece,
+      },
+      ready: 'Piece none',
+    })
+    expect(await app.evaluate(liveOptionKeys)).toEqual(['staticData'])
+    // A loader added and `staticData` (an option of the first evaluation)
+    // removed: the piece stays and shows the loader's data
+    expect(
+      await app.edit({ 'routes/index.ts': route(target, 'two') }, 'Piece two'),
+    ).toEqual(inPlace)
+    expect(await app.evaluate(liveOptionKeys)).toEqual(['loader'])
+    expect(
+      await app.edit(
+        { 'routes/index.ts': route(target, 'three') },
+        'Piece three',
+      ),
+    ).toEqual(inPlace)
+    // The loader removed (an option only later evaluations had)
+    expect(
+      await app.edit({ 'routes/index.ts': route(target) }, 'Piece none'),
+    ).toEqual(inPlace)
+    expect(await app.evaluate(liveOptionKeys)).toEqual([])
+    expect(await app.page.text('#app')).toBe('Piece none')
+    expect(app.loads()).toBe(1)
+  })
 })

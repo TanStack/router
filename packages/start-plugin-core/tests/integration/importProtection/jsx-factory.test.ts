@@ -20,8 +20,7 @@ import {
 } from './client-pages'
 import { importersIn } from './hosts'
 
-const timeout = 60_000
-const compileTimeout = timeout
+const compileTimeout = 60_000
 
 const serverFn = (
   name: string,
@@ -69,51 +68,43 @@ const expected = {
 }
 
 describe('vite dev', () => {
-  test(
-    'an import read only as the JSX factory is reported when the JSX transform keeps it',
-    async () => {
-      const recorder = violationRecorder({ mockAccess: 'off' })
-      const server = await startDevServer({
-        browser: true,
-        start: { importProtection: recorder.importProtection },
-        files: app,
-      })
-      const { result } = await runViteClient(
-        server,
-        '/src/router.ts',
-        'return globalThis.factoryLoaded ?? null',
-      )
-      await server.idle()
-      expect({
-        factoryLoaded: result,
-        reported: importersIn({ root: server.root, ...recorder }, 'client'),
-      }).toEqual(expected)
-    },
-    timeout,
-  )
+  test('an import read only as the JSX factory is reported when the JSX transform keeps it', async () => {
+    const recorder = violationRecorder({ mockAccess: 'off' })
+    const server = await startDevServer({
+      browser: true,
+      start: { importProtection: recorder.importProtection },
+      files: app,
+    })
+    const { result } = await runViteClient(
+      server,
+      '/src/router.ts',
+      'return globalThis.factoryLoaded ?? null',
+    )
+    await server.idle()
+    expect({
+      factoryLoaded: result,
+      reported: importersIn({ root: server.root, ...recorder }, 'client'),
+    }).toEqual(expected)
+  })
 })
 
 describe('rsbuild dev', () => {
-  test(
-    'an import read only as the JSX factory is reported when the JSX transform keeps it',
-    async () => {
-      const recorder = violationRecorder({ mockAccess: 'off' })
-      const server = await startRsbuildStartDevServer({
-        compileTimeout,
-        browser: true,
-        hmr: false,
-        files: app,
-        start: { importProtection: recorder.importProtection },
-      })
-      expectNoDiagnostic(server.diagnostics, { severity: 'error' })
-      const { result } = await captureConsole(() =>
-        runInClient(server, 'return globalThis.factoryLoaded ?? null'),
-      )
-      expect({
-        factoryLoaded: (result as { result: unknown }).result,
-        reported: importersIn({ root: server.root, ...recorder }, 'client'),
-      }).toEqual(expected)
-    },
-    timeout,
-  )
+  test('an import read only as the JSX factory is reported when the JSX transform keeps it', async () => {
+    const recorder = violationRecorder({ mockAccess: 'off' })
+    const server = await startRsbuildStartDevServer({
+      compileTimeout,
+      browser: true,
+      hmr: false,
+      files: app,
+      start: { importProtection: recorder.importProtection },
+    })
+    expectNoDiagnostic(server.diagnostics, { severity: 'error' })
+    const { result } = await captureConsole(() =>
+      runInClient(server, 'return globalThis.factoryLoaded ?? null'),
+    )
+    expect({
+      factoryLoaded: (result as { result: unknown }).result,
+      reported: importersIn({ root: server.root, ...recorder }, 'client'),
+    }).toEqual(expected)
+  })
 })

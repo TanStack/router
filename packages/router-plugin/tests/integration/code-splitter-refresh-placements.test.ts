@@ -12,8 +12,6 @@ import { expect } from 'vitest'
 import { test } from '../test'
 import type { RouterFixtures } from '../test'
 
-const timeout = 120_000
-
 interface Comments {
   name: string
   header?: string
@@ -152,7 +150,6 @@ const rows: Array<Comments> = [
 
 test.for(rows)(
   'with the comment $name, an edit of the split route shows what it shows unsplit',
-  { timeout },
   async (comments, { openRouteHmrPage }) => {
     const [unsplit, split] = await Promise.all([
       counterAfterEdit(openRouteHmrPage, false, comments),

@@ -22,8 +22,6 @@ import { appManifest, installPackage } from '../../package-layouts'
 import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import type { RsbuildPlugin } from '@rsbuild/core'
 
-const timeout = 120_000
-
 /** Counts, per production compilation, the warnings that name `needle` (their text, file or module). */
 function warningCounter(needles: ReadonlyArray<string>) {
   const counts: Array<Record<string, number>> = []
@@ -84,43 +82,39 @@ describe('rsbuild build on the persistent cache', () => {
   // process (a watch rebuild): a compile that finds no warning must clear the
   // module's record, or a later build that restores the module from the
   // cache reports the fixed warning.
-  test(
-    'a warning fixed in a watch rebuild is not reported by the next build on the cache',
-    async () => {
-      const counter = warningCounter(['src/role.ts'])
-      // (the harness reads the steps at each build: the next build's are other edits)
-      const steps = [
-        {
-          edits: {
-            'src/role.ts': `export const requireRole = (role: string) => role\n`,
-          } as Record<string, string | null>,
-        },
-      ]
-      const first = await buildStart({
-        bundler: 'rsbuild',
-        files: {
-          'src/role.ts': serverParam,
-          'src/other.ts': `export const other = 'MARK_OTHER_1'\n`,
-          'src/entry.ts': `export { requireRole } from './role'\nexport { other } from './other'\n`,
-          'src/ssr-entry.ts': `export { requireRole } from './role'\nexport { other } from './other'\n${callByIdExports}`,
-        },
-        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
-        rsbuildConfig: {
-          plugins: [counter.plugin],
-          performance: { buildCache: true },
-        },
-        watchEdits: steps,
-      })
-      // (the first build warned, the rebuild of the fix did not)
-      counter.take()
-      steps.splice(0, Infinity, {
-        edits: { 'src/other.ts': `export const other = 'MARK_OTHER_2'\n` },
-      })
-      await first.rebuild({})
-      expect(counter.take()['src/role.ts']).toBe(0)
-    },
-    timeout,
-  )
+  test('a warning fixed in a watch rebuild is not reported by the next build on the cache', async () => {
+    const counter = warningCounter(['src/role.ts'])
+    // (the harness reads the steps at each build: the next build's are other edits)
+    const steps = [
+      {
+        edits: {
+          'src/role.ts': `export const requireRole = (role: string) => role\n`,
+        } as Record<string, string | null>,
+      },
+    ]
+    const first = await buildStart({
+      bundler: 'rsbuild',
+      files: {
+        'src/role.ts': serverParam,
+        'src/other.ts': `export const other = 'MARK_OTHER_1'\n`,
+        'src/entry.ts': `export { requireRole } from './role'\nexport { other } from './other'\n`,
+        'src/ssr-entry.ts': `export { requireRole } from './role'\nexport { other } from './other'\n${callByIdExports}`,
+      },
+      entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+      rsbuildConfig: {
+        plugins: [counter.plugin],
+        performance: { buildCache: true },
+      },
+      watchEdits: steps,
+    })
+    // (the first build warned, the rebuild of the fix did not)
+    counter.take()
+    steps.splice(0, Infinity, {
+      edits: { 'src/other.ts': `export const other = 'MARK_OTHER_2'\n` },
+    })
+    await first.rebuild({})
+    expect(counter.take()['src/role.ts']).toBe(0)
+  })
 })
 
 /** `fwd-lib`, a package that does not declare Start, with two modules making server fns. */
@@ -162,43 +156,35 @@ describe('rsbuild build on the persistent cache, a package that does not declare
       },
     })
 
-  test(
-    'the app stops importing the module that warned, keeps the other: the warm build warns once',
-    async () => {
-      const counter = warningCounter([
-        `${lib.directory}/a.js`,
-        `${lib.directory}/b.js`,
-      ])
-      const first = await build(counter, ['a', 'b'])
-      const cold = counter.take()
-      expect(
-        (cold[`${lib.directory}/a.js`] ?? 0) +
-          (cold[`${lib.directory}/b.js`] ?? 0),
-      ).toBe(1)
-      // (whichever module the cold build named)
-      const kept = cold[`${lib.directory}/a.js`] ? 'b' : 'a'
-      await first.rebuild(appFiles([kept]))
-      expect(packageWarnings(counter)).toBe(1)
-    },
-    timeout,
-  )
+  test('the app stops importing the module that warned, keeps the other: the warm build warns once', async () => {
+    const counter = warningCounter([
+      `${lib.directory}/a.js`,
+      `${lib.directory}/b.js`,
+    ])
+    const first = await build(counter, ['a', 'b'])
+    const cold = counter.take()
+    expect(
+      (cold[`${lib.directory}/a.js`] ?? 0) +
+        (cold[`${lib.directory}/b.js`] ?? 0),
+    ).toBe(1)
+    // (whichever module the cold build named)
+    const kept = cold[`${lib.directory}/a.js`] ? 'b' : 'a'
+    await first.rebuild(appFiles([kept]))
+    expect(packageWarnings(counter)).toBe(1)
+  })
 
-  test(
-    'the app adds an import of a second module of the package: the warm build warns once',
-    async () => {
-      const counter = warningCounter([
-        `${lib.directory}/a.js`,
-        `${lib.directory}/b.js`,
-      ])
-      const first = await build(counter, ['a'])
-      expect(packageWarnings(counter)).toBe(1)
-      const second = await first.rebuild(appFiles(['a', 'b']))
-      expect(packageWarnings(counter)).toBe(1)
-      await second.rebuild({})
-      expect(packageWarnings(counter)).toBe(1)
-    },
-    timeout,
-  )
+  test('the app adds an import of a second module of the package: the warm build warns once', async () => {
+    const counter = warningCounter([
+      `${lib.directory}/a.js`,
+      `${lib.directory}/b.js`,
+    ])
+    const first = await build(counter, ['a'])
+    expect(packageWarnings(counter)).toBe(1)
+    const second = await first.rebuild(appFiles(['a', 'b']))
+    expect(packageWarnings(counter)).toBe(1)
+    await second.rebuild({})
+    expect(packageWarnings(counter)).toBe(1)
+  })
 
   // A package module's compile that no longer finds a Start use (the loader
   // takes it as it is) leaves no use behind: neither the process's nor the
@@ -240,70 +226,61 @@ describe('rsbuild build on the persistent cache, a package that does not declare
       expect(warnsOf(watched.firstBuild, watched.root)).toBeGreaterThan(0)
       expect(warnsOf(watched.diagnostics, watched.root)).toBe(0)
     },
-    timeout,
   )
 
-  test(
-    'build --watch restored from the cache: the module stops using Start, neither the rebuild nor the next build warns',
-    async () => {
-      const steps = [
-        { edits: { 'src/entry.ts': `export { none } from './fns'\n// 1\n` } },
-      ] as Array<{ edits: Record<string, string | null> }>
-      const options = {
-        bundler: 'rsbuild' as const,
-        files: { ...lib.files, ...appFiles(['a']) },
-        packageJson: appManifest([lib]),
-        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
-        rsbuildConfig: {
-          ...watchedPackages,
-          performance: { buildCache: true },
-        },
-        watchEdits: steps,
-      }
-      const first = await buildStart(options)
-      expect(warnsOf(first.firstBuild, first.root)).toBeGreaterThan(0)
-      // (a new process's watch build, restored from the cache, then the edit)
-      steps.splice(0, Infinity, {
-        edits: { [`${lib.directory}/a.js`]: plainA },
-      })
-      const restored = await first.rebuild({})
-      expect(warnsOf(restored.firstBuild, restored.root)).toBeGreaterThan(0)
-      expect(warnsOf(restored.diagnostics, restored.root)).toBe(0)
-      steps.splice(0, Infinity, {
-        edits: { 'src/entry.ts': `export { none } from './fns'\n// 2\n` },
-      })
-      const next = await restored.rebuild({})
-      expect(warnsOf(next.firstBuild, next.root)).toBe(0)
-      expect(warnsOf(next.diagnostics, next.root)).toBe(0)
-    },
-    timeout,
-  )
+  test('build --watch restored from the cache: the module stops using Start, neither the rebuild nor the next build warns', async () => {
+    const steps = [
+      { edits: { 'src/entry.ts': `export { none } from './fns'\n// 1\n` } },
+    ] as Array<{ edits: Record<string, string | null> }>
+    const options = {
+      bundler: 'rsbuild' as const,
+      files: { ...lib.files, ...appFiles(['a']) },
+      packageJson: appManifest([lib]),
+      entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+      rsbuildConfig: {
+        ...watchedPackages,
+        performance: { buildCache: true },
+      },
+      watchEdits: steps,
+    }
+    const first = await buildStart(options)
+    expect(warnsOf(first.firstBuild, first.root)).toBeGreaterThan(0)
+    // (a new process's watch build, restored from the cache, then the edit)
+    steps.splice(0, Infinity, {
+      edits: { [`${lib.directory}/a.js`]: plainA },
+    })
+    const restored = await first.rebuild({})
+    expect(warnsOf(restored.firstBuild, restored.root)).toBeGreaterThan(0)
+    expect(warnsOf(restored.diagnostics, restored.root)).toBe(0)
+    steps.splice(0, Infinity, {
+      edits: { 'src/entry.ts': `export { none } from './fns'\n// 2\n` },
+    })
+    const next = await restored.rebuild({})
+    expect(warnsOf(next.firstBuild, next.root)).toBe(0)
+    expect(warnsOf(next.diagnostics, next.root)).toBe(0)
+  })
 
-  test(
-    'the package names Start in peerDependenciesMeta, same version: the warm build does not warn',
-    async () => {
-      const counter = warningCounter([
-        `${lib.directory}/a.js`,
-        `${lib.directory}/b.js`,
-      ])
-      const first = await build(counter, ['a'])
-      expect(packageWarnings(counter)).toBe(1)
-      const manifest = JSON.parse(lib.files[manifestPath]!) as Record<
-        string,
-        unknown
-      >
-      const second = await first.rebuild({
-        [manifestPath]: JSON.stringify({
-          ...manifest,
-          peerDependenciesMeta: { '@tanstack/react-start': { optional: true } },
-        }),
-      })
-      expect(packageWarnings(counter)).toBe(0)
-      await second.rebuild({})
-      expect(packageWarnings(counter)).toBe(0)
-    },
-    timeout,
-  )
+  test('the package names Start in peerDependenciesMeta, same version: the warm build does not warn', async () => {
+    const counter = warningCounter([
+      `${lib.directory}/a.js`,
+      `${lib.directory}/b.js`,
+    ])
+    const first = await build(counter, ['a'])
+    expect(packageWarnings(counter)).toBe(1)
+    const manifest = JSON.parse(lib.files[manifestPath]!) as Record<
+      string,
+      unknown
+    >
+    const second = await first.rebuild({
+      [manifestPath]: JSON.stringify({
+        ...manifest,
+        peerDependenciesMeta: { '@tanstack/react-start': { optional: true } },
+      }),
+    })
+    expect(packageWarnings(counter)).toBe(0)
+    await second.rebuild({})
+    expect(packageWarnings(counter)).toBe(0)
+  })
 })
 
 /** `exposed-lib`, a package that does not declare Start, whose module makes a client-only fn. */
@@ -321,52 +298,48 @@ const exposedLib = installPackage('npm', {
 // Source: round-4 confirmation of the node_modules policy implementation
 // (Astra, `remote-esm`).
 describe('rsbuild build on the persistent cache, a module only a federation container exposes', () => {
-  test(
-    "its package's warning and its own, cold and warm",
-    async () => {
-      const counter = warningCounter([
-        `${exposedLib.directory}/b.js`,
-        'src/role.ts',
-      ])
-      const first = await buildStart({
-        bundler: 'rsbuild',
-        files: {
-          ...exposedLib.files,
-          'src/role.ts': serverParam,
-          'src/widget.ts': `export { b } from 'exposed-lib/b.js'\nexport { requireRole } from './role'\n`,
-          'src/entry.ts': `export const none = 1\n`,
-          'src/ssr-entry.ts': `export const none = 1\n${callByIdExports}`,
-        },
-        packageJson: appManifest([exposedLib]),
-        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
-        rsbuildConfig: {
-          plugins: [counter.plugin],
-          performance: { buildCache: true },
-          environments: {
-            client: {
-              tools: {
-                rspack: (config, { rspack }) => {
-                  config.plugins.push(
-                    new rspack.container.ContainerPlugin({
-                      name: 'remote',
-                      filename: 'remote.js',
-                      exposes: { './widget': './src/widget.ts' },
-                    }),
-                  )
-                },
+  test("its package's warning and its own, cold and warm", async () => {
+    const counter = warningCounter([
+      `${exposedLib.directory}/b.js`,
+      'src/role.ts',
+    ])
+    const first = await buildStart({
+      bundler: 'rsbuild',
+      files: {
+        ...exposedLib.files,
+        'src/role.ts': serverParam,
+        'src/widget.ts': `export { b } from 'exposed-lib/b.js'\nexport { requireRole } from './role'\n`,
+        'src/entry.ts': `export const none = 1\n`,
+        'src/ssr-entry.ts': `export const none = 1\n${callByIdExports}`,
+      },
+      packageJson: appManifest([exposedLib]),
+      entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+      rsbuildConfig: {
+        plugins: [counter.plugin],
+        performance: { buildCache: true },
+        environments: {
+          client: {
+            tools: {
+              rspack: (config, { rspack }) => {
+                config.plugins.push(
+                  new rspack.container.ContainerPlugin({
+                    name: 'remote',
+                    filename: 'remote.js',
+                    exposes: { './widget': './src/widget.ts' },
+                  }),
+                )
               },
             },
           },
         },
-      })
-      const cold = counter.take()
-      expect(cold[`${exposedLib.directory}/b.js`]).toBe(1)
-      expect(cold['src/role.ts']).toBeGreaterThan(0)
-      await first.rebuild({})
-      const warm = counter.take()
-      expect(warm[`${exposedLib.directory}/b.js`]).toBe(1)
-      expect(warm['src/role.ts']).toBeGreaterThan(0)
-    },
-    timeout,
-  )
+      },
+    })
+    const cold = counter.take()
+    expect(cold[`${exposedLib.directory}/b.js`]).toBe(1)
+    expect(cold['src/role.ts']).toBeGreaterThan(0)
+    await first.rebuild({})
+    const warm = counter.take()
+    expect(warm[`${exposedLib.directory}/b.js`]).toBe(1)
+    expect(warm['src/role.ts']).toBeGreaterThan(0)
+  })
 })

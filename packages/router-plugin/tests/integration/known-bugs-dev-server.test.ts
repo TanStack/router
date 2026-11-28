@@ -14,8 +14,6 @@ import { routerDevServer } from '../dev-server'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 
-const timeout = 60_000
-
 describe('a dev server compiling an edited route out of order', () => {
   /**
    * The page: it imports the route module from the dev server, like an app
@@ -235,7 +233,6 @@ ${cardB ? 'let renders = 0\nfunction CardB() { renders++; return <i>{"B" + rende
     async ({ before, after, expected }) => {
       expect(await editOutOfOrder(true, before, after)).toEqual(expected)
     },
-    timeout,
   )
 
   // The same race for an exported component a split component renders,
@@ -244,24 +241,20 @@ ${cardB ? 'let renders = 0\nfunction CardB() { renders++; return <i>{"B" + rende
   // An implementation that moves them to a module the chunk shares must not
   // reach the race. Source: the #8504 probe (hybrid shared modules; #8504
   // code-splitter-plugin-pipeline.test.ts, first row).
-  test(
-    'a page loading the modules of the route file before the route module renders the edited route after removing a helper of an exported component a split component renders',
-    async () => {
-      expect(
-        await editOutOfOrder(
-          true,
-          `${routeHead()}const prefix = 'a'
+  test('a page loading the modules of the route file before the route module renders the edited route after removing a helper of an exported component a split component renders', async () => {
+    expect(
+      await editOutOfOrder(
+        true,
+        `${routeHead()}const prefix = 'a'
 const suffix = 'b'
 export function Card() { return <b>{prefix}{suffix}</b> }
 export const Route = createFileRoute('/page')({ component: () => <Card /> })
 `,
-          `${routeHead()}const prefix = 'a'
+        `${routeHead()}const prefix = 'a'
 export function Card() { return <b>{prefix}</b> }
 export const Route = createFileRoute('/page')({ component: () => <Card /> })
 `,
-        ),
-      ).toEqual(['<b>a</b>'])
-    },
-    timeout,
-  )
+      ),
+    ).toEqual(['<b>a</b>'])
+  })
 })

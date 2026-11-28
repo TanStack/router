@@ -8,8 +8,6 @@ import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-p
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import { startDevServer } from '../dev-server'
 
-const timeout = 60_000
-
 const virtualRouteConfig = (children: string) =>
   `import { index, rootRoute, route } from '@tanstack/virtual-file-routes'
 export const routes = rootRoute('__root.tsx', [${children}])
@@ -72,5 +70,4 @@ export const Route = createFileRoute('/contact')({
       describe: () => `the route module is still served as:\n${last}`,
     })
   },
-  timeout,
 )

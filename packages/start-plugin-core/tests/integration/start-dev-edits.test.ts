@@ -23,8 +23,6 @@ import {
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 import type { ImportProtectionOptions } from '../importProtection/start-apps'
 
-const timeout = 30_000
-
 /**
  * A module only a handler reads, whose code marks the modules it ends up in
  * (no denied file: what the client gets of it is the compiler's doing, not
@@ -99,7 +97,6 @@ export const base = createServerFn()
       const { client } = await editFactory(from)
       expect(modulesContaining(client, 'MARK_DB_SECRET')).toEqual([])
     },
-    timeout,
   )
 })
 
@@ -175,7 +172,6 @@ export const base = createServerFn()
     async ({ from }) => {
       expect(await editFactorySsr(from)).toEqual(serverFn)
     },
-    timeout,
   )
 })
 
@@ -224,38 +220,30 @@ export const fn = createServerFn().handler(async () => request)
 
   // Control for the pin below (same harness): a denied file goes through the
   // file rule, which mocks the file itself.
-  test(
-    'client: a server fn module calling a function of a denied file at the top level loads, without the denied code',
-    async () => {
-      const server = await startBrowserStartDevServer({
-        files: deniedCallFiles('./request.server'),
-        start: importProtection('a.ts'),
-      })
-      expect(await loadClient(server)).toEqual({
-        secret: [],
-        functionId: 'string',
-      })
-    },
-    timeout,
-  )
+  test('client: a server fn module calling a function of a denied file at the top level loads, without the denied code', async () => {
+    const server = await startBrowserStartDevServer({
+      files: deniedCallFiles('./request.server'),
+      start: importProtection('a.ts'),
+    })
+    expect(await loadClient(server)).toEqual({
+      secret: [],
+      functionId: 'string',
+    })
+  })
 
   // On main, in dev, the client transform of such a module fails (500), so the
   // client entry never loads and the page does not hydrate.
   // Source: issue #8554 (closed without a fix).
-  test(
-    'client: a server fn module calling a function of a denied specifier at the top level loads',
-    async () => {
-      const server = await startBrowserStartDevServer({
-        files: deniedCallFiles('@tanstack/react-start/server'),
-        start: importProtection('a.ts'),
-      })
-      expect(await loadClient(server)).toEqual({
-        secret: [],
-        functionId: 'string',
-      })
-    },
-    timeout,
-  )
+  test('client: a server fn module calling a function of a denied specifier at the top level loads', async () => {
+    const server = await startBrowserStartDevServer({
+      files: deniedCallFiles('@tanstack/react-start/server'),
+      start: importProtection('a.ts'),
+    })
+    expect(await loadClient(server)).toEqual({
+      secret: [],
+      functionId: 'string',
+    })
+  })
 
   /**
    * `src/a.ts` imports `src/b.ts`, which starts with a server-only marker:
@@ -297,13 +285,9 @@ return typeof value === 'string' ? value : 'not the module value (' + typeof val
   // that imported it keep a mock in dev until they are edited or the server
   // restarts: the client calls mocks and logs "Mocked import used in dev
   // client" errors.
-  test(
-    'client: the importer of a module whose server-only marker was removed loads the module',
-    async () => {
-      expect(await removeMarker()).toBe('MARK_B_CODE')
-    },
-    timeout,
-  )
+  test('client: the importer of a module whose server-only marker was removed loads the module', async () => {
+    expect(await removeMarker()).toBe('MARK_B_CODE')
+  })
 
   /**
    * Starts a dev server with import protection on an app of `files` and a
@@ -347,34 +331,30 @@ return typeof value === 'string' ? value : 'not the module value (' + typeof val
   // denied specifier's target is the package's own entry, also while the
   // dependency optimizer bundles it.)
   for (const app of starReexportApps) {
-    test(
-      `client: a name re-exported with \`export *\` from ${app.name} is a mock, or the server warns at the \`export *\``,
-      async () => {
-        const { files, importProtection: protection } = app
-        const { result, server } = await inClientOf(
-          files,
-          `const secretIn = []
+    test(`client: a name re-exported with \`export *\` from ${app.name} is a mock, or the server warns at the \`export *\``, async () => {
+      const { files, importProtection: protection } = app
+      const { result, server } = await inClientOf(
+        files,
+        `const secretIn = []
 for (const { name } of performance.getEntriesByType('resource')) {
   if ((await (await fetch(name)).text()).includes('MARK_SECRET')) {
     secretIn.push(new URL(name).pathname)
   }
 }
 return { mock: isSafeMock(entry.v), secretIn }`,
-          protection,
-        )
-        // The importer loads (or the reason it did not), and nothing the page
-        // loaded holds the denied module's value
-        const run = result as { mock: boolean; secretIn: Array<string> }
-        expect(typeof result === 'string' ? result : run.secretIn).toEqual([])
-        if (!run.mock) {
-          expectDiagnostic(server.diagnostics, {
-            file: 'src/b.ts',
-            root: server.root,
-            position: { line: 1 },
-          })
-        }
-      },
-      timeout,
-    )
+        protection,
+      )
+      // The importer loads (or the reason it did not), and nothing the page
+      // loaded holds the denied module's value
+      const run = result as { mock: boolean; secretIn: Array<string> }
+      expect(typeof result === 'string' ? result : run.secretIn).toEqual([])
+      if (!run.mock) {
+        expectDiagnostic(server.diagnostics, {
+          file: 'src/b.ts',
+          root: server.root,
+          position: { line: 1 },
+        })
+      }
+    })
   }
 })

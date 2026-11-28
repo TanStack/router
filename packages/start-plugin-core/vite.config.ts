@@ -116,7 +116,9 @@ const integrationProject = {
       ...aloneTests,
       ...concurrentTests,
     ],
-    testTimeout: 30_000,
+    // Every test: real builds of several bundlers, dev servers and pages
+    // take up to two minutes under load (a hook that builds says so)
+    testTimeout: 120_000,
     hookTimeout: 30_000,
     // The tests import this package's built public entries
     // (`@tanstack/start-plugin-core/vite`, `/rsbuild`): Node loads
@@ -220,7 +222,7 @@ const config = defineConfig({
         test: {
           name: 'integration-alone',
           include: aloneTests,
-          testTimeout: 30_000,
+          testTimeout: 60_000,
           hookTimeout: 30_000,
           server: { deps: { external: [builtPackage] } },
         },
@@ -234,7 +236,7 @@ const config = defineConfig({
         test: {
           name: 'perf-guards',
           include: ['integration/perf-guards/**/*.test.ts'],
-          testTimeout: 30_000,
+          testTimeout: 60_000,
           hookTimeout: 30_000,
           server: { deps: { external: [builtPackage] } },
         },

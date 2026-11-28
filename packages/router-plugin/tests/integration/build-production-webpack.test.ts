@@ -7,7 +7,7 @@
  */
 import { describe, test } from 'vitest'
 import { frameworks } from '../build-harness'
-import { expectProductionClientBundle, timeout } from '../production-bundle'
+import { expectProductionClientBundle } from '../production-bundle'
 
 describe('webpack', () => {
   test.each(frameworks)(
@@ -15,7 +15,6 @@ describe('webpack', () => {
     async (framework) => {
       await expectProductionClientBundle('webpack', framework, true)
     },
-    timeout,
   )
 
   // Bug: the router plugin reads the compiler's `mode` when it is applied,
@@ -24,17 +23,13 @@ describe('webpack', () => {
   // Source: src/hosts/webpack.ts (`compiler.options.mode === 'production'`).
   // Impact: the production bundle ships route HMR code (`__tsrRouteHmr`
   // calls, the lazy wrappers' hot slots).
-  test(
-    'a production react client bundle of a configuration without mode has no dev-only code',
-    async () => {
-      await expectProductionClientBundle(
-        'webpack',
-        'react',
-        true,
-        undefined,
-        true,
-      )
-    },
-    timeout,
-  )
+  test('a production react client bundle of a configuration without mode has no dev-only code', async () => {
+    await expectProductionClientBundle(
+      'webpack',
+      'react',
+      true,
+      undefined,
+      true,
+    )
+  })
 })

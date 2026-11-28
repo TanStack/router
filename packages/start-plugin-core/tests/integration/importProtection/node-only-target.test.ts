@@ -12,8 +12,6 @@ import {
   reportedViolations,
 } from '../../importProtection/start-apps'
 
-const timeout = 60_000
-
 const nodeOnly = {
   'node_modules/node-only-pkg/package.json': JSON.stringify({
     name: 'node-only-pkg',
@@ -28,49 +26,41 @@ export const secret = () => db() + 'MARK_SECRET'
 }
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  test(
-    'a live edge to a denied file importing a node-only package fails with the denial',
-    async () => {
-      const error = await rejection(
-        buildStart({
-          bundler,
-          files: {
-            ...nodeOnly,
-            'src/entry.ts': `import { secret } from './s.server'
-export const read = () => secret()
-`,
-          },
-          entry: 'src/entry.ts',
-        }),
-      )
-      expect(
-        reportedViolations(error).map(({ environment }) => environment),
-      ).toContain('client')
-      expect(String(error.message)).not.toMatch(/Errored while resolving/)
-    },
-    timeout,
-  )
-
-  test(
-    'a dead edge to a denied file importing a node-only package builds, with no report',
-    async () => {
-      const build = await buildStart({
+  test('a live edge to a denied file importing a node-only package fails with the denial', async () => {
+    const error = await rejection(
+      buildStart({
         bundler,
         files: {
           ...nodeOnly,
-          'src/barrel.ts': `export { secret } from './s.server'
-export const safe = () => 'MARK_SAFE'
+          'src/entry.ts': `import { secret } from './s.server'
+export const read = () => secret()
 `,
-          'src/entry.ts': `export { safe } from './barrel'\n`,
         },
         entry: 'src/entry.ts',
-      })
-      expect(reportedViolations(build)).toEqual([])
-      expect(
-        findDiagnostics(build.diagnostics, { file: 'src/s.server.ts' }),
-      ).toEqual([])
-      expect(build.client.where('MARK_SECRET')).toBe('nowhere')
-    },
-    timeout,
-  )
+      }),
+    )
+    expect(
+      reportedViolations(error).map(({ environment }) => environment),
+    ).toContain('client')
+    expect(String(error.message)).not.toMatch(/Errored while resolving/)
+  })
+
+  test('a dead edge to a denied file importing a node-only package builds, with no report', async () => {
+    const build = await buildStart({
+      bundler,
+      files: {
+        ...nodeOnly,
+        'src/barrel.ts': `export { secret } from './s.server'
+export const safe = () => 'MARK_SAFE'
+`,
+        'src/entry.ts': `export { safe } from './barrel'\n`,
+      },
+      entry: 'src/entry.ts',
+    })
+    expect(reportedViolations(build)).toEqual([])
+    expect(
+      findDiagnostics(build.diagnostics, { file: 'src/s.server.ts' }),
+    ).toEqual([])
+    expect(build.client.where('MARK_SECRET')).toBe('nowhere')
+  })
 })

@@ -12,8 +12,6 @@
 import { expect, test } from 'vitest'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 
-const timeout = 90_000
-
 const fooRule = {
   tools: {
     rspack: {
@@ -38,54 +36,46 @@ export const fn = createServerFn().handler(async () => 'MARK_FOO_HANDLER')
 }
 `
 
-test(
-  'Rsbuild dev: an edit that drops the failing module of a file clears its error',
-  async () => {
-    const server = await startRsbuildStartDevServer({
-      config: fooRule,
-      files: {
-        'src/page.foo': `export default 'MARK_CLEAN'\n`,
-        'src/start-loader.cjs': startLoader,
-        'src/entry.ts': `// @ts-expect-error (a module of an app rule)
+test('Rsbuild dev: an edit that drops the failing module of a file clears its error', async () => {
+  const server = await startRsbuildStartDevServer({
+    config: fooRule,
+    files: {
+      'src/page.foo': `export default 'MARK_CLEAN'\n`,
+      'src/start-loader.cjs': startLoader,
+      'src/entry.ts': `// @ts-expect-error (a module of an app rule)
 export { default as clean } from './page.foo'
 // @ts-expect-error (a loader's module)
 export { fn } from '!!./start-loader.cjs!./page.foo'
 `,
-      },
-    })
-    expect(server.errors.join('\n')).toContain('src/page.foo')
-    await server.edit({
-      'src/entry.ts': `// @ts-expect-error (a module of an app rule)
+    },
+  })
+  expect(server.errors.join('\n')).toContain('src/page.foo')
+  await server.edit({
+    'src/entry.ts': `// @ts-expect-error (a module of an app rule)
 export { default as clean } from './page.foo'
 `,
-    })
-    expect(server.errors).toEqual([])
-  },
-  timeout,
-)
+  })
+  expect(server.errors).toEqual([])
+})
 
-test(
-  'Rsbuild dev: a rebuild of the clean module of a file keeps the other module’s error',
-  async () => {
-    const server = await startRsbuildStartDevServer({
-      config: fooRule,
-      files: {
-        'src/page.foo': `import { createServerFn } from '@tanstack/react-start'
+test('Rsbuild dev: a rebuild of the clean module of a file keeps the other module’s error', async () => {
+  const server = await startRsbuildStartDevServer({
+    config: fooRule,
+    files: {
+      'src/page.foo': `import { createServerFn } from '@tanstack/react-start'
 export const fn = createServerFn().handler(async () => 'MARK_FOO_HANDLER')
 `,
-        'src/clean-loader.cjs': cleanLoader,
-        'src/clean-dep.txt': 'one\n',
-        'src/entry.ts': `// @ts-expect-error (a module of an app rule)
+      'src/clean-loader.cjs': cleanLoader,
+      'src/clean-dep.txt': 'one\n',
+      'src/entry.ts': `// @ts-expect-error (a module of an app rule)
 export { fn } from './page.foo'
 // @ts-expect-error (a loader's module)
 export { default as clean } from '!!./clean-loader.cjs!./page.foo'
 `,
-      },
-    })
-    // (only the clean module reads it)
-    await server.edit({ 'src/clean-dep.txt': 'two\n' })
-    expect(server.rebuilt).not.toContain('src/entry.ts')
-    expect(server.errors.join('\n')).toContain('src/page.foo')
-  },
-  timeout,
-)
+    },
+  })
+  // (only the clean module reads it)
+  await server.edit({ 'src/clean-dep.txt': 'two\n' })
+  expect(server.rebuilt).not.toContain('src/entry.ts')
+  expect(server.errors.join('\n')).toContain('src/page.foo')
+})

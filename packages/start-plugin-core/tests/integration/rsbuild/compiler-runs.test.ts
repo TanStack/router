@@ -17,8 +17,6 @@ import { rsbuildRscLinks } from '../../start-plugins'
 import { rsbuildEntries } from '../route-css-cases'
 import type { StartBuildOptions } from '../../build-harness'
 
-const timeout = 120_000
-
 const root = `import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute({ component: Root })
 function Root() {
@@ -86,20 +84,16 @@ async function page(url: string): Promise<{ status: number; main?: string }> {
 /** `@tanstack/react-start`'s RSC option (not one of every framework's Start config). */
 const rscEnabled = { rsc: { enabled: true } }
 
-test(
-  'a build through the compiler serves its pages',
-  async () => {
-    const built = await buildStart({
-      bundler: 'rsbuild',
-      rsbuildCompiler: true,
-      files,
-      start: { importProtection: { enabled: false } },
-    })
-    const { url } = await built.preview()
-    expect(await page(url)).toEqual({ status: 200, main: 'MARK_REAL' })
-  },
-  timeout,
-)
+test('a build through the compiler serves its pages', async () => {
+  const built = await buildStart({
+    bundler: 'rsbuild',
+    rsbuildCompiler: true,
+    files,
+    start: { importProtection: { enabled: false } },
+  })
+  const { url } = await built.preview()
+  expect(await page(url)).toEqual({ status: 200, main: 'MARK_REAL' })
+})
 
 describe.each([
   { name: 'without RSC', rsc: false },
@@ -121,44 +115,38 @@ describe.each([
     },
   })
 
-  test(
-    'a second run of the compiler, after the edit removing the one allowed import, builds as a fresh build of the edited files',
-    async () => {
-      const first = await buildStart({
-        ...appOptions(),
-        rsbuildCompiler: true,
-        samePlugins: true,
-      })
-      // the allowed import brings the real module (the server is served once:
-      // the preview imports the server entry of the app's directory once)
-      expect(first.ssr.where('MARK_REAL')).not.toBe('nowhere')
-      const second = await first.rebuild({
-        'src/feature.ts': featureThroughContext,
-      })
-      const fresh = await buildStart(
-        appOptions({ ...files, 'src/feature.ts': featureThroughContext }),
-      )
-      const expected = await page((await fresh.preview()).url)
-      expect(expected).toEqual({
-        status: 200,
-        main: 'CONTEXT [import-protection mock]',
-      })
-      expect(await page((await second.preview()).url)).toEqual(expected)
-    },
-    timeout,
-  )
+  test('a second run of the compiler, after the edit removing the one allowed import, builds as a fresh build of the edited files', async () => {
+    const first = await buildStart({
+      ...appOptions(),
+      rsbuildCompiler: true,
+      samePlugins: true,
+    })
+    // the allowed import brings the real module (the server is served once:
+    // the preview imports the server entry of the app's directory once)
+    expect(first.ssr.where('MARK_REAL')).not.toBe('nowhere')
+    const second = await first.rebuild({
+      'src/feature.ts': featureThroughContext,
+    })
+    const fresh = await buildStart(
+      appOptions({ ...files, 'src/feature.ts': featureThroughContext }),
+    )
+    const expected = await page((await fresh.preview()).url)
+    expect(expected).toEqual({
+      status: 200,
+      main: 'CONTEXT [import-protection mock]',
+    })
+    expect(await page((await second.preview()).url)).toEqual(expected)
+  })
 })
 
 // what a run's compiles read of another module (an import's binding, here a
 // re-exported Start API) is that module as the run reads it
-test(
-  'a second run of the compiler compiles an import of a module edited since as a fresh build does',
-  async () => {
-    const appFiles = {
-      ...rsbuildEntries,
-      'src/routes/__root.tsx': root,
-      'src/only.ts': `export const only = <T,>(fn: T) => fn\n`,
-      'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+test('a second run of the compiler compiles an import of a module edited since as a fresh build does', async () => {
+  const appFiles = {
+    ...rsbuildEntries,
+    'src/routes/__root.tsx': root,
+    'src/only.ts': `export const only = <T,>(fn: T) => fn\n`,
+    'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { only } from '../only'
 const secret = only(() => 'MARK_SECRET')
 export const Route = createFileRoute('/')({ component: Home })
@@ -166,68 +154,62 @@ function Home() {
   return <main>{String(secret)}</main>
 }
 `,
-    }
-    const first = await buildStart({
-      bundler: 'rsbuild',
-      rsbuildCompiler: true,
-      samePlugins: true,
-      files: appFiles,
-    })
-    expect(first.client.where('MARK_SECRET')).not.toBe('nowhere')
-    const second = await first.rebuild({
-      'src/only.ts': `export { createServerOnlyFn as only } from '@tanstack/react-start'\n`,
-    })
-    expect(second.client.where('MARK_SECRET')).toBe('nowhere')
-    expect(second.ssr.where('MARK_SECRET')).not.toBe('nowhere')
-  },
-  timeout,
-)
+  }
+  const first = await buildStart({
+    bundler: 'rsbuild',
+    rsbuildCompiler: true,
+    samePlugins: true,
+    files: appFiles,
+  })
+  expect(first.client.where('MARK_SECRET')).not.toBe('nowhere')
+  const second = await first.rebuild({
+    'src/only.ts': `export { createServerOnlyFn as only } from '@tanstack/react-start'\n`,
+  })
+  expect(second.client.where('MARK_SECRET')).toBe('nowhere')
+  expect(second.ssr.where('MARK_SECRET')).not.toBe('nowhere')
+})
 
-test(
-  'a second run of the compiler generates the routes added since',
-  async () => {
-    let generations = 0
-    const first = await buildStart({
-      bundler: 'rsbuild',
-      rsbuildCompiler: true,
-      samePlugins: true,
-      files: {
-        ...rsbuildEntries,
-        'src/routes/__root.tsx': root,
-        'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+test('a second run of the compiler generates the routes added since', async () => {
+  let generations = 0
+  const first = await buildStart({
+    bundler: 'rsbuild',
+    rsbuildCompiler: true,
+    samePlugins: true,
+    files: {
+      ...rsbuildEntries,
+      'src/routes/__root.tsx': root,
+      'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({
   component: () => <main>MARK_INDEX</main>,
 })
 `,
-      },
-      start: {
-        router: {
-          plugins: [
-            {
-              name: 'test:generations',
-              onRouteTreeChanged: () => {
-                generations++
-              },
+    },
+    start: {
+      router: {
+        plugins: [
+          {
+            name: 'test:generations',
+            onRouteTreeChanged: () => {
+              generations++
             },
-          ],
-        },
+          },
+        ],
       },
-    })
-    expect(generations).toBe(1)
-    generations = 0
-    const second = await first.rebuild({
-      'src/routes/about.tsx': `import { createFileRoute } from '@tanstack/react-router'
+    },
+  })
+  expect(generations).toBe(1)
+  generations = 0
+  const second = await first.rebuild({
+    'src/routes/about.tsx': `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/about')({
   component: () => <main>MARK_ABOUT</main>,
 })
 `,
-    })
-    expect(generations).toBe(1)
-    const tree = await readFile(
-      path.join(second.root, 'src/routeTree.gen.ts'),
-      'utf8',
-    )
-    expect(tree).toContain(`path: '/about'`)
-  },
-  timeout,
-)
+  })
+  expect(generations).toBe(1)
+  const tree = await readFile(
+    path.join(second.root, 'src/routeTree.gen.ts'),
+    'utf8',
+  )
+  expect(tree).toContain(`path: '/about'`)
+})

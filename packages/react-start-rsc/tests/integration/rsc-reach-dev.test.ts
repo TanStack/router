@@ -19,4 +19,4 @@ test('Vite dev with RSC: every server fn the client calls answers after a fresh 
     await server.vite.restart()
     return server
   })
-}, 120_000)
+})

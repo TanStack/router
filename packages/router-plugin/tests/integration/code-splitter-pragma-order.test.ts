@@ -12,8 +12,6 @@ import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { tanstackRouter } from '../../src/vite'
 import { build, routeApp, routeHead } from '../build-harness'
 
-const timeout = 120_000
-
 /** The project's JSX transform: TypeScript, before Vite's own. */
 const typescriptJsx = {
   name: 'test:typescript-jsx',
@@ -93,6 +91,5 @@ describe('a pragma comment and a directive, on Vite with TypeScript JSX', () => 
       }
       expect(split.colour).toBe(untouched.colour)
     },
-    timeout,
   )
 })

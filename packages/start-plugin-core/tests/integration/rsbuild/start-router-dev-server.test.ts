@@ -26,8 +26,6 @@ import type { RsbuildPlugin } from '@rsbuild/core'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
-const timeout = 60_000
-
 /**
  * `src/hmr-sync.ts`: the hash of the compile whose modules the page runs
  * (Rspack's `__webpack_hash__`, which a hot update moves forward).
@@ -101,23 +99,15 @@ describe('Rsbuild dev: a route switching between page and server-only', () => {
   // Source: research on review round 4 (the client did not compile again
   // when a server-only route became a page: no client module depended on
   // the route's file, and the route tree file did not change).
-  test(
-    'the page follows a route that becomes a page, loses its handlers and becomes server-only again',
-    async () => {
-      const { server, scenario } = await startPageServer()
-      await switchBetweenServerOnlyAndPage(scenario)
-      expect(reportedErrors(server)).toEqual([])
-    },
-    timeout,
-  )
+  test('the page follows a route that becomes a page, loses its handlers and becomes server-only again', async () => {
+    const { server, scenario } = await startPageServer()
+    await switchBetweenServerOnlyAndPage(scenario)
+    expect(reportedErrors(server)).toEqual([])
+  })
 
-  test(
-    'a route that becomes a page before the client loaded the route tree is in the client route tree',
-    async () => {
-      const { server, scenario } = await startPageServer()
-      await pageBeforeTheClientLoadedTheTree(scenario)
-      expect(reportedErrors(server)).toEqual([])
-    },
-    timeout,
-  )
+  test('a route that becomes a page before the client loaded the route tree is in the client route tree', async () => {
+    const { server, scenario } = await startPageServer()
+    await pageBeforeTheClientLoadedTheTree(scenario)
+    expect(reportedErrors(server)).toEqual([])
+  })
 })

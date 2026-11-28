@@ -43,7 +43,6 @@ import type { RsbuildPlugin } from '@rsbuild/core'
 import type { BuildResult } from '@tanstack/compiler-test-utils/build-harness'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
-const timeout = 90_000
 
 /** The splittable options, in the order the forward routes observe them. */
 const options = [
@@ -453,7 +452,7 @@ describe('the split decision in dev and in a production build', () => {
         deletedCode.rsbuild = app.where('MARK_DELETED_HEADER')
       })(),
     ])
-  }, timeout)
+  }, 90_000)
 
   test.each(['vite', 'rsbuild'])(
     '%s: the production build splits, groups and deletes as configured, and the routes work',

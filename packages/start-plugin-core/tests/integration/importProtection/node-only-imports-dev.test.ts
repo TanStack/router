@@ -21,47 +21,37 @@ import {
 } from './node-only-imports-cases'
 import { importersIn } from './hosts'
 
-const timeout = 60_000
-
 describe('vite dev', () => {
-  test(
-    'an import the client keeps only as a type: the module loads, with none of the package',
-    async () => {
-      const server = await startBrowserStartDevServer({
-        files: { ...nodeOnlyPackage, 'src/entry.ts': typeRemainder },
-      })
-      const { result } = await runViteClient(
-        server,
-        '/src/entry.ts',
-        `return { show: typeof entry.show, loaded: ${loadedModulesExpression} }`,
-      )
-      expect(result).toEqual({ show: 'function', loaded: [] })
-    },
-    timeout,
-  )
+  test('an import the client keeps only as a type: the module loads, with none of the package', async () => {
+    const server = await startBrowserStartDevServer({
+      files: { ...nodeOnlyPackage, 'src/entry.ts': typeRemainder },
+    })
+    const { result } = await runViteClient(
+      server,
+      '/src/entry.ts',
+      `return { show: typeof entry.show, loaded: ${loadedModulesExpression} }`,
+    )
+    expect(result).toEqual({ show: 'function', loaded: [] })
+  })
 
-  test(
-    'a specifier rule denying the package judges the kept import: the mock is served and the importer reported',
-    async () => {
-      const recorder = violationRecorder({ ...deniedPackage, behavior: 'mock' })
-      const server = await startBrowserStartDevServer({
-        files: { ...nodeOnlyPackage, 'src/entry.ts': valueRemainder },
-        start: { importProtection: recorder.importProtection },
-      })
-      const { result } = await runViteClient(
-        server,
-        '/src/entry.ts',
-        `${describeValuePrelude}return { show: describeValue(entry.show(), ${JSON.stringify(nodeOnlyMark)}), loaded: ${loadedModulesExpression} }`,
-      )
-      await server.idle()
-      expect({
-        result,
-        reported: importersIn({ root: server.root, ...recorder }, 'client'),
-      }).toEqual({
-        result: { show: 'a safe mock', loaded: [] },
-        reported: ['src/entry.ts'],
-      })
-    },
-    timeout,
-  )
+  test('a specifier rule denying the package judges the kept import: the mock is served and the importer reported', async () => {
+    const recorder = violationRecorder({ ...deniedPackage, behavior: 'mock' })
+    const server = await startBrowserStartDevServer({
+      files: { ...nodeOnlyPackage, 'src/entry.ts': valueRemainder },
+      start: { importProtection: recorder.importProtection },
+    })
+    const { result } = await runViteClient(
+      server,
+      '/src/entry.ts',
+      `${describeValuePrelude}return { show: describeValue(entry.show(), ${JSON.stringify(nodeOnlyMark)}), loaded: ${loadedModulesExpression} }`,
+    )
+    await server.idle()
+    expect({
+      result,
+      reported: importersIn({ root: server.root, ...recorder }, 'client'),
+    }).toEqual({
+      result: { show: 'a safe mock', loaded: [] },
+      reported: ['src/entry.ts'],
+    })
+  })
 })

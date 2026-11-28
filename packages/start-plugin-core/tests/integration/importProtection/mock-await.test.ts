@@ -10,8 +10,6 @@ import { startBundlers } from '../../build-harness'
 import { buildStart } from '../../build-start'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 
-const timeout = 60_000
-
 const script = `${describeValuePrelude}
 const logged = []
 console.error = (...args) => logged.push(String(args[0]?.message ?? args[0]))
@@ -83,6 +81,5 @@ export const read = () => secret
         reportedAfterAwait: true,
       })
     },
-    timeout,
   )
 })

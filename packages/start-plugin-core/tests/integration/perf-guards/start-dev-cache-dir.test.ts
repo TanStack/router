@@ -15,8 +15,6 @@ import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import { createStartHost } from '../../start-host'
 import type { StartHost } from '../../start-host'
 
-const timeout = 60_000
-
 /** A dependency without anything of Start, pre-bundled by Vite's optimizer. */
 const plainLibrary = {
   'node_modules/plain-lib/package.json': JSON.stringify({
@@ -50,43 +48,36 @@ describe.each([
   ['a directory of the app', '.vite-cache'],
   ['a directory outside the app', '../outside-vite-cache'],
 ])('a dev server whose cacheDir is %s', (_, cacheDir) => {
-  test(
-    'compiles no pre-bundled dependency that does not use Start',
-    async () => {
-      vi.stubEnv('TSR_COMPILER_STATS', '1')
-      onTestFinished(() => {
-        vi.unstubAllEnvs()
-      })
-      const host = await closeAtEnd(() =>
-        createStartHost({
-          files: plainLibrary,
-          config: {
-            ...(cacheDir && { cacheDir }),
-            optimizeDeps: { include: ['plain-lib', 'named-lib'] },
-          },
-        }),
-      )
-      // the page itself, and the framework's own pre-bundled dependencies
-      await importCase(host, `export const value = () => 'MARK_WARM'`)
-      const own = await importCase(
-        host,
-        `export const value = () => 'MARK_OWN'`,
-      )
-      const plain = await importCase(
-        host,
-        `import { plain } from 'plain-lib'\nexport const value = plain`,
-      )
-      const named = await importCase(
-        host,
-        `import { named } from 'named-lib'\nexport const value = named`,
-      )
-      expect(own.result).toBe('MARK_OWN')
-      expect(plain.result).toBe('MARK_PLAIN')
-      // the dependency's bundle is no module of the compiler's
-      expect(plain.added).toBe(own.added)
-      expect(named.result).toMatch(/^MARK_NAMED/)
-      expect(named.added).toBe(own.added + 1)
-    },
-    timeout,
-  )
+  test('compiles no pre-bundled dependency that does not use Start', async () => {
+    vi.stubEnv('TSR_COMPILER_STATS', '1')
+    onTestFinished(() => {
+      vi.unstubAllEnvs()
+    })
+    const host = await closeAtEnd(() =>
+      createStartHost({
+        files: plainLibrary,
+        config: {
+          ...(cacheDir && { cacheDir }),
+          optimizeDeps: { include: ['plain-lib', 'named-lib'] },
+        },
+      }),
+    )
+    // the page itself, and the framework's own pre-bundled dependencies
+    await importCase(host, `export const value = () => 'MARK_WARM'`)
+    const own = await importCase(host, `export const value = () => 'MARK_OWN'`)
+    const plain = await importCase(
+      host,
+      `import { plain } from 'plain-lib'\nexport const value = plain`,
+    )
+    const named = await importCase(
+      host,
+      `import { named } from 'named-lib'\nexport const value = named`,
+    )
+    expect(own.result).toBe('MARK_OWN')
+    expect(plain.result).toBe('MARK_PLAIN')
+    // the dependency's bundle is no module of the compiler's
+    expect(plain.added).toBe(own.added)
+    expect(named.result).toMatch(/^MARK_NAMED/)
+    expect(named.added).toBe(own.added + 1)
+  })
 })

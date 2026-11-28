@@ -22,8 +22,6 @@ import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import type { RsbuildPlugin } from '@rsbuild/core'
 
-const timeout = 90_000
-
 /** The warnings of every report Rsbuild prints (`onDevCompileDone`). */
 function recordPrinted(): {
   plugin: RsbuildPlugin
@@ -61,97 +59,89 @@ export const requireRole = (role: string) =>
   })
 `
 
-test(
-  'a cold start without the route tree prints the warnings of the first client compile, once in a report',
-  async () => {
-    const { plugin, printed } = recordPrinted()
-    const server = await startRsbuildStartDevServer({
-      start: { importProtection: { behavior: { dev: 'mock' } } },
-      config: { plugins: [plugin] },
-      files: {
-        'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+test('a cold start without the route tree prints the warnings of the first client compile, once in a report', async () => {
+  const { plugin, printed } = recordPrinted()
+  const server = await startRsbuildStartDevServer({
+    start: { importProtection: { behavior: { dev: 'mock' } } },
+    config: { plugins: [plugin] },
+    files: {
+      'src/router.ts': `import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 export const getRouter = () => createRouter({ routeTree })
 `,
-        'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+      'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { secret } from '../secret.server'
 import { requireRole } from '../role'
 export const Route = createFileRoute('/')({
   component: () => <p>{String(secret)}{String(requireRole)}</p>,
 })
 `,
-        'src/secret.server.ts': `export const secret = 'MARK_SECRET'\n`,
-        'src/role.ts': serverParam,
-        'src/entry.ts': `import './router'\n`,
-      },
-    })
-    await server.settle()
-    // what Rsbuild printed last: every environment's last compilation
-    const last = printed.at(-1) ?? []
-    // the mocked import, reported at the importer
-    expectDiagnostic(last, {
-      severity: 'warning',
-      file: 'src/routes/index.tsx',
-      root: server.root,
-      times: 1,
-    })
-    // the compiler's warning of the client compile
-    expectDiagnostic(last, {
-      severity: 'warning',
-      file: 'src/role.ts',
-      root: server.root,
-      times: 1,
-    })
+      'src/secret.server.ts': `export const secret = 'MARK_SECRET'\n`,
+      'src/role.ts': serverParam,
+      'src/entry.ts': `import './router'\n`,
+    },
+  })
+  await server.settle()
+  // what Rsbuild printed last: every environment's last compilation
+  const last = printed.at(-1) ?? []
+  // the mocked import, reported at the importer
+  expectDiagnostic(last, {
+    severity: 'warning',
+    file: 'src/routes/index.tsx',
+    root: server.root,
+    times: 1,
+  })
+  // the compiler's warning of the client compile
+  expectDiagnostic(last, {
+    severity: 'warning',
+    file: 'src/role.ts',
+    root: server.root,
+    times: 1,
+  })
 
-    // an edit of another module: what was printed is not printed twice
-    const before = printed.length
-    await server.edit({ 'src/entry.ts': `import './router'\n// edited\n` })
-    await server.settle()
-    for (const report of printed.slice(before)) {
-      for (const file of ['src/routes/index.tsx', 'src/role.ts']) {
-        expect(
-          findDiagnostics(report, {
-            severity: 'warning',
-            file,
-            root: server.root,
-          }).length,
-        ).toBeLessThanOrEqual(1)
-      }
+  // an edit of another module: what was printed is not printed twice
+  const before = printed.length
+  await server.edit({ 'src/entry.ts': `import './router'\n// edited\n` })
+  await server.settle()
+  for (const report of printed.slice(before)) {
+    for (const file of ['src/routes/index.tsx', 'src/role.ts']) {
+      expect(
+        findDiagnostics(report, {
+          severity: 'warning',
+          file,
+          root: server.root,
+        }).length,
+      ).toBeLessThanOrEqual(1)
     }
-  },
-  timeout,
-)
+  }
+})
 
 // A dev server restarted on Rspack's persistent cache restores the module
 // without compiling it: its first report prints the warning the module's
 // latest compile found, as a production build on the cache does.
 // Source: round-3 re-checks of the node_modules policy implementation
 // (Astra 4 `dev-simple`, Fable N2).
-test(
-  'a dev server restarted on the persistent cache prints the warnings of the modules it restored',
-  async () => {
-    const { plugin, printed } = recordPrinted()
-    const first = await startRsbuildStartDevServer({
-      config: { plugins: [plugin], performance: { buildCache: true } },
-      files: {
-        'src/role.ts': serverParam,
-        'src/entry.ts': `import { requireRole } from './role'\nexport const role = requireRole\n`,
-      },
-    })
-    await first.settle()
-    const role = (report: Array<Diagnostic>) =>
-      findDiagnostics(report, {
-        severity: 'warning',
-        file: 'src/role.ts',
-        root: first.root,
-      }).length
-    expect(role(printed.at(-1) ?? [])).toBe(1)
-    await first.stop()
-    const before = printed.length
-    const server = await first.restart()
-    await server.settle()
-    expect(printed.length).toBeGreaterThan(before)
-    expect(role(printed.at(-1) ?? [])).toBe(1)
-  },
-  timeout,
-)
+test('a dev server restarted on the persistent cache prints the warnings of the modules it restored', async () => {
+  const { plugin, printed } = recordPrinted()
+  const first = await startRsbuildStartDevServer({
+    config: { plugins: [plugin], performance: { buildCache: true } },
+    files: {
+      'src/role.ts': serverParam,
+      'src/entry.ts': `import { requireRole } from './role'\nexport const role = requireRole\n`,
+    },
+  })
+  await first.settle()
+  const role = (report: Array<Diagnostic>) =>
+    findDiagnostics(report, {
+      severity: 'warning',
+      file: 'src/role.ts',
+      root: first.root,
+    }).length
+  expect(role(printed.at(-1) ?? [])).toBe(1)
+  await first.stop()
+  const before = printed.length
+  const server = await first.restart()
+  await server.settle()
+  expect(printed.length).toBeGreaterThan(before)
+  expect(role(printed.at(-1) ?? [])).toBe(1)
+})

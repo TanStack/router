@@ -125,7 +125,6 @@ describe('vite', () => {
     async (_name, entry, files, options) => {
       await expectMockedAndReported('vite', entry, files, options)
     },
-    timeout,
   )
 
   test.each(viteRows)(
@@ -148,7 +147,6 @@ describe('vite', () => {
       expect(result).not.toContain(CANARY)
       expect(clientViolations(recorder)).toBeGreaterThan(0)
     },
-    timeout,
   )
 })
 
@@ -158,7 +156,6 @@ describe('rsbuild', () => {
     async (_name, entry, files, options) => {
       await expectMockedAndReported('rsbuild', entry, files, options)
     },
-    timeout,
   )
 
   test.each(rsbuildRows)(
@@ -180,7 +177,6 @@ describe('rsbuild', () => {
       expect(result).not.toContain(CANARY)
       expect(clientViolations(recorder)).toBeGreaterThan(0)
     },
-    timeout,
   )
 })
 
@@ -190,28 +186,20 @@ describe.each<[StartBundler, string, Files]>([
   ['rsbuild', rsbuildRows[3]![1], rsbuildRows[3]![2]],
   ['rsbuild', rsbuildRows[1]![1], rsbuildRows[1]![2]],
 ])('%s build verdicts', (bundler, entry, files) => {
-  test(
-    'the error behaviour fails the build naming the importer',
-    async () => {
-      const error = await rejection(
-        buildApp(bundler, entry, files, { behavior: 'error' }),
-      )
-      expect(importersIn(error, 'client')).toEqual(['src/entry.ts'])
-    },
-    timeout,
-  )
+  test('the error behaviour fails the build naming the importer', async () => {
+    const error = await rejection(
+      buildApp(bundler, entry, files, { behavior: 'error' }),
+    )
+    expect(importersIn(error, 'client')).toEqual(['src/entry.ts'])
+  })
 
-  test(
-    'allowImport gives the real file',
-    async () => {
-      const result = await buildApp(bundler, entry, files, {
-        ...importProtection,
-        allowImport: () => true,
-      })
-      expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
-    },
-    timeout,
-  )
+  test('allowImport gives the real file', async () => {
+    const result = await buildApp(bundler, entry, files, {
+      ...importProtection,
+      allowImport: () => true,
+    })
+    expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
+  })
 })
 
 describe.each<StartBundler>(['vite', 'rsbuild'])('%s build', (bundler) => {
@@ -222,88 +210,68 @@ export const read = () => s
 `,
   }
 
-  test(
-    'an importer outside the source directory gets the real module of a denied file outside it, unreported',
-    async () => {
-      const result = await buildApp(
-        bundler,
-        `import { read } from '../lib/a'
+  test('an importer outside the source directory gets the real module of a denied file outside it, unreported', async () => {
+    const result = await buildApp(
+      bundler,
+      `import { read } from '../lib/a'
 ;(globalThis as any).read = read
 `,
-        lib,
-        { behavior: 'error' },
-      )
-      expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
-    },
-    timeout,
-  )
+      lib,
+      { behavior: 'error' },
+    )
+    expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
+  })
 
-  test(
-    'an importer in the scope next to it gets the mock and is reported; the other keeps the real module',
-    async () => {
-      const result = await buildApp(
-        bundler,
-        `import { read } from '../lib/a'
+  test('an importer in the scope next to it gets the mock and is reported; the other keeps the real module', async () => {
+    const result = await buildApp(
+      bundler,
+      `import { read } from '../lib/a'
 import { s } from '../lib/s.server'
 ;(globalThis as any).reads = [read, s]
 `,
-        lib,
-      )
-      expect(importersIn(result, 'client')).toEqual(['src/entry.ts'])
-      expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
-    },
-    timeout,
-  )
+      lib,
+    )
+    expect(importersIn(result, 'client')).toEqual(['src/entry.ts'])
+    expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
+  })
 
-  test(
-    'a data file no rule denies keeps its text, unreported',
-    async () => {
-      const result = await buildApp(
-        bundler,
-        bundler === 'vite'
-          ? plainGlob('./*.json')
-          : exposing(`[new URL('./plain.txt', import.meta.url).href]`),
-        { 'src/plain.json': `{"a":"${CANARY}"}`, 'src/plain.txt': CANARY },
-      )
-      expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
-      expect(clientViolations(result)).toBe(0)
-    },
-    timeout,
-  )
-})
-
-test(
-  "a dependency keeps its own file a rule denies: `excludeFiles: []` judges what an app's importers reach",
-  async () => {
+  test('a data file no rule denies keeps its text, unreported', async () => {
     const result = await buildApp(
-      'vite',
-      staticImport('dep'),
-      {
-        'node_modules/dep/package.json': `{"name":"dep","type":"module","exports":"./index.js"}`,
-        'node_modules/dep/index.js': `export { s } from './own.server.js'\n`,
-        'node_modules/dep/own.server.js': `export const s = '${CANARY}'\n`,
-      },
-      { ...importProtection, client: { excludeFiles: [] } },
+      bundler,
+      bundler === 'vite'
+        ? plainGlob('./*.json')
+        : exposing(`[new URL('./plain.txt', import.meta.url).href]`),
+      { 'src/plain.json': `{"a":"${CANARY}"}`, 'src/plain.txt': CANARY },
     )
     expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
     expect(clientViolations(result)).toBe(0)
-  },
-  timeout,
-)
+  })
+})
 
-test(
-  'a server keeps a client-only named file outside the source directory, and the build passes',
-  async () => {
-    const result = await buildApp(
-      'vite',
-      plainGlob('../lib/*.client.ts'),
-      { 'lib/gui.client.ts': `export const s = '${CANARY}'\n` },
-      { behavior: 'error' },
-    )
-    expect(await emittedCanaries(result.ssr.outDir)).not.toEqual([])
-  },
-  timeout,
-)
+test("a dependency keeps its own file a rule denies: `excludeFiles: []` judges what an app's importers reach", async () => {
+  const result = await buildApp(
+    'vite',
+    staticImport('dep'),
+    {
+      'node_modules/dep/package.json': `{"name":"dep","type":"module","exports":"./index.js"}`,
+      'node_modules/dep/index.js': `export { s } from './own.server.js'\n`,
+      'node_modules/dep/own.server.js': `export const s = '${CANARY}'\n`,
+    },
+    { ...importProtection, client: { excludeFiles: [] } },
+  )
+  expect(await emittedCanaries(result.client.outDir)).not.toEqual([])
+  expect(clientViolations(result)).toBe(0)
+})
+
+test('a server keeps a client-only named file outside the source directory, and the build passes', async () => {
+  const result = await buildApp(
+    'vite',
+    plainGlob('../lib/*.client.ts'),
+    { 'lib/gui.client.ts': `export const s = '${CANARY}'\n` },
+    { behavior: 'error' },
+  )
+  expect(await emittedCanaries(result.ssr.outDir)).not.toEqual([])
+})
 
 /** A plugin's own virtual assets: never files, and never judged by reading them back through the host. */
 const virtualAssets = (id: string, code: string) => ({
@@ -316,37 +284,29 @@ describe.each([
   ['virtual:app.css', `.x{content:"${CANARY}"}`],
   ['virtual:app.json', `{"a":"${CANARY}"}`],
 ])('a virtual asset %s loads', (id, code) => {
-  test(
-    'in a build',
-    async () => {
-      const result = await buildStart({
-        bundler: 'vite',
-        files: app(staticImport(id), {}),
-        entry: 'src/entry.ts',
-        start: { importProtection },
-        viteConfig: { plugins: [virtualAssets(id, code)] },
-      })
-      expect(clientViolations(result)).toBe(0)
-    },
-    timeout,
-  )
+  test('in a build', async () => {
+    const result = await buildStart({
+      bundler: 'vite',
+      files: app(staticImport(id), {}),
+      entry: 'src/entry.ts',
+      start: { importProtection },
+      viteConfig: { plugins: [virtualAssets(id, code)] },
+    })
+    expect(clientViolations(result)).toBe(0)
+  })
 
-  test(
-    'on a dev server, the client first',
-    async () => {
-      const server = await startDevServer({
-        browser: true,
-        start: { importProtection },
-        files: app(staticImport(id), {}),
-        plugins: [virtualAssets(id, code)],
-      })
-      const { result } = await runViteClient(
-        server,
-        '/src/router.ts',
-        'return (await globalThis.texts()).length',
-      )
-      expect(result).toBe(1)
-    },
-    timeout,
-  )
+  test('on a dev server, the client first', async () => {
+    const server = await startDevServer({
+      browser: true,
+      start: { importProtection },
+      files: app(staticImport(id), {}),
+      plugins: [virtualAssets(id, code)],
+    })
+    const { result } = await runViteClient(
+      server,
+      '/src/router.ts',
+      'return (await globalThis.texts()).length',
+    )
+    expect(result).toBe(1)
+  })
 })

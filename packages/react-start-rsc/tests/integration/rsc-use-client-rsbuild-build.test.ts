@@ -18,40 +18,30 @@ import {
 } from './rsc-use-client-app'
 import { openRscPage, startRscRsbuildPreviewServer } from './rsc-serial'
 
-const timeout = 60_000
-
 describe('Rsbuild build with RSC', () => {
-  test(
-    'a client-only-marked component a server component renders works (mock), its import reported',
-    async () => {
-      const { violations, start } = recorder('mock')
-      const server = await startRscRsbuildPreviewServer({
-        start,
-        files: markedApp,
-      })
-      expect(server.errors).toEqual([])
-      await expectCompClicks(await openRscPage(server, '/c'))
-      expect(summary(violations)).toEqual(['rsc marker page.tsx -> ./Comp'])
-    },
-    timeout,
-  )
+  test('a client-only-marked component a server component renders works (mock), its import reported', async () => {
+    const { violations, start } = recorder('mock')
+    const server = await startRscRsbuildPreviewServer({
+      start,
+      files: markedApp,
+    })
+    expect(server.errors).toEqual([])
+    await expectCompClicks(await openRscPage(server, '/c'))
+    expect(summary(violations)).toEqual(['rsc marker page.tsx -> ./Comp'])
+  })
 
-  test(
-    'a client-only-marked component a server component renders fails the build where SSR renders it (error)',
-    async () => {
-      const { violations, start } = recorder('error')
-      const built = await startRscRsbuildPreviewServer({
-        start,
-        files: markedApp,
-      }).then(
-        () => null,
-        (error: unknown) => error,
-      )
-      expect(built).toBeInstanceOf(AggregateError)
-      expect(summary(violations)).toEqual(['rsc marker page.tsx -> ./Comp'])
-    },
-    timeout,
-  )
+  test('a client-only-marked component a server component renders fails the build where SSR renders it (error)', async () => {
+    const { violations, start } = recorder('error')
+    const built = await startRscRsbuildPreviewServer({
+      start,
+      files: markedApp,
+    }).then(
+      () => null,
+      (error: unknown) => error,
+    )
+    expect(built).toBeInstanceOf(AggregateError)
+    expect(summary(violations)).toEqual(['rsc marker page.tsx -> ./Comp'])
+  })
 
   // A package's `'use client'` widget that only a server component renders
   // reaches the client through the RSC client reference alone (a module of
@@ -61,22 +51,18 @@ describe('Rsbuild build with RSC', () => {
   // the page's chunk (the widget's importers were not known).
   // Source: Astra's and Gemini's reviews of node_modules policy decision 12
   // (`route-rsc-rsbuild-actual`).
-  test(
-    "a package 'use client' widget a server component renders, using a server-only module, fails the build at the widget (error)",
-    async () => {
-      const { violations, start } = recorder('error')
-      const built = await startRscRsbuildPreviewServer({
-        start,
-        files: packageWidgetApp,
-      }).then(
-        () => null,
-        (error: unknown) => error,
-      )
-      expect(built).toBeInstanceOf(AggregateError)
-      expect(summary(violations)).toEqual([
-        'client marker widget.jsx -> ./secret.js',
-      ])
-    },
-    timeout,
-  )
+  test("a package 'use client' widget a server component renders, using a server-only module, fails the build at the widget (error)", async () => {
+    const { violations, start } = recorder('error')
+    const built = await startRscRsbuildPreviewServer({
+      start,
+      files: packageWidgetApp,
+    }).then(
+      () => null,
+      (error: unknown) => error,
+    )
+    expect(built).toBeInstanceOf(AggregateError)
+    expect(summary(violations)).toEqual([
+      'client marker widget.jsx -> ./secret.js',
+    ])
+  })
 })

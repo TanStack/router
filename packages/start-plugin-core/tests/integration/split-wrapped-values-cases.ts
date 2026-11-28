@@ -13,8 +13,6 @@ import { describe, expect, test } from 'vitest'
 import { startBundlers } from '../build-harness'
 import { buildStart } from '../build-start'
 
-const timeout = 60_000
-
 const SECRET = 'MARK_SECRET'
 
 /** The files under `dir` (but `skip`) whose text holds the server's marker. */
@@ -116,7 +114,6 @@ export const getRouter = () => createRouter({ routeTree })
           value: SECRET,
         })
       },
-      timeout,
     )
 
     // A value Start compiles per environment, in a wrapper: the client's
@@ -150,7 +147,6 @@ export const getRouter = () => createRouter({ routeTree })
           value: SECRET,
         })
       },
-      timeout,
     )
   })
 }

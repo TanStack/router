@@ -22,7 +22,6 @@ import {
 import { startBundlers } from '../build-harness'
 import { buildStart } from '../build-start'
 
-const timeout = 60_000
 const RP = '@tanstack/react-router'
 
 const rootFile = `import { Outlet, createRootRoute } from '${RP}'
@@ -98,51 +97,46 @@ export const [Route] = [createFileRoute('/x')(${options})]
         server: after.client.where('MARK_SERVER'),
       }).toEqual({ page: 'lazy', headers: 'nowhere', server: 'nowhere' })
     },
-    timeout,
   )
 
   // The client's compile reports it (Start's server environments compile the
   // same options): one text, saying what applies to a root in a build (it
   // is not split, a build has no hot updates; its server options are not
   // removed). Source: diagnostics spike (2026-11-24), Fable 1d, decision 4.
-  test(
-    'a wrapped root route is reported once, with what applies to it',
-    async () => {
-      const result = await buildStart({
-        bundler,
-        files: {
-          'src/routes/__root.tsx': `import { Outlet, createRootRoute } from '${RP}'
+  test('a wrapped root route is reported once, with what applies to it', async () => {
+    const result = await buildStart({
+      bundler,
+      files: {
+        'src/routes/__root.tsx': `import { Outlet, createRootRoute } from '${RP}'
 const wrap = <T,>(route: T) => route
 export const Route = wrap(createRootRoute({ component: () => <Outlet /> }))
 `,
-          'src/routes/x.tsx': fixed,
-          'src/entry.ts': `export { routeTree } from './routeTree.gen'\n`,
-        },
-        entry: 'src/entry.ts',
-      })
-      const reports = findDiagnostics(result.diagnostics, {
-        severity: 'warning',
-        file: 'src/routes/__root.tsx',
-        root: result.root,
-      })
-      // reported, and once on each channel that carries it (Vite's build
-      // warnings; Rsbuild's printed report and the stats behind it)
-      expect(reports.length).toBeGreaterThan(0)
-      const perChannel = new Map<unknown, number>()
-      for (const { source } of reports) {
-        perChannel.set(source, (perChannel.get(source) ?? 0) + 1)
-      }
-      expect([...perChannel.values()]).toEqual(
-        [...perChannel.values()].map(() => 1),
-      )
-      for (const { text } of reports) {
-        expect(text).toContain('are not removed')
-        expect(text).not.toContain('code-split')
-        expect(text).not.toContain('hot-updated')
-      }
-    },
-    timeout,
-  )
+        'src/routes/x.tsx': fixed,
+        'src/entry.ts': `export { routeTree } from './routeTree.gen'\n`,
+      },
+      entry: 'src/entry.ts',
+    })
+    const reports = findDiagnostics(result.diagnostics, {
+      severity: 'warning',
+      file: 'src/routes/__root.tsx',
+      root: result.root,
+    })
+    // reported, and once on each channel that carries it (Vite's build
+    // warnings; Rsbuild's printed report and the stats behind it)
+    expect(reports.length).toBeGreaterThan(0)
+    const perChannel = new Map<unknown, number>()
+    for (const { source } of reports) {
+      perChannel.set(source, (perChannel.get(source) ?? 0) + 1)
+    }
+    expect([...perChannel.values()]).toEqual(
+      [...perChannel.values()].map(() => 1),
+    )
+    for (const { text } of reports) {
+      expect(text).toContain('are not removed')
+      expect(text).not.toContain('code-split')
+      expect(text).not.toContain('hot-updated')
+    }
+  })
 
   test.each([
     { name: 'the file’s own', id: `('/x')` },
@@ -167,60 +161,51 @@ export const Route = createFileRoute(${id})(${options})
         server: result.client.where('MARK_SERVER'),
       }).toEqual({ page: 'lazy', server: 'nowhere' })
     },
-    timeout,
   )
 
   // (the generator repairs `createLazyFileRoute` in a route file into
   // `createFileRoute`, four characters shorter, before the id it reports)
-  test(
-    'a non-literal id of a constructor the generator repairs is reported once, at its position in the repaired file',
-    async () => {
-      const result = await build(
-        bundler,
-        `import { createLazyFileRoute } from '${RP}'
+  test('a non-literal id of a constructor the generator repairs is reported once, at its position in the repaired file', async () => {
+    const result = await build(
+      bundler,
+      `import { createLazyFileRoute } from '${RP}'
 const ID = '/x'
 export const Route = createLazyFileRoute(ID as any)({ component: () => null } as any)
 `,
-      )
-      const written = await readFile(
-        path.join(result.root, 'src/routes/x.tsx'),
-        'utf8',
-      )
-      expect(written).toContain('= createFileRoute(ID as any)(')
-      const printed = findDiagnostics(
-        result.diagnostics.filter((d) => d.source === 'console'),
-        { severity: 'warning', file: 'src/routes/x.tsx', root: result.root },
-      )
-      expect(printed).toHaveLength(1)
-      expectDiagnostic(printed, {
-        severity: 'warning',
-        file: 'src/routes/x.tsx',
-        root: result.root,
-        position: diagnosticPosition(written, 'ID as any'),
-      })
-    },
-    timeout,
-  )
+    )
+    const written = await readFile(
+      path.join(result.root, 'src/routes/x.tsx'),
+      'utf8',
+    )
+    expect(written).toContain('= createFileRoute(ID as any)(')
+    const printed = findDiagnostics(
+      result.diagnostics.filter((d) => d.source === 'console'),
+      { severity: 'warning', file: 'src/routes/x.tsx', root: result.root },
+    )
+    expect(printed).toHaveLength(1)
+    expectDiagnostic(printed, {
+      severity: 'warning',
+      file: 'src/routes/x.tsx',
+      root: result.root,
+      position: diagnosticPosition(written, 'ID as any'),
+    })
+  })
 
   // (Vite: the harness passes Start's plugins inline, the same objects to
   // the top-level config resolution and to each environment's)
-  test(
-    'a generator warning is printed once per build',
-    async () => {
-      const result = await build(
-        bundler,
-        `import { createFileRoute } from '${RP}'
+  test('a generator warning is printed once per build', async () => {
+    const result = await build(
+      bundler,
+      `import { createFileRoute } from '${RP}'
 const id = '/x'
 export const Route = createFileRoute(id)(${options})
 `,
-      )
-      expect(
-        findDiagnostics(
-          result.diagnostics.filter((d) => d.source === 'console'),
-          { severity: 'warning', file: 'src/routes/x.tsx', root: result.root },
-        ),
-      ).toHaveLength(1)
-    },
-    timeout,
-  )
+    )
+    expect(
+      findDiagnostics(
+        result.diagnostics.filter((d) => d.source === 'console'),
+        { severity: 'warning', file: 'src/routes/x.tsx', root: result.root },
+      ),
+    ).toHaveLength(1)
+  })
 })

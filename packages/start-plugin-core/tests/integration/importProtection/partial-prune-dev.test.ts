@@ -27,8 +27,7 @@ import {
 } from './partial-prune-cases'
 import { importersIn } from './hosts'
 
-const timeout = 60_000
-const compileTimeout = timeout
+const compileTimeout = 60_000
 
 /** What the client run of `script` gave on `host` with `behavior`, and the importers reported. */
 async function devRun(
@@ -70,35 +69,27 @@ async function devRun(
 }
 
 describe.each(['vite', 'rsbuild'] as const)('%s dev', (host) => {
-  test(
-    'mock mode: each partly kept import gets the mock, and its importer is reported',
-    async () => {
-      expect(
-        await devRun(
-          host,
-          'mock',
-          `${describeValuePrelude}${loadSplitChunk}${readLeaks}`,
-        ),
-      ).toEqual({ run: { result: mockedLeaks }, reported: expectedImporters })
-    },
-    timeout,
-  )
+  test('mock mode: each partly kept import gets the mock, and its importer is reported', async () => {
+    expect(
+      await devRun(
+        host,
+        'mock',
+        `${describeValuePrelude}${loadSplitChunk}${readLeaks}`,
+      ),
+    ).toEqual({ run: { result: mockedLeaks }, reported: expectedImporters })
+  })
 
   // the client fails to load an importer of a denied import; Vite compiles
   // the split chunk only when the page requests it, which a page whose route
   // tree failed to load never does (Rsbuild compiles the whole graph)
-  test(
-    'error mode: the client fails, and the importer of each partly kept import is reported',
-    async () => {
-      const { run, reported } = await devRun(host, 'error', 'return null')
-      expect({ failed: 'error' in run, reported }).toEqual({
-        failed: true,
-        reported:
-          host === 'vite'
-            ? expectedImporters.filter((file) => !file.includes('split-chunk'))
-            : expectedImporters,
-      })
-    },
-    timeout,
-  )
+  test('error mode: the client fails, and the importer of each partly kept import is reported', async () => {
+    const { run, reported } = await devRun(host, 'error', 'return null')
+    expect({ failed: 'error' in run, reported }).toEqual({
+      failed: true,
+      reported:
+        host === 'vite'
+          ? expectedImporters.filter((file) => !file.includes('split-chunk'))
+          : expectedImporters,
+    })
+  })
 })

@@ -14,7 +14,6 @@ import { describe, expect, test } from 'vitest'
 import {
   expectRecovered,
   failedRebuild,
-  timeout,
   unresolvedImport,
 } from './start-build-settlement-app'
 
@@ -26,16 +25,12 @@ describe('vite build --watch: a client rebuild that fails', () => {
   // answered.
   // Source: whole-PR review S4-02 (V-41 through Start's own watch flow);
   // Gemini's and Astra's reviews of settlement step 0.
-  test(
-    'a failed transform: the document names the previous client files, and the previous call answers',
-    async () => {
-      const { first, during, after, build } = await failedRebuild(
-        unresolvedImport,
-        null,
-      )
-      expect(during).toEqual({ served: first, serverBuilds: 0 })
-      expectRecovered(after, build)
-    },
-    timeout,
-  )
+  test('a failed transform: the document names the previous client files, and the previous call answers', async () => {
+    const { first, during, after, build } = await failedRebuild(
+      unresolvedImport,
+      null,
+    )
+    expect(during).toEqual({ served: first, serverBuilds: 0 })
+    expectRecovered(after, build)
+  })
 })

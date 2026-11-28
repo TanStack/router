@@ -26,7 +26,7 @@ describe('route tree types agree with the router', () => {
     [...shapeCases, ...frameworkCases].filter(
       (testCase) => testCase.types !== false,
     ),
-  )('$name', { timeout: 60_000 }, (testCase, { appRoot, routeTreeHost }) =>
+  )('$name', (testCase, { appRoot, routeTreeHost }) =>
     checkApp({ appRoot, routeTreeHost }, testCase, { runtime: false }),
   )
 
@@ -40,18 +40,15 @@ describe('route tree types agree with the router', () => {
   // dropped), printed at src/utils.ts:1260.
   // Impact: `Route.fullPath` and the types derived from it (`from` of
   // links and hooks) say `''` in such a layout while the app sees `/`.
-  test(
-    'the layout route of a route group directory has the full path of the router in the types',
-    ({ appRoot, routeTreeHost }) =>
-      checkApp({ appRoot, routeTreeHost }, groupLayout, { runtime: false }),
-    60_000,
-  )
+  test('the layout route of a route group directory has the full path of the router in the types', ({
+    appRoot,
+    routeTreeHost,
+  }) => checkApp({ appRoot, routeTreeHost }, groupLayout, { runtime: false }))
 
   // (the routes of these cases: route-paths.test.ts and real-router.test.ts,
   // with the bugs the last two pin)
   test.for(childlessLayouts)(
     'a pathless layout without child routes yet ($name) next to the index route has the routes of the router in the types',
-    { timeout: 60_000 },
     (layout, { appRoot, routeTreeHost }) =>
       checkApp({ appRoot, routeTreeHost }, childlessLayoutCase(layout), {
         runtime: false,
@@ -60,7 +57,6 @@ describe('route tree types agree with the router', () => {
 
   test.for([lazyOnlyAnchorLayoutInDirectory, lazyOnlyPathlessLayout])(
     '$name has the routes of the router in the types',
-    { timeout: 60_000 },
     (testCase, { appRoot, routeTreeHost }) =>
       checkApp({ appRoot, routeTreeHost }, testCase, { runtime: false }),
   )
@@ -91,7 +87,7 @@ export type Check = Expect<Equal<FileRoutesByTo['/posts']['id'], '/posts/'>>
 `,
       ),
     ).toEqual([])
-  }, 30_000)
+  })
 
   test('`to` of a route is the route, not its own pathless layout', async ({
     appWithRoutes,
@@ -113,7 +109,7 @@ export type Check = Expect<Equal<FileRoutesByTo['/foo']['id'], '/foo'>>
 `,
       ),
     ).toEqual([])
-  }, 30_000)
+  })
 })
 
 // Bug: a route file named `root` with child routes is given the route tree's
@@ -146,7 +142,7 @@ export type Check = Expect<Equal<NonNullable<Children>[keyof NonNullable<Childre
 `,
       ),
     ).toEqual([])
-  }, 30_000)
+  })
 })
 
 // (Through the router's public lookup by full path on `typeof routeTree`;
@@ -174,5 +170,5 @@ export type Check = Expect<Equal<RouteByPath<typeof routeTree, '/'>['id'], '/'>>
 `,
       ),
     ).toEqual([])
-  }, 30_000)
+  })
 })

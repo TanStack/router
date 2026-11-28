@@ -16,20 +16,16 @@ import {
 import { buildStart } from '../build-start'
 import { routeFiles } from './start-build-route-app'
 
-const timeout = 60_000
-
 describe.each(startBundlers)('%s build', (bundler) => {
-  test(
-    "a server function called over HTTP on a fresh server sees its route file's bare import",
-    async () => {
-      const { client, ssr } = await buildStart({
-        bundler,
-        files: {
-          ...routeFiles,
-          'src/polyfill.ts': `;(globalThis as any).__poly = 'MARK_POLY'
+  test("a server function called over HTTP on a fresh server sees its route file's bare import", async () => {
+    const { client, ssr } = await buildStart({
+      bundler,
+      files: {
+        ...routeFiles,
+        'src/polyfill.ts': `;(globalThis as any).__poly = 'MARK_POLY'
 export {}
 `,
-          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+        'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import '../polyfill'
 export const readPoly = createServerFn().handler(
@@ -40,20 +36,18 @@ export const Route = createFileRoute('/')({
   component: () => 'MARK_COMPONENT',
 })
 `,
-          'src/client-entry.ts': `export { readPoly } from './routes/index'\n`,
-          // the server answers the request alone: no router, no route file
-          'src/ssr-entry.ts': callByIdExports,
-        },
-        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-      })
-      // the handler is its own module, loaded on the first call
-      expect(ssr.where('MARK_HANDLER')).toBe('lazy')
-      const url = (await client.run(`return entry.readPoly.url`)).result
-      const { result } = await ssr.run(
-        `${callByIdPrelude}return callById(serverFnId(${JSON.stringify(url)}))`,
-      )
-      expect(result).toBe('MARK_HANDLER:MARK_POLY')
-    },
-    timeout,
-  )
+        'src/client-entry.ts': `export { readPoly } from './routes/index'\n`,
+        // the server answers the request alone: no router, no route file
+        'src/ssr-entry.ts': callByIdExports,
+      },
+      entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+    })
+    // the handler is its own module, loaded on the first call
+    expect(ssr.where('MARK_HANDLER')).toBe('lazy')
+    const url = (await client.run(`return entry.readPoly.url`)).result
+    const { result } = await ssr.run(
+      `${callByIdPrelude}return callById(serverFnId(${JSON.stringify(url)}))`,
+    )
+    expect(result).toBe('MARK_HANDLER:MARK_POLY')
+  })
 })

@@ -17,8 +17,6 @@ import { RsbuildHostBuildError } from '../../src/rsbuild-plugin-host'
 import { test } from '../../src/test'
 import type { RsbuildPlugin, Rspack } from '@rsbuild/core'
 
-const timeout = 60_000
-
 /** Rewrites `__MARK__` (a loader of its own) and warns through the console. */
 function userPlugin(): RsbuildPlugin {
   return {
@@ -58,113 +56,106 @@ const environments = {
   },
 }
 
-test(
-  'dev: server code through loadBundle, client code in the page, an edit, merged diagnostics',
-  async ({ rsbuildPluginHost }) => {
-    const host = await rsbuildPluginHost({
-      files,
-      plugins: [userPlugin()],
-      config: { environments },
-      client: true,
-    })
-    const server = await host.loadServer<{ read: () => string }>('node')
-    expect(server.read()).toBe('MARKED v1')
-    expect(
-      (
-        await host.runClient(
-          `return document.getElementById('shown').textContent`,
-        )
-      ).result,
-    ).toBe('MARKED v1')
-    // The plugin warned through the console: the server's channel has it
-    expectDiagnostic(host.diagnostics, {
-      severity: 'warning',
-      file: 'src/label.ts',
-      root: host.root,
-    })
+test('dev: server code through loadBundle, client code in the page, an edit, merged diagnostics', async ({
+  rsbuildPluginHost,
+}) => {
+  const host = await rsbuildPluginHost({
+    files,
+    plugins: [userPlugin()],
+    config: { environments },
+    client: true,
+  })
+  const server = await host.loadServer<{ read: () => string }>('node')
+  expect(server.read()).toBe('MARKED v1')
+  expect(
+    (
+      await host.runClient(
+        `return document.getElementById('shown').textContent`,
+      )
+    ).result,
+  ).toBe('MARKED v1')
+  // The plugin warned through the console: the server's channel has it
+  expectDiagnostic(host.diagnostics, {
+    severity: 'warning',
+    file: 'src/label.ts',
+    root: host.root,
+  })
 
-    await host.edit({ 'src/label.ts': `export const label = '__MARK__ v2'\n` })
-    expect((await host.loadServer<{ read: () => string }>('node')).read()).toBe(
-      'MARKED v2',
-    )
-  },
-  timeout,
-)
+  await host.edit({ 'src/label.ts': `export const label = '__MARK__ v2'\n` })
+  expect((await host.loadServer<{ read: () => string }>('node')).read()).toBe(
+    'MARKED v2',
+  )
+})
 
-test(
-  'build: plugins run under the production NODE_ENV, whatever the worker’s',
-  async ({ rsbuildPluginHost }) => {
-    const seen: Array<string | undefined> = []
-    const recordNodeEnv: RsbuildPlugin = {
-      name: 'record-node-env',
-      setup(api) {
-        api.modifyRspackConfig(() => {
-          seen.push(process.env.NODE_ENV)
-        })
-      },
-    }
-    vi.stubEnv('NODE_ENV', 'test')
-    onTestFinished(() => {
-      vi.unstubAllEnvs()
-    })
-    const host = await rsbuildPluginHost({
-      files,
-      plugins: [recordNodeEnv],
-      config: { environments },
-      serve: false,
-    })
-    await host.build()
-    expect(new Set(seen)).toEqual(new Set(['production']))
-    expect(process.env.NODE_ENV).toBe('test')
-  },
-  timeout,
-)
+test('build: plugins run under the production NODE_ENV, whatever the worker’s', async ({
+  rsbuildPluginHost,
+}) => {
+  const seen: Array<string | undefined> = []
+  const recordNodeEnv: RsbuildPlugin = {
+    name: 'record-node-env',
+    setup(api) {
+      api.modifyRspackConfig(() => {
+        seen.push(process.env.NODE_ENV)
+      })
+    },
+  }
+  vi.stubEnv('NODE_ENV', 'test')
+  onTestFinished(() => {
+    vi.unstubAllEnvs()
+  })
+  const host = await rsbuildPluginHost({
+    files,
+    plugins: [recordNodeEnv],
+    config: { environments },
+    serve: false,
+  })
+  await host.build()
+  expect(new Set(seen)).toEqual(new Set(['production']))
+  expect(process.env.NODE_ENV).toBe('test')
+})
 
-test(
-  'build: each environment output, and the production client evidence for the dangling-name check',
-  async ({ rsbuildPluginHost }) => {
-    const host = await rsbuildPluginHost({
-      files,
-      plugins: [userPlugin()],
-      config: { environments },
-      serve: false,
-    })
-    const build = await host.build()
-    expect(Object.keys(build.environments).sort()).toEqual(['node', 'web'])
-    expect(Object.values(build.environments.web!.files).join('\n')).toContain(
-      'MARKED v1',
-    )
-    expect(build.parsedModules.web!.modules.size).toBeGreaterThan(0)
-    expectDiagnostic(build.diagnostics, {
-      severity: 'warning',
-      file: 'src/label.ts',
-      root: host.root,
-    })
-    // The output passes the dangling-name check with that evidence
-    const web = build.environments.web!
-    const entry = Object.keys(web.files).find((file) => file.includes('index'))!
-    await describeBuild({
-      bundler: 'rspack',
-      env: 'client',
-      mode: 'production',
-      esModules: false,
-      root: host.root,
-      outDir: web.distPath,
-      chunks: [
-        { fileName: entry, isEntry: true, imports: [], dynamicImports: [] },
-      ],
-      parsedModules: build.parsedModules.web,
-      warnings: [],
-      consoleMessages: [],
-      dispose: async () => {},
-    })
-  },
-  timeout,
-)
+test('build: each environment output, and the production client evidence for the dangling-name check', async ({
+  rsbuildPluginHost,
+}) => {
+  const host = await rsbuildPluginHost({
+    files,
+    plugins: [userPlugin()],
+    config: { environments },
+    serve: false,
+  })
+  const build = await host.build()
+  expect(Object.keys(build.environments).sort()).toEqual(['node', 'web'])
+  expect(Object.values(build.environments.web!.files).join('\n')).toContain(
+    'MARKED v1',
+  )
+  expect(build.parsedModules.web!.modules.size).toBeGreaterThan(0)
+  expectDiagnostic(build.diagnostics, {
+    severity: 'warning',
+    file: 'src/label.ts',
+    root: host.root,
+  })
+  // The output passes the dangling-name check with that evidence
+  const web = build.environments.web!
+  const entry = Object.keys(web.files).find((file) => file.includes('index'))!
+  await describeBuild({
+    bundler: 'rspack',
+    env: 'client',
+    mode: 'production',
+    esModules: false,
+    root: host.root,
+    outDir: web.distPath,
+    chunks: [
+      { fileName: entry, isEntry: true, imports: [], dynamicImports: [] },
+    ],
+    parsedModules: build.parsedModules.web,
+    warnings: [],
+    consoleMessages: [],
+    dispose: async () => {},
+  })
+})
 
 test.for(['dev', 'build'] as const)(
   'the %s host records warnings through Rsbuild’s logger',
-  { timeout },
   async (mode, { rsbuildPluginHost }) => {
     const host = await rsbuildPluginHost({
       files: { 'src/entry.ts': 'export const value = 1' },
@@ -189,35 +180,33 @@ test.for(['dev', 'build'] as const)(
   },
 )
 
-test(
-  'concurrent Rsbuild apps retain their own native-loader diagnostics',
-  async ({ rsbuildPluginHost }) => {
-    const start = () =>
-      rsbuildPluginHost({
-        files: { 'src/entry.ts': "export const value = '__MARK__'" },
-        plugins: [userPlugin()],
-      })
-    const [first, second] = await Promise.all([start(), start()])
-    await Promise.all([
-      first.edit({ 'src/entry.ts': "export const value = '__MARK__ edited'" }),
-      second.edit({ 'src/entry.ts': "export const value = '__MARK__ edited'" }),
-    ])
-    for (const [app, other] of [
-      [first, second],
-      [second, first],
-    ] as const) {
-      expectDiagnostic(app.diagnostics, {
-        severity: 'warning',
-        file: 'src/entry.ts',
-        root: app.root,
-      })
-      expect(
-        app.diagnostics.some(({ text }) => text.includes(other.root)),
-      ).toBe(false)
-    }
-  },
-  timeout,
-)
+test('concurrent Rsbuild apps retain their own native-loader diagnostics', async ({
+  rsbuildPluginHost,
+}) => {
+  const start = () =>
+    rsbuildPluginHost({
+      files: { 'src/entry.ts': "export const value = '__MARK__'" },
+      plugins: [userPlugin()],
+    })
+  const [first, second] = await Promise.all([start(), start()])
+  await Promise.all([
+    first.edit({ 'src/entry.ts': "export const value = '__MARK__ edited'" }),
+    second.edit({ 'src/entry.ts': "export const value = '__MARK__ edited'" }),
+  ])
+  for (const [app, other] of [
+    [first, second],
+    [second, first],
+  ] as const) {
+    expectDiagnostic(app.diagnostics, {
+      severity: 'warning',
+      file: 'src/entry.ts',
+      root: app.root,
+    })
+    expect(app.diagnostics.some(({ text }) => text.includes(other.root))).toBe(
+      false,
+    )
+  }
+})
 
 /**
  * Adds a compilation warning or error naming the entry (`processAssets`),
@@ -265,7 +254,6 @@ test.for([
   ['build', 'error'],
 ] as const)(
   'the %s host records a compilation %s once',
-  { timeout },
   async ([mode, severity], { rsbuildPluginHost }) => {
     const host = await rsbuildPluginHost({
       files: { 'src/entry.ts': 'export const value = 1' },
@@ -292,31 +280,29 @@ test.for([
   },
 )
 
-test(
-  'a wait that ran out of time during a build is thrown as it is, not as a failed build',
-  async ({ rsbuildPluginHost }) => {
-    const host = await rsbuildPluginHost({
-      files: { 'src/entry.ts': 'export const value = 1' },
-      serve: false,
-      plugins: [
-        {
-          name: 'wait',
-          setup(api) {
-            api.modifyRspackConfig((config) => {
-              config.plugins.push({
-                apply(compiler: Rspack.Compiler) {
-                  // (a hook Rspack calls from JavaScript, see build-harness.test.ts)
-                  compiler.hooks.beforeCompile.tap('wait', () => {
-                    throw new SettleTimeout('a wait ran out of time')
-                  })
-                },
-              })
+test('a wait that ran out of time during a build is thrown as it is, not as a failed build', async ({
+  rsbuildPluginHost,
+}) => {
+  const host = await rsbuildPluginHost({
+    files: { 'src/entry.ts': 'export const value = 1' },
+    serve: false,
+    plugins: [
+      {
+        name: 'wait',
+        setup(api) {
+          api.modifyRspackConfig((config) => {
+            config.plugins.push({
+              apply(compiler: Rspack.Compiler) {
+                // (a hook Rspack calls from JavaScript, see build-harness.test.ts)
+                compiler.hooks.beforeCompile.tap('wait', () => {
+                  throw new SettleTimeout('a wait ran out of time')
+                })
+              },
             })
-          },
+          })
         },
-      ],
-    })
-    await expect(host.build()).rejects.toBeInstanceOf(SettleTimeout)
-  },
-  timeout,
-)
+      },
+    ],
+  })
+  await expect(host.build()).rejects.toBeInstanceOf(SettleTimeout)
+})

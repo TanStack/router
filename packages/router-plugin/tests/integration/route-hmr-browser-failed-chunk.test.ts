@@ -14,8 +14,6 @@
 import { describe, expect } from 'vitest'
 import { test } from '../test'
 
-const timeout = 60_000
-
 /**
  * The index route: its component reads `settings`, a module value only the
  * component's chunk needs; `loader` puts a loader into that chunk,
@@ -49,7 +47,6 @@ const broken = (shape: Parameters<typeof route>[1]) => route('{', shape)
 describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
   test.for([false, true])(
     'a component chunk the edit breaks keeps the component on the page, the fixing edit patches it in place (error component: %s)',
-    { timeout },
     async (errorComponent, { openRouteHmrPage }) => {
       const shape = { loader: false, errorComponent }
       const app = await openRouteHmrPage({
@@ -83,7 +80,6 @@ describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
 
   test.for([true, false])(
     'after an edit that breaks the split chunk holding the loader, the fixing edit shows the component in place (error component: %s)',
-    { timeout },
     async (errorComponent, { openRouteHmrPage }) => {
       const shape = { loader: true, errorComponent }
       const app = await openRouteHmrPage({
@@ -120,7 +116,6 @@ describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
   // broken fails its hot import too
   test.for([false, true])(
     'a component chunk that failed on the first load and after an edit shows the fixing edit (error component: %s)',
-    { timeout },
     async (errorComponent, { openRouteHmrPage }) => {
       const shape = { loader: false, errorComponent }
       const failure = errorComponent

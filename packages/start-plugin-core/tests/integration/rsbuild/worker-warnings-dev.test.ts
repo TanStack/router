@@ -16,8 +16,6 @@ import { roleFile, uiKit, uiKitFile, workerApp } from './worker-warning-apps'
 import { workerPluginOf } from './worker-plugin'
 import type { WorkerPluginOptions } from './worker-plugin'
 
-const timeout = 120_000
-
 const handOvers = [
   ['hands nothing over', false],
   ['hands its warnings over', 'as they are'],
@@ -73,7 +71,6 @@ describe('rsbuild dev: the warnings of modules a worker imports', () => {
       const printed = await devWith({}, { handOver })
       expect(printed).toEqual({ compiler: once, package: once })
     },
-    timeout,
   )
 
   test.each(handOvers)(
@@ -82,7 +79,6 @@ describe('rsbuild dev: the warnings of modules a worker imports', () => {
       const printed = await devWith({ page: true }, { handOver })
       expect(printed.package).toEqual(once)
     },
-    timeout,
   )
 
   test.each(handOvers)(
@@ -91,17 +87,12 @@ describe('rsbuild dev: the warnings of modules a worker imports', () => {
       const printed = await devWith({ server: true }, { handOver })
       expect(printed.package).toEqual(once)
     },
-    timeout,
   )
 
-  test(
-    'server code imports the package, the worker is built once the client compiler is done: its warning is printed once',
-    async () => {
-      const printed = await devWith({ server: true }, { at: 'done' })
-      expect(printed.package).toEqual(once)
-    },
-    timeout,
-  )
+  test('server code imports the package, the worker is built once the client compiler is done: its warning is printed once', async () => {
+    const printed = await devWith({ server: true }, { at: 'done' })
+    expect(printed.package).toEqual(once)
+  })
 })
 
 describe('rsbuild dev on the persistent cache: the warnings of modules only a worker imports', () => {
@@ -153,7 +144,6 @@ describe('rsbuild dev on the persistent cache: the warnings of modules only a wo
         package: phases(uiKitFile),
       }).toEqual({ compiler: expected, package: expected })
     },
-    timeout,
   )
 })
 
@@ -187,6 +177,5 @@ self.onmessage = () => self.postMessage(String(requireRole))
       await server.settle()
       expect(Math.max(0, ...printed.counts(server.root, 'src/role.ts'))).toBe(1)
     },
-    timeout,
   )
 })

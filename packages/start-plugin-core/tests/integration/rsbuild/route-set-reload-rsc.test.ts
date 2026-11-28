@@ -18,8 +18,6 @@ import {
 } from './route-set-reload-app'
 import type { RsbuildConfig } from '@rsbuild/core'
 
-const timeout = 60_000
-
 /** The reload app as an RSC app: its router module is `src/router.tsx`. */
 async function startRscReloadServer(
   config: Pick<RsbuildConfig, 'dev' | 'environments'> = {},
@@ -37,23 +35,19 @@ async function startRscReloadServer(
   return { server, url: server.url!, clientHash: () => undefined, sent: [] }
 }
 
-test(
-  "RSC: a page turned into a handler reloads the tab into the handler's response",
-  async () => {
-    const reload = await startRscReloadServer()
-    const tab = await openTab(reload, '/about')
-    await tab.browser.waitForText('MARK_ABOUT', { selector: '#app' })
-    await reload.server.edit({
-      'src/routes/about.tsx': handlerRoute('/about', 'HANDLER_NEW'),
-    })
-    await tab.loaded(2, { app: false })
-    expect(await documentAfter(tab, 1)).toBe('HANDLER_NEW')
-    await reload.server.settle()
-    expect(tab.documents).toHaveLength(2)
-    expect(tab.failedUpdates()).toEqual([])
-  },
-  timeout,
-)
+test("RSC: a page turned into a handler reloads the tab into the handler's response", async () => {
+  const reload = await startRscReloadServer()
+  const tab = await openTab(reload, '/about')
+  await tab.browser.waitForText('MARK_ABOUT', { selector: '#app' })
+  await reload.server.edit({
+    'src/routes/about.tsx': handlerRoute('/about', 'HANDLER_NEW'),
+  })
+  await tab.loaded(2, { app: false })
+  expect(await documentAfter(tab, 1)).toBe('HANDLER_NEW')
+  await reload.server.settle()
+  expect(tab.documents).toHaveLength(2)
+  expect(tab.failedUpdates()).toEqual([])
+})
 
 test.each([
   { where: 'dev.liveReload', config: { dev: { liveReload: false } } },
@@ -79,5 +73,4 @@ test.each([
       true,
     )
   },
-  timeout,
 )

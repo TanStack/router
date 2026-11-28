@@ -24,8 +24,6 @@ import { buildStart } from '../../build-start'
 import { rejection, violationsOf } from '../../importProtection/start-apps'
 import { rsbuildRscLinks } from '../../start-plugins'
 
-const timeout = 120_000
-
 /**
  * The app: `ClientBox` (in `file`, importing `./browser.client` with
  * `helper`) rendered by `/uc` and by the server component of `getUc`.
@@ -115,69 +113,55 @@ const build = (
 describe('Rsbuild RSC build, a client component in both layers', () => {
   // SPEC J6.7: the exempt importer gets the real module in both layers (no
   // report, the real label in both spans).
-  test(
-    "an exempt component's denied import is real in both layers",
-    async () => {
-      const built = await build(rscApp('ClientBox.tsx', true), {
-        behavior: 'error',
-        exclude: ['**/ClientBox.tsx'],
-      })
-      expect(violationsOf(built)).toEqual([])
-      const { url } = await built.preview()
-      const html = await (await fetch(new URL('/uc', url))).text()
-      expect(
-        [...html.matchAll(/data-testid="client-box">([^<]*)</g)].map(
-          (m) => m[1],
-        ),
-      ).toEqual(['client-only label', 'client-only label'])
-    },
-    timeout,
-  )
+  test("an exempt component's denied import is real in both layers", async () => {
+    const built = await build(rscApp('ClientBox.tsx', true), {
+      behavior: 'error',
+      exclude: ['**/ClientBox.tsx'],
+    })
+    expect(violationsOf(built)).toEqual([])
+    const { url } = await built.preview()
+    const html = await (await fetch(new URL('/uc', url))).text()
+    expect(
+      [...html.matchAll(/data-testid="client-box">([^<]*)</g)].map((m) => m[1]),
+    ).toEqual(['client-only label', 'client-only label'])
+  })
 
   // SPEC J6.1: a `'use client'` component that is itself a denied file
   // (`.client.tsx`) is a violation where SSR renders it, whichever layer
   // compiles it last.
-  test(
-    "a client component that is itself a denied file fails the build with behavior 'error'",
-    async () => {
-      const failed = await rejection(
-        build(rscApp('ClientBox.client.tsx', false), { behavior: 'error' }),
-      )
-      expect(
-        violationsOf(failed).map(({ environment, importer, specifier }) => ({
-          environment,
-          denied: specifier.endsWith('ClientBox.client'),
-          importer: importer.replace(/:.*/, ''),
-        })),
-      ).toContainEqual({
-        environment: 'server',
-        denied: true,
-        importer: 'src/routes/uc.tsx',
-      })
-    },
-    timeout,
-  )
+  test("a client component that is itself a denied file fails the build with behavior 'error'", async () => {
+    const failed = await rejection(
+      build(rscApp('ClientBox.client.tsx', false), { behavior: 'error' }),
+    )
+    expect(
+      violationsOf(failed).map(({ environment, importer, specifier }) => ({
+        environment,
+        denied: specifier.endsWith('ClientBox.client'),
+        importer: importer.replace(/:.*/, ''),
+      })),
+    ).toContainEqual({
+      environment: 'server',
+      denied: true,
+      importer: 'src/routes/uc.tsx',
+    })
+  })
 
   // the exempt route needs the denied component as it is, and the server
   // component's import of it (checked: allowImport does not allow it) is
   // how SSR, which renders it, gets it: the build fails at that import
   // (main: its import's own report; here R147, one file served one way)
-  test(
-    "an exempt route and a server component's client reference both render a denied client component: the build fails at the server component's import",
-    async () => {
-      const failed = await rejection(
-        build(rscApp('ClientBox.client.tsx', false), {
-          behavior: 'error',
-          exclude: ['**/uc.tsx'],
-        }),
-      )
-      expect(failed).toBeInstanceOf(StartBuildError)
-      expectDiagnostic(failed.diagnostics, {
-        severity: 'error',
-        file: 'src/utils/ucServer.tsx',
-        position: { line: 3, column: 27 },
-      })
-    },
-    timeout,
-  )
+  test("an exempt route and a server component's client reference both render a denied client component: the build fails at the server component's import", async () => {
+    const failed = await rejection(
+      build(rscApp('ClientBox.client.tsx', false), {
+        behavior: 'error',
+        exclude: ['**/uc.tsx'],
+      }),
+    )
+    expect(failed).toBeInstanceOf(StartBuildError)
+    expectDiagnostic(failed.diagnostics, {
+      severity: 'error',
+      file: 'src/utils/ucServer.tsx',
+      position: { line: 3, column: 27 },
+    })
+  })
 })

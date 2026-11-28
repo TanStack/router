@@ -211,7 +211,7 @@ describe.each(versions)('Vite $major', ({ major, load }) => {
     await (await createBuilder(app.buildConfig())).buildApp()
     expect(app.generations()).toBe(1)
     expect(await treeRoutes(app.root)).toEqual(['/'])
-  }, 60_000)
+  })
 
   test('environments built by hand are one build: one generation', async () => {
     const { createBuilder } = await vite()
@@ -220,7 +220,7 @@ describe.each(versions)('Vite $major', ({ major, load }) => {
     await builder.build(builder.environments.client!)
     await builder.build(builder.environments.ssr!)
     expect(app.generations()).toBe(1)
-  }, 60_000)
+  })
 
   test('a watch build generates the route tree once before its first builds', async () => {
     const { createBuilder } = await vite()
@@ -246,7 +246,7 @@ describe.each(versions)('Vite $major', ({ major, load }) => {
     }
     expect(app.generations()).toBe(1)
     expect(await treeRoutes(app.root)).toEqual(['/'])
-  }, 60_000)
+  })
 
   // (Vite's watcher reports the files of the
   // bundle only: the created route file never joined the tree, not even at
@@ -326,7 +326,6 @@ describe.each(versions)('Vite $major', ({ major, load }) => {
       )
       expect(await treeRoutes(app.root)).toEqual(['/', '/later'])
     },
-    60_000,
   )
 
   test('a dev server generates the route tree once', async () => {
@@ -341,7 +340,7 @@ describe.each(versions)('Vite $major', ({ major, load }) => {
       }),
     )
     expect(app.generations()).toBe(1)
-  }, 60_000)
+  })
 
   test('a second build from the config file generates the routes added since the first', async () => {
     const { createBuilder } = await vite()
@@ -350,7 +349,7 @@ describe.each(versions)('Vite $major', ({ major, load }) => {
     await writeFile(path.join(app.root, 'routes/about.tsx'), route('/about'))
     await (await createBuilder(app.buildConfig())).buildApp()
     expect(await treeRoutes(app.root)).toEqual(['/', '/about'])
-  }, 60_000)
+  })
 
   // (each config resolution's generation
   // printed the generator's warnings again: three lines in one build)
@@ -375,7 +374,7 @@ describe.each(versions)('Vite $major', ({ major, load }) => {
     expect(printed()).toBe(1)
     await (await createBuilder(config)).buildApp()
     expect(printed()).toBe(2)
-  }, 60_000)
+  })
 
   test('a second build given the same plugin objects inline generates the routes added since the first', async () => {
     const { createBuilder } = await vite()
@@ -389,5 +388,5 @@ describe.each(versions)('Vite $major', ({ major, load }) => {
     await writeFile(path.join(app.root, 'routes/about.tsx'), route('/about'))
     await (await createBuilder(config)).buildApp()
     expect(await treeRoutes(app.root)).toEqual(['/', '/about'])
-  }, 60_000)
+  })
 })

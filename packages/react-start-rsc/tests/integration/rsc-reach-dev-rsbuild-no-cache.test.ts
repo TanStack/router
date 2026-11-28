@@ -27,4 +27,4 @@ test('Rsbuild dev with RSC, no cache: every server fn the client calls answers a
     files: reachFiles,
   })
   await expectReachHistory(signal, server, () => server.restart())
-}, 120_000)
+})

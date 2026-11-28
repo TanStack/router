@@ -15,8 +15,6 @@ import { buildStart } from '../../build-start'
 import { rsbuildRscLinks } from '../../start-plugins'
 import type { StartPluginOptions } from '../../start-plugins'
 
-const timeout = 120_000
-
 /** `@tanstack/react-start`'s RSC option (not one of every framework's Start config). */
 const rscEnabled: StartPluginOptions = { rsc: { enabled: true } }
 
@@ -101,27 +99,23 @@ function Index() {
 // One change set (a pull, a branch switch): `base` became a server fn
 // builder, and the RSC layer's `helper.ts` newly imports `fns.ts`, whose
 // SSR layer module the cache restores.
-test(
-  "a layer's module restored from the cache is compiled again when what it imports changed, while the other layer compiles the file",
-  async () => {
-    const cold = await buildStart({
-      bundler: 'rsbuild',
-      files,
-      entry: 'src/entry.ts',
-      symlinks: rsbuildRscLinks(),
-      start: rscEnabled,
-      rsbuildConfig: { performance: { buildCache: true } },
-    })
-    const warm = await cold.rebuild({
-      'src/utils/base.ts': builderBase,
-      'src/utils/helper.ts': helper(true),
-    })
-    const { url } = await warm.preview()
-    const response = await fetch(url)
-    expect(response.status).toBe(200)
-    expect((await response.text()).replace(/<!-- -->/g, '')).toContain(
-      'MARK_FROM_BASE|UC:HMARK_FROM_BASE',
-    )
-  },
-  timeout,
-)
+test("a layer's module restored from the cache is compiled again when what it imports changed, while the other layer compiles the file", async () => {
+  const cold = await buildStart({
+    bundler: 'rsbuild',
+    files,
+    entry: 'src/entry.ts',
+    symlinks: rsbuildRscLinks(),
+    start: rscEnabled,
+    rsbuildConfig: { performance: { buildCache: true } },
+  })
+  const warm = await cold.rebuild({
+    'src/utils/base.ts': builderBase,
+    'src/utils/helper.ts': helper(true),
+  })
+  const { url } = await warm.preview()
+  const response = await fetch(url)
+  expect(response.status).toBe(200)
+  expect((await response.text()).replace(/<!-- -->/g, '')).toContain(
+    'MARK_FROM_BASE|UC:HMARK_FROM_BASE',
+  )
+})

@@ -19,15 +19,12 @@ import {
 } from './rsc-use-client-app'
 import { openRscPage, startRscPreviewServer } from './rsc-serial'
 
-const timeout = 60_000
-
 describe('Vite build with RSC', () => {
   test.for([
     ['client-only-marked', markedApp, 'rsc marker page.tsx -> ./Comp'],
     ['.client', clientFileApp, 'rsc file page.tsx -> ./Comp.client'],
   ] as const)(
     'a %s component a server component renders works (mock), its import reported',
-    { timeout },
     async ([_, files, reported]) => {
       const { violations, start } = recorder('mock')
       const server = await startRscPreviewServer({ start, files })
@@ -36,35 +33,27 @@ describe('Vite build with RSC', () => {
     },
   )
 
-  test(
-    "a 'use client' component importing React's client-only package builds and works",
-    async () => {
-      const { start } = recorder('error')
-      const server = await startRscPreviewServer({
-        start,
-        files: npmClientOnlyApp,
-      })
-      await expectCompClicks(await openRscPage(server, '/c'))
-    },
-    timeout,
-  )
+  test("a 'use client' component importing React's client-only package builds and works", async () => {
+    const { start } = recorder('error')
+    const server = await startRscPreviewServer({
+      start,
+      files: npmClientOnlyApp,
+    })
+    await expectCompClicks(await openRscPage(server, '/c'))
+  })
 
   // SSR renders the component, which the server component's import brings
   // (its importer there is plugin-rsc's client-reference module)
-  test(
-    'a client-only-marked component a server component renders fails the build where SSR renders it (error)',
-    async () => {
-      const { violations, start } = recorder('error')
-      const built = await startRscPreviewServer({
-        start,
-        files: markedApp,
-      }).then(
-        () => null,
-        (error: unknown) => error,
-      )
-      expect(built).toBeInstanceOf(Error)
-      expect(summary(violations)).toEqual(['rsc marker page.tsx -> ./Comp'])
-    },
-    timeout,
-  )
+  test('a client-only-marked component a server component renders fails the build where SSR renders it (error)', async () => {
+    const { violations, start } = recorder('error')
+    const built = await startRscPreviewServer({
+      start,
+      files: markedApp,
+    }).then(
+      () => null,
+      (error: unknown) => error,
+    )
+    expect(built).toBeInstanceOf(Error)
+    expect(summary(violations)).toEqual(['rsc marker page.tsx -> ./Comp'])
+  })
 })

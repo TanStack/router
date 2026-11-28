@@ -17,8 +17,6 @@ import {
 import { buildStart } from '../build-start'
 import { solidAppConfig } from './hydrate-pages'
 
-const timeout = 60_000
-
 const greetFiles = {
   'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 export const greet = createServerFn().handler(async () => 'MARK_HANDLER')
@@ -110,34 +108,29 @@ return { id, value: await callById(id) }`,
         value: 'MARK_HANDLER',
       })
     },
-    timeout,
   )
 
   // Source: mutation testing (a generator returning an id was
   // never built).
-  test(
-    'serverFns.generateFunctionId returning an id: the client calls that id, which the SSR build resolves',
-    async () => {
-      const { client, ssr } = await buildStart({
-        bundler,
-        files: greetFiles,
-        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-        start: { serverFns: { generateFunctionId: () => 'my-custom-id' } },
-      })
-      const url = (await client.run(`return entry.greet.url`)).result
-      expect(
-        (
-          await ssr.run(
-            `${callByIdPrelude}return {
+  test('serverFns.generateFunctionId returning an id: the client calls that id, which the SSR build resolves', async () => {
+    const { client, ssr } = await buildStart({
+      bundler,
+      files: greetFiles,
+      entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+      start: { serverFns: { generateFunctionId: () => 'my-custom-id' } },
+    })
+    const url = (await client.run(`return entry.greet.url`)).result
+    expect(
+      (
+        await ssr.run(
+          `${callByIdPrelude}return {
   id: serverFnId(${JSON.stringify(url)}),
   value: await callById('my-custom-id'),
 }`,
-          )
-        ).result,
-      ).toEqual({ id: 'my-custom-id', value: 'MARK_HANDLER' })
-    },
-    timeout,
-  )
+        )
+      ).result,
+    ).toEqual({ id: 'my-custom-id', value: 'MARK_HANDLER' })
+  })
 
   // A generator that embeds the documented inputs in a readable id: every
   // server fn of the module, also of a name the module repeats, gets an id
@@ -145,14 +138,12 @@ return { id, value: await callById(id) }`,
   // (a URL path segment), and the call runs its own handler. functionName
   // is the handler name earlier versions generated, so custom ids survive
   // the upgrade.
-  test(
-    'serverFns.generateFunctionId embedding functionName: each server fn of one module reaches its own handler',
-    async () => {
-      const received = new Set<string>()
-      const { client, ssr } = await buildStart({
-        bundler,
-        files: {
-          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+  test('serverFns.generateFunctionId embedding functionName: each server fn of one module reaches its own handler', async () => {
+    const received = new Set<string>()
+    const { client, ssr } = await buildStart({
+      bundler,
+      files: {
+        'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 export const first = { twice: createServerFn().handler(async () => 'the first twice') }
 export const second = { twice: createServerFn().handler(async () => 'the second twice') }
 export const outer = {
@@ -160,54 +151,52 @@ export const outer = {
   inner: { fn: createServerFn().handler(async () => 'in inner') },
 }
 `,
-          'src/client-entry.ts': `export * from './fns'\n`,
-          'src/ssr-entry.ts': `export * from './fns'
+        'src/client-entry.ts': `export * from './fns'\n`,
+        'src/ssr-entry.ts': `export * from './fns'
 ${callByIdExports}`,
-        },
-        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-        start: {
-          serverFns: {
-            generateFunctionId: ({ filename, functionName }) => {
-              received.add(functionName)
-              return `${filename.replace(/[^A-Za-z0-9]+/g, '-')}-${functionName}`
-            },
+      },
+      entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+      start: {
+        serverFns: {
+          generateFunctionId: ({ filename, functionName }) => {
+            received.add(functionName)
+            return `${filename.replace(/[^A-Za-z0-9]+/g, '-')}-${functionName}`
           },
         },
-      })
-      const urls = (
-        await client.run(`return {
+      },
+    })
+    const urls = (
+      await client.run(`return {
   first: entry.first.twice.url,
   second: entry.second.twice.url,
   outer: entry.outer.fn.url,
   inner: entry.outer.inner.fn.url,
 }`)
-      ).result as Record<string, string>
-      expect(
-        (
-          await ssr.run(
-            `${callByIdPrelude}const urls = ${JSON.stringify(urls)}
+    ).result as Record<string, string>
+    expect(
+      (
+        await ssr.run(
+          `${callByIdPrelude}const urls = ${JSON.stringify(urls)}
 const called = {}
 for (const [name, url] of Object.entries(urls)) {
   called[name] = await callById(serverFnId(url))
 }
 return called`,
-          )
-        ).result,
-      ).toEqual({
-        first: 'the first twice',
-        second: 'the second twice',
-        outer: 'in outer',
-        inner: 'in inner',
-      })
-      expect([...received].sort()).toEqual([
-        'fn_createServerFn_handler',
-        'fn_createServerFn_handler_1',
-        'twice_createServerFn_handler',
-        'twice_createServerFn_handler_1',
-      ])
-    },
-    timeout,
-  )
+        )
+      ).result,
+    ).toEqual({
+      first: 'the first twice',
+      second: 'the second twice',
+      outer: 'in outer',
+      inner: 'in inner',
+    })
+    expect([...received].sort()).toEqual([
+      'fn_createServerFn_handler',
+      'fn_createServerFn_handler_1',
+      'twice_createServerFn_handler',
+      'twice_createServerFn_handler_1',
+    ])
+  })
 
   // Source: mutation testing (the footer Start adds to the
   // route tree was never type-checked).
@@ -259,113 +248,104 @@ export const getRouter = async () =>
         typeCheck(ssr.root, ['src/routeTree.gen.ts', 'src/check.ts']),
       ).toEqual([])
     },
-    timeout,
   )
 
   // Source: src/start-router-plugin/route-tree-footer.ts (hardcoded quotes).
   // On main, a project formatting with double quotes and semicolons gets a
   // route tree its formatter or linter rewrites (#8437's footer churn).
-  test(
-    'the route tree, Start footer included, follows router.quoteStyle and router.semicolons',
-    async () => {
-      const { ssr } = await buildStart({
-        bundler,
-        files: {
-          'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+  test('the route tree, Start footer included, follows router.quoteStyle and router.semicolons', async () => {
+    const { ssr } = await buildStart({
+      bundler,
+      files: {
+        'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute()
 `,
-          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+        'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({ component: () => null })
 `,
-          'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+        'src/router.ts': `import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 export const getRouter = async () => createRouter({ routeTree })
 `,
-          'src/start.ts': `export const startInstance = { getOptions: async () => ({}) }
+        'src/start.ts': `export const startInstance = { getOptions: async () => ({}) }
 `,
-        },
-        entry: 'src/router.ts',
-        start: { router: { quoteStyle: 'double', semicolons: true } },
-      })
-      const code = await readFile(
-        path.join(ssr.root, 'src/routeTree.gen.ts'),
-        'utf8',
-      )
-      const source = ts.createSourceFile(
-        'routeTree.gen.ts',
-        code,
-        ts.ScriptTarget.Latest,
-        true,
-      )
-      // The quotes of the string literals without quote characters in them,
-      // and the import and variable statements (which end with `;`)
-      const quotes = new Set<string>()
-      const statements: Array<string> = []
-      const visit = (node: ts.Node) => {
-        if (ts.isStringLiteral(node) && !/["']/.test(node.text)) {
-          quotes.add(node.getText(source)[0]!)
-        }
-        if (ts.isImportDeclaration(node) || ts.isVariableStatement(node)) {
-          statements.push(node.getText(source))
-        }
-        ts.forEachChild(node, visit)
+      },
+      entry: 'src/router.ts',
+      start: { router: { quoteStyle: 'double', semicolons: true } },
+    })
+    const code = await readFile(
+      path.join(ssr.root, 'src/routeTree.gen.ts'),
+      'utf8',
+    )
+    const source = ts.createSourceFile(
+      'routeTree.gen.ts',
+      code,
+      ts.ScriptTarget.Latest,
+      true,
+    )
+    // The quotes of the string literals without quote characters in them,
+    // and the import and variable statements (which end with `;`)
+    const quotes = new Set<string>()
+    const statements: Array<string> = []
+    const visit = (node: ts.Node) => {
+      if (ts.isStringLiteral(node) && !/["']/.test(node.text)) {
+        quotes.add(node.getText(source)[0]!)
       }
-      visit(source)
-      expect([...quotes]).toEqual(['"'])
-      expect(statements.length).toBeGreaterThan(0)
-      expect(statements.filter((text) => !text.endsWith(';'))).toEqual([])
-    },
-    timeout,
-  )
+      if (ts.isImportDeclaration(node) || ts.isVariableStatement(node)) {
+        statements.push(node.getText(source))
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(source)
+    expect([...quotes]).toEqual(['"'])
+    expect(statements.length).toBeGreaterThan(0)
+    expect(statements.filter((text) => !text.endsWith(';'))).toEqual([])
+  })
 
   // Source: src/vite/start-router-plugin/plugin.ts, src/rsbuild/
   // router-generator.ts (`plugins` set after the user's router options).
   // On main, #7768: a generator plugin works with the router plugin but is
   // silently ignored in a Start app.
-  test(
-    'generator plugins of router.plugins see the route tree',
-    async () => {
-      const seen = new Set<string>()
-      const { ssr } = await buildStart({
-        bundler,
-        files: {
-          'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+  test('generator plugins of router.plugins see the route tree', async () => {
+    const seen = new Set<string>()
+    const { ssr } = await buildStart({
+      bundler,
+      files: {
+        'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute()
 `,
-          'src/routes/about.tsx': `import { createFileRoute } from '@tanstack/react-router'
+        'src/routes/about.tsx': `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/about')({ component: () => 'MARK_ABOUT' })
 `,
-          'src/entry.ts': `import { createRouter } from '@tanstack/react-router'
+        'src/entry.ts': `import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 export const getRouter = () => createRouter({ routeTree })
 `,
-        },
-        entry: 'src/entry.ts',
-        start: {
-          router: {
-            plugins: [
-              {
-                name: 'probe',
-                onRouteTreeChanged: ({ model }) => {
-                  for (const route of model.routes) {
-                    seen.add(route.id)
-                  }
-                },
+      },
+      entry: 'src/entry.ts',
+      start: {
+        router: {
+          plugins: [
+            {
+              name: 'probe',
+              onRouteTreeChanged: ({ model }) => {
+                for (const route of model.routes) {
+                  seen.add(route.id)
+                }
               },
-            ],
-          },
+            },
+          ],
         },
-      })
-      // (the routes of the app's route tree, which Start's own generator
-      // plugins still make)
-      const routeIds = (
-        await ssr.run(`return Object.keys(entry.getRouter().routesById)`)
-      ).result as Array<string>
-      expect(routeIds).toContain('/about')
-      expect([...seen].sort()).toEqual(
-        routeIds.filter((id) => id !== '__root__').sort(),
-      )
-    },
-    timeout,
-  )
+      },
+    })
+    // (the routes of the app's route tree, which Start's own generator
+    // plugins still make)
+    const routeIds = (
+      await ssr.run(`return Object.keys(entry.getRouter().routesById)`)
+    ).result as Array<string>
+    expect(routeIds).toContain('/about')
+    expect([...seen].sort()).toEqual(
+      routeIds.filter((id) => id !== '__root__').sort(),
+    )
+  })
 })

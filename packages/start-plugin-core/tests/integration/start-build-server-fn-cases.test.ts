@@ -54,8 +54,6 @@ export const result = legacy({ handler: (value: unknown) => ['handled', value] }
 `
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  const timeout = 60_000
-
   /** A server-only module whose top-level code marks the bundle it is in. */
   const dbModule = `globalThis.MARK_DB_LOADED = true
 export const db = { users: () => 'users' }
@@ -68,24 +66,20 @@ export const db = { users: () => 'users' }
   // pin above decides it, and this cell is its build canary. (No Rsbuild cell:
   // it was removed to save test time.)
   if (bundler === 'vite') {
-    test(
-      'client: the server-only module of a class only server code uses is not bundled',
-      async () => {
-        const { client } = await buildStart({
-          bundler,
-          files: {
-            'db.server.ts': dbModule,
-            'fns.ts': `${head}import { db } from './db.server'
+    test('client: the server-only module of a class only server code uses is not bundled', async () => {
+      const { client } = await buildStart({
+        bundler,
+        files: {
+          'db.server.ts': dbModule,
+          'fns.ts': `${head}import { db } from './db.server'
 class Repo { get() { return db.users() } }
 export const fn = createServerFn().handler(async () => new Repo().get())
 `,
-            'entry.ts': `export { fn } from './fns'\n`,
-          },
-        })
-        expect(client.where('MARK_DB_LOADED')).toBe('nowhere')
-      },
-      timeout,
-    )
+          'entry.ts': `export { fn } from './fns'\n`,
+        },
+      })
+      expect(client.where('MARK_DB_LOADED')).toBe('nowhere')
+    })
   }
 
   /** A server fn module whose `auth` import a type still mentions. */
@@ -105,41 +99,31 @@ export const fn = createServerFn().handler(async () => auth.get() as Session)
 
   // Control for the pin below (same harness): without verbatimModuleSyntax,
   // TypeScript erases the import that only a type mentions.
-  test(
-    'client: a server-only module a type mentions is not bundled',
-    async () => {
-      const { client } = await buildStart({
-        bundler,
-        files: typeofFiles(false),
-      })
-      expect(client.where('MARK_AUTH_LOADED')).toBe('nowhere')
-    },
-    timeout,
-  )
+  test('client: a server-only module a type mentions is not bundled', async () => {
+    const { client } = await buildStart({
+      bundler,
+      files: typeofFiles(false),
+    })
+    expect(client.where('MARK_AUTH_LOADED')).toBe('nowhere')
+  })
 
   // On main, the server-only module's top-level code is bundled and runs in the
   // browser.
   // A build canary of the in-process compiler pin.
-  test(
-    'client: a server-only module a type mentions is not bundled with verbatimModuleSyntax',
-    async () => {
-      const { client } = await buildStart({ bundler, files: typeofFiles(true) })
-      expect(client.where('MARK_AUTH_LOADED')).toBe('nowhere')
-    },
-    timeout,
-  )
+  test('client: a server-only module a type mentions is not bundled with verbatimModuleSyntax', async () => {
+    const { client } = await buildStart({ bundler, files: typeofFiles(true) })
+    expect(client.where('MARK_AUTH_LOADED')).toBe('nowhere')
+  })
 
   // On main, in one server process, the file's top-level side effects run
   // twice, handlers and SSR code of the file see different module state, and
   // `instanceof` fails for a class of the file passed to a server fn.
   // Source: PR #8656 (class identity).
-  test(
-    'SSR: a server fn module is initialised once and shares its state with SSR code',
-    async () => {
-      const { ssr } = await buildStart({
-        bundler,
-        files: {
-          'fns.ts': `${head}globalThis.initialised = (globalThis.initialised ?? 0) + 1
+  test('SSR: a server fn module is initialised once and shares its state with SSR code', async () => {
+    const { ssr } = await buildStart({
+      bundler,
+      files: {
+        'fns.ts': `${head}globalThis.initialised = (globalThis.initialised ?? 0) + 1
 let count = 0
 export class Session {}
 export const readCount = () => count
@@ -148,16 +132,14 @@ export const fn = createServerFn().handler(async ({ data }) => {
   return data instanceof Session
 })
 `,
-          'entry.ts': `export { fn, readCount, Session } from './fns'\n`,
-        },
-      })
-      const { result } =
-        await ssr.run(`const isSession = await entry.fn({ data: new entry.Session() })
+        'entry.ts': `export { fn, readCount, Session } from './fns'\n`,
+      },
+    })
+    const { result } =
+      await ssr.run(`const isSession = await entry.fn({ data: new entry.Session() })
 return { initialised: globalThis.initialised, isSession, count: entry.readCount() }`)
-      expect(result).toEqual({ initialised: 1, isSession: true, count: 1 })
-    },
-    timeout,
-  )
+    expect(result).toEqual({ initialised: 1, isSession: true, count: 1 })
+  })
 
   /**
    * An app whose client imports one server fn (`clientFn`) and whose server
@@ -224,15 +206,11 @@ return {
   // idle machine. The row after it asserts this call on both bundlers in an
   // order the app fixes, and the pin below asserts it too.
   if (bundler !== 'vite') {
-    test(
-      'SSR: a server fn only server code references is callable from SSR code',
-      async () => {
-        expect(await callClientAccess()).toMatchObject({
-          serverOnlyFnFromSsr: 'server-only fn',
-        })
-      },
-      timeout,
-    )
+    test('SSR: a server fn only server code references is callable from SSR code', async () => {
+      expect(await callClientAccess()).toMatchObject({
+        serverOnlyFnFromSsr: 'server-only fn',
+      })
+    })
   }
   // The app's server entry (Start's documented `server.entry`, here the
   // harness's) defines the server fn: the SSR build finds it when it
@@ -240,24 +218,20 @@ return {
   // Start's server fn resolver included, so on Vite too the order is fixed.
   // (SPEC J4.2: a server fn only server code calls works for those callers;
   // J4.6: a server fn declared at module top level works everywhere.)
-  test(
-    'SSR: a server fn the server entry defines and only server code references is callable from SSR code',
-    async () => {
-      const { ssr } = await buildStart({
-        bundler,
-        files: {
-          'entry.ts': `export {}\n`,
-          'harness/server-entry.ts': `${head}export const serverOnlyFn = createServerFn().handler(async () => 'server-only fn')
+  test('SSR: a server fn the server entry defines and only server code references is callable from SSR code', async () => {
+    const { ssr } = await buildStart({
+      bundler,
+      files: {
+        'entry.ts': `export {}\n`,
+        'harness/server-entry.ts': `${head}export const serverOnlyFn = createServerFn().handler(async () => 'server-only fn')
 ;(globalThis as any).__tssBuildHarnessEntry = { serverOnlyFn }
 export { default } from '@tanstack/react-start/server-entry'
 `,
-        },
-      })
-      const { result } = await ssr.run(`return await entry.serverOnlyFn()`)
-      expect(result).toBe('server-only fn')
-    },
-    timeout,
-  )
+      },
+    })
+    const { result } = await ssr.run(`return await entry.serverOnlyFn()`)
+    expect(result).toBe('server-only fn')
+  })
 
   // On main, a server fn only server code uses (an SSR loader helper, a
   // server-only module) is callable over HTTP by anyone who learns its id,
@@ -267,17 +241,13 @@ export { default } from '@tanstack/react-start/server-entry'
   // the #7213 race (below), the server fn is missing from the resolver: the
   // call from SSR code fails too, so the pin stays red (for #7213) and cannot
   // pass by the missing server fn.
-  test(
-    'SSR: a server fn only server code references is not callable over HTTP',
-    async () => {
-      expect(await callClientAccess()).toEqual({
-        clientFn: 'client fn',
-        serverOnlyFnOverHttp: 'rejected',
-        serverOnlyFnFromSsr: 'server-only fn',
-      })
-    },
-    timeout,
-  )
+  test('SSR: a server fn only server code references is not callable over HTTP', async () => {
+    expect(await callClientAccess()).toEqual({
+      clientFn: 'client fn',
+      serverOnlyFnOverHttp: 'rejected',
+      serverOnlyFnFromSsr: 'server-only fn',
+    })
+  })
 
   // On main the build accepts `.handler(selected)` for a binding the module
   // assigns again, and the client bundle can keep the assignments with what
@@ -342,28 +312,23 @@ ${controls}picked = () => 'second'
         refusal,
       )
     },
-    timeout,
   )
 
-  test(
-    'a function written in place, a `const` and a `let` nothing assigns again build as handlers, and answer',
-    async () => {
-      const { ssr } = await buildStart({
-        bundler,
-        files: {
-          'fns.ts': `${head}${controls}`,
-          'ssr-entry.ts': `export * from './fns'\n`,
-          'client-entry.ts': `export * from './fns'\n`,
-        },
-        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
-      })
-      const { result } = await ssr.run(
-        `return [await entry.closure(), await entry.constant(), await entry.neverAssigned()]`,
-      )
-      expect(result).toEqual(['closure', 'kept', 'unchanged'])
-    },
-    timeout,
-  )
+  test('a function written in place, a `const` and a `let` nothing assigns again build as handlers, and answer', async () => {
+    const { ssr } = await buildStart({
+      bundler,
+      files: {
+        'fns.ts': `${head}${controls}`,
+        'ssr-entry.ts': `export * from './fns'\n`,
+        'client-entry.ts': `export * from './fns'\n`,
+      },
+      entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+    })
+    const { result } = await ssr.run(
+      `return [await entry.closure(), await entry.constant(), await entry.neverAssigned()]`,
+    )
+    expect(result).toEqual(['closure', 'kept', 'unchanged'])
+  })
 
   // On main, in production, calling it throws "Server function info not found"
   // (works in dev), from SSR code and over HTTP alike.
@@ -437,7 +402,6 @@ export const outer = createServerFn()
               overHttp: 'outer:inner',
             })
           },
-          timeout,
         )
       }
 
@@ -456,7 +420,6 @@ export const outer = createServerFn()
           )
           expect(result).toBe('outer:inner')
         },
-        timeout,
       )
     },
   )
@@ -476,64 +439,60 @@ export function createLoggedServerFn(handler) {
 import { db } from './db'
 export const fn = createLoggedServerFn(async () => db.secret())
 `
-  test(
-    'a server fn created by a library function: the handler is not in the client bundle, or the build fails clearly',
-    async () => {
-      const outcome = await buildStart({
-        bundler,
-        // The app depends on the library, as an installed one.
-        packageJson: {
-          name: 'app',
-          private: true,
+  test('a server fn created by a library function: the handler is not in the client bundle, or the build fails clearly', async () => {
+    const outcome = await buildStart({
+      bundler,
+      // The app depends on the library, as an installed one.
+      packageJson: {
+        name: 'app',
+        private: true,
+        type: 'module',
+        dependencies: { 'wrapper-lib': '*' },
+      },
+      files: {
+        'node_modules/wrapper-lib/package.json': JSON.stringify({
+          name: 'wrapper-lib',
           type: 'module',
-          dependencies: { 'wrapper-lib': '*' },
-        },
-        files: {
-          'node_modules/wrapper-lib/package.json': JSON.stringify({
-            name: 'wrapper-lib',
-            type: 'module',
-            exports: './index.js',
-            peerDependencies: { '@tanstack/react-start': '*' },
-          }),
-          'node_modules/wrapper-lib/index.js': wrapperLibrary,
-          'src/db.ts': `export const db = { secret: () => 'MARK_WRAPPED_HANDLER' }\n`,
-          'src/fns.ts': wrapperUser,
-          'src/entry.ts': `export { fn } from './fns'\n`,
-        },
-        entry: 'src/entry.ts',
-      }).then(
-        async ({ client, ssr }) => ({
-          client: client.where('MARK_WRAPPED_HANDLER'),
-          ssr: (await ssr.run(`return await entry.fn()`)).result,
+          exports: './index.js',
+          peerDependencies: { '@tanstack/react-start': '*' },
         }),
-        (error: unknown) => ({ error }),
-      )
-      if ('error' in outcome) {
-        // A clear build error at the server fn: in the library, or at the
-        // user's call of the library function (SPEC G5).
-        expectSourceError(outcome.error, {
-          sites: [
-            {
-              file: 'node_modules/wrapper-lib/index.js',
-              source: wrapperLibrary,
-              at: 'createServerFn()',
-            },
-            {
-              file: 'src/fns.ts',
-              source: wrapperUser,
-              at: 'createLoggedServerFn(async',
-            },
-          ],
-        })
-      } else {
-        expect(outcome).toEqual({
-          client: 'nowhere',
-          ssr: 'MARK_WRAPPED_HANDLER',
-        })
-      }
-    },
-    timeout,
-  )
+        'node_modules/wrapper-lib/index.js': wrapperLibrary,
+        'src/db.ts': `export const db = { secret: () => 'MARK_WRAPPED_HANDLER' }\n`,
+        'src/fns.ts': wrapperUser,
+        'src/entry.ts': `export { fn } from './fns'\n`,
+      },
+      entry: 'src/entry.ts',
+    }).then(
+      async ({ client, ssr }) => ({
+        client: client.where('MARK_WRAPPED_HANDLER'),
+        ssr: (await ssr.run(`return await entry.fn()`)).result,
+      }),
+      (error: unknown) => ({ error }),
+    )
+    if ('error' in outcome) {
+      // A clear build error at the server fn: in the library, or at the
+      // user's call of the library function (SPEC G5).
+      expectSourceError(outcome.error, {
+        sites: [
+          {
+            file: 'node_modules/wrapper-lib/index.js',
+            source: wrapperLibrary,
+            at: 'createServerFn()',
+          },
+          {
+            file: 'src/fns.ts',
+            source: wrapperUser,
+            at: 'createLoggedServerFn(async',
+          },
+        ],
+      })
+    } else {
+      expect(outcome).toEqual({
+        client: 'nowhere',
+        ssr: 'MARK_WRAPPED_HANDLER',
+      })
+    }
+  })
 
   // Source: src/vite/plugin.ts:143 (Vite's root: :96); found when the build
   // harness ran Start's real runtime (it ran Vite builds outside the app).
@@ -543,50 +502,44 @@ export const fn = createLoggedServerFn(async () => db.secret())
   // the handler's result.
   // Control: start-build-env-separation.test.ts "a library's server fn" (the
   // same library, built in the app's directory).
-  test(
-    "a build run from another directory: a library's server fn runs in the SSR build",
-    async () => {
-      const { ssr } = await buildStart({
-        bundler,
-        // The directory of this test file, whose package.json is not the
-        // app's.
-        cwd: __dirname,
-        packageJson: {
-          name: 'app',
-          private: true,
+  test("a build run from another directory: a library's server fn runs in the SSR build", async () => {
+    const { ssr } = await buildStart({
+      bundler,
+      // The directory of this test file, whose package.json is not the
+      // app's.
+      cwd: __dirname,
+      packageJson: {
+        name: 'app',
+        private: true,
+        type: 'module',
+        dependencies: { 'server-fn-lib': '*' },
+      },
+      files: {
+        'node_modules/server-fn-lib/package.json': JSON.stringify({
+          name: 'server-fn-lib',
           type: 'module',
-          dependencies: { 'server-fn-lib': '*' },
-        },
-        files: {
-          'node_modules/server-fn-lib/package.json': JSON.stringify({
-            name: 'server-fn-lib',
-            type: 'module',
-            exports: './index.js',
-            peerDependencies: { '@tanstack/react-start': '*' },
-          }),
-          'node_modules/server-fn-lib/index.js': `import { createServerFn } from '@tanstack/react-start'
+          exports: './index.js',
+          peerDependencies: { '@tanstack/react-start': '*' },
+        }),
+        'node_modules/server-fn-lib/index.js': `import { createServerFn } from '@tanstack/react-start'
 export const libFn = createServerFn().handler(async () => 'MARK_LIB_HANDLER')
 `,
-          'src/entry.ts': `export { libFn } from 'server-fn-lib'\n`,
-        },
-        entry: 'src/entry.ts',
-      })
-      expect((await ssr.run(`return await entry.libFn()`)).result).toBe(
-        'MARK_LIB_HANDLER',
-      )
-    },
-    timeout,
-  )
+        'src/entry.ts': `export { libFn } from 'server-fn-lib'\n`,
+      },
+      entry: 'src/entry.ts',
+    })
+    expect((await ssr.run(`return await entry.libFn()`)).result).toBe(
+      'MARK_LIB_HANDLER',
+    )
+  })
 
   // On main, an app with a middleware and an isomorphic fn in one module does
   // not build with Rsbuild.
-  test(
-    'a module with a middleware and an isomorphic fn builds, and its middleware runs on the server',
-    async () => {
-      const { client, ssr } = await buildStart({
-        bundler,
-        files: {
-          'src/both.ts': `import { createIsomorphicFn, createMiddleware } from '@tanstack/react-start'
+  test('a module with a middleware and an isomorphic fn builds, and its middleware runs on the server', async () => {
+    const { client, ssr } = await buildStart({
+      bundler,
+      files: {
+        'src/both.ts': `import { createIsomorphicFn, createMiddleware } from '@tanstack/react-start'
 export const middleware = createMiddleware().server(({ next }) =>
   next({ context: { marker: 'MARK_MIDDLEWARE_SERVER' } }),
 )
@@ -594,57 +547,51 @@ export const isomorphic = createIsomorphicFn()
   .server(() => 'server')
   .client(() => 'client')
 `,
-          // The app's request middleware: a server fn's handler reads what
-          // it put into the context of a request
-          'src/start.ts': `import { createStart } from '@tanstack/react-start'
+        // The app's request middleware: a server fn's handler reads what
+        // it put into the context of a request
+        'src/start.ts': `import { createStart } from '@tanstack/react-start'
 import { middleware } from './both'
 export const startInstance = createStart(() => ({ requestMiddleware: [middleware] }))
 `,
-          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+        'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 export const marker = createServerFn().handler(
   async ({ context }) => (context as unknown as { marker?: string }).marker,
 )
 `,
-          'src/entry.ts': `export { isomorphic } from './both'
+        'src/entry.ts': `export { isomorphic } from './both'
 export { marker } from './fns'
 `,
-          'src/ssr-entry.ts': `export * from './entry'
+        'src/ssr-entry.ts': `export * from './entry'
 ${callByIdExports}`,
-        },
-        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
-      })
-      expect(client.where('MARK_MIDDLEWARE_SERVER')).toBe('nowhere')
-      const { result } = await ssr.run(`${callByIdPrelude}return {
+      },
+      entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+    })
+    expect(client.where('MARK_MIDDLEWARE_SERVER')).toBe('nowhere')
+    const { result } = await ssr.run(`${callByIdPrelude}return {
   middleware: await callById(serverFnId(entry.marker)),
   isomorphic: entry.isomorphic(),
 }`)
-      expect(result).toEqual({
-        middleware: 'MARK_MIDDLEWARE_SERVER',
-        isomorphic: 'server',
-      })
-    },
-    timeout,
-  )
+    expect(result).toEqual({
+      middleware: 'MARK_MIDDLEWARE_SERVER',
+      isomorphic: 'server',
+    })
+  })
 
   // On main, an app with such a dependency does not build (Vite: when client
   // code imports it, or SSR code with `noExternal`; Rsbuild: client or SSR).
   // SPEC J4.16. These apps replace the in-process compiler pin of this name.
   // (Both hosts leave a module the compiler cannot parse as an ES module to the
   // bundler's own parser.)
-  test(
-    'a CommonJS dependency with a top-level return builds and keeps its meaning',
-    async () => {
-      const { client, ssr } = await buildStart({
-        bundler,
-        files: { ...commonJsPackage, 'entry.ts': commonJsImporter },
-      })
-      for (const output of [client, ssr]) {
-        const { result } = await output.run('return entry.result')
-        expect(result, output.env).toEqual(['handled', 1])
-      }
-    },
-    timeout,
-  )
+  test('a CommonJS dependency with a top-level return builds and keeps its meaning', async () => {
+    const { client, ssr } = await buildStart({
+      bundler,
+      files: { ...commonJsPackage, 'entry.ts': commonJsImporter },
+    })
+    for (const output of [client, ssr]) {
+      const { result } = await output.run('return entry.result')
+      expect(result, output.env).toEqual(['handled', 1])
+    }
+  })
 })
 
 describe('rsbuild dev', () => {
@@ -659,5 +606,5 @@ describe('rsbuild dev', () => {
     expect(await runInClient(server, 'return globalThis.legacyResult')).toEqual(
       { result: ['handled', 1] },
     )
-  }, 60_000)
+  })
 })

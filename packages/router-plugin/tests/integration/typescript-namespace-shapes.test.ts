@@ -6,8 +6,6 @@
 import { describe, expect, test } from 'vitest'
 import { build, head, rootRoute } from '../build-harness'
 
-const timeout = 60_000
-
 const entry = `import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
 export { Route } from './routes/index'
@@ -75,32 +73,28 @@ const shapes: Array<[string, string, string]> = [
 ]
 
 describe.each(['vite', 'rspack', 'webpack'] as const)('on %s', (bundler) => {
-  test.each(shapes)(
-    '%s renders',
-    async (_, source, read) => {
-      const app = await build({
-        bundler,
-        env: 'client',
-        minify: false,
-        files: {
-          'routes/__root.tsx': rootRoute,
-          'routes/index.tsx': `${head}${source}${component(read)}`,
-          'types.ts': `export type T = string\n`,
-          'entry.ts': entry,
-        },
-      })
-      try {
-        const { result } = await app.run(
-          'return entry.render(entry.Route.options.component)',
-        )
-        expect(result).toBe('<p title="MARK_PAGE">MARK_NS_END</p>')
-        expect(app.where('MARK_PAGE')).toBe('lazy')
-      } finally {
-        await app.dispose()
-      }
-    },
-    timeout,
-  )
+  test.each(shapes)('%s renders', async (_, source, read) => {
+    const app = await build({
+      bundler,
+      env: 'client',
+      minify: false,
+      files: {
+        'routes/__root.tsx': rootRoute,
+        'routes/index.tsx': `${head}${source}${component(read)}`,
+        'types.ts': `export type T = string\n`,
+        'entry.ts': entry,
+      },
+    })
+    try {
+      const { result } = await app.run(
+        'return entry.render(entry.Route.options.component)',
+      )
+      expect(result).toBe('<p title="MARK_PAGE">MARK_NS_END</p>')
+      expect(app.where('MARK_PAGE')).toBe('lazy')
+    } finally {
+      await app.dispose()
+    }
+  })
 })
 
 // An importer of the route file reads the name: with no other export naming `A`,
@@ -128,59 +122,50 @@ export const read = () => (M as any).A.B.v
       await app.dispose()
     }
   },
-  timeout,
 )
 
-test(
-  'an exported dotted namespace another export names keeps both names',
-  async () => {
-    const app = await build({
-      bundler: 'vite',
-      env: 'client',
-      minify: false,
-      files: {
-        'routes/__root.tsx': rootRoute,
-        'routes/index.tsx': `${head}export namespace A.B { export const v = 'MARK_NS_END' }
+test('an exported dotted namespace another export names keeps both names', async () => {
+  const app = await build({
+    bundler: 'vite',
+    env: 'client',
+    minify: false,
+    files: {
+      'routes/__root.tsx': rootRoute,
+      'routes/index.tsx': `${head}export namespace A.B { export const v = 'MARK_NS_END' }
 export { A as Z }
 ${component('A.B.v')}`,
-        'entry.ts': `import * as M from './routes/index'
+      'entry.ts': `import * as M from './routes/index'
 export const read = () => [(M as any).A.B.v, (M as any).Z.B.v]
 `,
-      },
-    })
-    try {
-      const { result } = await app.run('return entry.read()')
-      expect(result).toEqual(['MARK_NS_END', 'MARK_NS_END'])
-    } finally {
-      await app.dispose()
-    }
-  },
-  timeout,
-)
+    },
+  })
+  try {
+    const { result } = await app.run('return entry.read()')
+    expect(result).toEqual(['MARK_NS_END', 'MARK_NS_END'])
+  } finally {
+    await app.dispose()
+  }
+})
 
-test(
-  'a namespace of types only stays out of every chunk',
-  async () => {
-    const app = await build({
-      bundler: 'vite',
-      env: 'client',
-      minify: false,
-      files: {
-        'routes/__root.tsx': rootRoute,
-        'routes/index.tsx': `${head}namespace T.U { export type X = 'MARK_NS_END' }
+test('a namespace of types only stays out of every chunk', async () => {
+  const app = await build({
+    bundler: 'vite',
+    env: 'client',
+    minify: false,
+    files: {
+      'routes/__root.tsx': rootRoute,
+      'routes/index.tsx': `${head}namespace T.U { export type X = 'MARK_NS_END' }
 const value: T.U.X = 'MARK_NS_END'
 ${component('value')}`,
-        'entry.ts': entry,
-      },
-    })
-    try {
-      const { result } = await app.run(
-        'return entry.render(entry.Route.options.component)',
-      )
-      expect(result).toBe('<p title="MARK_PAGE">MARK_NS_END</p>')
-    } finally {
-      await app.dispose()
-    }
-  },
-  timeout,
-)
+      'entry.ts': entry,
+    },
+  })
+  try {
+    const { result } = await app.run(
+      'return entry.render(entry.Route.options.component)',
+    )
+    expect(result).toBe('<p title="MARK_PAGE">MARK_NS_END</p>')
+  } finally {
+    await app.dispose()
+  }
+})

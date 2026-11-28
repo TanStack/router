@@ -20,8 +20,6 @@ import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import { openTestPage } from '../test-page'
 import { startBrowserStartDevServer } from './importProtection/client-pages'
 
-const timeout = 60_000
-
 const builder = `import { createServerFn } from '@tanstack/react-start'
 export const base = createServerFn()
 `
@@ -34,54 +32,50 @@ describe('Vite dev: a dependent that stops compiling', () => {
   // a server fn builder. After that edit of `b.ts` the error shows: the page
   // loads `d.ts` again, and the dev server reports its compile error.
   // Source: Fable 5.2 review of the Vite host (F6-5).
-  test(
-    'its error shows without a request of it',
-    async () => {
-      const server = await startBrowserStartDevServer({
-        files: {
-          'src/b.ts': `export const base = { handler: () => 'MARK_PLAIN' }\n`,
-          'src/x.ts': `export { base } from './b'
+  test('its error shows without a request of it', async () => {
+    const server = await startBrowserStartDevServer({
+      files: {
+        'src/b.ts': `export const base = { handler: () => 'MARK_PLAIN' }\n`,
+        'src/x.ts': `export { base } from './b'
 if (import.meta.hot) {
   import.meta.hot.accept()
 }
 `,
-          'src/d.ts': `import { base } from './x'
+        'src/d.ts': `import { base } from './x'
 export const fn = base.handler()
 `,
-          'src/main.ts': `import { fn } from './d'
+        'src/main.ts': `import { fn } from './d'
 import { base } from './x'
 export { fn, base }
 `,
-        },
-      })
-      const url = new URL('/__ip-fixture.html', server.url)
-      url.searchParams.set('entry', '/src/main.ts')
-      const page = await openTestPage(url.href)
-      const loaded = await page.page.waitForFunction(() => {
-        const w = window as { __ipEntry?: unknown; __ipLoadError?: string }
-        return w.__ipEntry ? 'loaded' : (w.__ipLoadError ?? false)
-      })
-      expect(await loaded.jsonValue()).toBe('loaded')
-      const errorAtD = () =>
-        findDiagnostics(server.diagnostics, {
-          severity: 'error',
-          file: 'src/d.ts',
-          root: server.root,
-        })
-      expectNoDiagnostic(server.diagnostics, {
+      },
+    })
+    const url = new URL('/__ip-fixture.html', server.url)
+    url.searchParams.set('entry', '/src/main.ts')
+    const page = await openTestPage(url.href)
+    const loaded = await page.page.waitForFunction(() => {
+      const w = window as { __ipEntry?: unknown; __ipLoadError?: string }
+      return w.__ipEntry ? 'loaded' : (w.__ipLoadError ?? false)
+    })
+    expect(await loaded.jsonValue()).toBe('loaded')
+    const errorAtD = () =>
+      findDiagnostics(server.diagnostics, {
         severity: 'error',
         file: 'src/d.ts',
         root: server.root,
       })
-      await server.edit({ 'src/b.ts': builder })
-      await waitForOutcome({
-        applied: () => errorAtD().length > 0,
-        timeout: 15_000,
-        describe: () => 'no error reported at src/d.ts',
-      })
-    },
-    timeout,
-  )
+    expectNoDiagnostic(server.diagnostics, {
+      severity: 'error',
+      file: 'src/d.ts',
+      root: server.root,
+    })
+    await server.edit({ 'src/b.ts': builder })
+    await waitForOutcome({
+      applied: () => errorAtD().length > 0,
+      timeout: 15_000,
+      describe: () => 'no error reported at src/d.ts',
+    })
+  })
 })
 
 describe('Vite dev: a nested package.json removed', () => {
@@ -95,67 +89,63 @@ describe('Vite dev: a nested package.json removed', () => {
   // typed into it meanwhile stays. Source: Astra review round 4 (B1: the
   // removal sent nothing; the unrelated save then reloaded the page and
   // cleared its input; main sends nothing at either).
-  test(
-    'an import only a server fn handler reads finds a fallback: the removal updates the page, an unrelated save keeps its draft',
-    async () => {
-      const server = await startBrowserStartDevServer({
-        files: {
-          'package.json': JSON.stringify({
-            private: true,
-            type: 'module',
-            imports: { '#tool': './src/fallback.ts' },
-          }),
-          'src/section/package.json': JSON.stringify({
-            private: true,
-            type: 'module',
-            imports: { '#tool': './unbuilt.ts' },
-          }),
-          'src/fallback.ts': `export const tag = () => 'MARK_FALLBACK'\n`,
-          'src/section/kit.ts': `export { tag } from '#tool'\n`,
-          'src/page.ts': `import { createServerFn } from '@tanstack/react-start'
+  test('an import only a server fn handler reads finds a fallback: the removal updates the page, an unrelated save keeps its draft', async () => {
+    const server = await startBrowserStartDevServer({
+      files: {
+        'package.json': JSON.stringify({
+          private: true,
+          type: 'module',
+          imports: { '#tool': './src/fallback.ts' },
+        }),
+        'src/section/package.json': JSON.stringify({
+          private: true,
+          type: 'module',
+          imports: { '#tool': './unbuilt.ts' },
+        }),
+        'src/fallback.ts': `export const tag = () => 'MARK_FALLBACK'\n`,
+        'src/section/kit.ts': `export { tag } from '#tool'\n`,
+        'src/page.ts': `import { createServerFn } from '@tanstack/react-start'
 import { tag } from './section/kit'
 export const read = createServerFn().handler(async () => tag())
 `,
-          'src/hmr-sync.ts': hmrSyncModule,
-          'src/probe.ts': `import './hmr-sync'
+        'src/hmr-sync.ts': hmrSyncModule,
+        'src/probe.ts': `import './hmr-sync'
 import { read } from './page'
 const input = document.createElement('input')
 input.dataset.read = typeof read
 document.getElementById('root')!.append(input)
 `,
-          'src/unrelated.txt': '0',
-        },
-      })
-      const url = new URL('/__ip-fixture.html', server.url)
-      url.searchParams.set('entry', '/src/probe.ts')
-      const browser = await openTestPage(url.href)
-      const inFlight = trackRequests(browser)
-      const input = browser.page.locator('#root input')
-      await input.waitFor()
-      await settlePage(server, browser, inFlight)
-      /** What the server sent the client since `from`, but for custom events. */
-      const clientSent = (from: number) =>
-        server.hmr
-          .slice(from)
-          .filter((m) => m.environment === 'client' && m.type !== 'custom')
-          .map((m) => `${m.type} ${m.paths.join(' ')}`)
-      const removal = server.hmr.length
-      await server.write({ 'src/section/package.json': null })
-      await waitForOutcome({
-        applied: () => clientSent(removal).length > 0,
-        timeout: 10_000,
-        describe: () => 'the removal sent the page nothing',
-      })
-      await server.settle()
-      await settlePage(server, browser, inFlight)
-      await input.fill('draft')
-      const save = server.hmr.length
-      await server.edit({ 'src/unrelated.txt': '1' })
-      await settlePage(server, browser, inFlight)
-      expect(clientSent(save)).toEqual([])
-      expect(await input.inputValue()).toBe('draft')
-      expect(await input.getAttribute('data-read')).toBe('function')
-    },
-    timeout,
-  )
+        'src/unrelated.txt': '0',
+      },
+    })
+    const url = new URL('/__ip-fixture.html', server.url)
+    url.searchParams.set('entry', '/src/probe.ts')
+    const browser = await openTestPage(url.href)
+    const inFlight = trackRequests(browser)
+    const input = browser.page.locator('#root input')
+    await input.waitFor()
+    await settlePage(server, browser, inFlight)
+    /** What the server sent the client since `from`, but for custom events. */
+    const clientSent = (from: number) =>
+      server.hmr
+        .slice(from)
+        .filter((m) => m.environment === 'client' && m.type !== 'custom')
+        .map((m) => `${m.type} ${m.paths.join(' ')}`)
+    const removal = server.hmr.length
+    await server.write({ 'src/section/package.json': null })
+    await waitForOutcome({
+      applied: () => clientSent(removal).length > 0,
+      timeout: 10_000,
+      describe: () => 'the removal sent the page nothing',
+    })
+    await server.settle()
+    await settlePage(server, browser, inFlight)
+    await input.fill('draft')
+    const save = server.hmr.length
+    await server.edit({ 'src/unrelated.txt': '1' })
+    await settlePage(server, browser, inFlight)
+    expect(clientSent(save)).toEqual([])
+    expect(await input.inputValue()).toBe('draft')
+    expect(await input.getAttribute('data-read')).toBe('function')
+  })
 })

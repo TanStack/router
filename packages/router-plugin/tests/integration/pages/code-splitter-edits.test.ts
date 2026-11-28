@@ -83,7 +83,7 @@ export const Route = createFileRoute('/changing')({
     await again.host.edit({ 'route.tsx': again.code })
     expect((await again.modules()).ids).toEqual(secondModules.ids)
     expect(await read(again, separateGroups)).toBe('<p>second version true</p>')
-  }, 30_000)
+  })
 
   // The first edit of a route file through the public plugin setup
   // (`tanstackRouter({...})`) hot-updates the page:

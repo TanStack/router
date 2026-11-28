@@ -18,8 +18,6 @@ import type { BuildResult } from '@tanstack/compiler-test-utils/build-harness'
 import type { Plugin } from 'vite'
 import type { RouterPluginOptions } from '../build-harness'
 
-const timeout = 120_000
-
 const head = `import { createFileRoute } from '@tanstack/react-router'\n`
 
 const files = {
@@ -278,29 +276,21 @@ describe.each(Object.keys(configurations) as Array<keyof typeof splitGroups>)(
         await (await built)?.app.dispose()
       })
 
-      test(
-        "a split group's chunk origin is the route file's absolute path with main's query",
-        async () => {
-          const { root, requests } = await ids()
-          expect(requests).toEqual(sorted(expand(root, groups)))
-          expect(requests.map(chunkNameOf)).not.toContain(null)
-        },
-        timeout,
-      )
+      test("a split group's chunk origin is the route file's absolute path with main's query", async () => {
+        const { root, requests } = await ids()
+        expect(requests).toEqual(sorted(expand(root, groups)))
+        expect(requests.map(chunkNameOf)).not.toContain(null)
+      })
 
-      test(
-        "the route files' modules are named as main named them, one module per route file",
-        async () => {
-          const { root, names, modules } = await ids()
-          expect(names).toEqual(sorted(relative([...routeFiles, ...all])))
-          // one module per id: the route module itself once, whatever imports it
-          expect(sorted(modules)).toEqual(
-            sorted(expand(root, [...routeFiles, ...all])),
-          )
-          expect(modules).toHaveLength(routeFiles.length + all.length)
-        },
-        timeout,
-      )
+      test("the route files' modules are named as main named them, one module per route file", async () => {
+        const { root, names, modules } = await ids()
+        expect(names).toEqual(sorted(relative([...routeFiles, ...all])))
+        // one module per id: the route module itself once, whatever imports it
+        expect(sorted(modules)).toEqual(
+          sorted(expand(root, [...routeFiles, ...all])),
+        )
+        expect(modules).toHaveLength(routeFiles.length + all.length)
+      })
     })
 
     describe('vite', () => {
@@ -310,26 +300,18 @@ describe.each(Object.keys(configurations) as Array<keyof typeof splitGroups>)(
         await (await built)?.app.dispose()
       })
 
-      test(
-        "a split group's chunk facade is the route file's absolute path with main's query",
-        async () => {
-          const { root, requests } = await ids()
-          expect(requests).toEqual(sorted(expand(root, groups)))
-        },
-        timeout,
-      )
+      test("a split group's chunk facade is the route file's absolute path with main's query", async () => {
+        const { root, requests } = await ids()
+        expect(requests).toEqual(sorted(expand(root, groups)))
+      })
 
-      test(
-        "the route files' module ids are main's, one module per route file",
-        async () => {
-          const { root, modules } = await ids()
-          expect(sorted(modules)).toEqual(
-            sorted(expand(root, [...routeFiles, ...all])),
-          )
-          expect(modules).toHaveLength(routeFiles.length + all.length)
-        },
-        timeout,
-      )
+      test("the route files' module ids are main's, one module per route file", async () => {
+        const { root, modules } = await ids()
+        expect(sorted(modules)).toEqual(
+          sorted(expand(root, [...routeFiles, ...all])),
+        )
+        expect(modules).toHaveLength(routeFiles.length + all.length)
+      })
     })
   },
 )
@@ -353,19 +335,15 @@ describe('under a path with #', () => {
       await (await built)?.app.dispose()
     })
 
-    test(
-      "a split group's chunk origin is the route file's escaped absolute path, one module per route file",
-      async () => {
-        const { root, requests, modules } = await ids()
-        expect(root).toContain('C# project #2')
-        expect(requests).toEqual(sorted(escaped(expand(root, groups))))
-        expect(sorted(modules)).toEqual(
-          sorted(expand(root, [...routeFiles, ...all])),
-        )
-        expect(modules).toHaveLength(routeFiles.length + all.length)
-      },
-      timeout,
-    )
+    test("a split group's chunk origin is the route file's escaped absolute path, one module per route file", async () => {
+      const { root, requests, modules } = await ids()
+      expect(root).toContain('C# project #2')
+      expect(requests).toEqual(sorted(escaped(expand(root, groups))))
+      expect(sorted(modules)).toEqual(
+        sorted(expand(root, [...routeFiles, ...all])),
+      )
+      expect(modules).toHaveLength(routeFiles.length + all.length)
+    })
   })
 
   describe('vite', () => {
@@ -375,19 +353,15 @@ describe('under a path with #', () => {
       await (await built)?.app.dispose()
     })
 
-    test(
-      "a split group's chunk facade is the route file's absolute path, one module per route file",
-      async () => {
-        const { root, requests, modules } = await ids()
-        expect(root).toContain('C# project #2')
-        expect(requests).toEqual(sorted(expand(root, groups)))
-        expect(sorted(modules)).toEqual(
-          sorted(expand(root, [...routeFiles, ...all])),
-        )
-        expect(modules).toHaveLength(routeFiles.length + all.length)
-      },
-      timeout,
-    )
+    test("a split group's chunk facade is the route file's absolute path, one module per route file", async () => {
+      const { root, requests, modules } = await ids()
+      expect(root).toContain('C# project #2')
+      expect(requests).toEqual(sorted(expand(root, groups)))
+      expect(sorted(modules)).toEqual(
+        sorted(expand(root, [...routeFiles, ...all])),
+      )
+      expect(modules).toHaveLength(routeFiles.length + all.length)
+    })
   })
 })
 
@@ -411,5 +385,4 @@ test.each(['vite', 'rspack', 'webpack'] as const)(
       await app.dispose()
     }
   },
-  timeout,
 )

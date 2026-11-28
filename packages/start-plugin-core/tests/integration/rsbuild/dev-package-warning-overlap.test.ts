@@ -19,8 +19,6 @@ import { rsbuildEntries } from '../route-css-cases'
 import type { Diagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import type { RsbuildPlugin, Rspack } from '@rsbuild/core'
 
-const timeout = 120_000
-
 function defer() {
   let resolve!: () => void
   const promise = new Promise<void>((done) => {
@@ -208,40 +206,28 @@ export const Route = createRootRoute({ component: () => <Outlet /> })
     }
   }
 
-  test(
-    'the client drops its import while the server is held: the first report has the warning, once',
-    async () => {
-      const { reports } = await overlap({ 'src/client-uses.ts': none })
-      expect(reports[0]).toBe(1)
-      expect(reports.reduce((a, b) => a + b, 0)).toBe(1)
-    },
-    timeout,
-  )
+  test('the client drops its import while the server is held: the first report has the warning, once', async () => {
+    const { reports } = await overlap({ 'src/client-uses.ts': none })
+    expect(reports[0]).toBe(1)
+    expect(reports.reduce((a, b) => a + b, 0)).toBe(1)
+  })
 
-  test(
-    'control, only the server imports the package: the first report has the warning, once',
-    async () => {
-      const { reports } = await overlap(
-        {},
-        { clientUses: false, clientRebuilds: false },
-      )
-      expect(reports[0]).toBe(1)
-      expect(reports.reduce((a, b) => a + b, 0)).toBe(1)
-    },
-    timeout,
-  )
+  test('control, only the server imports the package: the first report has the warning, once', async () => {
+    const { reports } = await overlap(
+      {},
+      { clientUses: false, clientRebuilds: false },
+    )
+    expect(reports[0]).toBe(1)
+    expect(reports.reduce((a, b) => a + b, 0)).toBe(1)
+  })
 
   // (the client's compilation of the first save, with the package, carried
   // the warning: so there was one to drop)
-  test(
-    'control, both drop the package while the server is held: the report of the compilations without it has no warning',
-    async () => {
-      const { reports, clientFirst } = await overlap({
-        'src/shared.ts': sharedPlain,
-      })
-      expect(clientFirst).toBe(1)
-      expect(reports.at(-1)).toBe(0)
-    },
-    timeout,
-  )
+  test('control, both drop the package while the server is held: the report of the compilations without it has no warning', async () => {
+    const { reports, clientFirst } = await overlap({
+      'src/shared.ts': sharedPlain,
+    })
+    expect(clientFirst).toBe(1)
+    expect(reports.at(-1)).toBe(0)
+  })
 })

@@ -57,8 +57,6 @@ import {
 import { throwsError } from '../diagnostics'
 import type { StartBuild, StartBundler } from '../build-harness'
 
-const timeout = 60_000
-
 interface Row {
   name: string
   /** The row's files, by path relative to its directory (`module.tsx` is its module). */
@@ -440,48 +438,40 @@ describe.each(startBundlers)('%s build', (bundler) => {
     ),
   )
 
-  test.each(list)(
-    '$name',
-    async (row) => {
-      expectRowWorks(row, await shared())
-    },
-    timeout,
-  )
+  test.each(list)('$name', async (row) => {
+    expectRowWorks(row, await shared())
+  })
 
   // compiler.test.ts "handles circular import chain: $name": the cycles
   // never reach a Start factory, and the build ends, built or failed,
   // instead of looping (the test's timeout bounds it).
-  test(
-    'a build of modules importing a factory through re-export cycles ends',
-    async () => {
-      const files: Record<string, string> = {}
-      reexportCycles.forEach((cycle, index) => {
-        for (const [file, code] of Object.entries({
-          ...cycle.files,
-          'module.tsx': cycleModule,
-        })) {
-          files[`src/cycles/c${index}/${file}`] = code
-        }
-      })
-      files['src/entry.ts'] = reexportCycles
-        .map(
-          (_, index) =>
-            `export * as c${index} from './cycles/c${index}/module'\n`,
-        )
-        .join('')
-      const ended = await buildStart({
-        bundler,
-        files,
-        entry: 'src/entry.ts',
-        start: { importProtection: { enabled: false } },
-      }).then(
-        () => 'built',
-        () => 'failed',
+  test('a build of modules importing a factory through re-export cycles ends', async () => {
+    const files: Record<string, string> = {}
+    reexportCycles.forEach((cycle, index) => {
+      for (const [file, code] of Object.entries({
+        ...cycle.files,
+        'module.tsx': cycleModule,
+      })) {
+        files[`src/cycles/c${index}/${file}`] = code
+      }
+    })
+    files['src/entry.ts'] = reexportCycles
+      .map(
+        (_, index) =>
+          `export * as c${index} from './cycles/c${index}/module'\n`,
       )
-      expect(['built', 'failed']).toContain(ended)
-    },
-    timeout,
-  )
+      .join('')
+    const ended = await buildStart({
+      bundler,
+      files,
+      entry: 'src/entry.ts',
+      start: { importProtection: { enabled: false } },
+    }).then(
+      () => 'built',
+      () => 'failed',
+    )
+    expect(['built', 'failed']).toContain(ended)
+  })
 })
 
 // The dev edits of ./start-compiler-dev-edits.test.ts, in
@@ -525,46 +515,38 @@ export * as aliased from './edits/aliased/module'
   // (The dev server's twin: ../start-compiler-cases.test.ts
   // "a dev edit of a module a re-export chain ends in recompiles its
   // importers".)
-  test(
-    'an edit of the module a re-export chain ends in recompiles its importers',
-    async () => {
-      const { client, ssr } = await rebuild()
-      const call = `try {
+  test('an edit of the module a re-export chain ends in recompiles its importers', async () => {
+    const { client, ssr } = await rebuild()
+    const call = `try {
   return { value: entry.chain.myFn() }
 } catch (error) {
   return { thrown: String(error?.message ?? error) }
 }`
-      expect({
-        client: (await client.run(call)).result,
-        ssr: (await ssr.run(call)).result,
-      }).toEqual({
-        client: { value: 'server-only-value' },
-        ssr: { thrown: expect.any(String) },
-      })
-    },
-    timeout,
-  )
+    expect({
+      client: (await client.run(call)).result,
+      ssr: (await ssr.run(call)).result,
+    }).toEqual({
+      client: { value: 'server-only-value' },
+      ssr: { thrown: expect.any(String) },
+    })
+  })
 
-  test(
-    'an edit of an aliased env-only factory recompiles the server fn that calls it',
-    async () => {
-      const { client, ssr } = await rebuild()
-      const { url } = (
-        await client.run(`return { url: entry.aliased.serverFn.url }`)
-      ).result as { url: string }
-      expect(
-        (
-          await ssr.run(`${callByIdPrelude}${settlePrelude}
+  test('an edit of an aliased env-only factory recompiles the server fn that calls it', async () => {
+    const { client, ssr } = await rebuild()
+    const { url } = (
+      await client.run(`return { url: entry.aliased.serverFn.url }`)
+    ).result as { url: string }
+    expect(
+      (
+        await ssr.run(`${callByIdPrelude}${settlePrelude}
 return {
   called: await settle(() => entry.aliased.serverFn()),
   byId: await settle(() => callById(serverFnId(${JSON.stringify(url)}))),
 }`)
-        ).result,
-      ).toEqual({
-        called: { thrown: expect.any(String) },
-        byId: { thrown: expect.any(String) },
-      })
-    },
-    timeout,
-  )
+      ).result,
+    ).toEqual({
+      called: { thrown: expect.any(String) },
+      byId: { thrown: expect.any(String) },
+    })
+  })
 })

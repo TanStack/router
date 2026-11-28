@@ -113,5 +113,5 @@ describe.each(startBundlers)('%s build', (bundler) => {
     })
     expect((await client.run(script)).result).toEqual(expected)
     expect((await ssr.run(script)).result).toEqual(expected)
-  }, 120_000)
+  })
 })

@@ -22,8 +22,6 @@ import { callServerFn, startDevServer, startRequestFiles } from '../dev-server'
 import { startRsbuildStartDevServer } from '../rsbuild-dev-server'
 import { rootDocument, routerFile, startPageEntries } from './start-compose-app'
 
-const timeout = 90_000
-
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 
 /**
@@ -79,35 +77,33 @@ const expected = {
 }
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  test(
-    'server fns behind `export *` barrels build with no diagnostic about the barrels, and each answers its own call by id',
-    async () => {
-      const build = await buildStart({
-        bundler,
-        files: {
-          ...apiFiles,
-          'src/client-entry.ts': `export { usersApi, postsApi, loadA, loadB } from './barrel'\n`,
-          'src/ssr-entry.ts': `export { usersApi, postsApi, loadA, loadB } from './barrel'
+  test('server fns behind `export *` barrels build with no diagnostic about the barrels, and each answers its own call by id', async () => {
+    const build = await buildStart({
+      bundler,
+      files: {
+        ...apiFiles,
+        'src/client-entry.ts': `export { usersApi, postsApi, loadA, loadB } from './barrel'\n`,
+        'src/ssr-entry.ts': `export { usersApi, postsApi, loadA, loadB } from './barrel'
 ${callByIdExports}`,
-        },
-        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-      })
-      for (const file of barrels) {
-        expectNoDiagnostic(build.diagnostics, { file, root: build.root })
-      }
-      // The URL each server fn's client call requests.
-      const urls = (
-        await build.client.run(`${requestsOfPrelude}
+      },
+      entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+    })
+    for (const file of barrels) {
+      expectNoDiagnostic(build.diagnostics, { file, root: build.root })
+    }
+    // The URL each server fn's client call requests.
+    const urls = (
+      await build.client.run(`${requestsOfPrelude}
 const fns = { ${Object.keys(expected)
-          .map((name) => `${JSON.stringify(name)}: entry.${name}`)
-          .join(', ')} }
+        .map((name) => `${JSON.stringify(name)}: entry.${name}`)
+        .join(', ')} }
 const urls = {}
 for (const [name, fn] of Object.entries(fns)) {
   urls[name] = (await requestsOf(fn))[0]?.url
 }
 return urls`)
-      ).result as Record<string, string>
-      const { result } = await build.ssr.run(`${callByIdPrelude}
+    ).result as Record<string, string>
+    const { result } = await build.ssr.run(`${callByIdPrelude}
 const urls = ${JSON.stringify(urls)}
 const results = {}
 for (const [name, url] of Object.entries(urls)) {
@@ -118,50 +114,42 @@ for (const [name, url] of Object.entries(urls)) {
   }
 }
 return results`)
-      expect(result).toEqual(expected)
-    },
-    timeout,
-  )
+    expect(result).toEqual(expected)
+  })
 })
 
 describe('Vite dev', () => {
-  test(
-    'server fns behind `export *` barrels each answer their own call by id',
-    async () => {
-      const server = await startDevServer({
-        start: {},
-        files: { ...startRequestFiles, ...apiFiles },
-      })
-      const m = await server.import('/src/barrel.ts')
-      const results: Record<string, unknown> = {}
-      for (const name of Object.keys(calls)) {
-        const [object, key] = name.split('.') as [string, string]
-        results[name] = await callServerFn(server, m[object][key])
-      }
-      expect(results).toEqual(calls)
-    },
-    timeout,
-  )
+  test('server fns behind `export *` barrels each answer their own call by id', async () => {
+    const server = await startDevServer({
+      start: {},
+      files: { ...startRequestFiles, ...apiFiles },
+    })
+    const m = await server.import('/src/barrel.ts')
+    const results: Record<string, unknown> = {}
+    for (const name of Object.keys(calls)) {
+      const [object, key] = name.split('.') as [string, string]
+      results[name] = await callServerFn(server, m[object][key])
+    }
+    expect(results).toEqual(calls)
+  })
 })
 
 describe('Rsbuild dev', () => {
-  test(
-    'server fns behind `export *` barrels compile with no error, and each answers its own call from the page',
-    async () => {
-      const server = await startRsbuildStartDevServer({
-        browser: true,
-        hmr: false,
-        config: { plugins: [pluginReact()] },
-        files: {
-          ...startPageEntries,
-          ...apiFiles,
-          'src/ssr-entry.ts': `export { getRouter } from './router'`,
-          'src/router.ts': routerFile,
-          'src/routes/__root.tsx': rootDocument(),
-          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+  test('server fns behind `export *` barrels compile with no error, and each answers its own call from the page', async () => {
+    const server = await startRsbuildStartDevServer({
+      browser: true,
+      hmr: false,
+      config: { plugins: [pluginReact()] },
+      files: {
+        ...startPageEntries,
+        ...apiFiles,
+        'src/ssr-entry.ts': `export { getRouter } from './router'`,
+        'src/router.ts': routerFile,
+        'src/routes/__root.tsx': rootDocument(),
+        'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({ component: () => null })`,
-          'src/client-entry.ts': `import './entry'`,
-          'src/entry.ts': `import { usersApi, postsApi, loadA, loadB } from './barrel'
+        'src/client-entry.ts': `import './entry'`,
+        'src/entry.ts': `import { usersApi, postsApi, loadA, loadB } from './barrel'
 ;(globalThis as Record<string, unknown>).fns = {
   'usersApi.get': usersApi.get,
   'usersApi.list': usersApi.list,
@@ -171,29 +159,27 @@ export const Route = createFileRoute('/')({ component: () => null })`,
   loadB,
 }
 `,
-        },
-      })
-      expect(server.errors).toEqual([])
-      for (const file of barrels) {
-        expectNoDiagnostic(server.diagnostics, { file, root: server.root })
-      }
-      const page = await openTestPage(server.url!)
-      await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
-      const result = await page.page.evaluate(async () => {
-        const fns = (globalThis as any).fns as Record<string, () => unknown>
-        const results: Record<string, unknown> = {}
-        for (const [name, fn] of Object.entries(fns)) {
-          try {
-            results[name] = await fn()
-          } catch (error) {
-            results[name] = `rejected: ${String((error as Error).message)}`
-          }
+      },
+    })
+    expect(server.errors).toEqual([])
+    for (const file of barrels) {
+      expectNoDiagnostic(server.diagnostics, { file, root: server.root })
+    }
+    const page = await openTestPage(server.url!)
+    await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
+    const result = await page.page.evaluate(async () => {
+      const fns = (globalThis as any).fns as Record<string, () => unknown>
+      const results: Record<string, unknown> = {}
+      for (const [name, fn] of Object.entries(fns)) {
+        try {
+          results[name] = await fn()
+        } catch (error) {
+          results[name] = `rejected: ${String((error as Error).message)}`
         }
-        return results
-      })
-      expect(page.errors).toEqual([])
-      expect(result).toEqual(expected)
-    },
-    timeout,
-  )
+      }
+      return results
+    })
+    expect(page.errors).toEqual([])
+    expect(result).toEqual(expected)
+  })
 })

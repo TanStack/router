@@ -20,8 +20,6 @@ import type { StartBuildOptions, StartBundler } from '../../build-harness'
 import type { Violation } from '../../importProtection/start-apps'
 import type { ViolationInfo } from '../../importProtection/public-types'
 
-const timeout = 60_000
-
 /**
  * The report of the one violation of a build of `files` (client entry
  * `src/entry.ts`, default rules).
@@ -145,73 +143,61 @@ describe.each(startBundlers)(
 
     // The middle steps are located on the line of their import (which
     // column of the import statement is not specified).
-    test(
-      'the trace lists each import from the entry, located on its line',
-      async () => {
-        const { importer, trace } = await reportOfChain()
-        expect(atChainImporter(importer), importer).toBe(true)
-        // The chain starts at an entry (by its position: no marker needed)
-        expect(clientEntries).toContain(modulesOf(trace)[0])
-        expect(
-          trace.slice(-3).map(({ at, imports }) => ({ at, imports })),
-        ).toEqual([
-          {
-            at: expect.stringMatching(/^src\/entry\.ts:2(?::\d+)?$/),
-            imports: './a',
-          },
-          {
-            at: expect.stringMatching(/^src\/a\.ts:3(?::\d+)?$/),
-            imports: './b',
-          },
-          { at: importer, imports: './secret.server' },
-        ])
-      },
-      timeout,
-    )
+    test('the trace lists each import from the entry, located on its line', async () => {
+      const { importer, trace } = await reportOfChain()
+      expect(atChainImporter(importer), importer).toBe(true)
+      // The chain starts at an entry (by its position: no marker needed)
+      expect(clientEntries).toContain(modulesOf(trace)[0])
+      expect(
+        trace.slice(-3).map(({ at, imports }) => ({ at, imports })),
+      ).toEqual([
+        {
+          at: expect.stringMatching(/^src\/entry\.ts:2(?::\d+)?$/),
+          imports: './a',
+        },
+        {
+          at: expect.stringMatching(/^src\/a\.ts:3(?::\d+)?$/),
+          imports: './b',
+        },
+        { at: importer, imports: './secret.server' },
+      ])
+    })
 
     // The printed report shows the user's source where it locates the
     // importer (SPEC J6.5 "a code frame"): read as the original text of that
     // line in the build's error, not as wording. `src/b.ts` starts with a
     // comment that compiling drops, so a frame of compiled code shows other
     // lines.
-    test(
-      "the printed report shows the importer's original source at its location",
-      async () => {
-        const error = await failureOfChain()
-        const { importer } = reportOf(error)
-        expect(atChainImporter(importer), importer).toBe(true)
-        const line = Number(/^src\/b\.ts:(\d+)/.exec(importer)![1])
-        const original = chain['src/b.ts'].split('\n')[line - 1]!
-        expect(
-          error.errors.some((message) => message.includes(original)),
-          error.errors.join('\n'),
-        ).toBe(true)
-      },
-      timeout,
-    )
+    test("the printed report shows the importer's original source at its location", async () => {
+      const error = await failureOfChain()
+      const { importer } = reportOf(error)
+      expect(atChainImporter(importer), importer).toBe(true)
+      const line = Number(/^src\/b\.ts:(\d+)/.exec(importer)![1])
+      const original = chain['src/b.ts'].split('\n')[line - 1]!
+      expect(
+        error.errors.some((message) => message.includes(original)),
+        error.errors.join('\n'),
+      ).toBe(true)
+    })
 
     // Any real chain from the entry to the importer will do, not
     // necessarily the shortest (SPEC J6.5): `src/a.ts` imports
     // `src/s.ts` directly and through `src/c.ts`.
-    test(
-      'the trace is a real import chain from the entry to the importer',
-      async () => {
-        const { trace } = await buildReport(bundler, {
-          ...secretServer,
-          'src/s.ts': `import { secret } from './secret.server'
+    test('the trace is a real import chain from the entry to the importer', async () => {
+      const { trace } = await buildReport(bundler, {
+        ...secretServer,
+        'src/s.ts': `import { secret } from './secret.server'
 export const s = () => secret()
 `,
-          'src/c.ts': `import { s } from './s'\nexport const c = () => s()\n`,
-          'src/a.ts': `import { c } from './c'
+        'src/c.ts': `import { s } from './s'\nexport const c = () => s()\n`,
+        'src/a.ts': `import { c } from './c'
 import { s } from './s'
 export const page = () => c() + s()
 `,
-          'src/entry.ts': `export * from './a'\n`,
-        })
-        expect(realChains).toContainEqual(fromEntry(modulesOf(trace)))
-      },
-      timeout,
-    )
+        'src/entry.ts': `export * from './a'\n`,
+      })
+      expect(realChains).toContainEqual(fromEntry(modulesOf(trace)))
+    })
 
     // On main, the trace of a Vite build leaves out how the client reaches the
     // importer when the chain goes through a module outside `src` (a shared
@@ -235,7 +221,6 @@ export const page = () => leak()
           'src/b.ts',
         ])
       },
-      timeout,
     )
 
     // A route's split component is loaded by a dynamic import the router
@@ -245,57 +230,53 @@ export const page = () => leak()
     // the route tree and the route to the component's import.
     // Source: the react-start/import-protection e2e app (Rsbuild mock build:
     // the traces of split components stopped at the route file).
-    test(
-      'the trace of a mock-mode build reaches a split route component from the entry',
-      async () => {
-        // each violation as `onViolation` reads it when it is called (while
-        // the build runs, as the printed report does)
-        const snapshots: Array<ViolationInfo> = []
-        const build = await buildStart({
-          bundler,
-          files: {
-            ...secretServer,
-            'src/format.ts': `export const format = (s: string) => '[' + s + ']'\n`,
-            'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+    test('the trace of a mock-mode build reaches a split route component from the entry', async () => {
+      // each violation as `onViolation` reads it when it is called (while
+      // the build runs, as the printed report does)
+      const snapshots: Array<ViolationInfo> = []
+      const build = await buildStart({
+        bundler,
+        files: {
+          ...secretServer,
+          'src/format.ts': `export const format = (s: string) => '[' + s + ']'\n`,
+          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { secret } from '../secret.server'
 import { format } from '../format'
 export const Route = createFileRoute('/')({
   component: () => format(secret()),
 })
 `,
-            'src/router.ts': `import { routeTree } from './routeTree.gen'
+          'src/router.ts': `import { routeTree } from './routeTree.gen'
 export const getRouter = () => ({ routeTree })
 `,
-            'src/entry.ts': `export { getRouter } from './router'\n`,
-          },
-          entry: 'src/entry.ts',
-          start: {
-            importProtection: {
-              behavior: 'mock',
-              onViolation: (violation: unknown) => {
-                const info = violation as ViolationInfo
-                snapshots.push({ ...info, trace: [...info.trace] })
-              },
+          'src/entry.ts': `export { getRouter } from './router'\n`,
+        },
+        entry: 'src/entry.ts',
+        start: {
+          importProtection: {
+            behavior: 'mock',
+            onViolation: (violation: unknown) => {
+              const info = violation as ViolationInfo
+              snapshots.push({ ...info, trace: [...info.trace] })
             },
           },
-        })
-        const reports = violationsOf(
-          inEnvironment({ root: build.root, violations: snapshots }, 'client'),
-        )
-        expect(reports).toHaveLength(1)
-        // (the route module and its chunk are two steps of one file)
-        const files = modulesOf(reports[0]!.trace).filter(
-          (file, i, all) => file !== all[i - 1],
-        )
-        expect(clientEntries).toContain(files[0])
-        expect(files.slice(-3)).toEqual([
-          'src/router.ts',
-          'src/routeTree.gen.ts',
-          'src/routes/index.tsx',
-        ])
-      },
-      timeout,
-    )
+        },
+      })
+      const reports = violationsOf(
+        inEnvironment({ root: build.root, violations: snapshots }, 'client'),
+      )
+      expect(reports).toHaveLength(1)
+      // (the route module and its chunk are two steps of one file)
+      const files = modulesOf(reports[0]!.trace).filter(
+        (file, i, all) => file !== all[i - 1],
+      )
+      expect(clientEntries).toContain(files[0])
+      expect(files.slice(-3)).toEqual([
+        'src/router.ts',
+        'src/routeTree.gen.ts',
+        'src/routes/index.tsx',
+      ])
+    })
   },
 )
 
@@ -304,26 +285,22 @@ export const getRouter = () => ({ routeTree })
 // the build's trace does not change.
 // Source: mutation testing (route modules taken as entries in the build, as
 // full-bundle dev does).
-test(
-  'vite build with experimental.bundledDev: the trace of a violation under a module of src/routes leads from the entry through it',
-  async () => {
-    const { trace } = await buildReport(
-      'vite',
-      {
-        ...leakingB,
-        'src/routes/page.ts': `export { leak } from '../b'\n`,
-        'src/entry.ts': `export * from './routes/page'\n`,
-      },
-      { viteConfig: { experimental: { bundledDev: true } } },
-    )
-    expect(modulesOf(trace).slice(-3)).toEqual([
-      'src/entry.ts',
-      'src/routes/page.ts',
-      'src/b.ts',
-    ])
-  },
-  timeout,
-)
+test('vite build with experimental.bundledDev: the trace of a violation under a module of src/routes leads from the entry through it', async () => {
+  const { trace } = await buildReport(
+    'vite',
+    {
+      ...leakingB,
+      'src/routes/page.ts': `export { leak } from '../b'\n`,
+      'src/entry.ts': `export * from './routes/page'\n`,
+    },
+    { viteConfig: { experimental: { bundledDev: true } } },
+  )
+  expect(modulesOf(trace).slice(-3)).toEqual([
+    'src/entry.ts',
+    'src/routes/page.ts',
+    'src/b.ts',
+  ])
+})
 
 // The trace stops at an entry. In a production build the entry module is a
 // concatenated module (scope hoisting) without a `resource` of its own; the
@@ -331,37 +308,33 @@ test(
 // (import-protection/chunk-lists.ts `rspackNodeGraph`). When a module imports the
 // entry back, the search still finds that root.
 describe.each(startBundlers)('%s build', (bundler) => {
-  test(
-    'the trace starts at the entry when a module imports the entry back',
-    async () => {
-      const { importer, trace } = await buildReport(bundler, {
-        ...leakingB,
-        // The app's client entry (Start's default `src/client.tsx`); it
-        // calls `start` itself: a build reports only edges that survive
-        // tree-shaking (SPEC J6.4), and both bundlers drop a client entry's
-        // unused exports
-        'src/client.tsx': `import { page } from './a'
+  test('the trace starts at the entry when a module imports the entry back', async () => {
+    const { importer, trace } = await buildReport(bundler, {
+      ...leakingB,
+      // The app's client entry (Start's default `src/client.tsx`); it
+      // calls `start` itself: a build reports only edges that survive
+      // tree-shaking (SPEC J6.4), and both bundlers drop a client entry's
+      // unused exports
+      'src/client.tsx': `import { page } from './a'
 export const start = () => page()
 start()
 `,
-        'src/back.ts': `import * as app from './client'\nexport const back = app\n`,
-        'src/a.ts': `import { leak } from './b'
+      'src/back.ts': `import * as app from './client'\nexport const back = app\n`,
+      'src/a.ts': `import { leak } from './b'
 import { back } from './back'
 export const page = () => [leak(), back]
 `,
-        'src/entry.ts': `export * from './a'\n`,
-      })
-      // The chain starts at the entry (by its position: no marker needed)
-      expect(modulesOf(trace)[0]).toBe('src/client.tsx')
-      expect(modulesOf(trace).slice(-3)).toEqual([
-        'src/client.tsx',
-        'src/a.ts',
-        'src/b.ts',
-      ])
-      expect(trace.at(-1)!.at).toBe(importer)
-    },
-    timeout,
-  )
+      'src/entry.ts': `export * from './a'\n`,
+    })
+    // The chain starts at the entry (by its position: no marker needed)
+    expect(modulesOf(trace)[0]).toBe('src/client.tsx')
+    expect(modulesOf(trace).slice(-3)).toEqual([
+      'src/client.tsx',
+      'src/a.ts',
+      'src/b.ts',
+    ])
+    expect(trace.at(-1)!.at).toBe(importer)
+  })
 })
 
 // The trace locates each import on its line in the user's file, whatever
@@ -442,11 +415,7 @@ describe('the trace locates each import on its line after compiling moved it', (
     ...movedImportRows('rsbuild', false, Object.keys(movedImports)),
     // (the Yuku host locates every step through the module's own map)
     ...movedImportRows('vite', false, Object.keys(movedImports)),
-  ])(
-    '$build: after $name',
-    async (row) => {
-      expect(await stepLine(row)).toBe(row.line)
-    },
-    timeout,
-  )
+  ])('$build: after $name', async (row) => {
+    expect(await stepLine(row)).toBe(row.line)
+  })
 })

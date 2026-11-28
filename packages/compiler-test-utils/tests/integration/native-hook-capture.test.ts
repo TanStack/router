@@ -21,8 +21,6 @@ import type { ChannelDiagnostic } from '../../src/diagnostic-channel'
 import type { RsbuildPlugin, Rspack } from '@rsbuild/core'
 import type { Plugin } from 'vite'
 
-const timeout = 60_000
-
 const testsDir = path.dirname(fileURLToPath(import.meta.url))
 
 const marked = (texts: Array<string>) =>
@@ -49,71 +47,67 @@ const viteFiles = {
   'src/main.ts': `export const value = 1\n`,
 }
 
-test(
-  'vite build: console output of Rolldown-called hooks is in the build diagnostics',
-  async ({ pluginHost }) => {
-    const app = await pluginHost({
-      files: viteFiles,
-      plugins: [consoleWarner()],
-      serve: false,
-    })
-    const build = await app.build()
-    // "Nothing reported" sees build-time output
-    expect(() => expectNoProblems(build.diagnostics)).toThrow(/MARK_NATIVE/)
-    expect(marked(build.diagnostics.map(({ text }) => text))).toEqual(
-      expect.arrayContaining([
-        'MARK_NATIVE transform main.ts',
-        'MARK_NATIVE generateBundle',
-      ]),
-    )
-    // One build at a time: its owner is known
-    expect(build.diagnostics.filter(({ shared }) => shared)).toEqual([])
-  },
-  timeout,
-)
+test('vite build: console output of Rolldown-called hooks is in the build diagnostics', async ({
+  pluginHost,
+}) => {
+  const app = await pluginHost({
+    files: viteFiles,
+    plugins: [consoleWarner()],
+    serve: false,
+  })
+  const build = await app.build()
+  // "Nothing reported" sees build-time output
+  expect(() => expectNoProblems(build.diagnostics)).toThrow(/MARK_NATIVE/)
+  expect(marked(build.diagnostics.map(({ text }) => text))).toEqual(
+    expect.arrayContaining([
+      'MARK_NATIVE transform main.ts',
+      'MARK_NATIVE generateBundle',
+    ]),
+  )
+  // One build at a time: its owner is known
+  expect(build.diagnostics.filter(({ shared }) => shared)).toEqual([])
+})
 
-test(
-  'withBuildEnvironment: a Vite build’s console output and default-logger warnings are in its messages',
-  async ({ appRoot }) => {
-    const app = await createApp({
-      dir: testsDir,
-      parent: appRoot,
-      files: viteFiles,
+test('withBuildEnvironment: a Vite build’s console output and default-logger warnings are in its messages', async ({
+  appRoot,
+}) => {
+  const app = await createApp({
+    dir: testsDir,
+    parent: appRoot,
+    files: viteFiles,
+  })
+  const messages: Array<ChannelDiagnostic> = []
+  await withBuildEnvironment('production', messages, async () => {
+    const builder = await createBuilder({
+      root: app.root,
+      configFile: false,
+      logLevel: 'warn',
+      plugins: [
+        consoleWarner(),
+        {
+          name: 'context-warner',
+          transform(_code, id) {
+            if (id.includes('/src/')) {
+              this.warn(`MARK_NATIVE this.warn ${path.basename(id)}`)
+            }
+            return null
+          },
+        } satisfies Plugin,
+      ],
     })
-    const messages: Array<ChannelDiagnostic> = []
-    await withBuildEnvironment('production', messages, async () => {
-      const builder = await createBuilder({
-        root: app.root,
-        configFile: false,
-        logLevel: 'warn',
-        plugins: [
-          consoleWarner(),
-          {
-            name: 'context-warner',
-            transform(_code, id) {
-              if (id.includes('/src/')) {
-                this.warn(`MARK_NATIVE this.warn ${path.basename(id)}`)
-              }
-              return null
-            },
-          } satisfies Plugin,
-        ],
-      })
-      await builder.buildApp()
-    })
-    const reported = marked(messages.map(({ text }) => text))
-    expect(reported).toEqual(
-      expect.arrayContaining([
-        'MARK_NATIVE transform main.ts',
-        'MARK_NATIVE generateBundle',
-      ]),
-    )
-    expect(
-      reported.some((text) => text.includes('MARK_NATIVE this.warn main.ts')),
-    ).toBe(true)
-  },
-  timeout,
-)
+    await builder.buildApp()
+  })
+  const reported = marked(messages.map(({ text }) => text))
+  expect(reported).toEqual(
+    expect.arrayContaining([
+      'MARK_NATIVE transform main.ts',
+      'MARK_NATIVE generateBundle',
+    ]),
+  )
+  expect(
+    reported.some((text) => text.includes('MARK_NATIVE this.warn main.ts')),
+  ).toBe(true)
+})
 
 /** Warns through the console from Rspack compilation and compiler hooks. */
 function rspackWarner(): RsbuildPlugin {
@@ -146,7 +140,6 @@ function rspackWarner(): RsbuildPlugin {
 
 test.for(['dev', 'build'] as const)(
   'rsbuild %s: console output of Rspack compiler and compilation hooks is in the diagnostics',
-  { timeout },
   async (mode, { rsbuildPluginHost }) => {
     const host = await rsbuildPluginHost({
       files: { 'src/entry.ts': 'export const value = 1\n' },
@@ -215,37 +208,34 @@ async function expectSeparated(
   }
 }
 
-test(
-  'vite build: concurrent builds keep native-hook output naming their app, and share output naming neither',
-  async ({ pluginHost }) => {
-    await expectSeparated(async (meet) => {
-      let root = ''
-      const app = await pluginHost({
-        files: viteFiles,
-        serve: false,
-        plugins: [
-          {
-            name: 'owned-warner',
-            configResolved(config) {
-              root = config.root
-            },
-            async generateBundle() {
-              await meet()
-              console.warn(`MARK_OWNED ${root}/src/main.ts`)
-              console.warn('MARK_UNOWNED generateBundle')
-            },
-          } satisfies Plugin,
-        ],
-      })
-      return { root: app.root, diagnostics: (await app.build()).diagnostics }
+test('vite build: concurrent builds keep native-hook output naming their app, and share output naming neither', async ({
+  pluginHost,
+}) => {
+  await expectSeparated(async (meet) => {
+    let root = ''
+    const app = await pluginHost({
+      files: viteFiles,
+      serve: false,
+      plugins: [
+        {
+          name: 'owned-warner',
+          configResolved(config) {
+            root = config.root
+          },
+          async generateBundle() {
+            await meet()
+            console.warn(`MARK_OWNED ${root}/src/main.ts`)
+            console.warn('MARK_UNOWNED generateBundle')
+          },
+        } satisfies Plugin,
+      ],
     })
-  },
-  timeout,
-)
+    return { root: app.root, diagnostics: (await app.build()).diagnostics }
+  })
+})
 
 test.for(['dev', 'build'] as const)(
   'rsbuild %s: concurrent apps keep native-hook output naming their app, and share output naming neither',
-  { timeout },
   async (mode, { rsbuildPluginHost }) => {
     await expectSeparated(async (meet) => {
       const host = await rsbuildPluginHost({

@@ -139,46 +139,42 @@ exports.page = () => secret
 // environment too: Start's default rules deny `*.client.*` files to it.
 // Source: review (the other Rsbuild dev tests run import protection on the
 // client environment only).
-test(
-  'Rsbuild dev with Start: a server import of a .client file is mocked on the server and reported',
-  async () => {
-    const recorder = violationRecorder()
-    const server = await startRsbuildStartDevServer({
-      compileTimeout,
-      start: { importProtection: recorder.importProtection },
-      files: {
-        'src/widget.client.ts': `export const widget = () => 'MARK_CLIENT'\n`,
-        'src/entry.ts': `import { widget } from './widget.client'
+test('Rsbuild dev with Start: a server import of a .client file is mocked on the server and reported', async () => {
+  const recorder = violationRecorder()
+  const server = await startRsbuildStartDevServer({
+    compileTimeout,
+    start: { importProtection: recorder.importProtection },
+    files: {
+      'src/widget.client.ts': `export const widget = () => 'MARK_CLIENT'\n`,
+      'src/entry.ts': `import { widget } from './widget.client'
 export const read = () => widget()
 console.log(read())
 `,
-      },
-    })
-    expect(server.errors).toEqual([])
-    expect(receivedViolations(recorder.violations, server.root)).toEqual([
-      originalLocation('server src/entry.ts:2:27', 1),
-    ])
-    // Printed as a warning at the importer's line of the import or of its
-    // use (SPEC J6.3, J6.12)
-    expect(
-      [1, 2].some(
-        (line) =>
-          findDiagnostics(server.diagnostics, {
-            severity: 'warning',
-            file: 'src/entry.ts',
-            root: server.root,
-            position: { line },
-          }).length > 0,
-      ),
-      'a printed warning at src/entry.ts:1 or :2',
-    ).toBe(true)
-    const code = async (environment: string) =>
-      Object.values(await server.outputs(environment)).join('\n')
-    expect(await code('ssr')).not.toContain('MARK_CLIENT')
-    expect(await code('client')).toContain('MARK_CLIENT')
-  },
-  timeout,
-)
+    },
+  })
+  expect(server.errors).toEqual([])
+  expect(receivedViolations(recorder.violations, server.root)).toEqual([
+    originalLocation('server src/entry.ts:2:27', 1),
+  ])
+  // Printed as a warning at the importer's line of the import or of its
+  // use (SPEC J6.3, J6.12)
+  expect(
+    [1, 2].some(
+      (line) =>
+        findDiagnostics(server.diagnostics, {
+          severity: 'warning',
+          file: 'src/entry.ts',
+          root: server.root,
+          position: { line },
+        }).length > 0,
+    ),
+    'a printed warning at src/entry.ts:1 or :2',
+  ).toBe(true)
+  const code = async (environment: string) =>
+    Object.values(await server.outputs(environment)).join('\n')
+  expect(await code('ssr')).not.toContain('MARK_CLIENT')
+  expect(await code('client')).toContain('MARK_CLIENT')
+})
 
 // `mockAccess` applies wherever a mock is served, the server environments of
 // a dev server included (SPEC J6.3: mock mode always
@@ -246,19 +242,14 @@ return { read: describeValue(globalThis.read(), 'MARK_'), logged }`,
         file: 'src/widget.client.ts',
       })
     },
-    timeout,
   )
 
-  test(
-    'off: the server gets a safe mock, and using it is not reported',
-    async () => {
-      expect(await useOnTheServer('off')).toEqual({
-        read: 'a safe mock',
-        logged: [],
-      })
-    },
-    timeout,
-  )
+  test('off: the server gets a safe mock, and using it is not reported', async () => {
+    expect(await useOnTheServer('off')).toEqual({
+      read: 'a safe mock',
+      logged: [],
+    })
+  })
 })
 
 // Source: mutation testing (Rsbuild host, `behavior` in dev).
@@ -310,7 +301,6 @@ console.log(secret())
         root: server.root,
       })
     },
-    timeout,
   )
 })
 
@@ -364,7 +354,6 @@ console.log(secret(), other)
       expect(server.rebuilt).toContain('src/other.ts')
       expect(reported(since)).toEqual(afterRebuild)
     },
-    timeout,
   )
 
   // An import SWC keeps (a value import used only as a type, kept by
@@ -444,7 +433,6 @@ console.log(typePosition, other)
         expect(printed(since)).toHaveLength(askedAgain.length)
       }
     },
-    timeout,
   )
 
   // A compile after an edit that changes none of the facts the importer's
@@ -524,7 +512,6 @@ console.log(read(), other)
         expect(printed(since)).not.toEqual([])
       }
     },
-    timeout,
   )
 
   // The compile ends (import protection does not hang on a module that is
@@ -535,70 +522,62 @@ console.log(read(), other)
   test.each([
     { module: 'the entry module', file: 'src/entry.ts' },
     { module: 'an imported module', file: 'src/other.ts' },
-  ])(
-    'a compile in which $module is missing fails',
-    async ({ file }) => {
-      const server = await startRsbuildDevServer({
-        compileTimeout,
-        importProtection: {},
-        files: app,
-      })
-      const since = server.diagnostics.length
-      await server.edit({ [file]: null })
-      const errors = findDiagnostics(server.diagnostics.slice(since), {
-        severity: 'error',
-      })
-      expect(errors).not.toEqual([])
-    },
-    timeout,
-  )
+  ])('a compile in which $module is missing fails', async ({ file }) => {
+    const server = await startRsbuildDevServer({
+      compileTimeout,
+      importProtection: {},
+      files: app,
+    })
+    const since = server.diagnostics.length
+    await server.edit({ [file]: null })
+    const errors = findDiagnostics(server.diagnostics.slice(since), {
+      severity: 'error',
+    })
+    expect(errors).not.toEqual([])
+  })
 
   // Source: mutation testing (the resolve cache of a previous compile).
-  test(
-    'a denied specifier that an edit makes resolve elsewhere is reported again, never with its old target',
-    async () => {
-      const resolved: Array<string | undefined> = []
-      const server = await startRsbuildDevServer({
-        compileTimeout,
-        importProtection: {
-          client: { specifiers: [/^\.\/lib$/] },
-          onViolation: (info) => {
-            // relative to the app root (src/...)
-            resolved.push(
-              (info as ViolationInfo).resolved?.replace(/^.*\/(?=src\/)/, ''),
-            )
-          },
+  test('a denied specifier that an edit makes resolve elsewhere is reported again, never with its old target', async () => {
+    const resolved: Array<string | undefined> = []
+    const server = await startRsbuildDevServer({
+      compileTimeout,
+      importProtection: {
+        client: { specifiers: [/^\.\/lib$/] },
+        onViolation: (info) => {
+          // relative to the app root (src/...)
+          resolved.push(
+            (info as ViolationInfo).resolved?.replace(/^.*\/(?=src\/)/, ''),
+          )
         },
-        files: {
-          'src/lib.ts': `export const lib = 1\n`,
-          'src/entry.ts': `import { lib } from './lib'\nconsole.log(lib)\n`,
-        },
-      })
-      // `resolved` is optional for a specifier violation (SPEC J6.5,
-      // §5.14): what is checked is a resolved path when one is given.
-      expect(resolved).toHaveLength(1)
-      expect([undefined, 'src/lib.ts']).toContain(resolved[0])
-      await server.edit({
-        'src/lib.ts': null,
-        'src/lib/index.ts': `export const lib = 2\n`,
-        'src/entry.ts': `import { lib } from './lib'\nconsole.log(lib, 2)\n`,
-      })
-      // The edit passes through states the dev server may compile and
-      // report: `./lib` resolving nowhere (`undefined`) once `src/lib.ts` is
-      // gone and before `src/lib/index.ts` exists (SPEC §8). The violation is reported
-      // again; every resolved path given since the edit is the new target,
-      // never the old one, and a compiler that gave one before the edit
-      // reports the new target last.
-      const sinceEdit = resolved.slice(1)
-      expect(sinceEdit).not.toEqual([])
-      const given = sinceEdit.filter((target) => target !== undefined)
-      expect(given).toEqual(given.map(() => 'src/lib/index.ts'))
-      if (resolved[0] !== undefined) {
-        expect(sinceEdit.at(-1)).toBe('src/lib/index.ts')
-      }
-    },
-    timeout,
-  )
+      },
+      files: {
+        'src/lib.ts': `export const lib = 1\n`,
+        'src/entry.ts': `import { lib } from './lib'\nconsole.log(lib)\n`,
+      },
+    })
+    // `resolved` is optional for a specifier violation (SPEC J6.5,
+    // §5.14): what is checked is a resolved path when one is given.
+    expect(resolved).toHaveLength(1)
+    expect([undefined, 'src/lib.ts']).toContain(resolved[0])
+    await server.edit({
+      'src/lib.ts': null,
+      'src/lib/index.ts': `export const lib = 2\n`,
+      'src/entry.ts': `import { lib } from './lib'\nconsole.log(lib, 2)\n`,
+    })
+    // The edit passes through states the dev server may compile and
+    // report: `./lib` resolving nowhere (`undefined`) once `src/lib.ts` is
+    // gone and before `src/lib/index.ts` exists (SPEC §8). The violation is reported
+    // again; every resolved path given since the edit is the new target,
+    // never the old one, and a compiler that gave one before the edit
+    // reports the new target last.
+    const sinceEdit = resolved.slice(1)
+    expect(sinceEdit).not.toEqual([])
+    const given = sinceEdit.filter((target) => target !== undefined)
+    expect(given).toEqual(given.map(() => 'src/lib/index.ts'))
+    if (resolved[0] !== undefined) {
+      expect(sinceEdit.at(-1)).toBe('src/lib/index.ts')
+    }
+  })
 })
 
 // `rsbuild dev` started again on its persistent cache restores the modules
@@ -606,47 +585,43 @@ console.log(read(), other)
 // modules standing in for denied imports must still resolve, to the mocks,
 // and a new dev server reports the violations its compile bundles.
 // Source: upstream #8798 (a warm `rsbuild dev` restart fails like the build).
-test(
-  'Rsbuild dev restarted on its persistent cache: the client still gets the mock, and the violation is reported',
-  async () => {
-    const page = `import { secret } from './secret.server'
+test('Rsbuild dev restarted on its persistent cache: the client still gets the mock, and the violation is reported', async () => {
+  const page = `import { secret } from './secret.server'
 export const read = () => secret()
 `
-    const recorder = violationRecorder()
-    const first = await startRsbuildDevServer({
-      compileTimeout,
-      config: { performance: { buildCache: true } },
-      importProtection: recorder.importProtection,
-      files: {
-        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
-        'src/page.ts': page,
-        'src/entry.ts': `import { read } from './page'\nconsole.log(read())\n`,
-      },
-    })
-    const violation: ExpectedViolation = {
-      environment: 'client',
-      use: locationIn('src/page.ts', page, 2, 'secret()'),
-      also: ['src/page.ts:1'],
-    }
-    expect(first.errors).toEqual([])
-    expect(
-      relevantViolations({ root: first.root, ...recorder }, [violation]),
-    ).toEqual([violationLabel(violation)])
-    const since = recorder.violations.length
-    const server = await first.restart()
-    expect(server.errors).toEqual([])
-    expect(Object.values(await server.outputs()).join('\n')).not.toContain(
-      'MARK_SECRET',
-    )
-    expect(
-      relevantViolations(
-        { root: server.root, violations: recorder.violations.slice(since) },
-        [violation],
-      ),
-    ).toEqual([violationLabel(violation)])
-  },
-  timeout,
-)
+  const recorder = violationRecorder()
+  const first = await startRsbuildDevServer({
+    compileTimeout,
+    config: { performance: { buildCache: true } },
+    importProtection: recorder.importProtection,
+    files: {
+      'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+      'src/page.ts': page,
+      'src/entry.ts': `import { read } from './page'\nconsole.log(read())\n`,
+    },
+  })
+  const violation: ExpectedViolation = {
+    environment: 'client',
+    use: locationIn('src/page.ts', page, 2, 'secret()'),
+    also: ['src/page.ts:1'],
+  }
+  expect(first.errors).toEqual([])
+  expect(
+    relevantViolations({ root: first.root, ...recorder }, [violation]),
+  ).toEqual([violationLabel(violation)])
+  const since = recorder.violations.length
+  const server = await first.restart()
+  expect(server.errors).toEqual([])
+  expect(Object.values(await server.outputs()).join('\n')).not.toContain(
+    'MARK_SECRET',
+  )
+  expect(
+    relevantViolations(
+      { root: server.root, violations: recorder.violations.slice(since) },
+      [violation],
+    ),
+  ).toEqual([violationLabel(violation)])
+})
 
 // An import whose survival SWC decides (a value import used only as a
 // type, kept by `verbatimModuleSyntax`) is witnessed by Rspack building its
@@ -704,85 +679,80 @@ export const typePosition = (value: typeof secret) => value
       }),
     ).toHaveLength(1)
   },
-  timeout,
 )
 
 // A dev server started on its persistent cache keeps what it restored
 // through later compilations: an exempt importer's denied file stays real,
 // edited or not, and a denied import stays the mock, across edits of the
 // denied file and of an unrelated file.
-test(
-  'Rsbuild dev restarted on its persistent cache, then edited: the exempt import stays real, the denied one the mock',
-  async () => {
-    const page = `import { secret } from './secret.server'
+test('Rsbuild dev restarted on its persistent cache, then edited: the exempt import stays real, the denied one the mock', async () => {
+  const page = `import { secret } from './secret.server'
 export const read = () => secret()
 `
-    const recorder = violationRecorder({ exclude: ['src/generated/**'] })
-    const first = await startRsbuildDevServer({
-      compileTimeout,
-      config: { performance: { buildCache: true } },
-      importProtection: recorder.importProtection,
-      files: {
-        'src/generated/registry.ts': `import { secret } from '../lib/db.server'\nexport const registry = () => secret()\n`,
-        'src/lib/db.server.ts': `export const secret = () => 'MARK_DB_1'\n`,
-        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
-        'src/page.ts': page,
-        'src/other.ts': `export const other = 'MARK_OTHER_1'\n`,
-        'src/entry.ts': `import { read } from './page'
+  const recorder = violationRecorder({ exclude: ['src/generated/**'] })
+  const first = await startRsbuildDevServer({
+    compileTimeout,
+    config: { performance: { buildCache: true } },
+    importProtection: recorder.importProtection,
+    files: {
+      'src/generated/registry.ts': `import { secret } from '../lib/db.server'\nexport const registry = () => secret()\n`,
+      'src/lib/db.server.ts': `export const secret = () => 'MARK_DB_1'\n`,
+      'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+      'src/page.ts': page,
+      'src/other.ts': `export const other = 'MARK_OTHER_1'\n`,
+      'src/entry.ts': `import { read } from './page'
 import { registry } from './generated/registry'
 import { other } from './other'
 console.log(read(), registry(), other)
 `,
-      },
-    })
-    const violation: ExpectedViolation = {
-      environment: 'client',
-      use: locationIn('src/page.ts', page, 2, 'secret()'),
-      also: ['src/page.ts:1'],
-    }
-    expect(first.errors).toEqual([])
-    const since = recorder.violations.length
-    const server = await first.restart()
-    const marks = async () => {
-      const code = Object.values(await server.outputs()).join('\n')
-      return [
-        'MARK_DB_1',
-        'MARK_DB_2',
-        'MARK_DB_3',
-        'MARK_SECRET',
-        'MARK_OTHER_1',
-        'MARK_OTHER_2',
-      ].filter((mark) => code.includes(mark))
-    }
-    expect(server.errors).toEqual([])
-    expect(await marks()).toEqual(['MARK_DB_1', 'MARK_OTHER_1'])
-    expect(
-      relevantViolations(
-        { root: server.root, violations: recorder.violations.slice(since) },
-        [violation],
-      ),
-    ).toEqual([violationLabel(violation)])
+    },
+  })
+  const violation: ExpectedViolation = {
+    environment: 'client',
+    use: locationIn('src/page.ts', page, 2, 'secret()'),
+    also: ['src/page.ts:1'],
+  }
+  expect(first.errors).toEqual([])
+  const since = recorder.violations.length
+  const server = await first.restart()
+  const marks = async () => {
+    const code = Object.values(await server.outputs()).join('\n')
+    return [
+      'MARK_DB_1',
+      'MARK_DB_2',
+      'MARK_DB_3',
+      'MARK_SECRET',
+      'MARK_OTHER_1',
+      'MARK_OTHER_2',
+    ].filter((mark) => code.includes(mark))
+  }
+  expect(server.errors).toEqual([])
+  expect(await marks()).toEqual(['MARK_DB_1', 'MARK_OTHER_1'])
+  expect(
+    relevantViolations(
+      { root: server.root, violations: recorder.violations.slice(since) },
+      [violation],
+    ),
+  ).toEqual([violationLabel(violation)])
 
-    await server.edit({
-      'src/lib/db.server.ts': `export const secret = () => 'MARK_DB_2'\n`,
-    })
-    expect(server.errors).toEqual([])
-    expect(await marks()).toEqual(['MARK_DB_2', 'MARK_OTHER_1'])
+  await server.edit({
+    'src/lib/db.server.ts': `export const secret = () => 'MARK_DB_2'\n`,
+  })
+  expect(server.errors).toEqual([])
+  expect(await marks()).toEqual(['MARK_DB_2', 'MARK_OTHER_1'])
 
-    await server.edit({
-      'src/other.ts': `export const other = 'MARK_OTHER_2'\n`,
-    })
-    expect(server.errors).toEqual([])
-    expect(await marks()).toEqual(['MARK_DB_2', 'MARK_OTHER_2'])
+  await server.edit({
+    'src/other.ts': `export const other = 'MARK_OTHER_2'\n`,
+  })
+  expect(server.errors).toEqual([])
+  expect(await marks()).toEqual(['MARK_DB_2', 'MARK_OTHER_2'])
 
-    await server.edit({
-      'src/lib/db.server.ts': `export const secret = () => 'MARK_DB_3'\n`,
-    })
-    expect(server.errors).toEqual([])
-    expect(await marks()).toEqual(['MARK_DB_3', 'MARK_OTHER_2'])
-  },
-  timeout,
-)
+  await server.edit({
+    'src/lib/db.server.ts': `export const secret = () => 'MARK_DB_3'\n`,
+  })
+  expect(server.errors).toEqual([])
+  expect(await marks()).toEqual(['MARK_DB_3', 'MARK_OTHER_2'])
+})
 
 // Dev edits reclassify (SPEC J6.13): an edit that makes a module the
 // client already bundles a violation is reported and mocked, without an
@@ -807,63 +777,53 @@ export const read = () => widget()
   const clientCode = async (server: RsbuildDevServer) =>
     Object.values(await server.outputs()).join('\n')
 
-  test(
-    'a new import of a .server file in a module the client bundles is reported and mocked',
-    async () => {
-      const recorder = violationRecorder()
-      const server = await startRsbuildDevServer({
-        compileTimeout,
-        importProtection: recorder.importProtection,
-        files: {
-          'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
-          'src/a.ts': `export const read = () => 'MARK_A'\n`,
-          'src/entry.ts': `import { read } from './a'\nconsole.log(read())\n`,
-        },
-      })
-      expect(server.errors).toEqual([])
-      expect(recorder.violations).toEqual([])
-      const a = `import { secret } from './secret.server'
+  test('a new import of a .server file in a module the client bundles is reported and mocked', async () => {
+    const recorder = violationRecorder()
+    const server = await startRsbuildDevServer({
+      compileTimeout,
+      importProtection: recorder.importProtection,
+      files: {
+        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+        'src/a.ts': `export const read = () => 'MARK_A'\n`,
+        'src/entry.ts': `import { read } from './a'\nconsole.log(read())\n`,
+      },
+    })
+    expect(server.errors).toEqual([])
+    expect(recorder.violations).toEqual([])
+    const a = `import { secret } from './secret.server'
 export const read = () => secret()
 `
-      await server.edit({ 'src/a.ts': a })
-      expect(server.errors).toEqual([])
-      expect(
-        relevantViolations({ root: server.root, ...recorder }, [
-          {
-            environment: 'client',
-            use: locationIn('src/a.ts', a, 2, 'secret()'),
-            also: ['src/a.ts:1'],
-          },
-        ]),
-      ).toEqual([`client ${locationIn('src/a.ts', a, 2, 'secret()')}`])
-      expect(await clientCode(server)).not.toContain('MARK_SECRET')
-    },
-    timeout,
-  )
+    await server.edit({ 'src/a.ts': a })
+    expect(server.errors).toEqual([])
+    expect(
+      relevantViolations({ root: server.root, ...recorder }, [
+        {
+          environment: 'client',
+          use: locationIn('src/a.ts', a, 2, 'secret()'),
+          also: ['src/a.ts:1'],
+        },
+      ]),
+    ).toEqual([`client ${locationIn('src/a.ts', a, 2, 'secret()')}`])
+    expect(await clientCode(server)).not.toContain('MARK_SECRET')
+  })
 
-  test(
-    'an edit that marks an imported module server-only, the importer unchanged, is reported and the importer gets the mock',
-    async () => {
-      const recorder = violationRecorder()
-      const server = await startRsbuildDevServer({
-        compileTimeout,
-        importProtection: recorder.importProtection,
-        files: markedApp(''),
-      })
-      expect(server.errors).toEqual([])
-      expect(recorder.violations).toEqual([])
-      expect(await clientCode(server)).toContain('MARK_B_CODE')
-      await server.edit({ 'src/b.ts': markedApp(marker)['src/b.ts'] })
-      expect(server.errors).toEqual([])
-      expect(
-        relevantViolations({ root: server.root, ...recorder }, [
-          markerViolation,
-        ]),
-      ).toEqual([violationLabel(markerViolation)])
-      expect(await clientCode(server)).not.toContain('MARK_B_CODE')
-    },
-    timeout,
-  )
+  test('an edit that marks an imported module server-only, the importer unchanged, is reported and the importer gets the mock', async () => {
+    const recorder = violationRecorder()
+    const server = await startRsbuildDevServer({
+      compileTimeout,
+      importProtection: recorder.importProtection,
+      files: markedApp(''),
+    })
+    expect(server.errors).toEqual([])
+    expect(recorder.violations).toEqual([])
+    expect(await clientCode(server)).toContain('MARK_B_CODE')
+    await server.edit({ 'src/b.ts': markedApp(marker)['src/b.ts'] })
+    expect(server.errors).toEqual([])
+    expect(
+      relevantViolations({ root: server.root, ...recorder }, [markerViolation]),
+    ).toEqual([violationLabel(markerViolation)])
+    expect(await clientCode(server)).not.toContain('MARK_B_CODE')
+  })
 
   // The same edit with `src/b.ts` also brought by a context module of the
   // entry (`import.meta.webpackContext`: no import the compiler reads). The
@@ -872,58 +832,48 @@ export const read = () => secret()
   // stale plan explained it only until that rebuild.
   // Source: design 3 step 2 (a stale importer explains a marked module's
   // presence; architect's ruling).
-  test(
-    'an edit that marks a module also brought by a context module reports the module once its importer is built again',
-    async () => {
-      const recorder = violationRecorder()
-      const app = markedApp('')
-      const server = await startRsbuildDevServer({
-        compileTimeout,
-        importProtection: recorder.importProtection,
-        files: {
-          ...app,
-          'src/entry.ts': `${app['src/entry.ts']}const ctx = import.meta.webpackContext('./', { recursive: false, regExp: /^\\.\\/b\\.ts$/ })
+  test('an edit that marks a module also brought by a context module reports the module once its importer is built again', async () => {
+    const recorder = violationRecorder()
+    const app = markedApp('')
+    const server = await startRsbuildDevServer({
+      compileTimeout,
+      importProtection: recorder.importProtection,
+      files: {
+        ...app,
+        'src/entry.ts': `${app['src/entry.ts']}const ctx = import.meta.webpackContext('./', { recursive: false, regExp: /^\\.\\/b\\.ts$/ })
 console.log(ctx.keys().map((key) => ctx(key)))
 `,
-        },
-      })
-      expect(server.errors).toEqual([])
-      expect(recorder.violations).toEqual([])
-      await server.edit({ 'src/b.ts': markedApp(marker)['src/b.ts'] })
-      expect(
-        relevantViolations({ root: server.root, ...recorder }, [
-          markerViolation,
-          { environment: 'client', use: 'src/b.ts' },
-        ]).sort(),
-      ).toEqual(['client src/a.ts:2:27', 'client src/b.ts'])
-      expect(await clientCode(server)).not.toContain('MARK_B_CODE')
-    },
-    timeout,
-  )
+      },
+    })
+    expect(server.errors).toEqual([])
+    expect(recorder.violations).toEqual([])
+    await server.edit({ 'src/b.ts': markedApp(marker)['src/b.ts'] })
+    expect(
+      relevantViolations({ root: server.root, ...recorder }, [
+        markerViolation,
+        { environment: 'client', use: 'src/b.ts' },
+      ]).sort(),
+    ).toEqual(['client src/a.ts:2:27', 'client src/b.ts'])
+    expect(await clientCode(server)).not.toContain('MARK_B_CODE')
+  })
 
-  test(
-    'an edit that removes the marker, the importer unchanged, gives the importer the module',
-    async () => {
-      const recorder = violationRecorder()
-      const server = await startRsbuildDevServer({
-        compileTimeout,
-        importProtection: recorder.importProtection,
-        files: markedApp(marker),
-      })
-      expect(
-        relevantViolations({ root: server.root, ...recorder }, [
-          markerViolation,
-        ]),
-      ).toEqual([violationLabel(markerViolation)])
-      expect(await clientCode(server)).not.toContain('MARK_B_CODE')
-      const since = recorder.violations.length
-      await server.edit({ 'src/b.ts': markedApp('')['src/b.ts'] })
-      expect(server.errors).toEqual([])
-      expect(recorder.violations.slice(since)).toEqual([])
-      expect(await clientCode(server)).toContain('MARK_B_CODE')
-    },
-    timeout,
-  )
+  test('an edit that removes the marker, the importer unchanged, gives the importer the module', async () => {
+    const recorder = violationRecorder()
+    const server = await startRsbuildDevServer({
+      compileTimeout,
+      importProtection: recorder.importProtection,
+      files: markedApp(marker),
+    })
+    expect(
+      relevantViolations({ root: server.root, ...recorder }, [markerViolation]),
+    ).toEqual([violationLabel(markerViolation)])
+    expect(await clientCode(server)).not.toContain('MARK_B_CODE')
+    const since = recorder.violations.length
+    await server.edit({ 'src/b.ts': markedApp('')['src/b.ts'] })
+    expect(server.errors).toEqual([])
+    expect(recorder.violations.slice(since)).toEqual([])
+    expect(await clientCode(server)).toContain('MARK_B_CODE')
+  })
 })
 
 // Rsbuild's `source.transformImport` rewrites a library's named imports
@@ -1010,7 +960,7 @@ export const read = () => button()
         importer: expect.stringMatching(/^src\/entry\.ts\b/),
       },
     ])
-  }, 60_000)
+  })
 
   // Source: rsbuild/import-protection.ts resolveImporterLocation
   // (transformedSources lookup); mutation testing.
@@ -1019,7 +969,7 @@ export const read = () => button()
     expect(reportedViolations(await fileRuleDenied())).toEqual([
       { environment: 'client', importer: atImportOrUse },
     ])
-  }, 60_000)
+  })
 
   test('the module it resolves to is marked server-only: the build fails, naming the module and the importer', async () => {
     const error = await rejection(
@@ -1039,7 +989,7 @@ export const read = () => button()
       use: 'src/entry.ts:2:27',
       imports: ['src/entry.ts:1'],
     })
-  }, 60_000)
+  })
 
   // Source: rsbuild/import-protection-loader.ts transformImportProtection
   // (`matchesAny(source, matchers.specifiers)` on the post-SWC imports).
@@ -1051,7 +1001,7 @@ export const read = () => button()
         await rejection(build({ client: { specifiers: ['ui-lib'] } })),
       ),
     ).toEqual([{ environment: 'client', importer: atImportOrUse }])
-  }, 60_000)
+  })
 })
 
 // A webpack request with inline loaders (`!!./x.server.js`, `-!`, `!`, or
@@ -1097,7 +1047,6 @@ export const read = () => secret()
         },
       ])
     },
-    60_000,
   )
 
   test('a denied specifier behind inline loaders: the build fails, naming the importer', async () => {
@@ -1115,7 +1064,7 @@ export const read = () => secret()
         importer: expect.stringMatching(/^src\/entry\.ts\b/),
       },
     ])
-  }, 60_000)
+  })
 })
 
 // `rsbuild build --watch`: each build reports the violations it bundles,
@@ -1147,7 +1096,7 @@ export const read = () => secret() + other
       also: ['src/entry.ts:1'],
     },
   ])
-}, 60_000)
+})
 
 // With `performance.buildCache`, a new `rsbuild build` restores the modules
 // it built before from Rspack's persistent cache without compiling them
@@ -1211,7 +1160,7 @@ export const query = () => 'MARK_DB'
     const error = await rejection(cached({}, 2))
     expect(unresolved(error.diagnostics)).toEqual([])
     expectViolationsAt(error, expected)
-  }, 120_000)
+  })
 
   test('mock behaviour: the build succeeds with the same warnings and mocks', async () => {
     const cold = await cached({ behavior: 'mock' })
@@ -1228,7 +1177,7 @@ export const query = () => 'MARK_DB'
     expect(tracesOf(warm.violations)).toEqual(coldTraces)
     expect(warm.client.warnings.map((w) => w.text).sort()).toEqual(coldWarnings)
     expect(warm.client.where(/MARK_SECRET|MARK_DB|MARK_EFFECT/)).toBe('nowhere')
-  }, 120_000)
+  })
 
   // The exempt importer is restored, the edited denied file built again
   // before the cache's records of its importers are read. Source: review
@@ -1254,7 +1203,7 @@ export const registry = () => secret()
     })
     expect(warm.violations).toEqual([])
     expect(warm.client.where('MARK_SECRET_2')).not.toBe('nowhere')
-  }, 120_000)
+  })
 
   test('allowImport -> true: the warm build asks again and bundles the real modules', async () => {
     let asked: Array<string> = []
@@ -1276,7 +1225,7 @@ export const registry = () => secret()
     for (const mark of ['MARK_SECRET', 'MARK_DB', 'MARK_EFFECT']) {
       expect(warm.client.where(new RegExp(mark))).not.toBe('nowhere')
     }
-  }, 120_000)
+  })
 
   test('an edit adding a second import of an allowed module: the warm build keeps the first one allowed', async () => {
     const cold = await cached({ allowImport: () => true })
@@ -1285,7 +1234,7 @@ export const registry = () => secret()
     })
     expect(warm.violations).toEqual([])
     expect(warm.client.where(/MARK_SECRET/)).not.toBe('nowhere')
-  }, 120_000)
+  })
 
   test('allowImport changing its answer: the warm build follows it, both ways', async () => {
     let answer = true
@@ -1319,49 +1268,45 @@ export const registry = () => secret()
       expect(allowed.client.where(new RegExp(mark))).not.toBe('nowhere')
     }
     expect(told).toEqual([])
-  }, 120_000)
+  })
 })
 
 // Source: mutation testing.
-test(
-  'Rsbuild dev: the client mock of each denied import reports its own use in the browser console',
-  async () => {
-    const server = await startRsbuildDevServer({
-      compileTimeout,
-      importProtection: { client: { specifiers: ['db-lib'] } },
-      files: {
-        'node_modules/db-lib/package.json': JSON.stringify({
-          name: 'db-lib',
-          type: 'module',
-          exports: { '.': './index.js' },
-        }),
-        'node_modules/db-lib/index.js': `export const query = () => 'MARK_LIB'\n`,
-        'src/a.server.ts': `export const a = () => 'MARK_A'\n`,
-        'src/b.server.ts': `export const b = () => 'MARK_B'\n`,
-        'src/entry.ts': `import { a } from './a.server'
+test('Rsbuild dev: the client mock of each denied import reports its own use in the browser console', async () => {
+  const server = await startRsbuildDevServer({
+    compileTimeout,
+    importProtection: { client: { specifiers: ['db-lib'] } },
+    files: {
+      'node_modules/db-lib/package.json': JSON.stringify({
+        name: 'db-lib',
+        type: 'module',
+        exports: { '.': './index.js' },
+      }),
+      'node_modules/db-lib/index.js': `export const query = () => 'MARK_LIB'\n`,
+      'src/a.server.ts': `export const a = () => 'MARK_A'\n`,
+      'src/b.server.ts': `export const b = () => 'MARK_B'\n`,
+      'src/entry.ts': `import { a } from './a.server'
 import { b } from './b.server'
 import { query } from 'db-lib'
 console.log(a(), b(), query())
 `,
-      },
+    },
+  })
+  expect(server.errors).toEqual([])
+  const messages = await runRsbuildClient(server, { levels: true })
+  expect(messages.filter((message) => message.includes('MARK_'))).toEqual([])
+  const logged = consoleDiagnostics(messages)
+  for (const denied of [
+    { specifier: './a.server', file: 'src/a.server.ts' },
+    { specifier: './b.server', file: 'src/b.server.ts' },
+    { specifier: 'db-lib' },
+  ]) {
+    expectMockAccess(logged, {
+      severity: 'error',
+      ...denied,
     })
-    expect(server.errors).toEqual([])
-    const messages = await runRsbuildClient(server, { levels: true })
-    expect(messages.filter((message) => message.includes('MARK_'))).toEqual([])
-    const logged = consoleDiagnostics(messages)
-    for (const denied of [
-      { specifier: './a.server', file: 'src/a.server.ts' },
-      { specifier: './b.server', file: 'src/b.server.ts' },
-      { specifier: 'db-lib' },
-    ]) {
-      expectMockAccess(logged, {
-        severity: 'error',
-        ...denied,
-      })
-    }
-  },
-  timeout,
-)
+  }
+})
 
 /**
  * What a client run logged (`runRsbuildClient` with `levels`), as
@@ -1436,6 +1381,5 @@ console.log(a(), query())
         }
       }
     },
-    timeout,
   )
 })

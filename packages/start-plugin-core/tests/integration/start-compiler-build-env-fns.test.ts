@@ -104,4 +104,4 @@ export { serverValue as exposed }`,
     throwsError,
     'MARK_QUERY:1',
   ])
-}, 60_000)
+})

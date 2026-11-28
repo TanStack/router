@@ -82,7 +82,7 @@ describe('Vite dev, behavior "error"', () => {
     expect(await loadOutcome(topLevelCallApp('src/other.ts'))).toEqual([
       'client src/other.ts',
     ])
-  }, 30_000)
+  })
 
   // On main, in dev with behavior "error", the client of a server fn factory
   // module that calls a denied import (here `getRequest()` of
@@ -95,7 +95,7 @@ describe('Vite dev, behavior "error"', () => {
     expect(await loadOutcome(topLevelCallApp('src/factory.ts'))).toEqual([
       'client src/factory.ts',
     ])
-  }, 30_000)
+  })
 
   // On main, in dev with behavior "error", any module a server fn factory
   // module imports gets the real denied module when it calls it at the top
@@ -106,7 +106,7 @@ describe('Vite dev, behavior "error"', () => {
     app['src/factory.ts'] += `export { request } from './other'\n`
     app['src/entry.ts'] = `export { fn } from './usage'\n`
     expect(await loadOutcome(app)).toEqual(['client src/other.ts'])
-  }, 30_000)
+  })
 })
 
 describe('Rsbuild dev', () => {
@@ -114,8 +114,7 @@ describe('Rsbuild dev', () => {
    * Only a guard against a compile that never comes, never shorter than the
    * test's timeout (rsbuild/import-protection.test.ts).
    */
-  const timeout = 60_000
-  const compileTimeout = timeout
+  const compileTimeout = 60_000
 
   /**
    * A custom module type of the app: an Rspack rule takes `.page` files as
@@ -131,31 +130,25 @@ describe('Rsbuild dev', () => {
 
   // Control for the pins below (same config and import protection): a
   // module of that type is compiled, and its code runs in the client.
-  test(
-    'a module of a custom type without a denied import runs in the client',
-    async () => {
-      const server = await startBrowserRsbuildDevServer({
-        compileTimeout,
-        importProtection: {
-          behavior: 'error',
-          client: { specifiers: ['db-lib'] },
-        },
-        config: pageModules,
-        files: {
-          'src/home.page': `export const page = () => 'MARK_PAGE'\n`,
-          'src/entry.ts': `import { page } from './home.page'\nconsole.log(page())\n`,
-        },
-      })
-      // Nothing fails, on any channel
-      expectNoDiagnostic(server.diagnostics, { severity: 'error' })
-      expect(
-        (await runRsbuildClient(server)).filter((text) =>
-          text.includes('MARK_'),
-        ),
-      ).toEqual(['MARK_PAGE'])
-    },
-    timeout,
-  )
+  test('a module of a custom type without a denied import runs in the client', async () => {
+    const server = await startBrowserRsbuildDevServer({
+      compileTimeout,
+      importProtection: {
+        behavior: 'error',
+        client: { specifiers: ['db-lib'] },
+      },
+      config: pageModules,
+      files: {
+        'src/home.page': `export const page = () => 'MARK_PAGE'\n`,
+        'src/entry.ts': `import { page } from './home.page'\nconsole.log(page())\n`,
+      },
+    })
+    // Nothing fails, on any channel
+    expectNoDiagnostic(server.diagnostics, { severity: 'error' })
+    expect(
+      (await runRsbuildClient(server)).filter((text) => text.includes('MARK_')),
+    ).toEqual(['MARK_PAGE'])
+  })
 
   /**
    * What a module of the custom type importing `files`' denied module
@@ -193,21 +186,17 @@ describe('Rsbuild dev', () => {
   // The importer is not compiled (below), but the denied file is, in the
   // client: it is its own violation, mocked and reported, named itself (a
   // dev server knows no importer of it when it compiles it).
-  test(
-    'a module of a custom type importing a denied file is reported, and its real code does not run',
-    async () => {
-      expect(
-        await customTypeOutcome({
-          'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
-          'src/home.page': `import { secret } from './secret.server'\nexport const page = () => secret()\n`,
-        }),
-      ).toEqual({
-        reported: ['client src/secret.server.ts'],
-        ranRealCode: false,
-      })
-    },
-    timeout,
-  )
+  test('a module of a custom type importing a denied file is reported, and its real code does not run', async () => {
+    expect(
+      await customTypeOutcome({
+        'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+        'src/home.page': `import { secret } from './secret.server'\nexport const page = () => secret()\n`,
+      }),
+    ).toEqual({
+      reported: ['client src/secret.server.ts'],
+      ranRealCode: false,
+    })
+  })
 
   // Bug: Rsbuild import protection checks importers by file extension (the
   // Start loader rule's `JS_FILE_RE`, src/rsbuild/start-compiler.ts: only
@@ -236,7 +225,6 @@ describe('Rsbuild dev', () => {
         }),
       ).toEqual({ reported: ['client src/home.page'], ranRealCode: false })
     },
-    timeout,
   )
 
   /** MDX pages through the real MDX loader, as an Rsbuild app adds it. */
@@ -322,7 +310,6 @@ export const page = () => secret()
         ranRealCode: false,
       })
     },
-    timeout,
   )
 
   // In Rsbuild dev, an error thrown by `onViolation` (awaited in the
@@ -332,32 +319,28 @@ export const page = () => secret()
   // Source: mutation testing. This was a pin ("never reported") while the
   // dev harness only waited for `done`; the harness now fails the compile
   // wait with the error Rspack reports.
-  test(
-    'an onViolation that throws ends the compile with its error',
-    async () => {
-      const outcome = await startBrowserRsbuildDevServer({
-        importProtection: {
-          onViolation: () => {
-            throw new Error('MARK_THROWN')
-          },
+  test('an onViolation that throws ends the compile with its error', async () => {
+    const outcome = await startBrowserRsbuildDevServer({
+      importProtection: {
+        onViolation: () => {
+          throw new Error('MARK_THROWN')
         },
-        // Only a guard: the failed compile ends the wait.
-        compileTimeout,
-        files: {
-          'src/secret.server.ts': `export const secret = () => 'secret'\n`,
-          'src/entry.ts': `import { secret } from './secret.server'\nconsole.log(secret())\n`,
-        },
-      }).then(
-        (server) =>
-          findDiagnostics(server.diagnostics, { severity: 'error' })
-            .map(({ text }) => text)
-            .join('\n'),
-        (error: Error) => error.message,
-      )
-      expect(outcome).toContain('MARK_THROWN')
-    },
-    timeout,
-  )
+      },
+      // Only a guard: the failed compile ends the wait.
+      compileTimeout,
+      files: {
+        'src/secret.server.ts': `export const secret = () => 'secret'\n`,
+        'src/entry.ts': `import { secret } from './secret.server'\nconsole.log(secret())\n`,
+      },
+    }).then(
+      (server) =>
+        findDiagnostics(server.diagnostics, { severity: 'error' })
+          .map(({ text }) => text)
+          .join('\n'),
+      (error: Error) => error.message,
+    )
+    expect(outcome).toContain('MARK_THROWN')
+  })
 })
 
 /**
@@ -740,7 +723,7 @@ try {
     if (!buildsOnly) {
       test(`vite dev: ${name}`, async () => {
         expect(await (await hostOf('vite dev')).run(name)).toEqual(expected)
-      }, 30_000)
+      })
     }
     for (const bundler of startBundlers) {
       test(`${bundler} build, mock mode: ${name}`, async () => {
@@ -749,7 +732,7 @@ try {
           read: expected,
           hasRealCode: false,
         })
-      }, 60_000)
+      })
     }
   }
 })

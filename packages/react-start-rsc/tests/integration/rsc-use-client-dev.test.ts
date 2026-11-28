@@ -12,8 +12,6 @@ import { rscStreams } from './rsc-app'
 import { startRscDevServer, startRscRsbuildDevServer } from './rsc-serial'
 import { clientHelperApp, recorder, summary } from './rsc-use-client-app'
 
-const timeout = 60_000
-
 /** The page `/c` of a dev server of `clientHelperApp`, per host. */
 const devHosts = {
   'Vite dev': async (start: Record<string, unknown>) => {
@@ -40,7 +38,6 @@ describe.each(Object.keys(devHosts) as Array<keyof typeof devHosts>)(
   (host) => {
     test.for(['mock', 'error'] as const)(
       "a 'use client' component's .client helper is judged in SSR only (%s)",
-      { timeout },
       async (behavior) => {
         const { violations, start } = recorder(behavior)
         const page = await devHosts[host](start)

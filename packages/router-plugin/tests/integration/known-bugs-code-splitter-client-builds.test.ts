@@ -55,7 +55,6 @@ export const Route = ${route}
         html: '<div id="root"><p>page</p></div>',
       })
     },
-    60_000,
   )
 })
 
@@ -99,6 +98,5 @@ export const Route = createFileRoute('/')({ component: Page })
     async (bundler) => {
       expect(await mountUnusedReader(bundler)).toContain('<p>MARK_PAGE</p>')
     },
-    60_000,
   )
 })

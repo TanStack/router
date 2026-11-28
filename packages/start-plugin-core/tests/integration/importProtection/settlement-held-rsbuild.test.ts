@@ -36,8 +36,6 @@ import {
 import type { Recorded } from '../../importProtection/start-apps'
 import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
 
-const timeout = 120_000
-
 const files = {
   'src/router.ts': `import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
@@ -190,7 +188,6 @@ describe('Rsbuild build, a module the server compiler holds by itself, imported 
       })
       expect(await outcome(built)).toEqual(expected)
     },
-    timeout,
   )
 })
 
@@ -210,51 +207,46 @@ describe('rsbuild build --watch, the same source after an edit of the exempt imp
       })
       expect(await outcome(built)).toEqual(expected)
     },
-    timeout,
   )
 })
 
 describe('Rsbuild dev, a module the server compiler holds by itself', () => {
-  test(
-    'the first compile and the one after an edit report the context, no error',
-    async () => {
-      const recorder = violationRecorder(importProtection)
-      const server = await startRsbuildStartDevServer({
-        browser: true,
-        config: {
-          tools: { htmlPlugin: false },
-          environments: environments('global include'),
-        } as never,
-        start: { importProtection: recorder.importProtection },
-        files,
-      })
-      const state = async (since: number) => {
-        await fetch(new URL('/', server.url))
-        return {
-          errors: [
-            ...reportedErrors(server, since),
-            ...settlementErrors(server.diagnostics.slice(since)),
-          ],
-          reported: [
-            ...new Set(
-              violationsOf({ root: server.root, ...recorder }).map(
-                ({ specifier }) => specifier,
-              ),
+  test('the first compile and the one after an edit report the context, no error', async () => {
+    const recorder = violationRecorder(importProtection)
+    const server = await startRsbuildStartDevServer({
+      browser: true,
+      config: {
+        tools: { htmlPlugin: false },
+        environments: environments('global include'),
+      } as never,
+      start: { importProtection: recorder.importProtection },
+      files,
+    })
+    const state = async (since: number) => {
+      await fetch(new URL('/', server.url))
+      return {
+        errors: [
+          ...reportedErrors(server, since),
+          ...settlementErrors(server.diagnostics.slice(since)),
+        ],
+        reported: [
+          ...new Set(
+            violationsOf({ root: server.root, ...recorder }).map(
+              ({ specifier }) => specifier,
             ),
-          ].sort(),
-        }
+          ),
+        ].sort(),
       }
-      expect(await state(0)).toEqual({
-        errors: [],
-        reported: ['src/w.client.ts'],
-      })
-      const since = server.diagnostics.length
-      await server.edit(touched)
-      expect(await state(since)).toEqual({
-        errors: [],
-        reported: ['src/w.client.ts'],
-      })
-    },
-    timeout,
-  )
+    }
+    expect(await state(0)).toEqual({
+      errors: [],
+      reported: ['src/w.client.ts'],
+    })
+    const since = server.diagnostics.length
+    await server.edit(touched)
+    expect(await state(since)).toEqual({
+      errors: [],
+      reported: ['src/w.client.ts'],
+    })
+  })
 })

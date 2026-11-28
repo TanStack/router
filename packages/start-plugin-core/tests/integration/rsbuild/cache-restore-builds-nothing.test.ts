@@ -17,8 +17,6 @@ import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 import { rsbuildEntries } from '../route-css-cases'
 import type { RsbuildPlugin } from '@rsbuild/core'
 
-const timeout = 120_000
-
 /**
  * The modules each compilation builds once its `finishMake` began (what a
  * plugin builds again in place: Rspack's own builds are done by then), by
@@ -91,51 +89,41 @@ export const Route = createFileRoute('/')({
 describe('rsbuild on the persistent cache, unchanged sources', () => {
   // G1. On head: the client builds its route tree module again and the
   // server its server-function resolver, in every process.
-  test(
-    'a build on the cache builds no module again',
-    async () => {
-      const late = lateBuilds()
-      const cold = await buildStart({
-        bundler: 'rsbuild',
-        rsbuildConfig: {
-          plugins: [late.plugin],
-          performance: { buildCache: true },
-        },
-        files: routes,
-      })
-      late.take()
-      await cold.rebuild({})
-      expect(late.take()).toEqual([])
-    },
-    timeout,
-  )
+  test('a build on the cache builds no module again', async () => {
+    const late = lateBuilds()
+    const cold = await buildStart({
+      bundler: 'rsbuild',
+      rsbuildConfig: {
+        plugins: [late.plugin],
+        performance: { buildCache: true },
+      },
+      files: routes,
+    })
+    late.take()
+    await cold.rebuild({})
+    expect(late.take()).toEqual([])
+  })
 
   // G1 (dev). On head: the route tree, the resolver and the manifest.
-  test(
-    'a dev server restarted on the cache builds no module again',
-    async () => {
-      const late = lateBuilds()
-      const first = await startRsbuildStartDevServer({
-        config: { plugins: [late.plugin], performance: { buildCache: true } },
-        files: routes,
-      })
-      await first.settle()
-      await first.stop()
-      late.take()
-      const server = await first.restart()
-      await server.settle()
-      expect(late.take()).toEqual([])
-    },
-    timeout,
-  )
+  test('a dev server restarted on the cache builds no module again', async () => {
+    const late = lateBuilds()
+    const first = await startRsbuildStartDevServer({
+      config: { plugins: [late.plugin], performance: { buildCache: true } },
+      files: routes,
+    })
+    await first.settle()
+    await first.stop()
+    late.take()
+    const server = await first.restart()
+    await server.settle()
+    expect(late.take()).toEqual([])
+  })
 })
 
 describe('rsbuild dev on a cache a dev session wrote', () => {
   // G2 (dev): the same edits in a dev server, stopped and started again.
-  test(
-    'a dev server removes an import, then edits a route: a dev server restarted on the cache compiles',
-    async () => {
-      const index = `import { createFileRoute } from '@tanstack/react-router'
+  test('a dev server removes an import, then edits a route: a dev server restarted on the cache compiles', async () => {
+    const index = `import { createFileRoute } from '@tanstack/react-router'
 import { greet } from '../fns'
 import { dep } from '../dep'
 export const Route = createFileRoute('/')({
@@ -143,23 +131,21 @@ export const Route = createFileRoute('/')({
   component: () => <p>MARK_INDEX{String(dep)}</p>,
 })
 `
-      const first = await startRsbuildStartDevServer({
-        config: { performance: { buildCache: true } },
-        files: {
-          ...routes,
-          'src/dep.ts': `import { z } from 'zod'\nexport const dep = z.string().describe('MARK_ZOD')\n`,
-          'src/routes/index.tsx': index,
-        },
-      })
-      await first.settle()
-      await first.edit({ 'src/dep.ts': `export const dep = 'MARK_PLAIN'\n` })
-      await first.edit({ 'src/routes/index.tsx': `${index}// edited\n` })
-      expect(first.errors).toEqual([])
-      await first.stop()
-      const server = await first.restart()
-      await server.settle()
-      expect(server.errors).toEqual([])
-    },
-    timeout,
-  )
+    const first = await startRsbuildStartDevServer({
+      config: { performance: { buildCache: true } },
+      files: {
+        ...routes,
+        'src/dep.ts': `import { z } from 'zod'\nexport const dep = z.string().describe('MARK_ZOD')\n`,
+        'src/routes/index.tsx': index,
+      },
+    })
+    await first.settle()
+    await first.edit({ 'src/dep.ts': `export const dep = 'MARK_PLAIN'\n` })
+    await first.edit({ 'src/routes/index.tsx': `${index}// edited\n` })
+    expect(first.errors).toEqual([])
+    await first.stop()
+    const server = await first.restart()
+    await server.settle()
+    expect(server.errors).toEqual([])
+  })
 })

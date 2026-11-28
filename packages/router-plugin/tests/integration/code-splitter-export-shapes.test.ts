@@ -9,8 +9,6 @@ import { batchCases } from '../batch-build'
 import { clientMountEntry, head } from '../build-harness'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
 
-const timeout = 60_000
-
 /** One production client build per bundler of every route of this file (`batchCases`). */
 const groups = {
   vite: batchCases({ bundler: 'vite', env: 'client' }),
@@ -50,20 +48,15 @@ export const Route = createFileRoute('/')({ component: Page })
 `,
     `${clientMountEntry}export { 'page-view' as PageView } from './routes/index'\n`,
   )
-  it(
-    'builds, renders, and gives importers the export',
-    async () => {
-      const app = await case1()
-      const run =
-        await app.run(`await entry.mount(entry.Route.options.component)
+  it('builds, renders, and gives importers the export', async () => {
+    const app = await case1()
+    const run = await app.run(`await entry.mount(entry.Route.options.component)
 return typeof entry.PageView`)
-      expect({ html: run.html, imported: run.result }).toEqual({
-        html: '<div id="root"><p>MARK_PAGE</p></div>',
-        imported: 'function',
-      })
-    },
-    timeout,
-  )
+    expect({ html: run.html, imported: run.result }).toEqual({
+      html: '<div id="root"><p>MARK_PAGE</p></div>',
+      imported: 'function',
+    })
+  })
 })
 
 describe('a destructuring declaration of components from a pure object', () => {
@@ -84,20 +77,15 @@ export const Route = createFileRoute('/')({
 `,
     clientMountEntry,
   )
-  it(
-    'builds and renders both components',
-    async () => {
-      const app = await case2()
-      const run =
-        await app.run(`await entry.mount(entry.Route.options.component)
+  it('builds and renders both components', async () => {
+    const app = await case2()
+    const run = await app.run(`await entry.mount(entry.Route.options.component)
 return entry.Route.options.pendingComponent().props.children`)
-      expect({ html: run.html, pending: run.result }).toEqual({
-        html: '<div id="root"><p>MARK_HOME</p></div>',
-        pending: 'MARK_SKELETON',
-      })
-    },
-    timeout,
-  )
+    expect({ html: run.html, pending: run.result }).toEqual({
+      html: '<div id="root"><p>MARK_HOME</p></div>',
+      pending: 'MARK_SKELETON',
+    })
+  })
 
   // The route module keeps exporting `Home`: the chunk and importers read it.
   const case3 = routeCase(
@@ -114,20 +102,15 @@ export const Route = createFileRoute('/')({
 `,
     `${clientMountEntry}export { Home, HomeSkeleton } from './routes/index'\n`,
   )
-  it(
-    'builds and renders, also when the declaration is exported',
-    async () => {
-      const app = await case3()
-      const run =
-        await app.run(`await entry.mount(entry.Route.options.component)
+  it('builds and renders, also when the declaration is exported', async () => {
+    const app = await case3()
+    const run = await app.run(`await entry.mount(entry.Route.options.component)
 return [typeof entry.Home, typeof entry.HomeSkeleton]`)
-      expect({ html: run.html, imported: run.result }).toEqual({
-        html: '<div id="root"><p>MARK_HOME</p></div>',
-        imported: ['function', 'function'],
-      })
-    },
-    timeout,
-  )
+    expect({ html: run.html, imported: run.result }).toEqual({
+      html: '<div id="root"><p>MARK_HOME</p></div>',
+      imported: ['function', 'function'],
+    })
+  })
 })
 
 describe('a default export that wraps an exported component the split component renders', () => {
@@ -143,19 +126,15 @@ export const Route = createFileRoute('/')({ component: Page })
 `,
     `${clientMountEntry}export { default as Wrapped } from './routes/index'\n`,
   )
-  it(
-    'builds, renders, and gives importers the default export',
-    async () => {
-      const app = await case4()
-      const run = await app.run(`await entry.mount(entry.Wrapped)
+  it('builds, renders, and gives importers the default export', async () => {
+    const app = await case4()
+    const run = await app.run(`await entry.mount(entry.Wrapped)
 return typeof entry.Route.options.component`)
-      expect({ html: run.html, component: run.result }).toEqual({
-        html: '<div id="root"><p>MARK_PAGE</p></div>',
-        component: 'function',
-      })
-    },
-    timeout,
-  )
+    expect({ html: run.html, component: run.result }).toEqual({
+      html: '<div id="root"><p>MARK_PAGE</p></div>',
+      component: 'function',
+    })
+  })
 })
 
 describe('a default export of a component the split component renders', () => {
@@ -169,19 +148,15 @@ export const Route = createFileRoute('/')({ component: Page })
 `,
     `${clientMountEntry}export { default as Page } from './routes/index'\n`,
   )
-  it(
-    'builds, renders, and gives importers the default export',
-    async () => {
-      const app = await case5()
-      const run = await app.run(`await entry.mount(entry.Page)
+  it('builds, renders, and gives importers the default export', async () => {
+    const app = await case5()
+    const run = await app.run(`await entry.mount(entry.Page)
 return typeof entry.Route.options.component`)
-      expect({ html: run.html, component: run.result }).toEqual({
-        html: '<div id="root"><p>MARK_PAGE</p></div>',
-        component: 'function',
-      })
-    },
-    timeout,
-  )
+    expect({ html: run.html, component: run.result }).toEqual({
+      html: '<div id="root"><p>MARK_PAGE</p></div>',
+      component: 'function',
+    })
+  })
 })
 
 describe('a binding exported by name and by default, read by the split component and an option that stays', () => {
@@ -256,7 +231,6 @@ return [entry.Route.options.beforeLoad(), entry.Default === entry.Named]`)
         result: ['MARK_VALUE', true],
       })
     },
-    timeout,
   )
 })
 
@@ -279,21 +253,16 @@ export const Route = createFileRoute('/')({ component: Page })
 `,
     `${clientMountEntry}export { Page } from './routes/index'\n`,
   )
-  it(
-    'runs the augmentation once, in source order',
-    async () => {
-      const app = await case6()
-      const run =
-        await app.run(`await entry.mount(entry.Route.options.component)
+  it('runs the augmentation once, in source order', async () => {
+    const app = await case6()
+    const run = await app.run(`await entry.mount(entry.Route.options.component)
 return { log: globalThis.log, x: entry.Page.x }`)
-      expect({ html: run.html, ...(run.result as object) }).toEqual({
-        html: '<div id="root"><p>MARK_PAGE</p></div>',
-        log: ['page', 'after'],
-        x: 'page',
-      })
-    },
-    timeout,
-  )
+    expect({ html: run.html, ...(run.result as object) }).toEqual({
+      html: '<div id="root"><p>MARK_PAGE</p></div>',
+      log: ['page', 'after'],
+      x: 'page',
+    })
+  })
 
   const case7 = routeCase(
     'runs the augmentation once, in source order, when no other module imports the component',
@@ -311,21 +280,17 @@ export const Route = createFileRoute('/')({ component: Page })
 `,
     clientMountEntry,
   )
-  it(
-    'runs the augmentation once, in source order, when no other module imports the component',
-    async () => {
-      const app = await case7()
-      const run = await app.run(`const before = [...globalThis.log]
+  it('runs the augmentation once, in source order, when no other module imports the component', async () => {
+    const app = await case7()
+    const run = await app.run(`const before = [...globalThis.log]
 await entry.mount(entry.Route.options.component)
 return { before, log: globalThis.log }`)
-      expect({ html: run.html, ...(run.result as object) }).toEqual({
-        html: '<div id="root"><p>MARK_PAGE</p></div>',
-        before: ['page', 'after'],
-        log: ['page', 'after'],
-      })
-    },
-    timeout,
-  )
+    expect({ html: run.html, ...(run.result as object) }).toEqual({
+      html: '<div id="root"><p>MARK_PAGE</p></div>',
+      before: ['page', 'after'],
+      log: ['page', 'after'],
+    })
+  })
 })
 
 describe('exports of one declaration next to a split component, in an export list or by default', () => {
@@ -375,7 +340,6 @@ return [typeof entry.Home, entry.Other().props.children]`)
         imported: ['function', 'MARK_OTHER'],
       })
     },
-    timeout,
   )
 })
 
@@ -416,6 +380,5 @@ return entry.config.title`)
         imported: 'MARK_SHARED',
       })
     },
-    timeout,
   )
 })

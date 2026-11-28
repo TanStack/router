@@ -19,8 +19,6 @@
 import { describe, expect, it } from 'vitest'
 import { build, routeApp } from '../build-harness'
 
-const timeout = 60_000
-
 const posts = `function PostsComponent() {
   return <div>posts data</div>
 }`
@@ -132,6 +130,5 @@ describe.each(routes)('$name', ({ files, html }) => {
         await app.dispose()
       }
     },
-    timeout,
   )
 })

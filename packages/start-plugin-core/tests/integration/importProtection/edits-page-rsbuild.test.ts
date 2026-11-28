@@ -26,8 +26,7 @@ import {
   settledAcrossTurn,
 } from './hosts'
 
-const timeout = 60_000
-const compileTimeout = timeout
+const compileTimeout = 60_000
 
 interface StepOutcome {
   /** The widget's text. */
@@ -108,42 +107,26 @@ return describeValue(window.liveSecret(), 'MARK_SECRET')
 describe.each(pageSteps)('step $step (live use: $live)', ({ step, live }) => {
   const outcome = async () => (await run())[step - 1]!
 
-  test(
-    'the page shows the edit without a page load, and never the secret',
-    async () => {
-      const { text, loads } = await outcome()
-      expect({
-        clientBranch: text.includes('MARK_CLIENT_BRANCH'),
-        secret: text.includes('MARK_SECRET'),
-        loads,
-      }).toEqual({ clientBranch: true, secret: false, loads: 1 })
-    },
-    timeout,
-  )
+  test('the page shows the edit without a page load, and never the secret', async () => {
+    const { text, loads } = await outcome()
+    expect({
+      clientBranch: text.includes('MARK_CLIENT_BRANCH'),
+      secret: text.includes('MARK_SECRET'),
+      loads,
+    }).toEqual({ clientBranch: true, secret: false, loads: 1 })
+  })
 
-  test(
-    'no code the client gets contains the secret',
-    async () => {
-      expect((await outcome()).servedSecret).toBe(false)
-    },
-    timeout,
-  )
+  test('no code the client gets contains the secret', async () => {
+    expect((await outcome()).servedSecret).toBe(false)
+  })
 
   if (live) {
-    test(
-      'the live use reads a safe mock',
-      async () => {
-        expect((await outcome()).live).toBe('a safe mock')
-      },
-      timeout,
-    )
+    test('the live use reads a safe mock', async () => {
+      expect((await outcome()).live).toBe('a safe mock')
+    })
   }
 
-  test(
-    'the step reports its violations, and only those',
-    async () => {
-      expect((await outcome()).reported).toEqual(live ? ['src/widget.tsx'] : [])
-    },
-    timeout,
-  )
+  test('the step reports its violations, and only those', async () => {
+    expect((await outcome()).reported).toEqual(live ? ['src/widget.tsx'] : [])
+  })
 })

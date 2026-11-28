@@ -33,8 +33,6 @@ import { recorder, summary } from './rsc-environments-app'
 import { startRscRsbuildDevServer } from './rsc-serial'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
-const timeout = 90_000
-
 const mock = '[import-protection mock]'
 
 /** The route: renders on the server what `from` reads (and `low` of `lowPattern.ts`: `mixed`), with a caption (`tag`). */
@@ -154,7 +152,6 @@ describe('Rsbuild dev with RSC, a denied file whose exempt importer only a real 
     },
   ])(
     '$layout: served as a fresh server serves it after the route leaves the importer and comes back',
-    { timeout },
     async ({ rules, mixed }) => {
       const { server, violations } = await start(
         { ...nested, 'src/routes/index.tsx': route('feature', 'LIVE', mixed) },
@@ -237,7 +234,6 @@ describe('Rsbuild dev with RSC, one edit that flips two denied files', () => {
     { layout: 'no layer', rules: [] },
   ])(
     '$layout: both are served as their mock, no conflict, no internal error',
-    { timeout },
     async ({ rules }) => {
       const { server, violations } = await start(
         {
@@ -309,7 +305,6 @@ describe('Rsbuild dev with RSC, a denied file in a cycle with its barrel', () =>
     },
   ])(
     '$grant: once only a pattern import reaches it, it is served as its mock and reported once, no conflict',
-    { timeout },
     async ({ exclude, allow }) => {
       const { server, violations } = await start(
         {
@@ -353,44 +348,40 @@ export const read = () => value()
 })
 
 describe('Rsbuild dev with RSC, a denied file a round of the settlement brings, which only a pattern import reaches', () => {
-  test(
-    'it is served as its mock, no internal error, no conflict',
-    async () => {
-      const { server, violations } = await start(
-        {
-          'src/feature.ts': nested['src/feature.ts'],
-          'src/upper.client.ts': `import { read } from './ghost'
+  test('it is served as its mock, no internal error, no conflict', async () => {
+    const { server, violations } = await start(
+      {
+        'src/feature.ts': nested['src/feature.ts'],
+        'src/upper.client.ts': `import { read } from './ghost'
 export const value = () => 'UP(' + String(read()) + ')'
 `,
-          'src/ghost.ts': `import { read as viaPattern } from './lowPattern'
+        'src/ghost.ts': `import { read as viaPattern } from './lowPattern'
 if (false) import('./lower.client')
 export const read = () => String(viaPattern())
 `,
-          'src/lowPattern.ts': pattern('lower'),
-          'src/lower.client.ts': nested['src/lower.client.ts'],
-          'src/routes/index.tsx': route('feature', 'INITIAL'),
-        },
-        ['**/feature.ts', '**/ghost.ts'],
-        [layers[0]!],
-      )
-      for (const tag of ['INITIAL', 'TOUCH']) {
-        const since = server.diagnostics.length
-        if (tag !== 'INITIAL') {
-          await server.edit({ 'src/routes/index.tsx': route('feature', tag) })
-        }
-        expect({
-          page: await page(server, tag),
-          conflict: conflict(server, tag === 'INITIAL' ? 0 : since),
-          unsettled: unsettled(server, 0),
-          reported: summary(violations),
-        }).toEqual({
-          page: { tag: true, label: `UP(${mock})` },
-          conflict: false,
-          unsettled: false,
-          reported: ['ssr server file lower.client.ts -> src/lower.client.ts'],
-        })
+        'src/lowPattern.ts': pattern('lower'),
+        'src/lower.client.ts': nested['src/lower.client.ts'],
+        'src/routes/index.tsx': route('feature', 'INITIAL'),
+      },
+      ['**/feature.ts', '**/ghost.ts'],
+      [layers[0]!],
+    )
+    for (const tag of ['INITIAL', 'TOUCH']) {
+      const since = server.diagnostics.length
+      if (tag !== 'INITIAL') {
+        await server.edit({ 'src/routes/index.tsx': route('feature', tag) })
       }
-    },
-    timeout,
-  )
+      expect({
+        page: await page(server, tag),
+        conflict: conflict(server, tag === 'INITIAL' ? 0 : since),
+        unsettled: unsettled(server, 0),
+        reported: summary(violations),
+      }).toEqual({
+        page: { tag: true, label: `UP(${mock})` },
+        conflict: false,
+        unsettled: false,
+        reported: ['ssr server file lower.client.ts -> src/lower.client.ts'],
+      })
+    }
+  })
 })

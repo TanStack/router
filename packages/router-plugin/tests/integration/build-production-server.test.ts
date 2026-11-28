@@ -16,8 +16,6 @@ import { tanstackRouter } from '../../src/vite'
 import { build, frameworks, routeApp, routeHead } from '../build-harness'
 import type { Framework, RouterPluginOptions } from '../build-harness'
 
-const timeout = 120_000
-
 const route = (
   framework: Framework,
 ) => `${routeHead(framework)}function Page() {
@@ -99,6 +97,5 @@ describe.each([false, true])('external packages: %s', (external) => {
         expect(chunk.code, chunk.fileName).not.toMatch(hmrMarkers)
       }
     },
-    timeout,
   )
 })

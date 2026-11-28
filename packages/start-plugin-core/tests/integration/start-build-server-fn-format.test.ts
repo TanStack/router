@@ -31,8 +31,6 @@ import {
 import golden from './fixtures/server-fn-format-main/main-formats.json'
 import type { ServerFnFormatRecord } from '../server-fn-format-golden'
 
-const timeout = 60_000
-
 const entry = `${Object.entries(goldenClientImports)
   .map(([from, names]) => `export { ${names.join(', ')} } from '${from}'`)
   .join('\n')}\n`
@@ -96,6 +94,5 @@ describe.each(startBundlers)('%s build', (bundler) => {
         ),
       ).toEqual(expected(bundler, mode))
     },
-    timeout,
   )
 })

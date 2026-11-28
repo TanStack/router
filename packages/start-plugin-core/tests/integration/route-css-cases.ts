@@ -23,8 +23,6 @@ import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { RsbuildConfig } from '@rsbuild/core'
 import type { StartBundler } from '../build-harness'
 
-const timeout = 60_000
-
 const head = `import { createFileRoute, notFound } from '@tanstack/react-router'\n`
 
 /** The component module of a route whose component imports its CSS. */
@@ -226,7 +224,7 @@ export function routeCssSuite(
                 }),
         )
         url = 'preview' in opened ? (await opened.preview()).url : opened.url!
-      }, timeout)
+      }, 60_000)
 
       /** A page of the app at `/`, hydrated, everything it loads loaded. */
       const openHome = async () => {
@@ -247,48 +245,43 @@ export function routeCssSuite(
             const page = await openHome()
             expect(await probeColor(page, name)).not.toBe(color)
           },
-          timeout,
         )
 
-        test(
-          `the CSS of the /${name} route applies once the route matches`,
-          async () => {
-            const page = await openHome()
-            await page.page.locator(`nav a[href="/${name}"]`).click()
-            await page.page.waitForURL(new URL(`/${name}`, url).href)
-            const { shows, sharesWith } = routes[name]!
-            /**
-             * The route's CSS applies; the CSS of the route it shares a
-             * module with does not.
-             */
-            const expectRouteCss = async (at: string) => {
-              if (shows !== undefined) {
-                await page.waitForText(shows, { selector: '#app' })
-              }
-              await expect
-                .poll(() => probeColor(page, name), { timeout: 5_000 })
-                .toBe(color)
-              if (sharesWith !== undefined) {
-                expect(
-                  await probeColor(page, sharesWith),
-                  `/${sharesWith} ${at}`,
-                ).not.toBe(color)
-              }
+        test(`the CSS of the /${name} route applies once the route matches`, async () => {
+          const page = await openHome()
+          await page.page.locator(`nav a[href="/${name}"]`).click()
+          await page.page.waitForURL(new URL(`/${name}`, url).href)
+          const { shows, sharesWith } = routes[name]!
+          /**
+           * The route's CSS applies; the CSS of the route it shares a
+           * module with does not.
+           */
+          const expectRouteCss = async (at: string) => {
+            if (shows !== undefined) {
+              await page.waitForText(shows, { selector: '#app' })
             }
+            await expect
+              .poll(() => probeColor(page, name), { timeout: 5_000 })
+              .toBe(color)
             if (sharesWith !== undefined) {
-              // (everything the navigation loads)
-              await page.page.waitForLoadState('networkidle')
+              expect(
+                await probeColor(page, sharesWith),
+                `/${sharesWith} ${at}`,
+              ).not.toBe(color)
             }
-            await expectRouteCss('after the navigation')
-            if (sharesWith !== undefined) {
-              // The page the server renders at the route, whose stylesheets
-              // load before its `load` event
-              await page.page.reload()
-              await expectRouteCss('after a reload')
-            }
-          },
-          timeout,
-        )
+          }
+          if (sharesWith !== undefined) {
+            // (everything the navigation loads)
+            await page.page.waitForLoadState('networkidle')
+          }
+          await expectRouteCss('after the navigation')
+          if (sharesWith !== undefined) {
+            // The page the server renders at the route, whose stylesheets
+            // load before its `load` event
+            await page.page.reload()
+            await expectRouteCss('after a reload')
+          }
+        })
       }
     },
   )

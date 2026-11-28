@@ -23,7 +23,7 @@ let hosts: HydrateHost
 const openHosts = closeAfterAll()
 beforeAll(async () => {
   hosts = await openHosts(() => createHydrateHost())
-}, 60_000)
+})
 
 for (const shape of deadCodeShapes) {
   test(`client: the parent drops what only the children use through ${shape.name}`, async () => {

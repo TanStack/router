@@ -24,8 +24,6 @@ import type {
   StartBuildOptions,
 } from '../../build-harness'
 
-const timeout = 120_000
-
 /**
  * An RSC app whose `'use client'` `ClientBox` imports a `.client` file
  * (denied on the server by default). A server component renders it inside
@@ -152,38 +150,26 @@ describe.each([
   { order: 'SSR layer first', routeImports: true },
   { order: 'RSC layer first', routeImports: false },
 ])('Rsbuild RSC build, $order', ({ routeImports }) => {
-  test(
-    "behavior 'error' fails the build on the client component's .client import",
-    async () => {
-      expectClientBoxReport(
-        await rejection(buildRscApp(routeImports, 'error')),
-        'error',
-      )
-    },
-    timeout,
-  )
+  test("behavior 'error' fails the build on the client component's .client import", async () => {
+    expectClientBoxReport(
+      await rejection(buildRscApp(routeImports, 'error')),
+      'error',
+    )
+  })
 
-  test(
-    "behavior 'mock' warns once and tells onViolation once",
-    async () => {
-      expectClientBoxReport(await buildRscApp(routeImports, 'mock'), 'warning')
-    },
-    timeout,
-  )
+  test("behavior 'mock' warns once and tells onViolation once", async () => {
+    expectClientBoxReport(await buildRscApp(routeImports, 'mock'), 'warning')
+  })
 })
 
 describe('Rsbuild RSC build restored from the persistent cache, SSR layer first', () => {
   // (the second build restores the SSR layer's component and replays its
   // record; the RSC layer's is compiled again)
-  test(
-    "behavior 'mock' warns once and tells onViolation once",
-    async () => {
-      const warm = await buildRscApp(true, 'mock', {
-        builds: 2,
-        rsbuildConfig: { performance: { buildCache: true } },
-      })
-      expectClientBoxReport(warm, 'warning')
-    },
-    timeout,
-  )
+  test("behavior 'mock' warns once and tells onViolation once", async () => {
+    const warm = await buildRscApp(true, 'mock', {
+      builds: 2,
+      rsbuildConfig: { performance: { buildCache: true } },
+    })
+    expectClientBoxReport(warm, 'warning')
+  })
 })

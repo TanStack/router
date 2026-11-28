@@ -14,8 +14,6 @@ import { expect, onTestFinished, test, vi } from 'vitest'
 import { compilerStats } from '@tanstack/router-utils/compiler'
 import { buildStart } from '../../build-start'
 
-const timeout = 60_000
-
 const files = {
   'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
   'src/entry.ts': `import { secret } from './secret.server'
@@ -72,5 +70,4 @@ test.each([
       expect(event.trace.at(-1)?.file).toMatch(/src\/entry\.ts$/)
     }
   },
-  timeout,
 )

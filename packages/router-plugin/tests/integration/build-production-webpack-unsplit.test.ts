@@ -8,7 +8,7 @@
  */
 import { describe, test } from 'vitest'
 import { frameworks } from '../build-harness'
-import { expectProductionClientBundle, timeout } from '../production-bundle'
+import { expectProductionClientBundle } from '../production-bundle'
 
 describe('webpack', () => {
   // Bug: with automatic code splitting off, the composed router plugin adds
@@ -23,6 +23,5 @@ describe('webpack', () => {
     async (framework) => {
       await expectProductionClientBundle('webpack', framework, false)
     },
-    timeout,
   )
 })

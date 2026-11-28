@@ -23,8 +23,6 @@ import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { describe, expect, test } from 'vitest'
 import { serveRscBuild } from './rsc-serial'
 
-const timeout = 120_000
-
 /** `ClientBox` rendered by the server component of `getUc`, and by the route `/uc` too with `route`. */
 function app(route: boolean): Record<string, string> {
   return {
@@ -105,63 +103,51 @@ async function labels(
 }
 
 describe.each(hosts)('$host build with RSC', ({ bundler }) => {
-  test(
-    "the route and the server component import a denied 'use client' file, allowImport allows both: each is asked once, the page renders",
-    async () => {
-      const asked: Array<Asked> = []
-      expect(
-        await labels(bundler, app(true), {
-          allowImport: (info: Asked) => {
-            asked.push(info)
-            return true
-          },
-        }),
-      ).toEqual(['client-only label', 'client-only label'])
-      expect(imports(asked)).toEqual([
-        'rsc src/utils/ucServer.tsx ./ClientBox.client 3:27',
-        'ssr src/routes/uc.tsx ../utils/ClientBox.client 2:27',
-      ])
-    },
-    timeout,
-  )
+  test("the route and the server component import a denied 'use client' file, allowImport allows both: each is asked once, the page renders", async () => {
+    const asked: Array<Asked> = []
+    expect(
+      await labels(bundler, app(true), {
+        allowImport: (info: Asked) => {
+          asked.push(info)
+          return true
+        },
+      }),
+    ).toEqual(['client-only label', 'client-only label'])
+    expect(imports(asked)).toEqual([
+      'rsc src/utils/ucServer.tsx ./ClientBox.client 3:27',
+      'ssr src/routes/uc.tsx ../utils/ClientBox.client 2:27',
+    ])
+  })
 
-  test(
-    "allowImport allows the route's import only: the build fails at the server component's import",
-    async () => {
-      const failed = await labels(bundler, app(true), {
-        allowImport: (info: Asked) => info.importer.endsWith('/uc.tsx'),
-      }).then(
-        () => null,
-        (error: unknown) => error,
-      )
-      expect(failed).toBeInstanceOf(Error)
-      expectDiagnostic(failed, {
-        severity: 'error',
-        file: 'src/utils/ucServer.tsx',
-        position: { line: 3, column: 27 },
-      })
-    },
-    timeout,
-  )
+  test("allowImport allows the route's import only: the build fails at the server component's import", async () => {
+    const failed = await labels(bundler, app(true), {
+      allowImport: (info: Asked) => info.importer.endsWith('/uc.tsx'),
+    }).then(
+      () => null,
+      (error: unknown) => error,
+    )
+    expect(failed).toBeInstanceOf(Error)
+    expectDiagnostic(failed, {
+      severity: 'error',
+      file: 'src/utils/ucServer.tsx',
+      position: { line: 3, column: 27 },
+    })
+  })
 
-  test(
-    'the server component alone imports it, allowImport allows it: its import is asked about, the page renders',
-    async () => {
-      const asked: Array<Asked> = []
-      expect(
-        await labels(bundler, app(false), {
-          allowImport: (info: Asked) => {
-            asked.push(info)
-            return true
-          },
-        }),
-      ).toEqual(['client-only label'])
-      expect(imports(asked)).toEqual([
-        'rsc src/utils/ucServer.tsx ./ClientBox.client 3:27',
-      ])
-    },
-    timeout,
-  )
+  test('the server component alone imports it, allowImport allows it: its import is asked about, the page renders', async () => {
+    const asked: Array<Asked> = []
+    expect(
+      await labels(bundler, app(false), {
+        allowImport: (info: Asked) => {
+          asked.push(info)
+          return true
+        },
+      }),
+    ).toEqual(['client-only label'])
+    expect(imports(asked)).toEqual([
+      'rsc src/utils/ucServer.tsx ./ClientBox.client 3:27',
+    ])
+  })
 
   // each import statement is an edge with its own answer: the denied one
   // fails the build whichever comes first.
@@ -173,7 +159,6 @@ describe.each(hosts)('$host build with RSC', ({ bundler }) => {
     { order: 'denied first', deniedFirst: true, line: 3 },
   ])(
     'the server component imports it twice, allowImport allows one spelling ($order): the build fails at the denied import',
-    { timeout },
     async ({ deniedFirst, line }) => {
       const allowed = `import { ClientBox } from './ClientBox.client'`
       const denied = `import { ClientBox as Another } from './ClientBox.client.tsx'`
@@ -199,22 +184,18 @@ describe.each(hosts)('$host build with RSC', ({ bundler }) => {
     },
   )
 
-  test(
-    'an exempt server component alone imports it: the page renders, nothing is reported',
-    async () => {
-      const reported: Array<unknown> = []
-      expect(
-        await labels(bundler, app(false), {
-          exclude: ['**/ucServer.tsx'],
-          onViolation: (info: unknown) => {
-            reported.push(info)
-          },
-        }),
-      ).toEqual(['client-only label'])
-      expect(reported).toEqual([])
-    },
-    timeout,
-  )
+  test('an exempt server component alone imports it: the page renders, nothing is reported', async () => {
+    const reported: Array<unknown> = []
+    expect(
+      await labels(bundler, app(false), {
+        exclude: ['**/ucServer.tsx'],
+        onViolation: (info: unknown) => {
+          reported.push(info)
+        },
+      }),
+    ).toEqual(['client-only label'])
+    expect(reported).toEqual([])
+  })
 })
 
 /** A `'use client'` button. */
@@ -253,7 +234,6 @@ describe.each(hosts)(
       { layout: 'in a chunk two server fns share', routes: ['n', 'm'] },
     ])(
       '$layout: the build fails, reporting the import of the server component that renders it',
-      { timeout },
       async ({ routes }) => {
         const reported: Array<Asked> = []
         const failed = await serveRscBuild({

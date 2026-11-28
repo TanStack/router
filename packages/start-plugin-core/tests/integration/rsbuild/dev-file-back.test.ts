@@ -16,7 +16,6 @@ import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 import type { RsbuildPlugin, Rspack } from '@rsbuild/core'
 
-const timeout = 90_000
 const compileTimeout = 30_000
 
 const builder = `import { createServerFn } from '@tanstack/react-start'
@@ -83,50 +82,46 @@ function holdSsr(): RsbuildPlugin & { clientDone: () => Promise<void> } {
 
 describe('Rsbuild dev: a file removed and back while another environment compiles', () => {
   // Source: CI failure of property (b), seed 24344 (the probe of its report).
-  test(
-    "the importer's client output is compiled against the file",
-    async () => {
-      const plugin = holdSsr()
-      const server = await startRsbuildStartDevServer({
-        compileTimeout,
-        config: { plugins: [plugin] },
-        files: {
-          'harness/holding-loader.cjs': holdingLoader,
-          'src/lib/a.ts': builder,
-          'src/page.ts': `import { base } from './lib/a'
+  test("the importer's client output is compiled against the file", async () => {
+    const plugin = holdSsr()
+    const server = await startRsbuildStartDevServer({
+      compileTimeout,
+      config: { plugins: [plugin] },
+      files: {
+        'harness/holding-loader.cjs': holdingLoader,
+        'src/lib/a.ts': builder,
+        'src/page.ts': `import { base } from './lib/a'
 export const page = base.handler(async () => 'MARK_PAGE')
 `,
-          'src/entry.ts': `import { page } from './page'
+        'src/entry.ts': `import { page } from './page'
 console.log(page)
 `,
-        },
-      })
-      const client = async () =>
-        Object.values(await server.outputs('client')).join('\n')
-      expect(server.errors).toEqual([])
-      expect(await client()).not.toContain('MARK_PAGE')
-      let release!: () => void
-      ;(globalThis as Held).__tsrTestHold = new Promise<void>((resolve) => {
-        release = resolve
-      })
-      try {
-        const removed = plugin.clientDone()
-        await rm(path.join(server.root, 'src/lib/a.ts'))
-        await removed
-        const back = plugin.clientDone()
-        await writeFile(path.join(server.root, 'src/lib/a.ts'), builder)
-        await back
-      } finally {
-        delete (globalThis as Held).__tsrTestHold
-        release()
-      }
-      await server.settle()
-      await waitForOutcome({
-        applied: async () => !(await client()).includes('MARK_PAGE'),
-        timeout: compileTimeout,
-        describe: () => 'the client output still holds the handler',
-      })
-    },
-    timeout,
-  )
+      },
+    })
+    const client = async () =>
+      Object.values(await server.outputs('client')).join('\n')
+    expect(server.errors).toEqual([])
+    expect(await client()).not.toContain('MARK_PAGE')
+    let release!: () => void
+    ;(globalThis as Held).__tsrTestHold = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    try {
+      const removed = plugin.clientDone()
+      await rm(path.join(server.root, 'src/lib/a.ts'))
+      await removed
+      const back = plugin.clientDone()
+      await writeFile(path.join(server.root, 'src/lib/a.ts'), builder)
+      await back
+    } finally {
+      delete (globalThis as Held).__tsrTestHold
+      release()
+    }
+    await server.settle()
+    await waitForOutcome({
+      applied: async () => !(await client()).includes('MARK_PAGE'),
+      timeout: compileTimeout,
+      describe: () => 'the client output still holds the handler',
+    })
+  })
 })

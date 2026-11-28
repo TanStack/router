@@ -22,8 +22,6 @@ import { apps } from './route-error-apps'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { Framework } from './route-error-apps'
 
-const timeout = 120_000
-
 const effect: Record<Framework, (n: number) => [string, string]> = {
   react: (n) => [
     `import { useEffect } from 'react'\n`,
@@ -124,7 +122,6 @@ describe.each([true, false])(
           await server.idle()
         }
       },
-      timeout,
     )
   },
 )

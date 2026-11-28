@@ -13,8 +13,6 @@ import { describe } from 'vitest'
 import { it } from '../test'
 import type { RouteHmrPage } from '../route-hmr-page'
 
-const timeout = 90_000
-
 const inPlace = { reloaded: false, errors: [] }
 
 /** A split route: the loader stays in the route module, the component is split. */
@@ -83,42 +81,41 @@ async function servedTexts(
 }
 
 describe('rsbuild: the maps of a split route after an edit', () => {
-  it(
-    'hold the route file as it is on disk, also where the edit left the code unchanged',
-    { timeout },
-    async ({ expect, openRouteHmrPage }) => {
-      const app = await openRouteHmrPage({
-        bundler: 'rsbuild',
-        files: { 'routes/index.tsx': route('loader v1', 'page v1') },
-        ready: 'page v1 loader v1',
-      })
-      const file = path.join(app.root, 'routes/index.tsx')
-      const expectCurrent = async (shows: string) => {
-        const texts = await servedTexts(app, file, shows)
-        // the route module's and the split component's
-        expect(texts.length, 'maps naming the route file').toBeGreaterThan(1)
-        const current = await readFile(file, 'utf8')
-        for (const { map, text } of texts) {
-          expect(text, map).toBe(current)
-        }
+  it('hold the route file as it is on disk, also where the edit left the code unchanged', async ({
+    expect,
+    openRouteHmrPage,
+  }) => {
+    const app = await openRouteHmrPage({
+      bundler: 'rsbuild',
+      files: { 'routes/index.tsx': route('loader v1', 'page v1') },
+      ready: 'page v1 loader v1',
+    })
+    const file = path.join(app.root, 'routes/index.tsx')
+    const expectCurrent = async (shows: string) => {
+      const texts = await servedTexts(app, file, shows)
+      // the route module's and the split component's
+      expect(texts.length, 'maps naming the route file').toBeGreaterThan(1)
+      const current = await readFile(file, 'utf8')
+      for (const { map, text } of texts) {
+        expect(text, map).toBe(current)
       }
-      await expectCurrent('page v1 loader v1')
-      // the split component's code is unchanged
-      expect(
-        await app.edit(
-          { 'routes/index.tsx': route('loader v2', 'page v1') },
-          'page v1 loader v2',
-        ),
-      ).toEqual(inPlace)
-      await expectCurrent('page v1 loader v2')
-      // the route module's code is unchanged
-      expect(
-        await app.edit(
-          { 'routes/index.tsx': route('loader v2', 'page v2') },
-          'page v2 loader v2',
-        ),
-      ).toEqual(inPlace)
-      await expectCurrent('page v2 loader v2')
-    },
-  )
+    }
+    await expectCurrent('page v1 loader v1')
+    // the split component's code is unchanged
+    expect(
+      await app.edit(
+        { 'routes/index.tsx': route('loader v2', 'page v1') },
+        'page v1 loader v2',
+      ),
+    ).toEqual(inPlace)
+    await expectCurrent('page v1 loader v2')
+    // the route module's code is unchanged
+    expect(
+      await app.edit(
+        { 'routes/index.tsx': route('loader v2', 'page v2') },
+        'page v2 loader v2',
+      ),
+    ).toEqual(inPlace)
+    await expectCurrent('page v2 loader v2')
+  })
 })

@@ -93,5 +93,4 @@ test.each(
       rendered: ['<p>MARK_COMPONENT object</p>', 'MARK_LOADER'],
     })
   },
-  120_000,
 )

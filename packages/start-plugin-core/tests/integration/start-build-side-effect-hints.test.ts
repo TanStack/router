@@ -21,8 +21,6 @@ import {
 } from '../build-harness'
 import type { StartBuild, StartBundler } from '../build-harness'
 
-const timeout = 60_000
-
 /**
  * A dependency package `name` with the given `sideEffects` hint: its module
  * records that it loaded and exports one function per construct, each
@@ -251,7 +249,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
       }),
     )
     urls = (await build.client.run(clientUrls)).result as Record<string, string>
-  }, timeout)
+  }, 60_000)
 
   describe('server code under side-effect hints', () => {
     test.each([

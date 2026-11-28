@@ -31,8 +31,6 @@ import {
 } from '../../importProtection/start-apps'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 
-const timeout = 30_000
-
 /** A package `name` whose `denied` gives `REAL_<name>`. */
 const sdk = (name: string) => ({
   [`node_modules/${name}/package.json`]: JSON.stringify({
@@ -159,61 +157,42 @@ describe('vite dev', () => {
     )
     await server.load('/src/entry.ts')
     await server.import('/src/entry.ts', 'ssr')
-  }, timeout)
+  })
 
-  test(
-    'the client reports only the use it keeps, not the uses inside the boundaries it drops',
-    () => {
-      const { root } = server
-      const reported = distinct(reportedImporters({ root, ...recorded }))
-      expect(reported.filter((entry) => entry.startsWith('client '))).toEqual([
-        'client src/cases/leaky.ts',
-      ])
-    },
-    timeout,
-  )
+  test('the client reports only the use it keeps, not the uses inside the boundaries it drops', () => {
+    const { root } = server
+    const reported = distinct(reportedImporters({ root, ...recorded }))
+    expect(reported.filter((entry) => entry.startsWith('client '))).toEqual([
+      'client src/cases/leaky.ts',
+    ])
+  })
 
-  test(
-    'the server reports only the use it keeps, not the uses inside the boundaries it drops',
-    () => {
-      const { root } = server
-      const reported = distinct(reportedImporters({ root, ...recorded }))
-      expect(reported.filter((entry) => entry.startsWith('server '))).toEqual([
-        'server src/cases/server-leaky.ts',
-      ])
-    },
-    timeout,
-  )
+  test('the server reports only the use it keeps, not the uses inside the boundaries it drops', () => {
+    const { root } = server
+    const reported = distinct(reportedImporters({ root, ...recorded }))
+    expect(reported.filter((entry) => entry.startsWith('server '))).toEqual([
+      'server src/cases/server-leaky.ts',
+    ])
+  })
 
-  test(
-    "the server keeps a handler's use: the handler runs with the real module",
-    async () => {
-      const { fn } = await server.import(
-        `/src/cases/client-${slug('createServerFn().handler')}.ts`,
-        'ssr',
-      )
-      expect(await inDevRequest(server, () => fn())).toBe('REAL_server-sdk')
-    },
-    timeout,
-  )
+  test("the server keeps a handler's use: the handler runs with the real module", async () => {
+    const { fn } = await server.import(
+      `/src/cases/client-${slug('createServerFn().handler')}.ts`,
+      'ssr',
+    )
+    expect(await inDevRequest(server, () => fn())).toBe('REAL_server-sdk')
+  })
 })
 
 describe('rsbuild dev', () => {
-  test(
-    'each environment reports only the use it keeps',
-    async () => {
-      const recorded = recording()
-      const server = await startRsbuildDevServer({
-        files,
-        importProtection: recorded.importProtection,
-      })
-      expect(
-        distinct(reportedImporters({ root: server.root, ...recorded })).sort(),
-      ).toEqual([
-        'client src/cases/leaky.ts',
-        'server src/cases/server-leaky.ts',
-      ])
-    },
-    timeout,
-  )
+  test('each environment reports only the use it keeps', async () => {
+    const recorded = recording()
+    const server = await startRsbuildDevServer({
+      files,
+      importProtection: recorded.importProtection,
+    })
+    expect(
+      distinct(reportedImporters({ root: server.root, ...recorded })).sort(),
+    ).toEqual(['client src/cases/leaky.ts', 'server src/cases/server-leaky.ts'])
+  })
 })

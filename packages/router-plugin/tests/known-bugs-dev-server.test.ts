@@ -10,8 +10,6 @@ import { rootRoute, routerDevServer } from './dev-server'
 import { head } from './route-app'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 
-const timeout = 30_000
-
 describe('router config file', () => {
   /** `tsr.config.json` with the harness's plugin options. */
   const config = (routesDirectory: string) =>
@@ -69,15 +67,11 @@ describe('router config file', () => {
   // The next route file edit generates the route tree with the new
   // configuration. (Whether the `tsr.config.json` edit itself regenerates
   // it is free: SPEC J1.10.)
-  test(
-    'a route file edit after a tsr.config.json edit generates the route tree with the new configuration',
-    async () => {
-      expect(
-        await moveRoutesDirectory({
-          'pages/about.tsx': route('/about') + '\n',
-        }),
-      ).toBe('/about')
-    },
-    timeout,
-  )
+  test('a route file edit after a tsr.config.json edit generates the route tree with the new configuration', async () => {
+    expect(
+      await moveRoutesDirectory({
+        'pages/about.tsx': route('/about') + '\n',
+      }),
+    ).toBe('/about')
+  })
 })

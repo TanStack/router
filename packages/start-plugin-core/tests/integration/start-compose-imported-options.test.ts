@@ -22,8 +22,6 @@ import {
 } from '../build-harness'
 import type { StartBuild } from '../build-harness'
 
-const timeout = 60_000
-
 const files = {
   'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute()
@@ -70,7 +68,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
       }
       failure = error
     }
-  }, timeout)
+  }, 60_000)
 
   test('the route renders and its handler answers on the server', async () => {
     if (failure) {

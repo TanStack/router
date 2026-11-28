@@ -27,4 +27,4 @@ test('rsbuild dev: a denied asset fails at the denied file', async () => {
     file: 'src/secrets.server.ts',
     root: server.root,
   })
-}, 120_000)
+})

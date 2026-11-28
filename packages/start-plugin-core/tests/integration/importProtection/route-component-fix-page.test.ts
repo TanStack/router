@@ -34,8 +34,6 @@ import { rejection } from '../../importProtection/start-apps'
 import { rsbuildEntries } from '../route-css-cases'
 import type { StartBundler } from '../../build-harness'
 
-const timeout = 120_000
-
 const root = `import { HeadContent, Outlet, Scripts, createRootRoute, useHydrated } from '@tanstack/react-router'
 export const Route = createRootRoute({ component: Root })
 function Root() {
@@ -176,69 +174,65 @@ async function previewFixed(
 }
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  test(
-    "the <ClientOnly> fix a report prints for a route file's component option, applied as written, hydrates the chart (or the error component, with the route's error)",
-    async () => {
-      const error = await rejection(
-        buildStart({
-          bundler,
-          files: {
-            ...rsbuildEntries,
-            ...app((name) =>
-              routeFile(
-                name,
-                '',
-                `${routes[name]!.option ?? 'component'}: ${routes[name]!.value}`,
-              ),
-            ),
-          },
-        }),
-      )
-      const fixes = printedFixes(error)
-      expect([...fixes.keys()].sort()).toEqual(
-        Object.keys(routes)
-          .map((name) => `src/routes/${name}.tsx`)
-          .sort(),
-      )
-      const url = await previewFixed(
+  test("the <ClientOnly> fix a report prints for a route file's component option, applied as written, hydrates the chart (or the error component, with the route's error)", async () => {
+    const error = await rejection(
+      buildStart({
         bundler,
-        app((name) => {
-          const fix = fixes.get(`src/routes/${name}.tsx`)!
-          return routeFile(
-            name,
-            `import { ClientOnly } from '@tanstack/react-router'\n${fix.declaration ? `${fix.declaration}\n` : ''}`,
-            `${fix.option}: ${fix.value.replace(
-              'fallback={...}',
-              'fallback={<i data-testid="fallback">Waiting</i>}',
-            )}`,
-          )
-        }),
-      )
-      for (const name of Object.keys(routes)) {
-        const href = new URL(`/${name}`, url).href
-        const html = await (await fetch(href)).text()
-        expect(html, name).toContain('data-testid="fallback"')
-        expect(html, name).not.toContain('data-testid="chart"')
-        expect(html, name).not.toContain('data-testid="oops"')
-        const page = await openTestPage(href)
-        await page.waitForText('hydrated', {
-          selector: '[data-testid=hydrated]',
+        files: {
+          ...rsbuildEntries,
+          ...app((name) =>
+            routeFile(
+              name,
+              '',
+              `${routes[name]!.option ?? 'component'}: ${routes[name]!.value}`,
+            ),
+          ),
+        },
+      }),
+    )
+    const fixes = printedFixes(error)
+    expect([...fixes.keys()].sort()).toEqual(
+      Object.keys(routes)
+        .map((name) => `src/routes/${name}.tsx`)
+        .sort(),
+    )
+    const url = await previewFixed(
+      bundler,
+      app((name) => {
+        const fix = fixes.get(`src/routes/${name}.tsx`)!
+        return routeFile(
+          name,
+          `import { ClientOnly } from '@tanstack/react-router'\n${fix.declaration ? `${fix.declaration}\n` : ''}`,
+          `${fix.option}: ${fix.value.replace(
+            'fallback={...}',
+            'fallback={<i data-testid="fallback">Waiting</i>}',
+          )}`,
+        )
+      }),
+    )
+    for (const name of Object.keys(routes)) {
+      const href = new URL(`/${name}`, url).href
+      const html = await (await fetch(href)).text()
+      expect(html, name).toContain('data-testid="fallback"')
+      expect(html, name).not.toContain('data-testid="chart"')
+      expect(html, name).not.toContain('data-testid="oops"')
+      const page = await openTestPage(href)
+      await page.waitForText('hydrated', {
+        selector: '[data-testid=hydrated]',
+      })
+      if (routes[name]!.option === 'errorComponent') {
+        await page.waitForText(`/${name}: MARK_LOADER_ERROR`, {
+          selector: '[data-testid=oops]',
         })
-        if (routes[name]!.option === 'errorComponent') {
-          await page.waitForText(`/${name}: MARK_LOADER_ERROR`, {
-            selector: '[data-testid=oops]',
-          })
-          continue
-        }
-        await page.waitForText(`/${name} chart 0`, {
-          selector: '[data-testid=chart]',
-        })
-        await page.page.locator('[data-testid=chart]').click()
-        await page.waitForText(`/${name} chart 1`, {
-          selector: '[data-testid=chart]',
-        })
+        continue
       }
-    },
-    timeout,
-  )
+      await page.waitForText(`/${name} chart 0`, {
+        selector: '[data-testid=chart]',
+      })
+      await page.page.locator('[data-testid=chart]').click()
+      await page.waitForText(`/${name} chart 1`, {
+        selector: '[data-testid=chart]',
+      })
+    }
+  })
 })

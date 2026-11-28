@@ -36,8 +36,7 @@ import {
   ssrNodeOutput,
 } from './hosts'
 
-const timeout = 60_000
-const compileTimeout = timeout
+const compileTimeout = 60_000
 
 /** The targets; `version` marks a recreated file (same behaviour, new text). */
 const secretServer = (version = 0) =>
@@ -166,39 +165,27 @@ function hostSuite(run: () => Promise<Array<StepOutcome>>) {
   describe.each(steps.map((step, index) => ({ ...step, index })))(
     'step $index, $name',
     ({ index, live }) => {
-      test(
-        'each environment gets the real module or a safe mock, per importer',
-        async () => {
-          const { client, server } = await outcome(index)
-          expect({ client: client.values, server: server.values }).toEqual({
-            client: expected(live).client.values,
-            server: expected(live).server.values,
-          })
-        },
-        timeout,
-      )
+      test('each environment gets the real module or a safe mock, per importer', async () => {
+        const { client, server } = await outcome(index)
+        expect({ client: client.values, server: server.values }).toEqual({
+          client: expected(live).client.values,
+          server: expected(live).server.values,
+        })
+      })
 
-      test(
-        "the client's code has no secret",
-        async () => {
-          expect((await outcome(index)).clientHasSecret).toBe(false)
-        },
-        timeout,
-      )
-      test(
-        'the step reports its violations, and only those',
-        async () => {
-          const { client, server } = await outcome(index)
-          expect({
-            client: client.reported,
-            server: server.reported,
-          }).toEqual({
-            client: expected(live).client.reported,
-            server: expected(live).server.reported,
-          })
-        },
-        timeout,
-      )
+      test("the client's code has no secret", async () => {
+        expect((await outcome(index)).clientHasSecret).toBe(false)
+      })
+      test('the step reports its violations, and only those', async () => {
+        const { client, server } = await outcome(index)
+        expect({
+          client: client.reported,
+          server: server.reported,
+        }).toEqual({
+          client: expected(live).client.reported,
+          server: expected(live).server.reported,
+        })
+      })
     },
   )
 }

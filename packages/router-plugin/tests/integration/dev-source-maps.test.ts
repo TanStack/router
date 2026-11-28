@@ -41,8 +41,6 @@ import type { AnySourceMap } from '@tanstack/compiler-test-utils/source-maps'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { PluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 
-const timeout = 60_000
-
 /** The apps live next to the other harness apps, where imports resolve. */
 const appsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -248,7 +246,7 @@ describe('vite dev server', () => {
       maps.set(location, inlineSourceMap(body))
     }
     throws = { stacks, maps, root: host.root, origin, loadedWithRoute }
-  }, timeout)
+  }, 60_000)
 
   // The module each throw runs in maps it to its line in the route file,
   // and names the route file as its source, as the browser resolves it
@@ -306,64 +304,60 @@ describe('rsbuild dev server', () => {
   // plugin.
   // Impact: in Rsbuild dev, a thrown error in a split component, and a
   // breakpoint in it, resolve to the generated split module's lines.
-  test(
-    'the route module and every module derived from it map a throw to its line in the route file',
-    async () => {
-      const { tanstackRouter: tanstackRouterRspack } =
-        await import('../../src/rspack')
-      const server = await closeAtEnd(() =>
-        createRsbuildDevServer({
-          dir: appsDir,
-          prefix: '.dev-source-maps-rsbuild-',
-          browser: true,
-          entry: 'main.tsx',
-          files: {
-            'main.tsx': `import { throws } from './probe'
+  test('the route module and every module derived from it map a throw to its line in the route file', async () => {
+    const { tanstackRouter: tanstackRouterRspack } =
+      await import('../../src/rspack')
+    const server = await closeAtEnd(() =>
+      createRsbuildDevServer({
+        dir: appsDir,
+        prefix: '.dev-source-maps-rsbuild-',
+        browser: true,
+        entry: 'main.tsx',
+        files: {
+          'main.tsx': `import { throws } from './probe'
 ;(window as any).__throws = throws()
 `,
-            'probe.ts': probe,
-            'page-label.ts': pageLabel,
-            'routes/__root.tsx': rootRoute,
-            'routes/index.tsx': route,
-          },
-          config: { output: { sourceMap: { js: 'source-map' } } },
-          plugins: ({ root }) => [
-            pluginReact({ fastRefresh: false }),
-            {
-              name: 'dev-source-maps',
-              setup(api) {
-                api.modifyRspackConfig((config) => {
-                  config.plugins.push(
-                    tanstackRouterRspack({
-                      target: 'react',
-                      autoCodeSplitting: true,
-                      routesDirectory: path.join(root, 'routes'),
-                      generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
-                    }),
-                  )
-                })
-              },
+          'probe.ts': probe,
+          'page-label.ts': pageLabel,
+          'routes/__root.tsx': rootRoute,
+          'routes/index.tsx': route,
+        },
+        config: { output: { sourceMap: { js: 'source-map' } } },
+        plugins: ({ root }) => [
+          pluginReact({ fastRefresh: false }),
+          {
+            name: 'dev-source-maps',
+            setup(api) {
+              api.modifyRspackConfig((config) => {
+                config.plugins.push(
+                  tanstackRouterRspack({
+                    target: 'react',
+                    autoCodeSplitting: true,
+                    routesDirectory: path.join(root, 'routes'),
+                    generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
+                  }),
+                )
+              })
             },
-          ],
-        }),
-      )
-      await server.settle()
-      const page = await closeAtEnd(() => openPage(server.url!))
-      await page.page.waitForFunction(() => (window as any).__throws, null, {
-        timeout: 15_000,
-      })
-      const stacks = (await page.page.evaluate(
-        () => (window as any).__throws,
-      )) as Record<string, string | undefined>
-      expectThrowsMapToRouteFile(
-        stacks,
-        await mapsOfFrames(stacks, server.url!),
-        server.root,
-        () => undefined,
-      )
-    },
-    timeout,
-  )
+          },
+        ],
+      }),
+    )
+    await server.settle()
+    const page = await closeAtEnd(() => openPage(server.url!))
+    await page.page.waitForFunction(() => (window as any).__throws, null, {
+      timeout: 15_000,
+    })
+    const stacks = (await page.page.evaluate(
+      () => (window as any).__throws,
+    )) as Record<string, string | undefined>
+    expectThrowsMapToRouteFile(
+      stacks,
+      await mapsOfFrames(stacks, server.url!),
+      server.root,
+      () => undefined,
+    )
+  })
 })
 
 /** The map each module a frame of `stacks` names points to (`sourceMappingURL`), by the frame's location. */
@@ -395,46 +389,42 @@ async function mapsOfFrames(
 }
 
 describe('webpack dev server', () => {
-  test(
-    'the route module and every module derived from it map a throw to its line in the route file',
-    async () => {
-      const app = await openWebpackHmrPage({
-        devtool: 'source-map',
-        files: {
-          'main.ts': `import { throws } from './probe'
+  test('the route module and every module derived from it map a throw to its line in the route file', async () => {
+    const app = await openWebpackHmrPage({
+      devtool: 'source-map',
+      files: {
+        'main.ts': `import { throws } from './probe'
 void throws().then((stacks) => {
   ;(window as any).__throws = stacks
   document.getElementById('app')!.textContent = 'probe ready'
 })
 `,
-          'probe.ts': probe,
-          'page-label.ts': pageLabel,
-          'routes/index.tsx': route,
-        },
-        ready: 'probe ready',
-      })
-      const stacks = (await app.page.page.evaluate(
-        () => (window as any).__throws,
-      )) as Record<string, string | undefined>
-      // (webpack names a source `webpack://<namespace>/<path from the
-      // root>`: where a debugger finds it)
-      const maps = await mapsOfFrames(stacks, app.url)
-      for (const [location, map] of maps) {
-        const sources = (map as { sources?: Array<string | null> } | undefined)
-          ?.sources
-        if (sources) {
-          maps.set(location, {
-            ...(map as object),
-            sources: sources.map((source) =>
-              source === null
-                ? source
-                : emittedSourcePath(source, location, app.root),
-            ),
-          } as AnySourceMap)
-        }
+        'probe.ts': probe,
+        'page-label.ts': pageLabel,
+        'routes/index.tsx': route,
+      },
+      ready: 'probe ready',
+    })
+    const stacks = (await app.page.page.evaluate(
+      () => (window as any).__throws,
+    )) as Record<string, string | undefined>
+    // (webpack names a source `webpack://<namespace>/<path from the
+    // root>`: where a debugger finds it)
+    const maps = await mapsOfFrames(stacks, app.url)
+    for (const [location, map] of maps) {
+      const sources = (map as { sources?: Array<string | null> } | undefined)
+        ?.sources
+      if (sources) {
+        maps.set(location, {
+          ...(map as object),
+          sources: sources.map((source) =>
+            source === null
+              ? source
+              : emittedSourcePath(source, location, app.root),
+          ),
+        } as AnySourceMap)
       }
-      expectThrowsMapToRouteFile(stacks, maps, app.root, () => undefined)
-    },
-    timeout,
-  )
+    }
+    expectThrowsMapToRouteFile(stacks, maps, app.root, () => undefined)
+  })
 })

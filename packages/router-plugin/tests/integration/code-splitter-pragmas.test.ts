@@ -12,8 +12,6 @@ import { openRouteHmrPage } from '../serial'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
 import type { Framework } from '../build-harness'
 
-const timeout = 120_000
-
 // SPEC J2.16: a chunk's JSX compiles under the runtime decision of
 // its source file. What a pragma written after the imports means is the
 // project's JSX transform's decision (Vite's Oxc reads leading pragmas only;
@@ -67,11 +65,8 @@ return getComputedStyle(document.getElementById('styled')).color`)
     expect(split.colour).toBe(untouched.colour)
   }
 
-  test(
-    'means in the split route what it means in the untouched route (Rspack: SWC reads it)',
-    () => expectSplitRendersLikeUntouched('rspack', true),
-    timeout,
-  )
+  test('means in the split route what it means in the untouched route (Rspack: SWC reads it)', () =>
+    expectSplitRendersLikeUntouched('rspack', true))
 
   // (Vite, whose Oxc reads leading pragmas only: the fast tier,
   // ../code-splitter-pragmas.test.ts)
@@ -170,7 +165,6 @@ export const Route = createFileRoute('/')({ component: Page })
       expect(run.result).toContain('MARK_COMPONENT')
       expect(app.where('MARK_COMPONENT')).toBe('lazy')
     },
-    timeout,
   )
 })
 
@@ -255,7 +249,6 @@ export const Route = createFileRoute('/')({ component: Page })
       expect(unsplit).toMatch(/Counter v2 count \d/)
       expect(split).toBe(unsplit)
     },
-    timeout,
   )
 })
 
@@ -373,6 +366,5 @@ ${aboveRoute}export const Route = createFileRoute('/')({ component: Page })${eof
       expect(unsplit).toBe(`Counter v2 count ${count}`)
       expect(split).toBe(unsplit)
     },
-    timeout,
   )
 })

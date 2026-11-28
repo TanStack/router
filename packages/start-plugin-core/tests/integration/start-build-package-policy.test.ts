@@ -26,8 +26,6 @@ import { probeRoute } from '../request-probe'
 import type { StartBundler } from '../build-harness'
 import type { PackageLayout, StartDeclaration } from '../package-layouts'
 
-const timeout = 60_000
-
 /**
  * `fwd-lib`: `base.js` makes a server fn builder, `index.js` hands it on as
  * `authed` without naming any Start API.
@@ -81,63 +79,54 @@ describe.each(startBundlers)('%s build', (bundler: StartBundler) => {
       expect(build.ssr.where('MARK_HANDLER_BODY')).not.toBe('nowhere')
       expect(problems(build.diagnostics).map(({ text }) => text)).toEqual([])
     },
-    timeout,
   )
 
   // Under an app directory whose name has a `#` (which Rspack escapes in a
   // module's resource), the package's manifest is the one the warning reads.
   // Source: round-3 re-checks of the node_modules policy implementation
   // (Fable N1 `probes/p14.test.ts`, Astra 3 `hash#project`, Gemini 2a).
-  test(
-    'a Start package under a project path with a `#`: the handler leaves the client, no warning',
-    async () => {
-      const { options } = app('npm', 'peer')
-      const build = await buildStart({
-        bundler,
-        ...options,
-        prefix: `.start-build-harness-${bundler} C# project #2-`,
-      })
-      expect(build.root).toMatch(/C# project #2/)
-      expect(build.client.where('MARK_HANDLER_BODY')).toBe('nowhere')
-      expect(
-        problems(build.diagnostics)
-          .map(({ text }) => text)
-          // (Vite's own warning of the root's `#`)
-          .filter((text) => !text.includes('contains the "#" character')),
-      ).toEqual([])
-    },
-    timeout,
-  )
+  test('a Start package under a project path with a `#`: the handler leaves the client, no warning', async () => {
+    const { options } = app('npm', 'peer')
+    const build = await buildStart({
+      bundler,
+      ...options,
+      prefix: `.start-build-harness-${bundler} C# project #2-`,
+    })
+    expect(build.root).toMatch(/C# project #2/)
+    expect(build.client.where('MARK_HANDLER_BODY')).toBe('nowhere')
+    expect(
+      problems(build.diagnostics)
+        .map(({ text }) => text)
+        // (Vite's own warning of the root's `#`)
+        .filter((text) => !text.includes('contains the "#" character')),
+    ).toEqual([])
+  })
 
   // The compile of a module of a package that does not declare Start and
   // uses Start warns that it must declare Start: once for the package,
   // whichever of its two modules using Start compiles first.
   // Source: node_modules policy, decisions 6 (A, case i) and 11 (A).
-  test(
-    'a package that does not declare Start: one warning, naming one of its modules',
-    async () => {
-      const { lib, options } = app('npm', 'none')
-      const build = await buildStart({
-        bundler,
-        ...options,
-        files: {
-          ...options.files,
-          [`${lib.directory}/other.js`]: `import { createServerFn } from '@tanstack/react-start'\nexport const other = createServerFn({ method: 'GET' })\n`,
-          'src/entry.ts': `import { other } from 'fwd-lib/other.js'\nexport { fn } from './fns'\nexport const kind = () => typeof other\n`,
-        },
-      })
-      const named = ['base.js', 'other.js'].filter(
-        (file) =>
-          findDiagnostics(problems(build.diagnostics), {
-            severity: 'warning',
-            file: `${lib.directory}/${file}`,
-            root: build.root,
-          }).length > 0,
-      )
-      expect(named).toHaveLength(1)
-    },
-    timeout,
-  )
+  test('a package that does not declare Start: one warning, naming one of its modules', async () => {
+    const { lib, options } = app('npm', 'none')
+    const build = await buildStart({
+      bundler,
+      ...options,
+      files: {
+        ...options.files,
+        [`${lib.directory}/other.js`]: `import { createServerFn } from '@tanstack/react-start'\nexport const other = createServerFn({ method: 'GET' })\n`,
+        'src/entry.ts': `import { other } from 'fwd-lib/other.js'\nexport { fn } from './fns'\nexport const kind = () => typeof other\n`,
+      },
+    })
+    const named = ['base.js', 'other.js'].filter(
+      (file) =>
+        findDiagnostics(problems(build.diagnostics), {
+          severity: 'warning',
+          file: `${lib.directory}/${file}`,
+          root: build.root,
+        }).length > 0,
+    )
+    expect(named).toHaveLength(1)
+  })
 
   // `@tanstack/react-form` 1.33.5's shape: Start named in
   // `peerDependenciesMeta` only, an integration the package left optional,
@@ -169,7 +158,6 @@ describe.each(startBundlers)('%s build', (bundler: StartBundler) => {
       })
       expect(problems(build.diagnostics).length > 0).toBe(warned)
     },
-    timeout,
   )
 
   // On main, Vite's build compiled a route file the generator registered
@@ -177,46 +165,42 @@ describe.each(startBundlers)('%s build', (bundler: StartBundler) => {
   // only when its text named a Start API, so its `server` handlers shipped
   // and it was not split.
   // Source: node_modules policy, decision 4 (A).
-  test(
-    'a route file registered from a package is split, its server handler off the client and answering on the server',
-    async () => {
-      const routes = 'node_modules/@acme/routes'
-      const build = await buildStart({
-        bundler,
-        files: {
-          [`${routes}/package.json`]: JSON.stringify({
-            name: '@acme/routes',
-            version: '1.0.0',
-            peerDependencies: { '@tanstack/react-start': '*' },
-          }),
-          [`${routes}/__root.tsx`]: `import { createRootRoute } from '@tanstack/react-router'\nexport const Route = createRootRoute()\n`,
-          // (the harness runs server scripts inside a request of its probe route)
-          [`${routes}/harness-probe.ts`]: probeRoute('@tanstack/react-router'),
-          [`${routes}/api.tsx`]: `import { createFileRoute } from '@tanstack/react-router'
+  test('a route file registered from a package is split, its server handler off the client and answering on the server', async () => {
+    const routes = 'node_modules/@acme/routes'
+    const build = await buildStart({
+      bundler,
+      files: {
+        [`${routes}/package.json`]: JSON.stringify({
+          name: '@acme/routes',
+          version: '1.0.0',
+          peerDependencies: { '@tanstack/react-start': '*' },
+        }),
+        [`${routes}/__root.tsx`]: `import { createRootRoute } from '@tanstack/react-router'\nexport const Route = createRootRoute()\n`,
+        // (the harness runs server scripts inside a request of its probe route)
+        [`${routes}/harness-probe.ts`]: probeRoute('@tanstack/react-router'),
+        [`${routes}/api.tsx`]: `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/api')({
   server: { handlers: { GET: () => new Response('MARK_SERVER_GET') } },
   component: () => <p>MARK_COMPONENT</p>,
 })
 `,
-          'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+        'src/router.ts': `import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 export const getRouter = () => createRouter({ routeTree })
 `,
-          'src/entry.ts': `export { getRouter } from './router'\n`,
-          'src/ssr-entry.ts': `export { getRouter } from './router'\n${callByIdExports}`,
-        },
-        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
-        start: { router: { routesDirectory: `../${routes}` } },
-      })
-      expect(build.client.where('MARK_SERVER_GET')).toBe('nowhere')
-      expect(build.client.where('MARK_COMPONENT')).toBe('lazy')
-      const { result } = await build.ssr.run(
-        `return await (await entry.startServerEntry.fetch(new Request('http://localhost/api'))).text()`,
-      )
-      expect(result).toBe('MARK_SERVER_GET')
-    },
-    timeout,
-  )
+        'src/entry.ts': `export { getRouter } from './router'\n`,
+        'src/ssr-entry.ts': `export { getRouter } from './router'\n${callByIdExports}`,
+      },
+      entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+      start: { router: { routesDirectory: `../${routes}` } },
+    })
+    expect(build.client.where('MARK_SERVER_GET')).toBe('nowhere')
+    expect(build.client.where('MARK_COMPONENT')).toBe('lazy')
+    const { result } = await build.ssr.run(
+      `return await (await entry.startServerEntry.fetch(new Request('http://localhost/api'))).text()`,
+    )
+    expect(result).toBe('MARK_SERVER_GET')
+  })
 
   // A warning whose fix is an edit of the module it points at is for the
   // module's author: an installed package's module does not get it (Clerk's
@@ -264,85 +248,76 @@ export const guard = (options) => createMiddleware({ type: 'function' }).server(
         expect(problems(build.diagnostics).map(({ text }) => text)).toEqual([])
       }
     },
-    timeout,
   )
 
   // An error stays, whoever wrote the module, and names the package: the
   // app updates it or reports it to the package's maintainers.
   // Source: diagnostics spike (2026-11-24), agreed change A2.
-  test(
-    "a refusal in a Start package's module fails the build naming the package",
-    async () => {
-      const lib = installPackage('npm', {
-        name: 'old-lib',
-        declaration: 'peer',
-        files: {
-          'index.js': `import { createServerFn } from '@tanstack/react-start'\nexport const fn = createServerFn().inputValidator((d) => d).handler(async () => 'MARK_HANDLER_BODY')\n`,
-        },
-      })
-      const error = await buildStart({
-        bundler,
-        files: {
-          ...lib.files,
-          'src/entry.ts': `export { fn } from 'old-lib'\n`,
-        },
-        symlinks: lib.symlinks,
-        packageJson: appManifest([lib]),
-        entry: 'src/entry.ts',
-      }).then(
-        () => null,
-        (e: unknown) => e as { diagnostics?: Array<unknown>; root?: string },
-      )
-      expect(error).not.toBeNull()
-      const refusal = expectDiagnostic(error!.diagnostics, {
-        severity: 'error',
-        file: `${lib.directory}/index.js`,
-        root: error!.root,
-        position: { line: 2 },
-      })
-      expect(refusal.text).toContain('installed package `old-lib`')
-    },
-    timeout,
-  )
+  test("a refusal in a Start package's module fails the build naming the package", async () => {
+    const lib = installPackage('npm', {
+      name: 'old-lib',
+      declaration: 'peer',
+      files: {
+        'index.js': `import { createServerFn } from '@tanstack/react-start'\nexport const fn = createServerFn().inputValidator((d) => d).handler(async () => 'MARK_HANDLER_BODY')\n`,
+      },
+    })
+    const error = await buildStart({
+      bundler,
+      files: {
+        ...lib.files,
+        'src/entry.ts': `export { fn } from 'old-lib'\n`,
+      },
+      symlinks: lib.symlinks,
+      packageJson: appManifest([lib]),
+      entry: 'src/entry.ts',
+    }).then(
+      () => null,
+      (e: unknown) => e as { diagnostics?: Array<unknown>; root?: string },
+    )
+    expect(error).not.toBeNull()
+    const refusal = expectDiagnostic(error!.diagnostics, {
+      severity: 'error',
+      file: `${lib.directory}/index.js`,
+      root: error!.root,
+      position: { line: 2 },
+    })
+    expect(refusal.text).toContain('installed package `old-lib`')
+  })
 
   // The same for server code passed by a name the package's module assigns
   // elsewhere (`start-server-code-reassigned`): an error, so it is not
   // dropped as advice for the module's author, and it names the package.
   // Source: reassigned binding at every server-code position (2026-11-24).
-  test(
-    "a server-only fn on a reassigned name in a Start package's module fails the build naming the package",
-    async () => {
-      const lib = installPackage('npm', {
-        name: 'reassign-lib',
-        declaration: 'peer',
-        files: {
-          'index.js': `import { createServerOnlyFn } from '@tanstack/react-start'\nlet impl = () => 'MARK_SERVER_FIRST'\nimpl = () => 'MARK_SERVER_SECOND'\nexport const read = createServerOnlyFn(impl)\n`,
-        },
-      })
-      const error = await buildStart({
-        bundler,
-        files: {
-          ...lib.files,
-          'src/entry.ts': `export { read } from 'reassign-lib'\n`,
-        },
-        symlinks: lib.symlinks,
-        packageJson: appManifest([lib]),
-        entry: 'src/entry.ts',
-      }).then(
-        () => null,
-        (e: unknown) => e as { diagnostics?: Array<unknown>; root?: string },
-      )
-      expect(error).not.toBeNull()
-      const refusal = expectDiagnostic(error!.diagnostics, {
-        severity: 'error',
-        file: `${lib.directory}/index.js`,
-        root: error!.root,
-        position: { line: 4 },
-      })
-      expect(refusal.text).toContain('installed package `reassign-lib`')
-    },
-    timeout,
-  )
+  test("a server-only fn on a reassigned name in a Start package's module fails the build naming the package", async () => {
+    const lib = installPackage('npm', {
+      name: 'reassign-lib',
+      declaration: 'peer',
+      files: {
+        'index.js': `import { createServerOnlyFn } from '@tanstack/react-start'\nlet impl = () => 'MARK_SERVER_FIRST'\nimpl = () => 'MARK_SERVER_SECOND'\nexport const read = createServerOnlyFn(impl)\n`,
+      },
+    })
+    const error = await buildStart({
+      bundler,
+      files: {
+        ...lib.files,
+        'src/entry.ts': `export { read } from 'reassign-lib'\n`,
+      },
+      symlinks: lib.symlinks,
+      packageJson: appManifest([lib]),
+      entry: 'src/entry.ts',
+    }).then(
+      () => null,
+      (e: unknown) => e as { diagnostics?: Array<unknown>; root?: string },
+    )
+    expect(error).not.toBeNull()
+    const refusal = expectDiagnostic(error!.diagnostics, {
+      severity: 'error',
+      file: `${lib.directory}/index.js`,
+      root: error!.root,
+      position: { line: 4 },
+    })
+    expect(refusal.text).toContain('installed package `reassign-lib`')
+  })
 
   // A package's module that calls `.handler()` on a builder another of its
   // modules makes, through a barrel that renames the factory: no Start name
@@ -379,7 +354,6 @@ export const guard = (options) => createMiddleware({ type: 'function' }).server(
       })
       expect(build.client.where('MARK_HANDLER_BODY')).toBe('nowhere')
     },
-    timeout,
   )
 
   // A Start package's module is read like the app's: its namespace handed
@@ -387,32 +361,28 @@ export const guard = (options) => createMiddleware({ type: 'function' }).server(
   // refused as for an app module (an ordinary package's namespace is not checked: the class decides
   // that check, not the summaries).
   // Source: node_modules policy, decision 7 (A, S4).
-  test(
-    "a Start package's namespace passed to unknown code fails the build at the use",
-    async () => {
-      const lib = installPackage('npm', forwardingLib('peer'))
-      const error = await buildStart({
-        bundler,
-        files: {
-          ...lib.files,
-          'src/entry.ts': `import * as lib from 'fwd-lib'\nexport const keys = () => Object.keys(lib)\n`,
-        },
-        symlinks: lib.symlinks,
-        packageJson: appManifest([lib]),
-        entry: 'src/entry.ts',
-      }).then(
-        () => null,
-        (e: unknown) => e as { diagnostics?: Array<unknown> },
-      )
-      expect(error).not.toBeNull()
-      expectDiagnostic(error!.diagnostics, {
-        severity: 'error',
-        file: 'src/entry.ts',
-        root: (error as { root?: string }).root,
-      })
-    },
-    timeout,
-  )
+  test("a Start package's namespace passed to unknown code fails the build at the use", async () => {
+    const lib = installPackage('npm', forwardingLib('peer'))
+    const error = await buildStart({
+      bundler,
+      files: {
+        ...lib.files,
+        'src/entry.ts': `import * as lib from 'fwd-lib'\nexport const keys = () => Object.keys(lib)\n`,
+      },
+      symlinks: lib.symlinks,
+      packageJson: appManifest([lib]),
+      entry: 'src/entry.ts',
+    }).then(
+      () => null,
+      (e: unknown) => e as { diagnostics?: Array<unknown> },
+    )
+    expect(error).not.toBeNull()
+    expectDiagnostic(error!.diagnostics, {
+      severity: 'error',
+      file: 'src/entry.ts',
+      root: (error as { root?: string }).root,
+    })
+  })
 })
 
 // A summary is the module's own business: one whose analysis cannot be
@@ -422,32 +392,28 @@ export const guard = (options) => createMiddleware({ type: 'function' }).server(
 // Source: review of the dependency summaries (2026-11-27, Fable finding 1,
 // Gemini).
 describe('vite build, a package whose module has an export Start cannot read', () => {
-  test(
-    'a 5,000-term chain in an export the app does not use: the app builds and keeps the export it uses',
-    async () => {
-      const chain = Array.from({ length: 5000 }, (_, i) => `c === ${i}`).join(
-        ' || ',
-      )
-      const lib = installPackage('npm', {
-        name: 'dep-y',
-        declaration: 'none',
-        files: {
-          'index.js': `export const unused = (c) => ${chain}\nexport const used = () => 'MARK_USED_EXPORT'\n`,
-        },
-      })
-      const build = await buildStart({
-        bundler: 'vite',
-        files: {
-          ...lib.files,
-          'src/entry.ts': `import { used } from 'dep-y'\nexport const label = () => used()\n`,
-        },
-        packageJson: appManifest([lib]),
-        entry: 'src/entry.ts',
-      })
-      expect(build.client.where('MARK_USED_EXPORT')).not.toBe('nowhere')
-    },
-    timeout,
-  )
+  test('a 5,000-term chain in an export the app does not use: the app builds and keeps the export it uses', async () => {
+    const chain = Array.from({ length: 5000 }, (_, i) => `c === ${i}`).join(
+      ' || ',
+    )
+    const lib = installPackage('npm', {
+      name: 'dep-y',
+      declaration: 'none',
+      files: {
+        'index.js': `export const unused = (c) => ${chain}\nexport const used = () => 'MARK_USED_EXPORT'\n`,
+      },
+    })
+    const build = await buildStart({
+      bundler: 'vite',
+      files: {
+        ...lib.files,
+        'src/entry.ts': `import { used } from 'dep-y'\nexport const label = () => used()\n`,
+      },
+      packageJson: appManifest([lib]),
+      entry: 'src/entry.ts',
+    })
+    expect(build.client.where('MARK_USED_EXPORT')).not.toBe('nowhere')
+  })
 })
 
 // Rsbuild's persistent cache restores a module without compiling it: the
@@ -457,25 +423,21 @@ describe('vite build, a package whose module has an export Start cannot read', (
 // Source: Fable's review of the node_modules policy implementation,
 // finding 2 (`probes/p3.test.ts`, W1).
 describe('rsbuild build on the persistent cache, a package that does not declare Start', () => {
-  test(
-    'the warm build warns as the cold one',
-    async () => {
-      const { lib, options } = app('npm', 'none')
-      const warns = (build: { diagnostics: unknown; root: string }) =>
-        findDiagnostics(problems(build.diagnostics as never), {
-          severity: 'warning',
-          file: `${lib.directory}/base.js`,
-          root: build.root,
-        }).length > 0
-      const first = await buildStart({
-        bundler: 'rsbuild',
-        ...options,
-        rsbuildConfig: { performance: { buildCache: true } },
-      })
-      expect(warns(first)).toBe(true)
-      const second = await first.rebuild({})
-      expect(warns(second)).toBe(true)
-    },
-    timeout,
-  )
+  test('the warm build warns as the cold one', async () => {
+    const { lib, options } = app('npm', 'none')
+    const warns = (build: { diagnostics: unknown; root: string }) =>
+      findDiagnostics(problems(build.diagnostics as never), {
+        severity: 'warning',
+        file: `${lib.directory}/base.js`,
+        root: build.root,
+      }).length > 0
+    const first = await buildStart({
+      bundler: 'rsbuild',
+      ...options,
+      rsbuildConfig: { performance: { buildCache: true } },
+    })
+    expect(warns(first)).toBe(true)
+    const second = await first.rebuild({})
+    expect(warns(second)).toBe(true)
+  })
 })

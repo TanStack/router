@@ -12,8 +12,6 @@ import { expect, test } from 'vitest'
 import { answeredText, waitForHydration } from './rsc-app'
 import { openRscPage, startRscRsbuildPreviewServer } from './rsc-serial'
 
-const timeout = 60_000
-
 const files = {
   'src/nested/deep.ts': `import { createServerFn } from '@tanstack/react-start'
 export const deep = createServerFn().handler(() => 'MARK_DEEP')
@@ -57,38 +55,34 @@ function Page() {
 `,
 }
 
-test(
-  'a component a server fn the build reaches first renders: both clicks answer',
-  async () => {
-    const server = await startRscRsbuildPreviewServer({
-      files: {
-        ...files,
-        'src/nested/early.tsx': `import { createServerFn } from '@tanstack/react-start'
+test('a component a server fn the build reaches first renders: both clicks answer', async () => {
+  const server = await startRscRsbuildPreviewServer({
+    files: {
+      ...files,
+      'src/nested/early.tsx': `import { createServerFn } from '@tanstack/react-start'
 import { renderServerComponent } from '@tanstack/react-start/rsc'
 import { Inner } from './Inner'
 export const early = createServerFn().handler(() => renderServerComponent(<div>early <Inner /></div>))
 `,
-        'src/routes/early.tsx': `import { createFileRoute } from '@tanstack/react-router'
+      'src/routes/early.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { early } from '../nested/early'
 export const Route = createFileRoute('/early')({
   loader: async () => ({ tree: await early() }),
   component: () => <main>{Route.useLoaderData().tree}</main>,
 })
 `,
-      },
-    })
-    expect(server.errors).toEqual([])
-    const page = await openRscPage(server, '/nested')
-    await waitForHydration(page)
-    await page.locator('[data-testid=outer]').click()
-    await page.locator('[data-testid=inner]').click()
-    expect(
-      await answeredText(
-        page,
-        '[data-testid=inner]',
-        (text) => text.includes('MARK_') || text.includes('error'),
-      ),
-    ).toBe('inner MARK_DEEP')
-  },
-  timeout,
-)
+    },
+  })
+  expect(server.errors).toEqual([])
+  const page = await openRscPage(server, '/nested')
+  await waitForHydration(page)
+  await page.locator('[data-testid=outer]').click()
+  await page.locator('[data-testid=inner]').click()
+  expect(
+    await answeredText(
+      page,
+      '[data-testid=inner]',
+      (text) => text.includes('MARK_') || text.includes('error'),
+    ),
+  ).toBe('inner MARK_DEEP')
+})

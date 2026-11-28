@@ -24,20 +24,15 @@ export const Route = createFileRoute('/other')({
 })
 `
 
-test(
-  'react, vite: a route edit after a render error the page navigated away from updates in place',
-  { timeout: 60_000 },
-  async ({ expect }) => {
-    const app = await openRouteHmrPage({
-      files: { 'routes/index.tsx': throwing, 'routes/other.tsx': other('v1') },
-      ready: 'Something went wrong!',
-    })
-    await app.evaluate(`void window.__APP_ROUTER__.navigate({ to: '/other' })`)
-    await app.page.waitForText('other v1', { selector: '#app' })
-    const edited = await app.edit(
-      { 'routes/other.tsx': other('v2') },
-      'other v2',
-    )
-    expect(edited.reloaded).toBe(false)
-  },
-)
+test('react, vite: a route edit after a render error the page navigated away from updates in place', async ({
+  expect,
+}) => {
+  const app = await openRouteHmrPage({
+    files: { 'routes/index.tsx': throwing, 'routes/other.tsx': other('v1') },
+    ready: 'Something went wrong!',
+  })
+  await app.evaluate(`void window.__APP_ROUTER__.navigate({ to: '/other' })`)
+  await app.page.waitForText('other v1', { selector: '#app' })
+  const edited = await app.edit({ 'routes/other.tsx': other('v2') }, 'other v2')
+  expect(edited.reloaded).toBe(false)
+})

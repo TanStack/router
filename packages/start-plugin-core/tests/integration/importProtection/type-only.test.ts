@@ -31,8 +31,7 @@ import {
 import { importersIn } from './hosts'
 import type { StartBuild } from '../../build-harness'
 
-const timeout = 60_000
-const compileTimeout = timeout
+const compileTimeout = 60_000
 
 /** Each type-only form, by the module that uses it. */
 const typeOnlyForms = {
@@ -111,79 +110,65 @@ describe.each(startBundlers)('%s build (mock mode)', (bundler) => {
   let built: Promise<StartBuild> | undefined
   const openBuilt = closeAfterAll()
 
-  test(
-    'type-only forms are neither reported nor loaded; the mixed import is reported and mocked',
-    async () => {
-      built ??= openBuilt(() =>
-        buildStartShared({
-          bundler,
-          files: app,
-          entry: 'src/entry.ts',
-          start: { importProtection: { behavior: 'mock', mockAccess: 'off' } },
-        }),
-      )
-      const build = await built
-      const { result } = await build.client.run(
-        outcomeScript('entry.readMixed'),
-      )
-      expect({
-        ...(result as Omit<Outcome, 'reported'>),
-        reported: importersIn(build, 'client'),
-      }).toEqual(expected)
-    },
-    timeout,
-  )
+  test('type-only forms are neither reported nor loaded; the mixed import is reported and mocked', async () => {
+    built ??= openBuilt(() =>
+      buildStartShared({
+        bundler,
+        files: app,
+        entry: 'src/entry.ts',
+        start: { importProtection: { behavior: 'mock', mockAccess: 'off' } },
+      }),
+    )
+    const build = await built
+    const { result } = await build.client.run(outcomeScript('entry.readMixed'))
+    expect({
+      ...(result as Omit<Outcome, 'reported'>),
+      reported: importersIn(build, 'client'),
+    }).toEqual(expected)
+  })
 })
 
 describe('vite dev', () => {
-  test(
-    'type-only forms are neither reported nor loaded; the mixed import is reported and mocked',
-    async () => {
-      const recorder = violationRecorder()
-      const server = await startDevServer({
-        browser: true,
-        start: { importProtection: recorder.importProtection },
-        files: app,
-      })
-      const { result } = await runViteClient(
-        server,
-        '/src/router.ts',
-        outcomeScript('globalThis.readMixed'),
-      )
-      await server.idle()
-      expect({
-        ...(result as Omit<Outcome, 'reported'>),
-        reported: importersIn({ root: server.root, ...recorder }, 'client'),
-      }).toEqual(expected)
-    },
-    timeout,
-  )
+  test('type-only forms are neither reported nor loaded; the mixed import is reported and mocked', async () => {
+    const recorder = violationRecorder()
+    const server = await startDevServer({
+      browser: true,
+      start: { importProtection: recorder.importProtection },
+      files: app,
+    })
+    const { result } = await runViteClient(
+      server,
+      '/src/router.ts',
+      outcomeScript('globalThis.readMixed'),
+    )
+    await server.idle()
+    expect({
+      ...(result as Omit<Outcome, 'reported'>),
+      reported: importersIn({ root: server.root, ...recorder }, 'client'),
+    }).toEqual(expected)
+  })
 })
 
 describe('rsbuild dev', () => {
-  test(
-    'type-only forms are neither reported nor loaded; the mixed import is reported and mocked',
-    async () => {
-      const recorder = violationRecorder()
-      const server = await startRsbuildStartDevServer({
-        compileTimeout,
-        browser: true,
-        hmr: false,
-        files: app,
-        start: { importProtection: recorder.importProtection },
-      })
-      // Nothing fails, on any channel
-      expectNoDiagnostic(server.diagnostics, { severity: 'error' })
-      const { result } = await captureConsole(() =>
-        runInClient(server, outcomeScript('globalThis.readMixed')),
-      )
-      expect({
-        ...(result as { result: Omit<Outcome, 'reported'> }).result,
-        reported: importersIn({ root: server.root, ...recorder }, 'client'),
-      }).toEqual(expected)
-    },
-    timeout,
-  )
+  test('type-only forms are neither reported nor loaded; the mixed import is reported and mocked', async () => {
+    const recorder = violationRecorder()
+    const server = await startRsbuildStartDevServer({
+      compileTimeout,
+      browser: true,
+      hmr: false,
+      files: app,
+      start: { importProtection: recorder.importProtection },
+    })
+    // Nothing fails, on any channel
+    expectNoDiagnostic(server.diagnostics, { severity: 'error' })
+    const { result } = await captureConsole(() =>
+      runInClient(server, outcomeScript('globalThis.readMixed')),
+    )
+    expect({
+      ...(result as { result: Omit<Outcome, 'reported'> }).result,
+      reported: importersIn({ root: server.root, ...recorder }, 'client'),
+    }).toEqual(expected)
+  })
 })
 
 /**
@@ -223,63 +208,55 @@ const handlerOnly = { typesLoaded: null, reported: [] }
 describe.each(startBundlers)(
   '%s build (mock mode), verbatimModuleSyntax',
   (bundler) => {
-    test(
-      'a mixed import whose value only a server fn handler uses is neither reported nor loaded',
-      async () => {
-        const build = await buildStart({
-          bundler,
-          files: verbatimApp,
-          entry: 'src/entry.ts',
-          start: { importProtection: { behavior: 'mock', mockAccess: 'off' } },
-        })
-        const { result } = await build.client.run(
-          `return globalThis.typesLoaded ?? null`,
-        )
-        expect({
-          typesLoaded: result,
-          reported: importersIn(build, 'client'),
-        }).toEqual(handlerOnly)
-      },
-      timeout,
-    )
+    test('a mixed import whose value only a server fn handler uses is neither reported nor loaded', async () => {
+      const build = await buildStart({
+        bundler,
+        files: verbatimApp,
+        entry: 'src/entry.ts',
+        start: { importProtection: { behavior: 'mock', mockAccess: 'off' } },
+      })
+      const { result } = await build.client.run(
+        `return globalThis.typesLoaded ?? null`,
+      )
+      expect({
+        typesLoaded: result,
+        reported: importersIn(build, 'client'),
+      }).toEqual(handlerOnly)
+    })
 
     // Rsbuild's SWC under `verbatimModuleSyntax` keeps `export { type X }
     // from` as a bare `export {} from`: the denied file is a real import
     // there, which protection mocks; Vite's Oxc erases the statement. Either
     // way nothing of the file ships. (The effect-model lane's question to
     // the declarations lane.)
-    test(
-      'an all-type re-export of the denied file ships nothing of it',
-      async () => {
-        const build = await buildStart({
-          bundler,
-          files: {
-            ...verbatimApp,
-            'src/forms/reexport.ts': `export { type Secret } from '../types.server'
+    test('an all-type re-export of the denied file ships nothing of it', async () => {
+      const build = await buildStart({
+        bundler,
+        files: {
+          ...verbatimApp,
+          'src/forms/reexport.ts': `export { type Secret } from '../types.server'
 export const reexported = 1
 `,
-            'src/entry.ts': `export { reexported } from './forms/reexport'\n`,
-          },
-          entry: 'src/entry.ts',
-          start: { importProtection: { behavior: 'mock', mockAccess: 'off' } },
-          ...(bundler === 'rsbuild' && {
-            rsbuildConfig: {
-              tools: {
-                swc: { jsc: { transform: { verbatimModuleSyntax: true } } },
-              },
+          'src/entry.ts': `export { reexported } from './forms/reexport'\n`,
+        },
+        entry: 'src/entry.ts',
+        start: { importProtection: { behavior: 'mock', mockAccess: 'off' } },
+        ...(bundler === 'rsbuild' && {
+          rsbuildConfig: {
+            tools: {
+              swc: { jsc: { transform: { verbatimModuleSyntax: true } } },
             },
-          }),
-        })
-        const { result } = await build.client.run(
-          `return [entry.reexported, globalThis.typesLoaded ?? null]`,
-        )
-        expect({
-          result,
-          shipped: build.client.where('MARK_TYPES_LOADED'),
-        }).toEqual({ result: [1, null], shipped: 'nowhere' })
-      },
-      timeout,
-    )
+          },
+        }),
+      })
+      const { result } = await build.client.run(
+        `return [entry.reexported, globalThis.typesLoaded ?? null]`,
+      )
+      expect({
+        result,
+        shipped: build.client.where('MARK_TYPES_LOADED'),
+      }).toEqual({ result: [1, null], shipped: 'nowhere' })
+    })
   },
 )
 
@@ -316,74 +293,62 @@ const allTypeExpected = {
 const loadedScript = `return { entry: globalThis.entryLoaded ?? null, types: globalThis.typesLoaded ?? null }`
 
 describe('an all-type re-export', () => {
-  test(
-    'vite dev: reports nothing and loads nothing of the denied file',
-    async () => {
-      const recorder = violationRecorder()
-      const server = await startDevServer({
-        start: { importProtection: recorder.importProtection },
-        files: allTypeReexport,
-      })
-      const { result } = await runViteClient(
-        server,
-        '/src/router.ts',
-        loadedScript,
-      )
-      await server.idle()
-      expect({
-        reported: importersIn({ root: server.root, ...recorder }, 'client'),
-        problems: problemsNaming(server, allTypeFiles),
-        loaded: result,
-      }).toEqual(allTypeExpected)
-    },
-    timeout,
-  )
+  test('vite dev: reports nothing and loads nothing of the denied file', async () => {
+    const recorder = violationRecorder()
+    const server = await startDevServer({
+      start: { importProtection: recorder.importProtection },
+      files: allTypeReexport,
+    })
+    const { result } = await runViteClient(
+      server,
+      '/src/router.ts',
+      loadedScript,
+    )
+    await server.idle()
+    expect({
+      reported: importersIn({ root: server.root, ...recorder }, 'client'),
+      problems: problemsNaming(server, allTypeFiles),
+      loaded: result,
+    }).toEqual(allTypeExpected)
+  })
 
-  test(
-    'rsbuild dev: reports nothing and loads nothing of the denied file',
-    async () => {
-      const recorder = violationRecorder()
-      const server = await startRsbuildStartDevServer({
-        compileTimeout,
-        browser: true,
-        hmr: false,
-        files: allTypeReexport,
-        start: { importProtection: recorder.importProtection },
-      })
-      const { result } = await captureConsole(() =>
-        runInClient(server, loadedScript),
-      )
-      expect({
-        reported: importersIn({ root: server.root, ...recorder }, 'client'),
-        problems: problemsNaming(server, allTypeFiles),
-        loaded: (result as { result: unknown }).result,
-      }).toEqual(allTypeExpected)
-    },
-    timeout,
-  )
+  test('rsbuild dev: reports nothing and loads nothing of the denied file', async () => {
+    const recorder = violationRecorder()
+    const server = await startRsbuildStartDevServer({
+      compileTimeout,
+      browser: true,
+      hmr: false,
+      files: allTypeReexport,
+      start: { importProtection: recorder.importProtection },
+    })
+    const { result } = await captureConsole(() =>
+      runInClient(server, loadedScript),
+    )
+    expect({
+      reported: importersIn({ root: server.root, ...recorder }, 'client'),
+      problems: problemsNaming(server, allTypeFiles),
+      loaded: (result as { result: unknown }).result,
+    }).toEqual(allTypeExpected)
+  })
 })
 
 describe('vite dev, verbatimModuleSyntax', () => {
-  test(
-    'a mixed import whose value only a server fn handler uses is neither reported nor loaded',
-    async () => {
-      const recorder = violationRecorder()
-      const server = await startDevServer({
-        browser: true,
-        start: { importProtection: recorder.importProtection },
-        files: verbatimApp,
-      })
-      const { result: typesLoaded } = await runViteClient(
-        server,
-        '/src/router.ts',
-        'return globalThis.typesLoaded ?? null',
-      )
-      await server.idle()
-      expect({
-        typesLoaded,
-        reported: importersIn({ root: server.root, ...recorder }, 'client'),
-      }).toEqual(handlerOnly)
-    },
-    timeout,
-  )
+  test('a mixed import whose value only a server fn handler uses is neither reported nor loaded', async () => {
+    const recorder = violationRecorder()
+    const server = await startDevServer({
+      browser: true,
+      start: { importProtection: recorder.importProtection },
+      files: verbatimApp,
+    })
+    const { result: typesLoaded } = await runViteClient(
+      server,
+      '/src/router.ts',
+      'return globalThis.typesLoaded ?? null',
+    )
+    await server.idle()
+    expect({
+      typesLoaded,
+      reported: importersIn({ root: server.root, ...recorder }, 'client'),
+    }).toEqual(handlerOnly)
+  })
 })

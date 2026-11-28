@@ -23,8 +23,6 @@ import {
 import { runViteClient, startBrowserProtectedDevServer } from './client-pages'
 import type { StartBundler } from '../../build-harness'
 
-const timeout = 60_000
-
 const reqLib = installPackage('npm', {
   name: 'req-lib',
   declaration: 'peer',
@@ -35,36 +33,30 @@ const reqLib = installPackage('npm', {
 })
 
 describe('vite dev, the server entry behind a package barrel', () => {
-  test(
-    "the client's export works, the entry is served as its mock and reported once",
-    async () => {
-      const server = await startBrowserProtectedDevServer(
-        {
-          ...reqLib.files,
-          'package.json': JSON.stringify(appManifest([reqLib])),
-          'src/entry.ts': `import { SAFE } from 'req-lib'\nexport const read = () => SAFE\n`,
-        },
-        { mockAccess: 'off' },
-        { config: { optimizeDeps: { exclude: ['req-lib'] } } },
-      )
-      const { result } = await runViteClient(
-        server,
-        '/src/entry.ts',
-        'return entry.read()',
-      )
-      expect(result).toBe('MARK_SAFE')
-      const reported = distinct(
-        reportedViolations(server).map(
-          ({ environment, importer }) => `${environment} ${importer}`,
-        ),
-      )
-      expect(reported).toHaveLength(1)
-      expect(reported[0]).toMatch(
-        /^client .*react-start\/dist\/esm\/server\.js/,
-      )
-    },
-    timeout,
-  )
+  test("the client's export works, the entry is served as its mock and reported once", async () => {
+    const server = await startBrowserProtectedDevServer(
+      {
+        ...reqLib.files,
+        'package.json': JSON.stringify(appManifest([reqLib])),
+        'src/entry.ts': `import { SAFE } from 'req-lib'\nexport const read = () => SAFE\n`,
+      },
+      { mockAccess: 'off' },
+      { config: { optimizeDeps: { exclude: ['req-lib'] } } },
+    )
+    const { result } = await runViteClient(
+      server,
+      '/src/entry.ts',
+      'return entry.read()',
+    )
+    expect(result).toBe('MARK_SAFE')
+    const reported = distinct(
+      reportedViolations(server).map(
+        ({ environment, importer }) => `${environment} ${importer}`,
+      ),
+    )
+    expect(reported).toHaveLength(1)
+    expect(reported[0]).toMatch(/^client .*react-start\/dist\/esm\/server\.js/)
+  })
 })
 
 const uiLib = installPackage('npm', {
@@ -90,18 +82,14 @@ describe.each(startBundlers)(
       entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
     })
 
-    test(
-      'the server using the marked export fails at the barrel, in the server environment',
-      async () => {
-        const error = await rejection(buildStart(app('chart')))
-        const reported = reportedViolations(error)
-        expect(reported).not.toEqual([])
-        for (const { environment, importer } of reported) {
-          expect(environment).toBe('server')
-          expect(importer).toMatch(/^node_modules\/ui-lib\/index\.js:1:/)
-        }
-      },
-      timeout,
-    )
+    test('the server using the marked export fails at the barrel, in the server environment', async () => {
+      const error = await rejection(buildStart(app('chart')))
+      const reported = reportedViolations(error)
+      expect(reported).not.toEqual([])
+      for (const { environment, importer } of reported) {
+        expect(environment).toBe('server')
+        expect(importer).toMatch(/^node_modules\/ui-lib\/index\.js:1:/)
+      }
+    })
   },
 )

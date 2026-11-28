@@ -19,8 +19,6 @@ import type { StartBuild, StartBundler } from '../build-harness'
 import type { RsbuildConfig } from '@rsbuild/core'
 import type { InlineConfig } from 'vite'
 
-const timeout = 60_000
-
 /** A module holding an open builder, and a server fn finished on it. */
 const fooModule = `import { createMiddleware, createServerFn } from '@tanstack/react-start'
 const auth = createMiddleware({ type: 'function' }).server(async ({ next }) => next())
@@ -1112,10 +1110,8 @@ function sharedApp(rows: ReadonlyArray<Compiled>) {
 
 export function builderShapesSuite(bundler: StartBundler) {
   describe(`${bundler} build`, () => {
-    test(
-      'an open middleware an isomorphic fn returns: the client keeps no server code, and the middleware runs on the server',
-      async () => {
-        const module = `import { createIsomorphicFn, createMiddleware, createServerFn } from '@tanstack/react-start'
+    test('an open middleware an isomorphic fn returns: the client keeps no server code, and the middleware runs on the server', async () => {
+      const module = `import { createIsomorphicFn, createMiddleware, createServerFn } from '@tanstack/react-start'
   const serverMw = createMiddleware({ type: 'function' }).server(async ({ next }) => {
     return next({ context: { from: 'MARK_SERVER_MW' } })
   })
@@ -1130,27 +1126,25 @@ export function builderShapesSuite(bundler: StartBundler) {
     .middleware([attached, open()])
     .handler(async ({ context }) => [context.from, context.attached].join())
   `
-        const build = await buildStart({
-          bundler,
-          files: {
-            'src/fns.ts': module,
-            'src/entry.ts': `export { fn } from './fns'\n`,
-            'src/ssr-entry.ts': `export { fn } from './fns'\n${callByIdExports}`,
-          },
-          entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
-        })
-        expect({
-          attached: build.client.where('MARK_ATTACHED'),
-          server: build.client.where('MARK_SERVER_MW'),
-        }).toEqual({ attached: 'nowhere', server: 'nowhere' })
-        const url = (await build.client.run(`return entry.fn.url`)).result
-        const { result } = await build.ssr.run(
-          `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
-        )
-        expect(result).toBe('MARK_SERVER_MW,yes')
-      },
-      timeout,
-    )
+      const build = await buildStart({
+        bundler,
+        files: {
+          'src/fns.ts': module,
+          'src/entry.ts': `export { fn } from './fns'\n`,
+          'src/ssr-entry.ts': `export { fn } from './fns'\n${callByIdExports}`,
+        },
+        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+      })
+      expect({
+        attached: build.client.where('MARK_ATTACHED'),
+        server: build.client.where('MARK_SERVER_MW'),
+      }).toEqual({ attached: 'nowhere', server: 'nowhere' })
+      const url = (await build.client.run(`return entry.fn.url`)).result
+      const { result } = await build.ssr.run(
+        `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+      )
+      expect(result).toBe('MARK_SERVER_MW,yes')
+    })
 
     // The export's summary describes the value it starts with: a builder the
     // module then replaces by a builder of the same kind (accepted in its own
@@ -1159,68 +1153,59 @@ export function builderShapesSuite(bundler: StartBundler) {
     // Source: confirmation of the dependency summaries' review fixes
     // (2026-11-27, Fable, Astra): a rule making a reassigned export unknown
     // shipped this handler to the client without a message.
-    test(
-      'a `let` builder export reassigned the same kind: the handler is off the client and runs on the server',
-      async () => {
-        const build = await buildStart({
-          bundler,
-          files: {
-            'src/base.ts': `import { createServerFn } from '@tanstack/react-start'
+    test('a `let` builder export reassigned the same kind: the handler is off the client and runs on the server', async () => {
+      const build = await buildStart({
+        bundler,
+        files: {
+          'src/base.ts': `import { createServerFn } from '@tanstack/react-start'
 export let base = createServerFn({ method: 'POST' })
 base = base.middleware([])
 `,
-            'src/fns.ts': `import { base } from './base'
+          'src/fns.ts': `import { base } from './base'
 export const fn = base.handler(async () => 'MARK_SERVER_SECRET')
 `,
-            'src/entry.ts': `export { fn } from './fns'\n`,
-            'src/ssr-entry.ts': `export { fn } from './fns'\n${callByIdExports}`,
-          },
-          entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
-        })
-        expect(build.client.where('MARK_SERVER_SECRET')).toBe('nowhere')
-        const url = (await build.client.run(`return entry.fn.url`)).result
-        const { result } = await build.ssr.run(
-          `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}), undefined, 'POST')`,
-        )
-        expect(result).toBe('MARK_SERVER_SECRET')
-      },
-      timeout,
-    )
+          'src/entry.ts': `export { fn } from './fns'\n`,
+          'src/ssr-entry.ts': `export { fn } from './fns'\n${callByIdExports}`,
+        },
+        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+      })
+      expect(build.client.where('MARK_SERVER_SECRET')).toBe('nowhere')
+      const url = (await build.client.run(`return entry.fn.url`)).result
+      const { result } = await build.ssr.run(
+        `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}), undefined, 'POST')`,
+      )
+      expect(result).toBe('MARK_SERVER_SECRET')
+    })
 
-    test(
-      'a written binding holding server fns: each id runs its own handler',
-      async () => {
-        const module = `import { createServerFn } from '@tanstack/react-start'
+    test('a written binding holding server fns: each id runs its own handler', async () => {
+      const module = `import { createServerFn } from '@tanstack/react-start'
   let fn0 = createServerFn().handler(async () => 'MARK_FIRST')
   export const first = fn0
   fn0 = createServerFn().handler(async () => 'MARK_SECOND')
   export const second = fn0
   `
-        const build = await buildStart({
-          bundler,
-          files: {
-            'src/fns.ts': module,
-            'src/entry.ts': `export { first, second } from './fns'\n`,
-            'src/ssr-entry.ts': `export { first, second } from './fns'\n${callByIdExports}`,
-          },
-          entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
-        })
-        const call = async (name: string) => {
-          const url = (await build.client.run(`return entry.${name}.url`))
-            .result
-          return (
-            await build.ssr.run(
-              `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
-            )
-          ).result
-        }
-        expect({
-          first: await call('first'),
-          second: await call('second'),
-        }).toEqual({ first: 'MARK_FIRST', second: 'MARK_SECOND' })
-      },
-      timeout,
-    )
+      const build = await buildStart({
+        bundler,
+        files: {
+          'src/fns.ts': module,
+          'src/entry.ts': `export { first, second } from './fns'\n`,
+          'src/ssr-entry.ts': `export { first, second } from './fns'\n${callByIdExports}`,
+        },
+        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+      })
+      const call = async (name: string) => {
+        const url = (await build.client.run(`return entry.${name}.url`)).result
+        return (
+          await build.ssr.run(
+            `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+          )
+        ).result
+      }
+      expect({
+        first: await call('first'),
+        second: await call('second'),
+      }).toEqual({ first: 'MARK_FIRST', second: 'MARK_SECOND' })
+    })
 
     const rows = compiled.filter(
       (row) => row.bundlers?.includes(bundler) ?? true,
@@ -1243,26 +1228,22 @@ export const fn = base.handler(async () => 'MARK_SERVER_SECRET')
       ))
     const openTogether = closeAfterAll()
 
-    test.each(rows)(
-      '$name compiles',
-      async (row) => {
-        const index = shared.indexOf(row)
-        if (index !== -1) {
-          const build = await sharedBuild()
-          expect(build.client.where(secretOf(index))).toBe('nowhere')
-          return
-        }
-        const build = await buildStart({
-          bundler,
-          files: row.files,
-          viteConfig: row.viteConfig,
-          rsbuildConfig: row.rsbuildConfig,
-          entry: 'src/entry.ts',
-        })
-        expect(build.client.where('MARK_SERVER_SECRET')).toBe('nowhere')
-      },
-      timeout,
-    )
+    test.each(rows)('$name compiles', async (row) => {
+      const index = shared.indexOf(row)
+      if (index !== -1) {
+        const build = await sharedBuild()
+        expect(build.client.where(secretOf(index))).toBe('nowhere')
+        return
+      }
+      const build = await buildStart({
+        bundler,
+        files: row.files,
+        viteConfig: row.viteConfig,
+        rsbuildConfig: row.rsbuildConfig,
+        entry: 'src/entry.ts',
+      })
+      expect(build.client.where('MARK_SERVER_SECRET')).toBe('nowhere')
+    })
 
     test.each(refused)(
       '$name fails the build at the use',
@@ -1288,7 +1269,6 @@ export const fn = base.handler(async () => 'MARK_SERVER_SECRET')
           position: { line },
         })
       },
-      timeout,
     )
   })
 }

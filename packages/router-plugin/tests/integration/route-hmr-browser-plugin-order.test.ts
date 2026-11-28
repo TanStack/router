@@ -12,8 +12,6 @@ import { describe, test } from 'vitest'
 import { countMounts, mountsOf } from '../route-hmr-page'
 import { openRouteHmrPage } from '../serial'
 
-const timeout = 90_000
-
 const reactRoute = (version: string) =>
   `import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
@@ -57,7 +55,6 @@ describe('the framework plugin before the router plugin', () => {
     { name: 'an inline component', route: reactInlineRoute, shows: 'inline' },
   ])(
     'react, autoCodeSplitting off: an edit of $name shows in place, keeping its state, without a warning',
-    { timeout },
     async ({ route, shows }, { expect }) => {
       const app = await openRouteHmrPage({
         frameworkPluginFirst: true,
@@ -80,30 +77,27 @@ describe('the framework plugin before the router plugin', () => {
     },
   )
 
-  test(
-    'solid, autoCodeSplitting off: an edit shows in place without a warning',
-    { timeout },
-    async ({ expect }) => {
-      const app = await openRouteHmrPage({
-        target: 'solid',
-        frameworkPluginFirst: true,
-        pluginOptions: { autoCodeSplitting: false },
-        files: { 'routes/index.tsx': solidRoute('v1') },
-        ready: 'page v1 data v1',
-      })
-      expect(
-        await app.edit(
-          { 'routes/index.tsx': solidRoute('v2') },
-          'page v2 data v2',
-        ),
-      ).toEqual({ reloaded: false, errors: [] })
-      expect(app.warnings()).toEqual([])
-    },
-  )
+  test('solid, autoCodeSplitting off: an edit shows in place without a warning', async ({
+    expect,
+  }) => {
+    const app = await openRouteHmrPage({
+      target: 'solid',
+      frameworkPluginFirst: true,
+      pluginOptions: { autoCodeSplitting: false },
+      files: { 'routes/index.tsx': solidRoute('v1') },
+      ready: 'page v1 data v1',
+    })
+    expect(
+      await app.edit(
+        { 'routes/index.tsx': solidRoute('v2') },
+        'page v2 data v2',
+      ),
+    ).toEqual({ reloaded: false, errors: [] })
+    expect(app.warnings()).toEqual([])
+  })
 
   test.for(['react', 'solid'] as const)(
     '%s, autoCodeSplitting on: the dev server refuses to start',
-    { timeout },
     async (target, { expect }) => {
       await expect(
         openRouteHmrPage({

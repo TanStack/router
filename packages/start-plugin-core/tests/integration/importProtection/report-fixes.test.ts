@@ -36,8 +36,6 @@ import {
 } from '../../importProtection/start-apps'
 import { solidAppConfig } from '../hydrate-pages'
 
-const timeout = 60_000
-
 /** A denied file whose code a bundle holding it shows (`MARK_DB`). */
 const db = `export const db = () => 'MARK_DB'\n`
 
@@ -48,32 +46,28 @@ const widget = `export function Widget() {
 `
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  test(
-    'every surviving violation fails the build and is printed, not only the first',
-    async () => {
-      const error = await rejection(
-        buildStart({
-          bundler,
-          files: {
-            'src/lib/db.server.ts': db,
-            'src/lib/other.server.ts': `export const other = () => 'MARK_OTHER'\n`,
-            'src/a.ts': `import { db } from './lib/db.server'\nexport const a = () => db()\n`,
-            'src/entry.ts': `import { a } from './a'
+  test('every surviving violation fails the build and is printed, not only the first', async () => {
+    const error = await rejection(
+      buildStart({
+        bundler,
+        files: {
+          'src/lib/db.server.ts': db,
+          'src/lib/other.server.ts': `export const other = () => 'MARK_OTHER'\n`,
+          'src/a.ts': `import { db } from './lib/db.server'\nexport const a = () => db()\n`,
+          'src/entry.ts': `import { a } from './a'
 import { other } from './lib/other.server'
 export const read = () => [a(), other()]
 `,
-          },
-          entry: 'src/entry.ts',
-        }),
-      )
-      // (`expectViolationsAt` also checks each is printed as an error at its position)
-      expectViolationsAt(error, [
-        { environment: 'client', use: 'src/a.ts:1:20' },
-        { environment: 'client', use: 'src/entry.ts:2:23' },
-      ])
-    },
-    timeout,
-  )
+        },
+        entry: 'src/entry.ts',
+      }),
+    )
+    // (`expectViolationsAt` also checks each is printed as an error at its position)
+    expectViolationsAt(error, [
+      { environment: 'client', use: 'src/a.ts:1:20' },
+      { environment: 'client', use: 'src/entry.ts:2:23' },
+    ])
+  })
 
   const globbing = (patterns: string) => ({
     'src/lib/db.server.ts': db,
@@ -124,24 +118,19 @@ export const read = () => Object.keys(modules)
         { environment: 'client', use: `src/entry.ts:${line}:${column}` },
       ])
     },
-    timeout,
   )
 
-  test(
-    'a negative pattern naming the denied file leaves it out: no violation, and the client has none of it',
-    async () => {
-      const build = await buildStart({
-        bundler,
-        files: globbing(`['./lib/*.ts', '!./lib/db.server.ts']`),
-        entry: 'src/entry.ts',
-      })
-      expect(build.violations).toEqual([])
-      expect(build.client.where('MARK_DB')).toBe('nowhere')
-      const { result } = await build.client.run('return entry.read()')
-      expect(result).toEqual(['./lib/util.ts'])
-    },
-    timeout,
-  )
+  test('a negative pattern naming the denied file leaves it out: no violation, and the client has none of it', async () => {
+    const build = await buildStart({
+      bundler,
+      files: globbing(`['./lib/*.ts', '!./lib/db.server.ts']`),
+      entry: 'src/entry.ts',
+    })
+    expect(build.violations).toEqual([])
+    expect(build.client.where('MARK_DB')).toBe('nowhere')
+    const { result } = await build.client.run('return entry.read()')
+    expect(result).toEqual(['./lib/util.ts'])
+  })
 
   // A denied file whose name holds glob metacharacters (file-routed
   // content: `[draft]`, `{draft}`, `(1)`): the negative pattern the report
@@ -200,7 +189,6 @@ export const read = () => Object.keys(modules).sort()
       const { result } = await build.client.run('return entry.read()')
       expect(result).toEqual(['./cards/d.server.ts', './cards/index.ts'])
     },
-    timeout,
   )
 
   const required = (load: string) => ({
@@ -211,22 +199,18 @@ export const load = ${load}
 `,
   })
 
-  test(
-    'a require() of a denied file fails the build at the call, as the import it is',
-    async () => {
-      const error = await rejection(
-        buildStart({
-          bundler,
-          files: required(`() => require('./lib/db.server').db()`),
-          entry: 'src/entry.ts',
-        }),
-      )
-      expectViolationsAt(error, [
-        { environment: 'client', use: 'src/entry.ts:3:27' },
-      ])
-    },
-    timeout,
-  )
+  test('a require() of a denied file fails the build at the call, as the import it is', async () => {
+    const error = await rejection(
+      buildStart({
+        bundler,
+        files: required(`() => require('./lib/db.server').db()`),
+        entry: 'src/entry.ts',
+      }),
+    )
+    expectViolationsAt(error, [
+      { environment: 'client', use: 'src/entry.ts:3:27' },
+    ])
+  })
 
   test.each([
     [
@@ -249,7 +233,6 @@ export const load = ${load}
       expect(build.client.where('MARK_DB')).toBe('nowhere')
       expect(build.ssr.where('MARK_DB')).not.toBe('nowhere')
     },
-    timeout,
   )
 
   const context = (regExp: string) => ({
@@ -283,7 +266,6 @@ export const read = () => ctx.keys()
       const { result } = await build.client.run('return entry.read()')
       expect(result).toEqual(['./util.ts'])
     },
-    timeout,
   )
 
   // Two contexts of one module: the report is at the one whose directory
@@ -328,7 +310,6 @@ export const read = () => [...locales.keys(), ...lib.keys()]
       expect(build.violations).toEqual([])
       expect(build.client.where('MARK_DB')).toBe('nowhere')
     },
-    timeout,
   )
 
   // webpack's own form of the context
@@ -355,7 +336,6 @@ export const read = () => ctx.keys()
         { environment: 'client', use: `src/entry.ts:${line}:${column}` },
       ])
     },
-    timeout,
   )
 
   test.each([
@@ -400,42 +380,37 @@ export const both = 1
         `"@tanstack/react-start/server-only" (src/both.ts:${first.line}:${first.column})`,
       )
     },
-    timeout,
   )
 
   // The report names where the marked module imports its marker, not a
   // quoted mention of it in a comment before (Astra review of #8817,
   // hydrate #14: it reported the comment's line).
-  test(
-    'a marker violation reports the marker import of the marked module, not a mention in a comment',
-    async () => {
-      const marked = `// a file that imports '@tanstack/react-start/client-only' is client-only
+  test('a marker violation reports the marker import of the marked module, not a mention in a comment', async () => {
+    const marked = `// a file that imports '@tanstack/react-start/client-only' is client-only
 import { useState } from 'react'
 import '@tanstack/react-start/client-only'
 export const useCount = () => useState(0)
 `
-      const error = await rejection(
-        buildStart({
-          bundler,
-          files: {
-            'src/count.ts': marked,
-            'src/entry.ts': `import { useCount } from './count'\nexport const read = () => useCount\n`,
-          },
-          entry: 'src/entry.ts',
-        }),
-      )
-      expectDiagnostic(error.diagnostics, {
-        severity: 'error',
-        file: 'src/count.ts',
-        root: error.root,
-        position: diagnosticPosition(
-          marked,
-          marked.lastIndexOf(`'@tanstack/react-start/client-only'`),
-        ),
-      })
-    },
-    timeout,
-  )
+    const error = await rejection(
+      buildStart({
+        bundler,
+        files: {
+          'src/count.ts': marked,
+          'src/entry.ts': `import { useCount } from './count'\nexport const read = () => useCount\n`,
+        },
+        entry: 'src/entry.ts',
+      }),
+    )
+    expectDiagnostic(error.diagnostics, {
+      severity: 'error',
+      file: 'src/count.ts',
+      root: error.root,
+      position: diagnosticPosition(
+        marked,
+        marked.lastIndexOf(`'@tanstack/react-start/client-only'`),
+      ),
+    })
+  })
 
   describe.each([
     { framework: 'react' as const, config: {} },
@@ -443,29 +418,25 @@ export const useCount = () => useState(0)
   ])('$framework', ({ framework, config }) => {
     const router = `@tanstack/${framework}-router`
 
-    test(
-      'a server render of a *.client.* component fails the build at its import',
-      async () => {
-        const error = await rejection(
-          buildStart({
-            bundler,
-            framework,
-            ...config,
-            files: {
-              'src/widget.client.tsx': widget,
-              'src/entry.tsx': `import { Widget } from './widget.client'
+    test('a server render of a *.client.* component fails the build at its import', async () => {
+      const error = await rejection(
+        buildStart({
+          bundler,
+          framework,
+          ...config,
+          files: {
+            'src/widget.client.tsx': widget,
+            'src/entry.tsx': `import { Widget } from './widget.client'
 export const Page = () => <div><Widget /></div>
 `,
-            },
-            entry: 'src/entry.tsx',
-          }),
-        )
-        expectViolationsAt(error, [
-          { environment: 'server', use: 'src/entry.tsx:1:24' },
-        ])
-      },
-      timeout,
-    )
+          },
+          entry: 'src/entry.tsx',
+        }),
+      )
+      expectViolationsAt(error, [
+        { environment: 'server', use: 'src/entry.tsx:1:24' },
+      ])
+    })
 
     test.each([
       {
@@ -508,7 +479,6 @@ ${page}
         expect(build.ssr.where('MARK_WIDGET')).toBe('nowhere')
         expect(build.client.where('MARK_WIDGET')).not.toBe('nowhere')
       },
-      timeout,
     )
   })
 
@@ -546,17 +516,14 @@ export const options = { component: UI?.Widget }
       )
       expectViolationsAt(error, [{ environment: 'server', use }])
     },
-    timeout,
   )
 
-  test(
-    'rendered as a namespace member in a route option inside <ClientOnly>, it builds and only the client has the component',
-    async () => {
-      const build = await buildStart({
-        bundler,
-        files: {
-          'src/widget.client.tsx': widget,
-          'src/entry.tsx': `import { ClientOnly } from '@tanstack/react-router'
+  test('rendered as a namespace member in a route option inside <ClientOnly>, it builds and only the client has the component', async () => {
+    const build = await buildStart({
+      bundler,
+      files: {
+        'src/widget.client.tsx': widget,
+        'src/entry.tsx': `import { ClientOnly } from '@tanstack/react-router'
 import * as UI from './widget.client'
 export const options = {
   component: () => (
@@ -566,68 +533,62 @@ export const options = {
   ),
 }
 `,
-        },
-        entry: 'src/entry.tsx',
-      })
-      expect(build.violations).toEqual([])
-      expect(build.ssr.where('MARK_WIDGET')).toBe('nowhere')
-      expect(build.client.where('MARK_WIDGET')).not.toBe('nowhere')
-    },
-    timeout,
-  )
+      },
+      entry: 'src/entry.tsx',
+    })
+    expect(build.violations).toEqual([])
+    expect(build.ssr.where('MARK_WIDGET')).toBe('nowhere')
+    expect(build.client.where('MARK_WIDGET')).not.toBe('nowhere')
+  })
 
   // A component rendered in code the server output erases (the body of
   // `createClientOnlyFn`) and as a route option: the report names the
   // option, the use the server renders, and wrapping it builds. Source:
   // fact-check of the Astra review round 3 of #8817, import protection B2
   // (the report named the erased element, and wrapping it still failed).
-  test(
-    'a component rendered in erased client-only code and as a route option: the report names the option, and wrapping it builds',
-    async () => {
-      const entry = (
-        errorComponent: string,
-      ) => `import { ClientOnly } from '@tanstack/react-router'
+  test('a component rendered in erased client-only code and as a route option: the report names the option, and wrapping it builds', async () => {
+    const entry = (
+      errorComponent: string,
+    ) => `import { ClientOnly } from '@tanstack/react-router'
 import { createClientOnlyFn } from '@tanstack/react-start'
 import { Widget } from './widget.client'
 export const preview = createClientOnlyFn(() => <Widget />)
 export const options = { errorComponent: ${errorComponent} }
 `
-      const initial = entry('Widget')
-      const error = await rejection(
-        buildStart({
-          bundler,
-          files: { 'src/widget.client.tsx': widget, 'src/entry.tsx': initial },
-          entry: 'src/entry.tsx',
-        }),
-      )
-      expectViolationsAt(error, [
-        { environment: 'server', use: 'src/entry.tsx:3:24' },
-      ])
-      const at = (needle: number) => ({
-        severity: 'error' as const,
-        file: 'src/entry.tsx',
-        root: error.root,
-        position: diagnosticPosition(initial, needle),
-      })
-      expectDiagnostic(error.diagnostics, at(initial.lastIndexOf('Widget')))
-      expectNoDiagnostic(
-        error.diagnostics,
-        at(initial.indexOf('Widget', initial.indexOf('<'))),
-      )
-      const build = await buildStart({
+    const initial = entry('Widget')
+    const error = await rejection(
+      buildStart({
         bundler,
-        files: {
-          'src/widget.client.tsx': widget,
-          'src/entry.tsx': entry(
-            '() => <ClientOnly fallback={<span>loading</span>}><Widget /></ClientOnly>',
-          ),
-        },
+        files: { 'src/widget.client.tsx': widget, 'src/entry.tsx': initial },
         entry: 'src/entry.tsx',
-      })
-      expect(build.violations).toEqual([])
-      expect(build.ssr.where('MARK_WIDGET')).toBe('nowhere')
-      expect(build.client.where('MARK_WIDGET')).not.toBe('nowhere')
-    },
-    timeout,
-  )
+      }),
+    )
+    expectViolationsAt(error, [
+      { environment: 'server', use: 'src/entry.tsx:3:24' },
+    ])
+    const at = (needle: number) => ({
+      severity: 'error' as const,
+      file: 'src/entry.tsx',
+      root: error.root,
+      position: diagnosticPosition(initial, needle),
+    })
+    expectDiagnostic(error.diagnostics, at(initial.lastIndexOf('Widget')))
+    expectNoDiagnostic(
+      error.diagnostics,
+      at(initial.indexOf('Widget', initial.indexOf('<'))),
+    )
+    const build = await buildStart({
+      bundler,
+      files: {
+        'src/widget.client.tsx': widget,
+        'src/entry.tsx': entry(
+          '() => <ClientOnly fallback={<span>loading</span>}><Widget /></ClientOnly>',
+        ),
+      },
+      entry: 'src/entry.tsx',
+    })
+    expect(build.violations).toEqual([])
+    expect(build.ssr.where('MARK_WIDGET')).toBe('nowhere')
+    expect(build.client.where('MARK_WIDGET')).not.toBe('nowhere')
+  })
 })

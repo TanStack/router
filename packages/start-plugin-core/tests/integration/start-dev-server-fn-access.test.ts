@@ -18,8 +18,6 @@ import { startRsbuildStartDevServer } from '../rsbuild-dev-server'
 import { rootDocument, routerFile } from './start-compose-app'
 import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
 
-const timeout = 60_000
-
 const files = {
   'harness/client-entry.ts': `import { createElement } from 'react'
 import { hydrateRoot } from 'react-dom/client'
@@ -85,28 +83,24 @@ const servers: Record<string, () => Promise<Served>> = {
 }
 
 describe.each(Object.keys(servers))('%s dev', (bundler) => {
-  test(
-    'a server fn no client module references answers a client call, with one warning naming it',
-    async () => {
-      const server = await servers[bundler]!()
-      const page = await openTestPage(server.url)
-      await page.waitForText('hydrated', {
-        selector: '[data-testid=hydrated]',
-      })
-      await page.page.locator('[data-testid=probe]').click()
-      await page.waitForText(/greet=/, { selector: '[data-testid=probe]' })
-      expect(await page.text('[data-testid=probe]')).toBe(
-        'greet=MARK_GREET:MARK_INTERNAL internal=MARK_INTERNAL,MARK_INTERNAL',
-      )
-      expectDiagnostic(server.diagnostics, {
-        severity: 'warning',
-        file: 'src/internal.ts',
-        root: server.root,
-        times: 1,
-      })
-    },
-    timeout,
-  )
+  test('a server fn no client module references answers a client call, with one warning naming it', async () => {
+    const server = await servers[bundler]!()
+    const page = await openTestPage(server.url)
+    await page.waitForText('hydrated', {
+      selector: '[data-testid=hydrated]',
+    })
+    await page.page.locator('[data-testid=probe]').click()
+    await page.waitForText(/greet=/, { selector: '[data-testid=probe]' })
+    expect(await page.text('[data-testid=probe]')).toBe(
+      'greet=MARK_GREET:MARK_INTERNAL internal=MARK_INTERNAL,MARK_INTERNAL',
+    )
+    expectDiagnostic(server.diagnostics, {
+      severity: 'warning',
+      file: 'src/internal.ts',
+      root: server.root,
+      times: 1,
+    })
+  })
 })
 
 /**
@@ -151,29 +145,25 @@ function Page() {
 `,
   }
 
-  test(
-    'an id naming a file the dev server may not serve is refused',
-    async () => {
-      const server = await startDevServer({
-        browser: true,
-        files: forgedFiles,
-        plugins: [
-          {
-            name: 'deny-secret',
-            config: () => ({ server: { fs: { deny: ['**/secret/**'] } } }),
-          },
-        ],
-      })
-      const page = await openTestPage(server.url!)
-      await page.waitForText('hydrated', {
-        selector: '[data-testid=hydrated]',
-      })
-      await page.page.locator('[data-testid=probe]').click()
-      await page.waitForText(/other=/, { selector: '[data-testid=probe]' })
-      expect(await page.text('[data-testid=probe]')).toBe(
-        'other=MARK_OTHER secret=refused',
-      )
-    },
-    timeout,
-  )
+  test('an id naming a file the dev server may not serve is refused', async () => {
+    const server = await startDevServer({
+      browser: true,
+      files: forgedFiles,
+      plugins: [
+        {
+          name: 'deny-secret',
+          config: () => ({ server: { fs: { deny: ['**/secret/**'] } } }),
+        },
+      ],
+    })
+    const page = await openTestPage(server.url!)
+    await page.waitForText('hydrated', {
+      selector: '[data-testid=hydrated]',
+    })
+    await page.page.locator('[data-testid=probe]').click()
+    await page.waitForText(/other=/, { selector: '[data-testid=probe]' })
+    expect(await page.text('[data-testid=probe]')).toBe(
+      'other=MARK_OTHER secret=refused',
+    )
+  })
 })

@@ -135,7 +135,7 @@ describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
     )
     expect(failure, 'the build failed').toBeDefined()
     expectDiagnostic(failure, { severity: 'error', file: 'src/fns.ts' })
-  }, 60_000)
+  })
 
   // SPEC J4.2 (R182) with a custom generator: the server fn whose stub
   // the client's emitted code holds answers the browser; `unused`, whose
@@ -168,7 +168,7 @@ describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
       file: 'src/label-fns.ts',
       root: server.root,
     })
-  }, 60_000)
+  })
 
   test('custom ids the browser calls reach their handlers; a deprecated one warns', async () => {
     const server = await serveRscBuild({
@@ -194,5 +194,5 @@ describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
       }).length > 0,
       `a warning naming src/quoted.ts in:\n${server.messages.join('\n')}`,
     ).toBe(true)
-  }, 60_000)
+  })
 })

@@ -18,7 +18,6 @@ import {
   expectRelevantLocation,
   reportedLocations,
   reportedLocationsOfCases,
-  timeout,
 } from './reported-location-app'
 import type { Channel } from './reported-location-app'
 
@@ -229,17 +228,13 @@ describe('the reported location of a violation is the leaking use or the import'
     ...rows(['lookAlike'], channels),
     ...rows(['typePosition', 'jsxElement'], channels),
     ...rows(['memberProperty'], channels),
-  ])(
-    '$channel: $name',
-    async ({ channel, key, expected }) => {
-      expectRelevantLocation(
-        (await reportsOf(channel)).of(key),
-        // (each case is `src/<key>/a.tsx` of the shared app)
-        expected.map((place) => place.replace('src/a.tsx', caseFile(key))),
-      )
-    },
-    timeout,
-  )
+  ])('$channel: $name', async ({ channel, key, expected }) => {
+    expectRelevantLocation(
+      (await reportsOf(channel)).of(key),
+      // (each case is `src/<key>/a.tsx` of the shared app)
+      expected.map((place) => place.replace('src/a.tsx', caseFile(key))),
+    )
+  })
 
   test.each(channels)(
     '%s: every case is reported, and nothing else fails',
@@ -248,7 +243,6 @@ describe('the reported location of a violation is the leaking use or the import'
       expect(files).toEqual(Object.keys(cases).map(caseFile).sort())
       expect(otherErrors).toEqual([])
     },
-    timeout,
   )
 })
 
@@ -269,13 +263,9 @@ describe('the reported importer is a file of the app, whatever source maps it ha
     )
 
   // (the location itself is pinned above, "a JSX element")
-  test(
-    'rsbuild build without source maps: a JSX element (control)',
-    async () => {
-      expect(await reportedFiles('rsbuild build')).toEqual(['src/a.tsx'])
-    },
-    timeout,
-  )
+  test('rsbuild build without source maps: a JSX element (control)', async () => {
+    expect(await reportedFiles('rsbuild build')).toEqual(['src/a.tsx'])
+  })
 
   test.each([
     {
@@ -288,11 +278,7 @@ describe('the reported importer is a file of the app, whatever source maps it ha
       name: 'a build with source maps',
       sourcemap: true,
     },
-  ])(
-    '$channel ($name): a JSX element',
-    async ({ channel, sourcemap }) => {
-      expect(await reportedFiles(channel, { sourcemap })).toEqual(['src/a.tsx'])
-    },
-    timeout,
-  )
+  ])('$channel ($name): a JSX element', async ({ channel, sourcemap }) => {
+    expect(await reportedFiles(channel, { sourcemap })).toEqual(['src/a.tsx'])
+  })
 })

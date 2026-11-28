@@ -107,86 +107,65 @@ async function watched(
 
 describe('an exempt importer the app no longer imports', () => {
   // Rspack builds the file again in the compilation of the edit
-  test(
-    'rsbuild build --watch: the pattern importer gets the mock, with a warning',
-    async () => {
-      expect(
-        await watched(
-          'rsbuild',
-          orphanApp('rsbuild'),
-          options('mock'),
-          orphaned,
-        ),
-      ).toEqual(mockedForPattern)
-    },
-    timeout,
-  )
+  test('rsbuild build --watch: the pattern importer gets the mock, with a warning', async () => {
+    expect(
+      await watched('rsbuild', orphanApp('rsbuild'), options('mock'), orphaned),
+    ).toEqual(mockedForPattern)
+  })
 
-  test(
-    'rsbuild dev: the pattern importer gets the mock',
-    async () => {
-      const server = await startRsbuildStartDevServer({
-        compileTimeout: timeout,
-        browser: true,
-        hmr: false,
-        files: orphanApp('rsbuild', true),
-        start: { importProtection: options('mock') },
-      })
-      const run = async () =>
-        (
-          (await captureConsole(() => runInClient(server, readScript)))
-            .result as { result: unknown }
-        ).result
-      expect(await run()).toEqual({
-        plain: 'MARK_SECRET',
-        glob: ['MARK_SECRET'],
-      })
-      await settledAcrossTurn(server)
-      await server.edit(orphaned)
-      await settledAcrossTurn(server)
-      expect(await run()).toEqual({ plain: 'none', glob: ['mock'] })
-    },
-    timeout,
-  )
+  test('rsbuild dev: the pattern importer gets the mock', async () => {
+    const server = await startRsbuildStartDevServer({
+      compileTimeout: timeout,
+      browser: true,
+      hmr: false,
+      files: orphanApp('rsbuild', true),
+      start: { importProtection: options('mock') },
+    })
+    const run = async () =>
+      (
+        (await captureConsole(() => runInClient(server, readScript)))
+          .result as { result: unknown }
+      ).result
+    expect(await run()).toEqual({
+      plain: 'MARK_SECRET',
+      glob: ['MARK_SECRET'],
+    })
+    await settledAcrossTurn(server)
+    await server.edit(orphaned)
+    await settledAcrossTurn(server)
+    expect(await run()).toEqual({ plain: 'none', glob: ['mock'] })
+  })
 
   // A Vite rebuild compiles the file once, before it knows the importer is
   // gone: it ships as it is, and the rebuild says so (the report's fix:
   // save any file)
-  test(
-    'vite build --watch: the rebuild reports the file kept as it is',
-    async () => {
-      const build = await buildStart({
-        bundler: 'vite',
-        files: orphanApp('vite'),
-        entry: 'src/entry.ts',
-        start: { importProtection: options('mock') },
-        watchEdits: orphaned,
-      })
-      // (its first build may report the file served as its mock: the two
-      // importers are exempt, and Vite compiles it once, R142 (2))
-      expect({
-        uses: await uses(build),
-        problems: problems(build.diagnostics).map(named),
-      }).toEqual({
-        uses: { plain: 'none', glob: ['MARK_SECRET'] },
-        problems: [`warning ${denied}`],
-      })
-    },
-    timeout,
-  )
+  test('vite build --watch: the rebuild reports the file kept as it is', async () => {
+    const build = await buildStart({
+      bundler: 'vite',
+      files: orphanApp('vite'),
+      entry: 'src/entry.ts',
+      start: { importProtection: options('mock') },
+      watchEdits: orphaned,
+    })
+    // (its first build may report the file served as its mock: the two
+    // importers are exempt, and Vite compiles it once, R142 (2))
+    expect({
+      uses: await uses(build),
+      problems: problems(build.diagnostics).map(named),
+    }).toEqual({
+      uses: { plain: 'none', glob: ['MARK_SECRET'] },
+      problems: [`warning ${denied}`],
+    })
+  })
 
-  test(
-    'vite build --watch: a later save: the pattern importer gets the mock, with a warning',
-    async () => {
-      expect(
-        await watched('vite', orphanApp('vite'), options('mock'), [
-          { edits: orphaned },
-          { edits: touched },
-        ]),
-      ).toEqual(mockedForPattern)
-    },
-    timeout,
-  )
+  test('vite build --watch: a later save: the pattern importer gets the mock, with a warning', async () => {
+    expect(
+      await watched('vite', orphanApp('vite'), options('mock'), [
+        { edits: orphaned },
+        { edits: touched },
+      ]),
+    ).toEqual(mockedForPattern)
+  })
 })
 
 /**
@@ -221,47 +200,41 @@ export const Route = createFileRoute('/')({})
 describe.each(['vite', 'rsbuild'] as const)(
   '%s build --watch: an exempt route split component removed',
   (bundler) => {
-    test(
-      'the pattern importer gets the mock, with a warning',
-      async () => {
-        const build = await buildStart({
-          bundler,
-          files: routeApp(bundler),
-          entry: 'src/entry.ts',
-          start: {
-            importProtection: options('mock', {
-              exclude: ['src/routes/**', 'src/generated/**'],
-            }),
-          },
-          // (Vite: the rebuild of the edit reports the file kept as it is)
-          watchEdits:
-            bundler === 'vite'
-              ? [
-                  { edits: componentRemoved },
-                  {
-                    edits: {
-                      'src/entry.ts': `${routeApp(bundler)['src/entry.ts']}\n`,
-                    },
+    test('the pattern importer gets the mock, with a warning', async () => {
+      const build = await buildStart({
+        bundler,
+        files: routeApp(bundler),
+        entry: 'src/entry.ts',
+        start: {
+          importProtection: options('mock', {
+            exclude: ['src/routes/**', 'src/generated/**'],
+          }),
+        },
+        // (Vite: the rebuild of the edit reports the file kept as it is)
+        watchEdits:
+          bundler === 'vite'
+            ? [
+                { edits: componentRemoved },
+                {
+                  edits: {
+                    'src/entry.ts': `${routeApp(bundler)['src/entry.ts']}\n`,
                   },
-                ]
-              : componentRemoved,
-        })
-        const { result } = await build.client.run(
-          `return await entry.viaGlob()`,
-        )
-        expect({
-          glob: result,
-          // (Rsbuild's rebuild may be more than one compilation, each printing it)
-          problems: [...new Set(problems(build.diagnostics).map(named))],
-          where: build.client.where('MARK_SECRET'),
-        }).toEqual({
-          glob: ['mock'],
-          problems: [`warning ${denied}`],
-          where: 'nowhere',
-        })
-      },
-      timeout,
-    )
+                },
+              ]
+            : componentRemoved,
+      })
+      const { result } = await build.client.run(`return await entry.viaGlob()`)
+      expect({
+        glob: result,
+        // (Rsbuild's rebuild may be more than one compilation, each printing it)
+        problems: [...new Set(problems(build.diagnostics).map(named))],
+        where: build.client.where('MARK_SECRET'),
+      }).toEqual({
+        glob: ['mock'],
+        problems: [`warning ${denied}`],
+        where: 'nowhere',
+      })
+    })
   },
 )
 
@@ -283,28 +256,20 @@ const allowReg = options('mock', {
 const removed = { 'src/reg.ts': `export const viaPlain = () => 'none'\n` }
 
 describe('an import allowImport allowed, removed', () => {
-  test(
-    'rsbuild build --watch: the pattern importer gets the mock, with a warning',
-    async () => {
-      expect(
-        await watched('rsbuild', allowApp('rsbuild'), allowReg, removed),
-      ).toEqual(mockedForPattern)
-    },
-    timeout,
-  )
+  test('rsbuild build --watch: the pattern importer gets the mock, with a warning', async () => {
+    expect(
+      await watched('rsbuild', allowApp('rsbuild'), allowReg, removed),
+    ).toEqual(mockedForPattern)
+  })
 
-  test(
-    'vite build --watch, then a later save: the pattern importer gets the mock, with a warning',
-    async () => {
-      expect(
-        await watched('vite', allowApp('vite'), allowReg, [
-          { edits: removed },
-          { edits: touched },
-        ]),
-      ).toEqual(mockedForPattern)
-    },
-    timeout,
-  )
+  test('vite build --watch, then a later save: the pattern importer gets the mock, with a warning', async () => {
+    expect(
+      await watched('vite', allowApp('vite'), allowReg, [
+        { edits: removed },
+        { edits: touched },
+      ]),
+    ).toEqual(mockedForPattern)
+  })
 })
 
 /**
@@ -345,135 +310,123 @@ function holdImportsOf(importer: string, until: string): Plugin {
 // that compile and before the bundler resolves the import is served real
 // (with the exempt pattern importer, the build warns about the shape in
 // either order)
-test(
-  'vite build: the denied file compiled between the compile of a plain import allowImport allows and its resolution: both get the real module, with a warning',
-  async () => {
-    const outcome = await outcomeOf(() =>
-      buildStart({
-        bundler: 'vite',
-        files: app({ bundler: 'vite', glob: 'generated', first: 'plain' }),
-        entry: 'src/entry.ts',
-        viteConfig: {
-          plugins: [
-            ...holdUntilCompiled(`/${denied}`, '/src/generated/reg.ts'),
-            holdImportsOf('/src/generated/reg.ts', denied),
-          ],
-        },
-        start: { importProtection: allowedPlain('mock') },
-      }),
-    )
-    expect(outcome).toEqual({
-      ...realForBoth,
-      problems: [`warning ${denied}`],
-    })
-  },
-  timeout,
-)
+test('vite build: the denied file compiled between the compile of a plain import allowImport allows and its resolution: both get the real module, with a warning', async () => {
+  const outcome = await outcomeOf(() =>
+    buildStart({
+      bundler: 'vite',
+      files: app({ bundler: 'vite', glob: 'generated', first: 'plain' }),
+      entry: 'src/entry.ts',
+      viteConfig: {
+        plugins: [
+          ...holdUntilCompiled(`/${denied}`, '/src/generated/reg.ts'),
+          holdImportsOf('/src/generated/reg.ts', denied),
+        ],
+      },
+      start: { importProtection: allowedPlain('mock') },
+    }),
+  )
+  expect(outcome).toEqual({
+    ...realForBoth,
+    problems: [`warning ${denied}`],
+  })
+})
 
 // Finding 3: `allowImport` answers about the denied file itself after the
 // exempt importer was compiled; the verdict reads the demand again
-test(
-  'vite dev: the exempt importer compiled while allowImport answers about the denied file: both get the real module',
-  async () => {
-    let asked!: () => void
-    const askedOnce = new Promise<void>((resolve) => (asked = resolve))
-    let compiled!: () => void
-    const compiledOnce = new Promise<void>((resolve) => (compiled = resolve))
-    const plugin: Plugin = {
-      name: 'test:exempt-importer-during-allow-import',
-      applyToEnvironment: (environment) => environment.name === 'client',
-      async load(id) {
+test('vite dev: the exempt importer compiled while allowImport answers about the denied file: both get the real module', async () => {
+  let asked!: () => void
+  const askedOnce = new Promise<void>((resolve) => (asked = resolve))
+  let compiled!: () => void
+  const compiledOnce = new Promise<void>((resolve) => (compiled = resolve))
+  const plugin: Plugin = {
+    name: 'test:exempt-importer-during-allow-import',
+    applyToEnvironment: (environment) => environment.name === 'client',
+    async load(id) {
+      if (id.endsWith('/src/generated/reg.ts')) {
+        await askedOnce
+      }
+      return null
+    },
+    transform: {
+      order: 'post',
+      handler(_code, id) {
         if (id.endsWith('/src/generated/reg.ts')) {
-          await askedOnce
+          compiled()
         }
-        return null
       },
-      transform: {
-        order: 'post',
-        handler(_code, id) {
-          if (id.endsWith('/src/generated/reg.ts')) {
-            compiled()
-          }
+    },
+  }
+  const server = await startDevServer({
+    browser: true,
+    start: {
+      importProtection: options('mock', {
+        allowImport: async () => {
+          asked()
+          await compiledOnce
+          return false
         },
-      },
-    }
-    const server = await startDevServer({
-      browser: true,
-      start: {
-        importProtection: options('mock', {
-          allowImport: async () => {
-            asked()
-            await compiledOnce
-            return false
-          },
-        }),
-      },
-      files: {
-        [denied]: deniedModule,
-        'src/generated/reg.ts': plainImporter('generated'),
-        'src/generated/glob.ts': patternImporter('vite', '../', false),
-        'src/slow.ts': `export { viaPlain } from './generated/reg'\n`,
-        'src/entry.ts': `import { viaGlob } from './generated/glob'
+      }),
+    },
+    files: {
+      [denied]: deniedModule,
+      'src/generated/reg.ts': plainImporter('generated'),
+      'src/generated/glob.ts': patternImporter('vite', '../', false),
+      'src/slow.ts': `export { viaPlain } from './generated/reg'\n`,
+      'src/entry.ts': `import { viaGlob } from './generated/glob'
 import { viaPlain } from './slow'
 export { viaPlain, viaGlob }
 ;(globalThis as any).uses = { plain: viaPlain, glob: viaGlob }
 `,
-        'src/router.ts': `import './entry'
+      'src/router.ts': `import './entry'
 export const getRouter = () => undefined
 `,
-      },
-      plugins: [{ ...plugin, enforce: 'pre' }],
-    })
-    // (before: the first page got the mock, then the file's own check
-    // reloaded it)
-    const first = await runViteClient(server, '/src/router.ts', readScript)
-    await server.idle()
-    const after = await runViteClient(server, '/src/router.ts', readScript)
-    expect({ first: first.result, after: after.result }).toEqual({
-      first: { plain: 'MARK_SECRET', glob: ['MARK_SECRET'] },
-      after: { plain: 'MARK_SECRET', glob: ['MARK_SECRET'] },
-    })
-  },
-  timeout,
-)
+    },
+    plugins: [{ ...plugin, enforce: 'pre' }],
+  })
+  // (before: the first page got the mock, then the file's own check
+  // reloaded it)
+  const first = await runViteClient(server, '/src/router.ts', readScript)
+  await server.idle()
+  const after = await runViteClient(server, '/src/router.ts', readScript)
+  expect({ first: first.result, after: after.result }).toEqual({
+    first: { plain: 'MARK_SECRET', glob: ['MARK_SECRET'] },
+    after: { plain: 'MARK_SECRET', glob: ['MARK_SECRET'] },
+  })
+})
 
 describe('reports', () => {
   // Finding 5: the served-mismatch report names the pattern import that
   // brought the file first
-  test(
-    'vite build: the file compiled as its mock for a pattern import, then needed as it is: the error names the pattern import',
-    async () => {
-      const files = app({
+  test('vite build: the file compiled as its mock for a pattern import, then needed as it is: the error names the pattern import', async () => {
+    const files = app({
+      bundler: 'vite',
+      glob: 'generated',
+      first: 'pattern',
+    })
+    let error: unknown
+    try {
+      await buildStart({
         bundler: 'vite',
-        glob: 'generated',
-        first: 'pattern',
+        files,
+        entry: 'src/entry.ts',
+        viteConfig: {
+          plugins: holdUntilCompiled('/src/generated/reg.ts', denied),
+        },
+        start: { importProtection: options('error') },
       })
-      let error: unknown
-      try {
-        await buildStart({
-          bundler: 'vite',
-          files,
-          entry: 'src/entry.ts',
-          viteConfig: {
-            plugins: holdUntilCompiled('/src/generated/reg.ts', denied),
-          },
-          start: { importProtection: options('error') },
-        })
-      } catch (e) {
-        error = e
-      }
-      expect(error).toBeInstanceOf(StartBuildError)
-      expectDiagnostic((error as StartBuildError).diagnostics, {
-        severity: 'error',
-        file: 'src/generated/glob.ts',
-        position: diagnosticPosition(
-          files['src/generated/glob.ts']!,
-          'import.meta.glob',
-        ),
-      })
-    },
-    timeout,
-  )
+    } catch (e) {
+      error = e
+    }
+    expect(error).toBeInstanceOf(StartBuildError)
+    expectDiagnostic((error as StartBuildError).diagnostics, {
+      severity: 'error',
+      file: 'src/generated/glob.ts',
+      position: diagnosticPosition(
+        files['src/generated/glob.ts']!,
+        'import.meta.glob',
+      ),
+    })
+  })
 
   // Finding 5: R89's warning about an exempt pattern importer says that its
   // import is a pattern import, and where
@@ -502,6 +455,5 @@ describe('reports', () => {
         ),
       })
     },
-    timeout,
   )
 })

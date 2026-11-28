@@ -28,7 +28,6 @@ import { buildStart } from '../build-start'
 import type { StartBuild, StartBuildOptions } from '../build-harness'
 
 const require = createRequire(import.meta.url)
-const timeout = 60_000
 
 const files = {
   'src/page.mdx': `# A page
@@ -89,7 +88,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
         ...mdxConfig,
       }),
     )
-  }, timeout)
+  }, 60_000)
 
   test('the client calls an MDX module’s server fn by its id, without its handler', async () => {
     expect(build.client.where('MARK_MDX_HANDLER')).toBe('nowhere')
@@ -219,40 +218,35 @@ export const fn = base.handler(async () => 'MARK_MDX_FINISHED')
         }
       }
     },
-    timeout,
   )
 
   // (the fix the refusal of a re-export gives)
-  test(
-    'a builder imported from its own module, not re-exported through the MDX file, builds, and its handler stays on the server',
-    async () => {
-      const fixed = await buildStart({
-        bundler,
-        files: {
-          'src/b.ts': files['src/b.ts'],
-          'src/page.mdx': `# Page
+  test('a builder imported from its own module, not re-exported through the MDX file, builds, and its handler stays on the server', async () => {
+    const fixed = await buildStart({
+      bundler,
+      files: {
+        'src/b.ts': files['src/b.ts'],
+        'src/page.mdx': `# Page
 
 Some *prose*.
 `,
-          'src/entry.ts': `import { base } from './b'
+        'src/entry.ts': `import { base } from './b'
 import Page from './page.mdx'
 export const fn = base.handler(async () => 'MARK_MDX_REEXPORT_FIX')
 export const page = Page
 `,
-          'src/ssr-entry.ts': `export * from './entry'\n${callByIdExports}`,
-        },
-        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
-        ...mdxConfig,
-      })
-      expect(fixed.client.where('MARK_MDX_REEXPORT_FIX')).toBe('nowhere')
-      const url = (await fixed.client.run(`return entry.fn.url`)).result
-      const { result } = await fixed.ssr.run(
-        `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
-      )
-      expect(result).toBe('MARK_MDX_REEXPORT_FIX')
-    },
-    timeout,
-  )
+        'src/ssr-entry.ts': `export * from './entry'\n${callByIdExports}`,
+      },
+      entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+      ...mdxConfig,
+    })
+    expect(fixed.client.where('MARK_MDX_REEXPORT_FIX')).toBe('nowhere')
+    const url = (await fixed.client.run(`return entry.fn.url`)).result
+    const { result } = await fixed.ssr.run(
+      `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+    )
+    expect(result).toBe('MARK_MDX_REEXPORT_FIX')
+  })
 })
 
 // Vite only: a plugin may hand another language's output to the bundler as
@@ -276,31 +270,27 @@ describe('vite build of a module another plugin hands over as TypeScript', () =>
 
   // (the late pass read it as JSX and failed the client build at the type
   // annotation; without the late pass, the handler ships to the client)
-  test(
-    'compiles its server fn: the client calls it by its id, without its handler',
-    async () => {
-      const build = await buildStart({
-        bundler: 'vite',
-        files: {
-          'src/page.foo': `import { createServerFn } from '@tanstack/react-start'
+  test('compiles its server fn: the client calls it by its id, without its handler', async () => {
+    const build = await buildStart({
+      bundler: 'vite',
+      files: {
+        'src/page.foo': `import { createServerFn } from '@tanstack/react-start'
 const label: string = 'MARK_FOO_HANDLER'
 export const fn = createServerFn().handler(async (): Promise<string> => label)
 `,
-          'src/entry.ts': `export { fn } from './page.foo'\n`,
-          'src/ssr-entry.ts': `export { fn } from './page.foo'\n${callByIdExports}`,
-        },
-        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
-        ...asTypeScript,
-      })
-      expect(build.client.where('MARK_FOO_HANDLER')).toBe('nowhere')
-      const url = (await build.client.run(`return entry.fn.url`)).result
-      const { result } = await build.ssr.run(
-        `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
-      )
-      expect(result).toBe('MARK_FOO_HANDLER')
-    },
-    timeout,
-  )
+        'src/entry.ts': `export { fn } from './page.foo'\n`,
+        'src/ssr-entry.ts': `export { fn } from './page.foo'\n${callByIdExports}`,
+      },
+      entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+      ...asTypeScript,
+    })
+    expect(build.client.where('MARK_FOO_HANDLER')).toBe('nowhere')
+    const url = (await build.client.run(`return entry.fn.url`)).result
+    const { result } = await build.ssr.run(
+      `${callByIdPrelude}return await callById(serverFnId(${JSON.stringify(url)}))`,
+    )
+    expect(result).toBe('MARK_FOO_HANDLER')
+  })
 
   // A namespace's exported members keep their values though only erased
   // code reads them (several names in one statement, a pattern), whatever
@@ -333,7 +323,6 @@ export const result = [C.a, C.b, C.c, C.d]
         1, 2, 3, 4,
       ])
     },
-    timeout,
   )
 
   // (a namespace, or a module augmentation declaring no value, beside a
@@ -383,7 +372,6 @@ export function read() {
         1, 2, 10,
       ])
     },
-    timeout,
   )
 
   // (a namespace exporting one name per statement keeps them; `namespace`
@@ -425,101 +413,88 @@ ${declaration}export const value: string = createMemoryHistory({
       })
       expect((await build.client.run('return entry.value')).result).toBe('/ok')
     },
-    timeout,
   )
 
-  test(
-    'builds one that names a router package',
-    async () => {
-      const build = await buildStart({
-        bundler: 'vite',
-        files: {
-          'src/page.foo': `import { createMemoryHistory } from '@tanstack/react-router'
+  test('builds one that names a router package', async () => {
+    const build = await buildStart({
+      bundler: 'vite',
+      files: {
+        'src/page.foo': `import { createMemoryHistory } from '@tanstack/react-router'
 export const value: string = createMemoryHistory({
   initialEntries: ['/MARK_FOO_TYPED'],
 }).location.pathname
 `,
-          'src/entry.ts': `export { value } from './page.foo'\n`,
-        },
-        entry: 'src/entry.ts',
-        ...asTypeScript,
-      })
-      expectNoDiagnostic(build.diagnostics, {
-        file: 'src/page.foo',
-        root: build.root,
-      })
-      expect((await build.client.run('return entry.value')).result).toBe(
-        '/MARK_FOO_TYPED',
-      )
-    },
-    timeout,
-  )
+        'src/entry.ts': `export { value } from './page.foo'\n`,
+      },
+      entry: 'src/entry.ts',
+      ...asTypeScript,
+    })
+    expectNoDiagnostic(build.diagnostics, {
+      file: 'src/page.foo',
+      root: build.root,
+    })
+    expect((await build.client.run('return entry.value')).result).toBe(
+      '/MARK_FOO_TYPED',
+    )
+  })
 
   // (a plugin after Start's late pass compiles the Markdown: the late pass
   // sees the text, which no JavaScript parser accepts)
-  test(
-    'leaves text another plugin compiles later to the bundler, though it names a router package',
-    async () => {
-      const build = await buildStart({
-        bundler: 'vite',
-        files: {
-          'src/readme.md': `# Usage
+  test('leaves text another plugin compiles later to the bundler, though it names a router package', async () => {
+    const build = await buildStart({
+      bundler: 'vite',
+      files: {
+        'src/readme.md': `# Usage
 
 To link: \`import { Link } from '@tanstack/react-router'\`.
 `,
-          'src/entry.ts': `import readme from './readme.md'\nexport const text = readme\n`,
-        },
-        entry: 'src/entry.ts',
-        viteConfig: {
-          plugins: [
-            {
-              name: 'markdown-as-text',
-              enforce: 'post',
-              transform: {
-                filter: { id: /\.md$/ },
-                handler: (code: string) => ({
-                  code: `export default ${JSON.stringify(code)}`,
-                }),
-              },
+        'src/entry.ts': `import readme from './readme.md'\nexport const text = readme\n`,
+      },
+      entry: 'src/entry.ts',
+      viteConfig: {
+        plugins: [
+          {
+            name: 'markdown-as-text',
+            enforce: 'post',
+            transform: {
+              filter: { id: /\.md$/ },
+              handler: (code: string) => ({
+                code: `export default ${JSON.stringify(code)}`,
+              }),
             },
-          ],
-        },
-      })
-      expectNoDiagnostic(build.diagnostics, {
-        file: 'src/readme.md',
-        root: build.root,
-      })
-      expect((await build.client.run('return entry.text')).result).toContain(
-        '# Usage',
-      )
-    },
-    timeout,
-  )
+          },
+        ],
+      },
+    })
+    expectNoDiagnostic(build.diagnostics, {
+      file: 'src/readme.md',
+      root: build.root,
+    })
+    expect((await build.client.run('return entry.text')).result).toContain(
+      '# Usage',
+    )
+  })
 
-  test(
-    'leaves it to the bundler when it names none',
-    async () => {
-      const build = await buildStart({
-        bundler: 'vite',
-        files: {
-          'src/page.foo': `const label: string = 'MARK_FOO_VALUE'
+  test('leaves it to the bundler when it names none', async () => {
+    const build = await buildStart({
+      bundler: 'vite',
+      files: {
+        'src/page.foo': `const label: string = 'MARK_FOO_VALUE'
 export const value = label
 `,
-          'src/entry.ts': `export { value } from './page.foo'\n`,
-        },
-        entry: 'src/entry.ts',
-        ...asTypeScript,
-      })
-      expectNoDiagnostic(build.diagnostics, {
-        file: 'src/page.foo',
-        root: build.root,
-      })
-      expect((await build.client.run('return entry.value')).result).toBe(
-        'MARK_FOO_VALUE',
-      )
-    },
-    timeout,
-  )
+        'src/entry.ts': `export { value } from './page.foo'\n`,
+      },
+      entry: 'src/entry.ts',
+      ...asTypeScript,
+    })
+    expectNoDiagnostic(build.diagnostics, {
+      file: 'src/page.foo',
+      root: build.root,
+    })
+    expect((await build.client.run('return entry.value')).result).toBe(
+      'MARK_FOO_VALUE',
+    )
+  })
 })
 
 // The JavaScript of an `.mdx` that finishes a builder another module exports
@@ -533,36 +508,32 @@ export const value = label
 describe.each(startBundlers)(
   '%s build, an MDX module the compiler cannot parse',
   (bundler) => {
-    test(
-      'fails the client build at the module',
-      async () => {
-        const error = await buildStart({
-          bundler,
-          files: {
-            'src/b.ts': files['src/b.ts'],
-            'src/deep.mdx': `import { base } from './b'
+    test('fails the client build at the module', async () => {
+      const error = await buildStart({
+        bundler,
+        files: {
+          'src/b.ts': files['src/b.ts'],
+          'src/deep.mdx': `import { base } from './b'
 export const deep = ${'['.repeat(600)}1${']'.repeat(600)}
 export const finished = base.handler(async () => 'MARK_DEEP_HANDLER')
 `,
-            'src/entry.ts': `export { finished } from './deep.mdx'\n`,
-          },
-          entry: 'src/entry.ts',
-          ...mdxConfig,
-        }).then(
-          () => expect.fail('the build succeeded'),
-          (e: unknown) => e,
-        )
-        if (!(error instanceof StartBuildError)) {
-          throw error
-        }
-        expectDiagnostic(error.diagnostics, {
-          severity: 'error',
-          file: 'src/deep.mdx',
-          root: error.root,
-        })
-      },
-      timeout,
-    )
+          'src/entry.ts': `export { finished } from './deep.mdx'\n`,
+        },
+        entry: 'src/entry.ts',
+        ...mdxConfig,
+      }).then(
+        () => expect.fail('the build succeeded'),
+        (e: unknown) => e,
+      )
+      if (!(error instanceof StartBuildError)) {
+        throw error
+      }
+      expectDiagnostic(error.diagnostics, {
+        severity: 'error',
+        file: 'src/deep.mdx',
+        root: error.root,
+      })
+    })
   },
 )
 
@@ -572,46 +543,42 @@ export const finished = base.handler(async () => 'MARK_DEEP_HANDLER')
 // handler), and the page's own import is compiled as before.
 // Source: whole-PR review S5-10; settlement step 4.
 describe('rsbuild build, an MDX module imported as its text', () => {
-  test(
-    'the text is not compiled; the module is',
-    async () => {
-      const build = await buildStart({
-        bundler: 'rsbuild',
-        files: {
-          'src/page.mdx': `import { createServerFn } from '@tanstack/react-start'
+  test('the text is not compiled; the module is', async () => {
+    const build = await buildStart({
+      bundler: 'rsbuild',
+      files: {
+        'src/page.mdx': `import { createServerFn } from '@tanstack/react-start'
 export const fn = createServerFn().handler(async () => 'MARK_SOURCE_HANDLER')
 `,
-          'src/entry.ts': `export { fn } from './page.mdx'
+        'src/entry.ts': `export { fn } from './page.mdx'
 // @ts-expect-error (a text module)
 export { default as text } from './page.mdx?raw'
 `,
-        },
-        entry: 'src/entry.ts',
-        rsbuildConfig: {
-          tools: {
-            rspack: {
-              module: {
-                rules: [
-                  {
-                    test: /\.mdx$/,
-                    use: [{ loader: require.resolve('@mdx-js/loader') }],
-                  },
-                  { resourceQuery: /^\?raw$/, type: 'asset/source' },
-                ],
-              },
+      },
+      entry: 'src/entry.ts',
+      rsbuildConfig: {
+        tools: {
+          rspack: {
+            module: {
+              rules: [
+                {
+                  test: /\.mdx$/,
+                  use: [{ loader: require.resolve('@mdx-js/loader') }],
+                },
+                { resourceQuery: /^\?raw$/, type: 'asset/source' },
+              ],
             },
           },
         },
-      })
-      const { result } = await build.client.run(
-        'return [String(entry.text), typeof entry.fn.url]',
-      )
-      const [text, url] = result as [string, string]
-      expect(text).toContain('MARK_SOURCE_HANDLER')
-      expect(url).toBe('string')
-    },
-    timeout,
-  )
+      },
+    })
+    const { result } = await build.client.run(
+      'return [String(entry.text), typeof entry.fn.url]',
+    )
+    const [text, url] = result as [string, string]
+    expect(text).toContain('MARK_SOURCE_HANDLER')
+    expect(url).toBe('string')
+  })
 })
 
 // A `.mdx` the app types `json` (an Rspack rule): Rspack parses it as JSON,
@@ -620,31 +587,27 @@ export { default as text } from './page.mdx?raw'
 // Source: Astra's review of settlement step 4, finding 2
 // (`step4-rsbuild.mjs`, scenario `json`).
 describe('rsbuild build, a module the app types as JSON', () => {
-  test(
-    'is Rspack’s to parse: the client gets the object',
-    async () => {
-      const build = await buildStart({
-        bundler: 'rsbuild',
-        files: {
-          'src/help.mdx': `{"content":"import and export","title":"MARK_JSON_TITLE"}`,
-          'src/entry.ts': `// @ts-expect-error (a JSON module)
+  test('is Rspack’s to parse: the client gets the object', async () => {
+    const build = await buildStart({
+      bundler: 'rsbuild',
+      files: {
+        'src/help.mdx': `{"content":"import and export","title":"MARK_JSON_TITLE"}`,
+        'src/entry.ts': `// @ts-expect-error (a JSON module)
 export { default as help } from './help.mdx'
 `,
-        },
-        entry: 'src/entry.ts',
-        rsbuildConfig: {
-          tools: {
-            rspack: {
-              module: { rules: [{ test: /\.mdx$/, type: 'json' }] },
-            },
+      },
+      entry: 'src/entry.ts',
+      rsbuildConfig: {
+        tools: {
+          rspack: {
+            module: { rules: [{ test: /\.mdx$/, type: 'json' }] },
           },
         },
-      })
-      const { result } = await build.client.run('return entry.help.title')
-      expect(result).toBe('MARK_JSON_TITLE')
-    },
-    timeout,
-  )
+      },
+    })
+    const { result } = await build.client.run('return entry.help.title')
+    expect(result).toBe('MARK_JSON_TITLE')
+  })
 })
 
 const fooPage = `import { createServerFn } from '@tanstack/react-start'
@@ -678,140 +641,124 @@ const cleanLoader = `module.exports = function () {
 // Source: pile-of-cases audit 2b (Fable C1: the handler shipped in the
 // eager client bundle, no diagnostic); decision: fail closed (option B).
 describe('rsbuild build, a module of a file type the late pass does not read', () => {
-  test(
-    'fails the build naming the file when it uses Start',
-    async () => {
-      const error = await buildStart({
-        bundler: 'rsbuild',
-        files: {
-          'src/page.foo': `import { createServerFn } from '@tanstack/react-start'
+  test('fails the build naming the file when it uses Start', async () => {
+    const error = await buildStart({
+      bundler: 'rsbuild',
+      files: {
+        'src/page.foo': `import { createServerFn } from '@tanstack/react-start'
 export const fn = createServerFn().handler(async () => 'MARK_FOO_HANDLER')
 `,
-          'src/entry.ts': `// @ts-expect-error (a module of an app rule)
+        'src/entry.ts': `// @ts-expect-error (a module of an app rule)
 export { fn } from './page.foo'
 `,
-        },
-        entry: 'src/entry.ts',
-        rsbuildConfig: {
-          tools: {
-            rspack: {
-              module: { rules: [{ test: /\.foo$/, type: 'javascript/auto' }] },
-            },
+      },
+      entry: 'src/entry.ts',
+      rsbuildConfig: {
+        tools: {
+          rspack: {
+            module: { rules: [{ test: /\.foo$/, type: 'javascript/auto' }] },
           },
         },
-      }).then(
-        () => expect.fail('the build succeeded'),
-        (e: unknown) => e,
-      )
-      if (!(error instanceof StartBuildError)) {
-        throw error
-      }
-      expectDiagnostic(error.diagnostics, {
-        severity: 'error',
-        file: 'src/page.foo',
-        root: error.root,
-      })
-    },
-    timeout,
-  )
+      },
+    }).then(
+      () => expect.fail('the build succeeded'),
+      (e: unknown) => e,
+    )
+    if (!(error instanceof StartBuildError)) {
+      throw error
+    }
+    expectDiagnostic(error.diagnostics, {
+      severity: 'error',
+      file: 'src/page.foo',
+      root: error.root,
+    })
+  })
 
-  test(
-    'builds a CSS module and an SVG',
-    async () => {
-      const build = await buildStart({
-        bundler: 'rsbuild',
-        files: {
-          'src/a.module.css': `.a { color: red; }\n`,
-          'src/icon.svg': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><path d="M0 0h1v1z"/></svg>\n`,
-          'src/entry.ts': `// @ts-expect-error (a CSS module)
+  test('builds a CSS module and an SVG', async () => {
+    const build = await buildStart({
+      bundler: 'rsbuild',
+      files: {
+        'src/a.module.css': `.a { color: red; }\n`,
+        'src/icon.svg': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"><path d="M0 0h1v1z"/></svg>\n`,
+        'src/entry.ts': `// @ts-expect-error (a CSS module)
 import styles from './a.module.css'
 // @ts-expect-error (an asset)
 import icon from './icon.svg'
 export const parts = [typeof styles.a, typeof icon]
 `,
-        },
-        entry: 'src/entry.ts',
-      })
-      expectNoDiagnostic(build.diagnostics, { severity: 'error' })
-      expect((await build.client.run('return entry.parts')).result).toEqual([
-        'string',
-        'string',
-      ])
-    },
-    timeout,
-  )
+      },
+      entry: 'src/entry.ts',
+    })
+    expectNoDiagnostic(build.diagnostics, { severity: 'error' })
+    expect((await build.client.run('return entry.parts')).result).toEqual([
+      'string',
+      'string',
+    ])
+  })
 
   // (a loader that exports a file's text: the text quoting a Start package
   // is no import of it)
-  test(
-    'builds a module whose text quotes a Start package it does not import',
-    async () => {
-      const build = await buildStart({
-        bundler: 'rsbuild',
-        files: {
-          'src/sample.txt': `import { createServerFn } from '@tanstack/react-start'\n`,
-          'src/text-loader.cjs': textLoader,
-          'src/entry.ts': `// @ts-expect-error (a text module)
+  test('builds a module whose text quotes a Start package it does not import', async () => {
+    const build = await buildStart({
+      bundler: 'rsbuild',
+      files: {
+        'src/sample.txt': `import { createServerFn } from '@tanstack/react-start'\n`,
+        'src/text-loader.cjs': textLoader,
+        'src/entry.ts': `// @ts-expect-error (a text module)
 export { default as sample } from './sample.txt'
 `,
-        },
-        entry: 'src/entry.ts',
-        rsbuildConfig: {
-          tools: {
-            rspack: {
-              module: {
-                rules: [
-                  {
-                    test: /\.txt$/,
-                    type: 'javascript/auto',
-                    use: [{ loader: './src/text-loader.cjs' }],
-                  },
-                ],
-              },
+      },
+      entry: 'src/entry.ts',
+      rsbuildConfig: {
+        tools: {
+          rspack: {
+            module: {
+              rules: [
+                {
+                  test: /\.txt$/,
+                  type: 'javascript/auto',
+                  use: [{ loader: './src/text-loader.cjs' }],
+                },
+              ],
             },
           },
         },
-      })
-      expectNoDiagnostic(build.diagnostics, { severity: 'error' })
-      expect((await build.client.run('return entry.sample')).result).toContain(
-        '@tanstack/react-start',
-      )
-    },
-    timeout,
-  )
+      },
+    })
+    expectNoDiagnostic(build.diagnostics, { severity: 'error' })
+    expect((await build.client.run('return entry.sample')).result).toContain(
+      '@tanstack/react-start',
+    )
+  })
 
   // (two modules of one file: a loader's clean output does not withdraw the
   // other module's failure, whose handler would reach the client; the dev
   // rows: `rsbuild/dev-late-file-type.test.ts`)
-  test(
-    'fails the build when another module of the same file is clean',
-    async () => {
-      const error = await buildStart({
-        bundler: 'rsbuild',
-        files: {
-          'src/page.foo': fooPage,
-          'src/clean-loader.cjs': cleanLoader,
-          'src/entry.ts': `// @ts-expect-error (a module of an app rule)
+  test('fails the build when another module of the same file is clean', async () => {
+    const error = await buildStart({
+      bundler: 'rsbuild',
+      files: {
+        'src/page.foo': fooPage,
+        'src/clean-loader.cjs': cleanLoader,
+        'src/entry.ts': `// @ts-expect-error (a module of an app rule)
 export { fn } from './page.foo'
 // @ts-expect-error (a loader's module)
 export { default as clean } from '!!./clean-loader.cjs!./page.foo'
 `,
-        },
-        entry: 'src/entry.ts',
-        ...fooRule,
-      }).then(
-        () => expect.fail('the build succeeded'),
-        (e: unknown) => e,
-      )
-      if (!(error instanceof StartBuildError)) {
-        throw error
-      }
-      expectDiagnostic(error.diagnostics, {
-        severity: 'error',
-        file: 'src/page.foo',
-        root: error.root,
-      })
-    },
-    timeout,
-  )
+      },
+      entry: 'src/entry.ts',
+      ...fooRule,
+    }).then(
+      () => expect.fail('the build succeeded'),
+      (e: unknown) => e,
+    )
+    if (!(error instanceof StartBuildError)) {
+      throw error
+    }
+    expectDiagnostic(error.diagnostics, {
+      severity: 'error',
+      file: 'src/page.foo',
+      root: error.root,
+    })
+  })
 })

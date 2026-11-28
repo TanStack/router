@@ -41,8 +41,6 @@ const reactOptimizeDeps = {
   ],
 }
 
-const timeout = 30_000
-
 const factory = `import { createServerFn } from '@tanstack/react-start'
 export const base = createServerFn()
 `
@@ -53,89 +51,81 @@ describe('Vite dev: editing a server fn factory', () => {
   // again; more of them than the dev server compiles at once. Mirrors
   // rsbuild/dev-server.test.ts "every module importing a factory from ./b
   // that stops being one keeps its handler".
-  test(
-    'client: every module importing a factory that stops being one keeps its handler',
-    async () => {
-      const names = Array.from({ length: 140 }, (_, i) => `m${i}`)
-      const importers = Object.fromEntries(
-        names.map((name) => [
-          `src/${name}.tsx`,
-          `import { base } from './b'
+  test('client: every module importing a factory that stops being one keeps its handler', async () => {
+    const names = Array.from({ length: 140 }, (_, i) => `m${i}`)
+    const importers = Object.fromEntries(
+      names.map((name) => [
+        `src/${name}.tsx`,
+        `import { base } from './b'
 import { db } from './db'
 export const fn = base.handler(async () => db.x('${name}'))
 `,
-        ]),
-      )
-      const server = await startBrowserStartDevServer({
-        files: {
-          'src/b.ts': factory,
-          'src/db.ts': `export const db = { x: (name: string) => 'MARK_DB_SECRET_' + name }\n`,
-          ...importers,
-          'src/main.tsx': names
-            .map((name) => `export { fn as ${name} } from './${name}'\n`)
-            .join(''),
-        },
-      })
-      const inClient = async (script: string) =>
-        (await runViteClient(server, '/src/main.tsx', script)).result
-      const fns = `[${names.map((name) => `entry.${name}`).join(', ')}]`
-      expect(
-        await inClient(`return ${fns}.map((fn) => typeof fn.url)`),
-      ).toEqual(names.map(() => 'string'))
+      ]),
+    )
+    const server = await startBrowserStartDevServer({
+      files: {
+        'src/b.ts': factory,
+        'src/db.ts': `export const db = { x: (name: string) => 'MARK_DB_SECRET_' + name }\n`,
+        ...importers,
+        'src/main.tsx': names
+          .map((name) => `export { fn as ${name} } from './${name}'\n`)
+          .join(''),
+      },
+    })
+    const inClient = async (script: string) =>
+      (await runViteClient(server, '/src/main.tsx', script)).result
+    const fns = `[${names.map((name) => `entry.${name}`).join(', ')}]`
+    expect(await inClient(`return ${fns}.map((fn) => typeof fn.url)`)).toEqual(
+      names.map(() => 'string'),
+    )
 
-      await server.edit({ 'src/b.ts': plain })
+    await server.edit({ 'src/b.ts': plain })
 
-      expect(
-        await inClient(`return await Promise.all(${fns}.map((fn) => fn()))`),
-      ).toEqual(names.map((name) => `MARK_DB_SECRET_${name}`))
-    },
-    timeout,
-  )
+    expect(
+      await inClient(`return await Promise.all(${fns}.map((fn) => fn()))`),
+    ).toEqual(names.map((name) => `MARK_DB_SECRET_${name}`))
+  })
 
   // An editor that saves in place truncates the file, then writes it: the
   // watcher reports the empty file and drops the write that follows within
   // its moment (chokidar's per-file change throttle), so the server hears of
   // the save once, while the file may still be empty.
-  test(
-    'client: a factory saved in place (truncated, then written) stays a factory for its importers',
-    async () => {
-      const server = await startBrowserStartDevServer({
-        files: {
-          'src/b.ts': factory,
-          'src/db.ts': `export const db = { x: () => 'MARK_DB_SECRET' }\n`,
-          'src/a.tsx': `import { base } from './b'
+  test('client: a factory saved in place (truncated, then written) stays a factory for its importers', async () => {
+    const server = await startBrowserStartDevServer({
+      files: {
+        'src/b.ts': factory,
+        'src/db.ts': `export const db = { x: () => 'MARK_DB_SECRET' }\n`,
+        'src/a.tsx': `import { base } from './b'
 import { db } from './db'
 export const fn = base.handler(async () => db.x())
 `,
-        },
-      })
-      const inClient = async (script: string) =>
-        (await runViteClient(server, '/src/a.tsx', script)).result
-      const rpc = `${requestsOfPrelude}
+      },
+    })
+    const inClient = async (script: string) =>
+      (await runViteClient(server, '/src/a.tsx', script)).result
+    const rpc = `${requestsOfPrelude}
 return { url: entry.fn.url, requests: await requestsOf(entry.fn) }`
-      expect(await inClient(rpc)).toEqual({
-        url: expect.any(String),
-        requests: [{ url: expect.any(String), method: 'GET' }],
-      })
+    expect(await inClient(rpc)).toEqual({
+      url: expect.any(String),
+      requests: [{ url: expect.any(String), method: 'GET' }],
+    })
 
-      await saveInPlace(
-        server,
-        'src/b.ts',
-        `import { createServerFn } from '@tanstack/react-start'
+    await saveInPlace(
+      server,
+      'src/b.ts',
+      `import { createServerFn } from '@tanstack/react-start'
 export const base = createServerFn({ method: 'POST' })
 `,
-      )
+    )
 
-      expect(
-        containing(await server.load('/src/a.tsx'), 'MARK_DB_SECRET'),
-      ).toEqual([])
-      expect(await inClient(rpc)).toEqual({
-        url: expect.any(String),
-        requests: [{ url: expect.any(String), method: 'POST' }],
-      })
-    },
-    timeout,
-  )
+    expect(
+      containing(await server.load('/src/a.tsx'), 'MARK_DB_SECRET'),
+    ).toEqual([])
+    expect(await inClient(rpc)).toEqual({
+      url: expect.any(String),
+      requests: [{ url: expect.any(String), method: 'POST' }],
+    })
+  })
 })
 
 /**
@@ -170,101 +160,87 @@ describe('Vite dev: server fns by id', () => {
   // A dev server compiles modules on demand: the resolver must find server
   // fns of modules compiled after it first loaded.
   // Source: mutation testing.
-  test(
-    'SSR: a server fn of a module compiled after the resolver first loaded runs by id',
-    async () => {
-      const server = await startDevServer({
-        start: {},
-        files: {
-          ...startRequestFiles,
-          'src/first.ts': `import { createServerFn } from '@tanstack/react-start'
+  test('SSR: a server fn of a module compiled after the resolver first loaded runs by id', async () => {
+    const server = await startDevServer({
+      start: {},
+      files: {
+        ...startRequestFiles,
+        'src/first.ts': `import { createServerFn } from '@tanstack/react-start'
 export const first = createServerFn().handler(() => 'MARK_FIRST')
 `,
-          'src/later.ts': `import { createServerFn } from '@tanstack/react-start'
+        'src/later.ts': `import { createServerFn } from '@tanstack/react-start'
 export const later = createServerFn().handler(() => 'MARK_LATER')
 `,
-        },
-      })
-      /** Calls the server fn `name` of `url` the way a page does: by id. */
-      const callById = async (url: string, name: string) => {
-        const fn = (await server.import(url))[name]
-        return callServerFn(server, fn)
-      }
-      expect(await callById('/src/first.ts', 'first')).toBe('MARK_FIRST')
-      expect(await callById('/src/later.ts', 'later')).toBe('MARK_LATER')
-    },
-    timeout,
-  )
+      },
+    })
+    /** Calls the server fn `name` of `url` the way a page does: by id. */
+    const callById = async (url: string, name: string) => {
+      const fn = (await server.import(url))[name]
+      return callServerFn(server, fn)
+    }
+    expect(await callById('/src/first.ts', 'first')).toBe('MARK_FIRST')
+    expect(await callById('/src/later.ts', 'later')).toBe('MARK_LATER')
+  })
 })
 
 describe('Vite dev: virtual modules of other plugins', () => {
   // Start's dev plugins load their own `\0` virtual modules; a virtual
   // module of a plugin placed after Start's must still load from its plugin.
   // Source: mutation testing.
-  test(
-    'a virtual module of a plugin placed after the Start compiler loads',
-    async () => {
-      const resolvedId = '\0virtual:user-thing'
-      const server = await startDevServer({
-        plugins: [
-          {
-            name: 'user-virtual-module',
-            resolveId: (source) =>
-              source === 'virtual:user-thing' ? resolvedId : undefined,
-            load: (id) =>
-              id === resolvedId
-                ? `export const thing = 'MARK_USER_THING'\n`
-                : undefined,
-          },
-        ],
-        files: {
-          'src/uses-thing.ts': `export { thing } from 'virtual:user-thing'\n`,
+  test('a virtual module of a plugin placed after the Start compiler loads', async () => {
+    const resolvedId = '\0virtual:user-thing'
+    const server = await startDevServer({
+      plugins: [
+        {
+          name: 'user-virtual-module',
+          resolveId: (source) =>
+            source === 'virtual:user-thing' ? resolvedId : undefined,
+          load: (id) =>
+            id === resolvedId
+              ? `export const thing = 'MARK_USER_THING'\n`
+              : undefined,
         },
-      })
-      expect((await server.import('/src/uses-thing.ts')).thing).toBe(
-        'MARK_USER_THING',
-      )
-    },
-    timeout,
-  )
+      ],
+      files: {
+        'src/uses-thing.ts': `export { thing } from 'virtual:user-thing'\n`,
+      },
+    })
+    expect((await server.import('/src/uses-thing.ts')).thing).toBe(
+      'MARK_USER_THING',
+    )
+  })
 
   // One virtual id, a text per environment (Vite's `load` is per
   // environment): each environment compiles against its own text, whichever
   // requested the id first. Source: Astra review H1 (the client compiled
   // against the SSR text read first).
-  test(
-    'each environment compiles against its own text of a virtual module',
-    async () => {
-      const id = '\0virtual:choice'
-      const texts: Record<string, string> = {
-        ssr: `export { createIsomorphicFn as choose } from '@tanstack/react-start'\n`,
-        client: `export const choose = () => ({ server: () => ({ client: () => () => 'PLAIN' }) })\n`,
-      }
-      const server = await startBrowserStartDevServer({
-        plugins: [
-          {
-            name: 'per-environment-virtual',
-            resolveId: (source) =>
-              source === 'virtual:choice' ? id : undefined,
-            load(loaded) {
-              return loaded === id ? texts[this.environment.name] : undefined
-            },
+  test('each environment compiles against its own text of a virtual module', async () => {
+    const id = '\0virtual:choice'
+    const texts: Record<string, string> = {
+      ssr: `export { createIsomorphicFn as choose } from '@tanstack/react-start'\n`,
+      client: `export const choose = () => ({ server: () => ({ client: () => () => 'PLAIN' }) })\n`,
+    }
+    const server = await startBrowserStartDevServer({
+      plugins: [
+        {
+          name: 'per-environment-virtual',
+          resolveId: (source) => (source === 'virtual:choice' ? id : undefined),
+          load(loaded) {
+            return loaded === id ? texts[this.environment.name] : undefined
           },
-        ],
-        files: {
-          'src/use.ts': `import { choose } from 'virtual:choice'
+        },
+      ],
+      files: {
+        'src/use.ts': `import { choose } from 'virtual:choice'
 export const run = choose().server(() => 'SSR_CHOICE').client(() => 'CLIENT_CHOICE')
 `,
-        },
-      })
-      expect((await server.import('/src/use.ts')).run()).toBe('SSR_CHOICE')
-      expect(
-        (await runViteClient(server, '/src/use.ts', 'return entry.run()'))
-          .result,
-      ).toBe('PLAIN')
-    },
-    timeout,
-  )
+      },
+    })
+    expect((await server.import('/src/use.ts')).run()).toBe('SSR_CHOICE')
+    expect(
+      (await runViteClient(server, '/src/use.ts', 'return entry.run()')).result,
+    ).toBe('PLAIN')
+  })
 
   // A plugin regenerates its virtual module from a file its `load` watches
   // (Vite invalidates the module with the file), and may put the module in
@@ -332,7 +308,6 @@ export const run = choose().server(() => 'SSR_CHOICE').client(() => 'CLIENT_CHOI
       await server.edit({ 'choice.txt': '2' })
       expect(await read()).toEqual({ version: 2, value: 'PLAIN' })
     },
-    timeout,
   )
 })
 
@@ -341,38 +316,34 @@ describe('Vite dev: editing a server fn handler', () => {
   // by default" and "keeps the imported module when memoizeModules is set",
   // and the HMR half of exports-and-directives.test.ts "dev providers export
   // the handler and accept HMR updates".
-  test(
-    'SSR: the server fn resolver runs the edited handler, without a restart',
-    async () => {
-      const server = await startDevServer({
-        start: {},
-        files: {
-          ...startRequestFiles,
-          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+  test('SSR: the server fn resolver runs the edited handler, without a restart', async () => {
+    const server = await startDevServer({
+      start: {},
+      files: {
+        ...startRequestFiles,
+        'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 export const greet = createServerFn().handler(() => 'before')
 `,
-        },
-      })
-      /**
-       * Calls `greet` the way a page does: by the id its current caller
-       * carries (an edit may give the server fn a new id, J4.4).
-       */
-      const call = async () => {
-        const { greet } = await server.import('/src/fns.ts')
-        return callServerFn(server, greet)
-      }
-      expect(await call()).toBe('before')
+      },
+    })
+    /**
+     * Calls `greet` the way a page does: by the id its current caller
+     * carries (an edit may give the server fn a new id, J4.4).
+     */
+    const call = async () => {
+      const { greet } = await server.import('/src/fns.ts')
+      return callServerFn(server, greet)
+    }
+    expect(await call()).toBe('before')
 
-      await server.edit({
-        'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+    await server.edit({
+      'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 export const greet = createServerFn().handler(() => 'after')
 `,
-      })
+    })
 
-      expect(await call()).toBe('after')
-    },
-    timeout,
-  )
+    expect(await call()).toBe('after')
+  })
 
   // A server fn an edit removes leaves the registry with the edit: its id
   // is no longer one the server knows (the request fails as for any
@@ -421,7 +392,6 @@ export const removed = createServerFn().handler(() => 'MARK_REMOVED')
         /Server function info not found for .*reload it/,
       )
     },
-    timeout,
   )
 
   // An edit of a module only handlers read must not reload the server (or
@@ -430,82 +400,74 @@ export const removed = createServerFn().handler(() => 'MARK_REMOVED')
   // Source: the HMR half of exports-and-directives.test.ts "dev providers
   // export the handler and accept HMR updates"; SPEC G10 (no full reload
   // where feasible, no server-state requirement).
-  test(
-    'SSR: an edit of a module only the handler reads does not fully reload, and the handler runs the new code',
-    async () => {
-      const server = await startDevServer({
-        start: {},
-        files: {
-          ...startRequestFiles,
-          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+  test('SSR: an edit of a module only the handler reads does not fully reload, and the handler runs the new code', async () => {
+    const server = await startDevServer({
+      start: {},
+      files: {
+        ...startRequestFiles,
+        'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 import { db } from './db.server'
 export const greet = createServerFn().handler(() => db.x())
 `,
-          'src/db.server.ts': `export const db = { x: () => 'before' }\n`,
-        },
-      })
-      const call = async () => {
-        const { greet } = await server.import('/src/fns.ts')
-        return callServerFn(server, greet)
-      }
-      expect(await call()).toBe('before')
+        'src/db.server.ts': `export const db = { x: () => 'before' }\n`,
+      },
+    })
+    const call = async () => {
+      const { greet } = await server.import('/src/fns.ts')
+      return callServerFn(server, greet)
+    }
+    expect(await call()).toBe('before')
 
-      // What the server sent while it handled the edit (`edit()` settles on
-      // the watcher's report and Vite's handling of it, not on a quiet
-      // period). The server side has no page: a full reload of the server
-      // is the `full-reload` payload Vite sends its environment's module
-      // runner, so its absence is what J3.6 asks for (not a count of the
-      // updates the edit takes).
-      const messages = describeHmr(
-        await server.edit({
-          'src/db.server.ts': `export const db = { x: () => 'after' }\n`,
-        }),
-      )
+    // What the server sent while it handled the edit (`edit()` settles on
+    // the watcher's report and Vite's handling of it, not on a quiet
+    // period). The server side has no page: a full reload of the server
+    // is the `full-reload` payload Vite sends its environment's module
+    // runner, so its absence is what J3.6 asks for (not a count of the
+    // updates the edit takes).
+    const messages = describeHmr(
+      await server.edit({
+        'src/db.server.ts': `export const db = { x: () => 'after' }\n`,
+      }),
+    )
 
-      expect(await call()).toBe('after')
-      expect(
-        messages.filter((message) => message.includes('full-reload')),
-      ).toEqual([])
-    },
-    timeout,
-  )
+    expect(await call()).toBe('after')
+    expect(
+      messages.filter((message) => message.includes('full-reload')),
+    ).toEqual([])
+  })
 
   // A module both the server fn module and its handler read: an edit
   // reaches the module's own code and the handler alike (one instance).
-  test(
-    'SSR: an edit of a module the server fn module and its handler share reaches both, without a full reload',
-    async () => {
-      const state = (version: string) =>
-        `export const label = 'MARK_STATE_${version}'\n`
-      const server = await startDevServer({
-        start: {},
-        files: {
-          ...startRequestFiles,
-          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+  test('SSR: an edit of a module the server fn module and its handler share reaches both, without a full reload', async () => {
+    const state = (version: string) =>
+      `export const label = 'MARK_STATE_${version}'\n`
+    const server = await startDevServer({
+      start: {},
+      files: {
+        ...startRequestFiles,
+        'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 import { label } from './state'
 export const shown = label.toLowerCase()
 export const greet = createServerFn().handler(() => [shown, label])
 `,
-          'src/state.ts': state('V1'),
-        },
-      })
-      const call = async () => {
-        const { greet } = await server.import('/src/fns.ts')
-        return callServerFn(server, greet)
-      }
-      expect(await call()).toEqual(['mark_state_v1', 'MARK_STATE_V1'])
+        'src/state.ts': state('V1'),
+      },
+    })
+    const call = async () => {
+      const { greet } = await server.import('/src/fns.ts')
+      return callServerFn(server, greet)
+    }
+    expect(await call()).toEqual(['mark_state_v1', 'MARK_STATE_V1'])
 
-      const messages = describeHmr(
-        await server.edit({ 'src/state.ts': state('V2') }),
-      )
+    const messages = describeHmr(
+      await server.edit({ 'src/state.ts': state('V2') }),
+    )
 
-      expect(await call()).toEqual(['mark_state_v2', 'MARK_STATE_V2'])
-      expect(
-        messages.filter((message) => message.includes('full-reload')),
-      ).toEqual([])
-    },
-    timeout,
-  )
+    expect(await call()).toEqual(['mark_state_v2', 'MARK_STATE_V2'])
+    expect(
+      messages.filter((message) => message.includes('full-reload')),
+    ).toEqual([])
+  })
 })
 
 describe('Vite dev: when the modules of a server fn handler load', () => {
@@ -515,45 +477,39 @@ describe('Vite dev: when the modules of a server fn handler load', () => {
   // directly, pages calling it over HTTP) while they load.
   // Source: issue #6451 (concurrent first calls of a server fn whose
   // handler's imports load slowly).
-  test(
-    'SSR: the server-only module of a handler loads on the first call, once, for concurrent direct and HTTP calls',
-    async () => {
-      const marker = '__tssDevLazyHandlerLoads'
-      const global = globalThis as Record<string, unknown>
-      onTestFinished(() => {
-        delete global[marker]
-      })
-      const server = await startDevServer({
-        start: {},
-        files: {
-          ...startRequestFiles,
-          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+  test('SSR: the server-only module of a handler loads on the first call, once, for concurrent direct and HTTP calls', async () => {
+    const marker = '__tssDevLazyHandlerLoads'
+    const global = globalThis as Record<string, unknown>
+    onTestFinished(() => {
+      delete global[marker]
+    })
+    const server = await startDevServer({
+      start: {},
+      files: {
+        ...startRequestFiles,
+        'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 import { db } from './db.server'
 export const greet = createServerFn().handler(async () => db.x())
 `,
-          'src/db.server.ts': `const g = globalThis as Record<string, unknown>
+        'src/db.server.ts': `const g = globalThis as Record<string, unknown>
 g.${marker} = ((g.${marker} as number | undefined) ?? 0) + 1
 await new Promise((resolve) => setTimeout(resolve, 100))
 export const db = { x: () => 'MARK_DB' }
 `,
-        },
-      })
-      const { greet } = await server.import('/src/fns.ts')
-      const before = global[marker] ?? 0
-      const results = await Promise.all([
-        ...Array.from({ length: 10 }, () =>
-          inDevRequest(server, () => greet()),
-        ),
-        ...Array.from({ length: 10 }, () => callServerFn(server, greet)),
-      ])
-      expect({
-        before,
-        results: [...new Set(results)],
-        after: global[marker],
-      }).toEqual({ before: 0, results: ['MARK_DB'], after: 1 })
-    },
-    timeout,
-  )
+      },
+    })
+    const { greet } = await server.import('/src/fns.ts')
+    const before = global[marker] ?? 0
+    const results = await Promise.all([
+      ...Array.from({ length: 10 }, () => inDevRequest(server, () => greet())),
+      ...Array.from({ length: 10 }, () => callServerFn(server, greet)),
+    ])
+    expect({
+      before,
+      results: [...new Set(results)],
+      after: global[marker],
+    }).toEqual({ before: 0, results: ['MARK_DB'], after: 1 })
+  })
 })
 
 describe('Vite dev: editing what a route module imports', () => {
@@ -565,53 +521,48 @@ describe('Vite dev: editing what a route module imports', () => {
   // re-transformed with it, and as no HMR boundary accepts the route tree,
   // every page fully reloaded. Source: the compiler soak
   // (benchmarks/compiler-perf `--scenarios soak`); SPEC G10.
-  test(
-    'the page updates in place, without a full reload',
-    async () => {
-      const route = (
-        from: string,
-      ) => `import { createFileRoute } from '@tanstack/react-router'
+  test('the page updates in place, without a full reload', async () => {
+    const route = (
+      from: string,
+    ) => `import { createFileRoute } from '@tanstack/react-router'
 import { label } from '${from}'
 export const Route = createFileRoute('/')({ component: Page })
 function Page() {
   return <p data-testid="label">{label}</p>
 }
 `
-      const server = await startDevServer({
-        start: {},
-        browser: true,
-        config: { optimizeDeps: reactOptimizeDeps },
-        plugins: [react()],
-        files: {
-          ...reactApp,
-          'src/a.ts': `export const label = 'from-a'\n`,
-          'src/b.ts': `export const label = 'from-b'\n`,
-          'src/routes/index.tsx': route('../a'),
-        },
-      })
-      const browser = await openTestPage(server.url!)
-      await browser.waitForText('hydrated', {
-        selector: '[data-testid=hydrated]',
-      })
-      await server.idle()
+    const server = await startDevServer({
+      start: {},
+      browser: true,
+      config: { optimizeDeps: reactOptimizeDeps },
+      plugins: [react()],
+      files: {
+        ...reactApp,
+        'src/a.ts': `export const label = 'from-a'\n`,
+        'src/b.ts': `export const label = 'from-b'\n`,
+        'src/routes/index.tsx': route('../a'),
+      },
+    })
+    const browser = await openTestPage(server.url!)
+    await browser.waitForText('hydrated', {
+      selector: '[data-testid=hydrated]',
+    })
+    await server.idle()
 
-      await server.edit({ 'src/routes/index.tsx': route('../b') })
+    await server.edit({ 'src/routes/index.tsx': route('../b') })
 
-      await browser.waitForText('from-b', { selector: '[data-testid=label]' })
-      expect(browser.loads()).toBe(1)
-      expect(
-        describeHmr(
-          server.hmr.filter(
-            (message) =>
-              message.environment === 'client' &&
-              message.type === 'full-reload',
-          ),
+    await browser.waitForText('from-b', { selector: '[data-testid=label]' })
+    expect(browser.loads()).toBe(1)
+    expect(
+      describeHmr(
+        server.hmr.filter(
+          (message) =>
+            message.environment === 'client' && message.type === 'full-reload',
         ),
-      ).toEqual([])
-      expect(browser.errors).toEqual([])
-    },
-    timeout,
-  )
+      ),
+    ).toEqual([])
+    expect(browser.errors).toEqual([])
+  })
 })
 
 /** URLs of the served modules (or bundle chunks) that contain `marker`. */
@@ -632,44 +583,40 @@ export const mw = createMiddleware({ type: 'function' })
   // With Start's whole Vite plugin (its environments and import
   // protection, not the compiler plugin alone). No other test edits a
   // createMiddleware in dev.
-  test(
-    'the client never gets the edited .server(), and SSR runs the new one',
-    async () => {
-      const server = await startDevServer({
-        start: {},
-        files: {
-          ...startRequestFiles,
-          'src/mw.ts': middleware('MARK_SERVER_V1'),
-          // A server fn with the middleware: its handler reads what the
-          // middleware's `.server()` put into the context of the call
-          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+  test('the client never gets the edited .server(), and SSR runs the new one', async () => {
+    const server = await startDevServer({
+      start: {},
+      files: {
+        ...startRequestFiles,
+        'src/mw.ts': middleware('MARK_SERVER_V1'),
+        // A server fn with the middleware: its handler reads what the
+        // middleware's `.server()` put into the context of the call
+        'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 import { mw } from './mw'
 export const marker = createServerFn()
   .middleware([mw])
   .handler(async ({ context }) => context.marker)
 `,
-        },
-      })
-      /**
-       * What `.server()` puts in the context on the server, for a call over
-       * HTTP (Start's middleware chain runs it).
-       */
-      const ssrMarker = async () =>
-        callServerFn(server, (await server.import('/src/fns.ts')).marker)
-      expect(
-        containing(await server.load('/src/mw.ts'), 'MARK_SERVER_V1'),
-      ).toEqual([])
-      expect(await ssrMarker()).toBe('MARK_SERVER_V1')
+      },
+    })
+    /**
+     * What `.server()` puts in the context on the server, for a call over
+     * HTTP (Start's middleware chain runs it).
+     */
+    const ssrMarker = async () =>
+      callServerFn(server, (await server.import('/src/fns.ts')).marker)
+    expect(
+      containing(await server.load('/src/mw.ts'), 'MARK_SERVER_V1'),
+    ).toEqual([])
+    expect(await ssrMarker()).toBe('MARK_SERVER_V1')
 
-      await server.edit({ 'src/mw.ts': middleware('MARK_SERVER_V2') })
+    await server.edit({ 'src/mw.ts': middleware('MARK_SERVER_V2') })
 
-      expect(
-        containing(await server.load('/src/mw.ts'), 'MARK_SERVER_V2'),
-      ).toEqual([])
-      expect(await ssrMarker()).toBe('MARK_SERVER_V2')
-    },
-    timeout,
-  )
+    expect(
+      containing(await server.load('/src/mw.ts'), 'MARK_SERVER_V2'),
+    ).toEqual([])
+    expect(await ssrMarker()).toBe('MARK_SERVER_V2')
+  })
 })
 
 describe('Vite dev: editing an isomorphic fn', () => {
@@ -682,39 +629,35 @@ export const where = createIsomorphicFn()
 `
 
   // No other test edits an isomorphic fn in dev.
-  test(
-    'each environment runs its edited branch, and the client never gets the server one',
-    async () => {
-      const server = await startBrowserStartDevServer({
-        files: { 'src/iso.ts': isomorphic('V1') },
-      })
-      /** What `where()` returns in each environment, and server code in the client. */
-      const run = async (version: string) => ({
-        client: (
-          await runViteClient(server, '/src/iso.ts', 'return entry.where()')
-        ).result,
-        ssr: (await server.import('/src/iso.ts')).where(),
-        serverCodeInClient: containing(
-          await server.load('/src/iso.ts'),
-          `MARK_SERVER_${version}`,
-        ),
-      })
-      expect(await run('V1')).toEqual({
-        client: 'MARK_CLIENT_V1',
-        ssr: 'MARK_SERVER_V1',
-        serverCodeInClient: [],
-      })
+  test('each environment runs its edited branch, and the client never gets the server one', async () => {
+    const server = await startBrowserStartDevServer({
+      files: { 'src/iso.ts': isomorphic('V1') },
+    })
+    /** What `where()` returns in each environment, and server code in the client. */
+    const run = async (version: string) => ({
+      client: (
+        await runViteClient(server, '/src/iso.ts', 'return entry.where()')
+      ).result,
+      ssr: (await server.import('/src/iso.ts')).where(),
+      serverCodeInClient: containing(
+        await server.load('/src/iso.ts'),
+        `MARK_SERVER_${version}`,
+      ),
+    })
+    expect(await run('V1')).toEqual({
+      client: 'MARK_CLIENT_V1',
+      ssr: 'MARK_SERVER_V1',
+      serverCodeInClient: [],
+    })
 
-      await server.edit({ 'src/iso.ts': isomorphic('V2') })
+    await server.edit({ 'src/iso.ts': isomorphic('V2') })
 
-      expect(await run('V2')).toEqual({
-        client: 'MARK_CLIENT_V2',
-        ssr: 'MARK_SERVER_V2',
-        serverCodeInClient: [],
-      })
-    },
-    timeout,
-  )
+    expect(await run('V2')).toEqual({
+      client: 'MARK_CLIENT_V2',
+      ssr: 'MARK_SERVER_V2',
+      serverCodeInClient: [],
+    })
+  })
 })
 
 describe('Vite dev: restoring a deleted import', () => {
@@ -727,63 +670,59 @@ describe('Vite dev: restoring a deleted import', () => {
   // its failed load. Another plugin of the app transforms the importer slowly
   // in SSR, so that Vite handles the restored file meanwhile.
   // Source: the edits.test.ts flake (Vite dev), 4 runs in 8 under load.
-  test(
-    'SSR loads the restored file, restored with another new file',
-    async () => {
-      const server = await startDevServer({
-        plugins: [
-          {
-            name: 'slow-ssr-transform',
-            async transform(_code, id) {
-              if (
-                this.environment.name === 'ssr' &&
-                id.endsWith('/src/uses.ts')
-              ) {
-                await new Promise((resolve) => setTimeout(resolve, 300))
-              }
-            },
+  test('SSR loads the restored file, restored with another new file', async () => {
+    const server = await startDevServer({
+      plugins: [
+        {
+          name: 'slow-ssr-transform',
+          async transform(_code, id) {
+            if (
+              this.environment.name === 'ssr' &&
+              id.endsWith('/src/uses.ts')
+            ) {
+              await new Promise((resolve) => setTimeout(resolve, 300))
+            }
           },
-        ],
-        files: {
-          'src/value.ts': value('V1'),
-          'src/uses.ts': `import { createIsomorphicFn } from '@tanstack/react-start'
+        },
+      ],
+      files: {
+        'src/value.ts': value('V1'),
+        'src/uses.ts': `import { createIsomorphicFn } from '@tanstack/react-start'
 import { value } from './value'
 export const read = createIsomorphicFn()
   .server(() => value())
   .client(() => 'MARK_CLIENT')
 `,
-          'src/entry.ts': `export * as uses from './uses'\n`,
-        },
-      })
-      const read = async () =>
-        (await server.import('/src/entry.ts')).uses.read() as string
-      expect(await read()).toBe('MARK_V1')
+        'src/entry.ts': `export * as uses from './uses'\n`,
+      },
+    })
+    const read = async () =>
+      (await server.import('/src/entry.ts')).uses.read() as string
+    expect(await read()).toBe('MARK_V1')
 
-      await server.edit({ 'src/value.ts': null })
-      // SSR fails while the file is missing
-      await expect(read()).rejects.toThrow()
+    await server.edit({ 'src/value.ts': null })
+    // SSR fails while the file is missing
+    await expect(read()).rejects.toThrow()
 
-      await server.edit({
-        'src/other.ts': `export {}\n`,
-        'src/value.ts': value('V2'),
-      })
+    await server.edit({
+      'src/other.ts': `export {}\n`,
+      'src/value.ts': value('V2'),
+    })
 
-      let last = ''
-      await waitForOutcome({
-        applied: async () =>
-          (last = await read().catch((error: unknown) => String(error))) ===
-          'MARK_V2',
-        quiet: async () => {
-          await server.idle()
-          return true
-        },
-        failWhenQuietFor: 1_000,
-        timeout: 10_000,
-        describe: () => `SSR gave: ${last}`,
-      })
-    },
-    timeout,
-  )
+    let last = ''
+    await waitForOutcome({
+      applied: async () =>
+        (last = await read().catch((error: unknown) => String(error))) ===
+        'MARK_V2',
+      quiet: async () => {
+        await server.idle()
+        return true
+      },
+      failWhenQuietFor: 1_000,
+      timeout: 10_000,
+      describe: () => `SSR gave: ${last}`,
+    })
+  })
 })
 
 describe('Vite full-bundle dev (bundledDev)', () => {
@@ -811,86 +750,74 @@ export const label = () => 'MARK_CLIENT_LABEL'
     return callServerFn(server, fn)
   }
 
-  test(
-    'the client bundle has the client code and not the handler, and SSR runs the handler by id',
-    async () => {
-      const server = await startDevServer({
-        start: {},
-        plugins: [react()],
-        bundledDev: { entry: 'src/entry.ts' },
-        files: {
-          ...startRequestFiles,
-          ...bundledClientEntry,
-          'src/fns.ts': fns('V1'),
-          'src/entry.ts': entry,
-        },
-      })
-      // The client code is there (in however many chunks), the handler not.
-      const bundle = await server.clientBundle()
-      expect(containing(bundle, 'MARK_CLIENT_LABEL')).not.toEqual([])
-      expect(containing(bundle, 'MARK_HANDLER_V1')).toEqual([])
-      expect(await callById(server)).toBe('MARK_HANDLER_V1')
-    },
-    timeout,
-  )
+  test('the client bundle has the client code and not the handler, and SSR runs the handler by id', async () => {
+    const server = await startDevServer({
+      start: {},
+      plugins: [react()],
+      bundledDev: { entry: 'src/entry.ts' },
+      files: {
+        ...startRequestFiles,
+        ...bundledClientEntry,
+        'src/fns.ts': fns('V1'),
+        'src/entry.ts': entry,
+      },
+    })
+    // The client code is there (in however many chunks), the handler not.
+    const bundle = await server.clientBundle()
+    expect(containing(bundle, 'MARK_CLIENT_LABEL')).not.toEqual([])
+    expect(containing(bundle, 'MARK_HANDLER_V1')).toEqual([])
+    expect(await callById(server)).toBe('MARK_HANDLER_V1')
+  })
 
   // In full-bundle dev, the client compiler loads the modules a top-level
   // call may come from through the bundler.
   // Source: issue #8407 ("cannot load the module info" of a server fn
   // module's dependency in bundledDev).
-  test(
-    'a server fn module with a top-level call of a dependency bundles for the client without its handler',
-    async () => {
-      const server = await startDevServer({
-        plugins: [react()],
-        bundledDev: { entry: 'src/entry.ts' },
-        files: {
-          ...bundledClientEntry,
-          'src/fns.ts': fns(
-            'V1',
-            `import { z } from 'zod'\nexport const schema = z.object({})\n`,
-          ),
-          'src/entry.ts': entry,
-        },
-      })
-      const bundle = await server.clientBundle()
-      expect(containing(bundle, 'MARK_CLIENT_LABEL')).not.toEqual([])
-      expect(containing(bundle, 'MARK_HANDLER_V1')).toEqual([])
-      expect(server.logs.filter((log) => log.startsWith('error:'))).toEqual([])
-    },
-    timeout,
-  )
+  test('a server fn module with a top-level call of a dependency bundles for the client without its handler', async () => {
+    const server = await startDevServer({
+      plugins: [react()],
+      bundledDev: { entry: 'src/entry.ts' },
+      files: {
+        ...bundledClientEntry,
+        'src/fns.ts': fns(
+          'V1',
+          `import { z } from 'zod'\nexport const schema = z.object({})\n`,
+        ),
+        'src/entry.ts': entry,
+      },
+    })
+    const bundle = await server.clientBundle()
+    expect(containing(bundle, 'MARK_CLIENT_LABEL')).not.toEqual([])
+    expect(containing(bundle, 'MARK_HANDLER_V1')).toEqual([])
+    expect(server.logs.filter((log) => log.startsWith('error:'))).toEqual([])
+  })
 
   // Source: issue #7535 (SSR does not reflect edits in bundledDev).
-  test(
-    'SSR runs an edited handler, called directly and by id',
-    async () => {
-      const server = await startDevServer({
-        start: {},
-        plugins: [react()],
-        bundledDev: { entry: 'src/entry.ts' },
-        files: {
-          ...startRequestFiles,
-          ...bundledClientEntry,
-          'src/fns.ts': fns('V1'),
-          'src/entry.ts': entry,
-        },
-      })
-      expect(await callById(server)).toBe('MARK_HANDLER_V1')
+  test('SSR runs an edited handler, called directly and by id', async () => {
+    const server = await startDevServer({
+      start: {},
+      plugins: [react()],
+      bundledDev: { entry: 'src/entry.ts' },
+      files: {
+        ...startRequestFiles,
+        ...bundledClientEntry,
+        'src/fns.ts': fns('V1'),
+        'src/entry.ts': entry,
+      },
+    })
+    expect(await callById(server)).toBe('MARK_HANDLER_V1')
 
-      await server.edit({ 'src/fns.ts': fns('V2') })
+    await server.edit({ 'src/fns.ts': fns('V2') })
 
-      const { fn } = await server.import('/src/fns.ts')
-      expect({
-        called: await inDevRequest(server, () => fn()),
-        byId: await callById(server),
-      }).toEqual({
-        called: 'MARK_HANDLER_V2',
-        byId: 'MARK_HANDLER_V2',
-      })
-    },
-    timeout,
-  )
+    const { fn } = await server.import('/src/fns.ts')
+    expect({
+      called: await inDevRequest(server, () => fn()),
+      byId: await callById(server),
+    }).toEqual({
+      called: 'MARK_HANDLER_V2',
+      byId: 'MARK_HANDLER_V2',
+    })
+  })
 
   /**
    * Serves `src/a.tsx`, which calls `.handler()` on `base` from `src/b.ts`
@@ -931,34 +858,26 @@ export const fn = base.handler(async () => db.x())
 
   // Source: issue #8062 (a hook of the Start compiler plugin threw on an
   // edit in bundledDev; fix #8061 had no test).
-  test(
-    'a module whose factory becomes a server fn builder bundles again without errors',
-    async () => {
-      const server = await editFactoryIntoBuilder()
-      await server.clientBundle()
-      expect(server.logs.filter((log) => log.startsWith('error:'))).toEqual([])
-    },
-    timeout,
-  )
+  test('a module whose factory becomes a server fn builder bundles again without errors', async () => {
+    const server = await editFactoryIntoBuilder()
+    await server.clientBundle()
+    expect(server.logs.filter((log) => log.startsWith('error:'))).toEqual([])
+  })
 
   // The one invalidation of the edit reaches every environment: the SSR
   // environment (not bundled), which evaluated the importer before the edit
   // (a plain function then, with no URL), serves the importer compiled
   // against the new `base`, a server fn Start's server entry answers by its
   // URL.
-  test(
-    'a module whose factory becomes a server fn builder: SSR runs the importer as a server fn',
-    async () => {
-      const server = await editFactoryIntoBuilder(async (plainServer) => {
-        const { fn } = await plainServer.import('/src/a.tsx')
-        expect(fn.url).toBeUndefined()
-      })
-      const { fn } = await server.import('/src/a.tsx')
-      expect(await inDevRequest(server, () => fn())).toBe('MARK_DB_SECRET')
-      expect(await callServerFn(server, fn)).toBe('MARK_DB_SECRET')
-    },
-    timeout,
-  )
+  test('a module whose factory becomes a server fn builder: SSR runs the importer as a server fn', async () => {
+    const server = await editFactoryIntoBuilder(async (plainServer) => {
+      const { fn } = await plainServer.import('/src/a.tsx')
+      expect(fn.url).toBeUndefined()
+    })
+    const { fn } = await server.import('/src/a.tsx')
+    expect(await inDevRequest(server, () => fn())).toBe('MARK_DB_SECRET')
+    expect(await callServerFn(server, fn)).toBe('MARK_DB_SECRET')
+  })
 
   // Control: "Vite dev: editing a server fn factory" above (unbundled dev,
   // where the compiler invalidates the importers of an edited module).
@@ -981,6 +900,5 @@ export const fn = base.handler(async () => db.x())
         [],
       )
     },
-    timeout,
   )
 })

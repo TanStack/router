@@ -15,28 +15,22 @@ import {
   treeRebuildApp,
 } from '../route-edits-after-tree-rebuild'
 
-const timeout = 90_000
-
 describe('Rsbuild dev: route edits after a route tree rebuild', () => {
-  test(
-    'a loader edit shows after a route was added, and after a route was renamed',
-    async () => {
-      const server = await startRsbuildStartDevServer({
-        hmr: true,
-        browser: true,
-        // Start serves the pages, not an HTML template.
-        config: { tools: { htmlPlugin: false }, plugins: [pluginReact()] },
-        files: treeRebuildApp,
-      })
-      expect(reportedErrors(server)).toEqual([])
-      await editLoaderAroundTreeRebuilds({
-        url: server.url,
-        edit: (files) => server.edit(files),
-        rename: (from, to) => server.rename(from, to),
-        settled: () => server.settle(),
-      })
-      expect(reportedErrors(server)).toEqual([])
-    },
-    timeout,
-  )
+  test('a loader edit shows after a route was added, and after a route was renamed', async () => {
+    const server = await startRsbuildStartDevServer({
+      hmr: true,
+      browser: true,
+      // Start serves the pages, not an HTML template.
+      config: { tools: { htmlPlugin: false }, plugins: [pluginReact()] },
+      files: treeRebuildApp,
+    })
+    expect(reportedErrors(server)).toEqual([])
+    await editLoaderAroundTreeRebuilds({
+      url: server.url,
+      edit: (files) => server.edit(files),
+      rename: (from, to) => server.rename(from, to),
+      settled: () => server.settle(),
+    })
+    expect(reportedErrors(server)).toEqual([])
+  })
 })

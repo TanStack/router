@@ -212,7 +212,7 @@ describe('Vite dev server', () => {
 export const schema = z.object({})
 export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
     )
-  }, 30_000)
+  })
 
   // Source: the pin of the `z.object()` row above, before #8758.
   // On main, with an empty dependency cache, such a module (an `object()`
@@ -227,7 +227,7 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
 export const schema = object({})
 export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
     )
-  }, 30_000)
+  })
 
   /**
    * Starts a Vite dev server (middleware mode) with Start's Vite plugin on
@@ -319,5 +319,5 @@ export const fn = createServerFn().handler(() => 'MARK_HANDLER')`,
   // Source: issue #8447.
   test('calls a server fn id on a fresh dev server that has not compiled its module', async () => {
     expect(await callServerFnId(true)).toBe('hello')
-  }, 30_000)
+  })
 })

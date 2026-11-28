@@ -27,8 +27,6 @@ import {
   startProtectedDevServer,
 } from '../../importProtection/start-apps'
 
-const timeout = 30_000
-
 /** A stand-in package `name` whose subpath modules each export `value`. */
 function standInPackage(name: string, subpaths: Array<string>) {
   return {
@@ -195,42 +193,31 @@ export * from './uses/dep'
       return reportedImporters(server)
     })())
 
-  test(
-    "the client denies every framework's server entry and server-only marker, not the files of a dependency",
-    async () => {
-      expectReported(await reports(), 'client', {
-        'react server entry': ['src/uses/react-server.ts'],
-        'solid server entry': ['src/uses/solid-server.ts'],
-        'vue server entry': ['src/uses/vue-server.ts'],
-        'solid server-only marker': [
-          'src/uses/solid-marked.ts',
-          'src/solid-marked.ts',
-        ],
-        'vue server-only marker': [
-          'src/uses/vue-marked.ts',
-          'src/vue-marked.ts',
-        ],
-      })
-    },
-    timeout,
-  )
+  test("the client denies every framework's server entry and server-only marker, not the files of a dependency", async () => {
+    expectReported(await reports(), 'client', {
+      'react server entry': ['src/uses/react-server.ts'],
+      'solid server entry': ['src/uses/solid-server.ts'],
+      'vue server entry': ['src/uses/vue-server.ts'],
+      'solid server-only marker': [
+        'src/uses/solid-marked.ts',
+        'src/solid-marked.ts',
+      ],
+      'vue server-only marker': ['src/uses/vue-marked.ts', 'src/vue-marked.ts'],
+    })
+  })
 
-  test(
-    "the server denies every framework's client-only marker, no specifier, and not the files of a dependency",
-    async () => {
-      expectReported(await reports(), 'server', {
-        'solid client-only marker': [
-          'src/uses/solid-client-marked.ts',
-          'src/solid-client-marked.ts',
-        ],
-        'vue client-only marker': [
-          'src/uses/vue-client-marked.ts',
-          'src/vue-client-marked.ts',
-        ],
-      })
-    },
-    timeout,
-  )
+  test("the server denies every framework's client-only marker, no specifier, and not the files of a dependency", async () => {
+    expectReported(await reports(), 'server', {
+      'solid client-only marker': [
+        'src/uses/solid-client-marked.ts',
+        'src/solid-client-marked.ts',
+      ],
+      'vue client-only marker': [
+        'src/uses/vue-client-marked.ts',
+        'src/vue-client-marked.ts',
+      ],
+    })
+  })
 })
 
 // The default `excludeFiles` is what keeps the dependency's files out of
@@ -251,27 +238,23 @@ describe('excludeFiles: [] checks the files of a dependency', () => {
   // Fix-agnostic: the import is reported at its place only, and the client
   // loads no code of the denied file.
   // Source: review (the default `excludeFiles` had no reachable contrast).
-  test(
-    'the client reports the dependency file it denies, and does not load it',
-    async () => {
-      const server = await startProtectedDevServer(files, {
-        mockAccess: 'off',
-        client: { excludeFiles: [] },
-      })
-      const loaded = await server.load('/src/entry.ts', {
-        skip: /^node:|^\/@vite\//,
-      })
-      expectReported(reportedImporters(server), 'client', {
-        'dependency server file': ['src/uses/dep.ts'],
-      })
-      expect(
-        Object.entries(loaded)
-          .filter(([, code]) => code.includes('REAL_DEP_SERVER'))
-          .map(([url]) => url),
-      ).toEqual([])
-    },
-    timeout,
-  )
+  test('the client reports the dependency file it denies, and does not load it', async () => {
+    const server = await startProtectedDevServer(files, {
+      mockAccess: 'off',
+      client: { excludeFiles: [] },
+    })
+    const loaded = await server.load('/src/entry.ts', {
+      skip: /^node:|^\/@vite\//,
+    })
+    expectReported(reportedImporters(server), 'client', {
+      'dependency server file': ['src/uses/dep.ts'],
+    })
+    expect(
+      Object.entries(loaded)
+        .filter(([, code]) => code.includes('REAL_DEP_SERVER'))
+        .map(([url]) => url),
+    ).toEqual([])
+  })
 
   // On main, the documented way to check third-party files does nothing on the
   // server in `vite dev`, and in mock mode breaks the module that imports the
@@ -280,20 +263,16 @@ describe('excludeFiles: [] checks the files of a dependency', () => {
   // loads.
   // Source: review (the server's default `excludeFiles` had no reachable
   // contrast).
-  test(
-    'the server reports the dependency file it denies',
-    async () => {
-      const server = await startProtectedDevServer(files, {
-        mockAccess: 'off',
-        server: { excludeFiles: [] },
-      })
-      await server.import('/src/entry.ts', 'ssr')
-      expectReported(reportedImporters(server), 'server', {
-        'dependency client file': ['src/uses/dep.ts'],
-      })
-    },
-    timeout,
-  )
+  test('the server reports the dependency file it denies', async () => {
+    const server = await startProtectedDevServer(files, {
+      mockAccess: 'off',
+      server: { excludeFiles: [] },
+    })
+    await server.import('/src/entry.ts', 'ssr')
+    expectReported(reportedImporters(server), 'server', {
+      'dependency client file': ['src/uses/dep.ts'],
+    })
+  })
 })
 
 describe('configured patterns', () => {
@@ -325,19 +304,15 @@ export * from './uses/pg-pool'
 `,
   }
 
-  test(
-    'a ** glob matches files at any depth under a directory, and an anchored RegExp only the exact specifier',
-    async () => {
-      const server = await startProtectedDevServer(files, {
-        client: { files: ['**/.server/**'], specifiers: [/^pg$/] },
-        mockAccess: 'off',
-      })
-      await server.load('/src/entry.ts')
-      expectReported(reportedImporters(server), 'client', {
-        'the deep glob': ['src/uses/deep-server.ts'],
-        'the anchored RegExp': ['src/uses/postgres.ts'],
-      })
-    },
-    timeout,
-  )
+  test('a ** glob matches files at any depth under a directory, and an anchored RegExp only the exact specifier', async () => {
+    const server = await startProtectedDevServer(files, {
+      client: { files: ['**/.server/**'], specifiers: [/^pg$/] },
+      mockAccess: 'off',
+    })
+    await server.load('/src/entry.ts')
+    expectReported(reportedImporters(server), 'client', {
+      'the deep glob': ['src/uses/deep-server.ts'],
+      'the anchored RegExp': ['src/uses/postgres.ts'],
+    })
+  })
 })

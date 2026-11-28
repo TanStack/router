@@ -99,6 +99,6 @@ export const Route = createFileRoute('/')({ component: () => <p>home</p> })
           errors: errors.filter((error) => !error.includes('expected')),
         }).toEqual({ cell: cell.path, ...inPlace })
       }
-    }, 120_000)
+    })
   })
 })

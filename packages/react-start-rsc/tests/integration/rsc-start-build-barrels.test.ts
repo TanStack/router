@@ -102,5 +102,5 @@ describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
         hasText: new RegExp(`^called ${results}$`),
       })
       .waitFor()
-  }, 90_000)
+  })
 })

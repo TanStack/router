@@ -9,8 +9,6 @@ import { describe } from 'vitest'
 import { it } from '../test'
 import type { TargetFramework } from '../route-app'
 
-const timeout = 120_000
-
 const route = (statements: string, version: string) =>
   `import { createFileRoute } from '@tanstack/react-router'
 ${statements}
@@ -35,34 +33,33 @@ export const meta = 1${comment}`
 describe.each(['vite', 'rsbuild'] as const)(
   '%s react: statements with a @refresh comment',
   (bundler) => {
-    it(
-      'run as often and share their bindings as without the comment',
-      { timeout },
-      async ({ expect, openRouteHmrPage }) => {
-        const run = async (comment: string) => {
-          const app = await openRouteHmrPage({
-            bundler,
-            files: { 'routes/index.tsx': route(statements(comment), 'v1') },
-            ready: 'page v1',
-          })
-          const seen = [(await app.page.text('#app')).trim()]
-          for (const n of [2, 3]) {
-            await app.edit(
-              { 'routes/index.tsx': route(statements(comment), `v${n}`) },
-              `page v${n}`,
-            )
-            seen.push((await app.page.text('#app')).trim())
-          }
-          return seen
+    it('run as often and share their bindings as without the comment', async ({
+      expect,
+      openRouteHmrPage,
+    }) => {
+      const run = async (comment: string) => {
+        const app = await openRouteHmrPage({
+          bundler,
+          files: { 'routes/index.tsx': route(statements(comment), 'v1') },
+          ready: 'page v1',
+        })
+        const seen = [(await app.page.text('#app')).trim()]
+        for (const n of [2, 3]) {
+          await app.edit(
+            { 'routes/index.tsx': route(statements(comment), `v${n}`) },
+            `page v${n}`,
+          )
+          seen.push((await app.page.text('#app')).trim())
         }
-        const [plain, commented] = await Promise.all([
-          run(''),
-          run(' /* @refresh reset */'),
-        ])
-        expect(plain[0]).toBe('page v1 shared 1 1')
-        expect(commented).toEqual(plain)
-      },
-    )
+        return seen
+      }
+      const [plain, commented] = await Promise.all([
+        run(''),
+        run(' /* @refresh reset */'),
+      ])
+      expect(plain[0]).toBe('page v1 shared 1 1')
+      expect(commented).toEqual(plain)
+    })
   },
 )
 
@@ -100,28 +97,27 @@ describe.each([
 ] as const)(
   '$bundler $target: an unread declaration that subscribes',
   ({ bundler, target }) => {
-    it(
-      'subscribes once, with a @refresh comment as without it',
-      { timeout },
-      async ({ expect, openRouteHmrPage }) => {
-        const calls = async (comment: string) => {
-          const app = await openRouteHmrPage({
-            bundler,
-            target,
-            files: { 'routes/index.tsx': subscribing(target, comment) },
-            ready: 'subscribed',
-          })
-          return app.evaluate<number>(
-            `(window.dispatchEvent(new Event('route-ping')), window.__calls)`,
-          )
-        }
-        const [plain, commented] = await Promise.all([
-          calls(''),
-          calls(' /* @refresh reset */'),
-        ])
-        expect({ plain, commented }).toEqual({ plain: 1, commented: 1 })
-      },
-    )
+    it('subscribes once, with a @refresh comment as without it', async ({
+      expect,
+      openRouteHmrPage,
+    }) => {
+      const calls = async (comment: string) => {
+        const app = await openRouteHmrPage({
+          bundler,
+          target,
+          files: { 'routes/index.tsx': subscribing(target, comment) },
+          ready: 'subscribed',
+        })
+        return app.evaluate<number>(
+          `(window.dispatchEvent(new Event('route-ping')), window.__calls)`,
+        )
+      }
+      const [plain, commented] = await Promise.all([
+        calls(''),
+        calls(' /* @refresh reset */'),
+      ])
+      expect({ plain, commented }).toEqual({ plain: 1, commented: 1 })
+    })
   },
 )
 
@@ -130,20 +126,20 @@ describe.each([
 // with a comment on the statement, the chunk must not import the module
 // either
 describe('vite react, verbatimModuleSyntax: an import of a type only, with a @refresh comment', () => {
-  it(
-    'evaluates the imported module as often as without the comment',
-    { timeout },
-    async ({ expect, openRouteHmrPage }) => {
-      const evaluations = async (comment: string) => {
-        const app = await openRouteHmrPage({
-          files: {
-            'tsconfig.json': JSON.stringify({
-              compilerOptions: { verbatimModuleSyntax: true, jsx: 'react-jsx' },
-            }),
-            'kinds.ts': `;(globalThis as any).__kinds = ((globalThis as any).__kinds ?? 0) + 1
+  it('evaluates the imported module as often as without the comment', async ({
+    expect,
+    openRouteHmrPage,
+  }) => {
+    const evaluations = async (comment: string) => {
+      const app = await openRouteHmrPage({
+        files: {
+          'tsconfig.json': JSON.stringify({
+            compilerOptions: { verbatimModuleSyntax: true, jsx: 'react-jsx' },
+          }),
+          'kinds.ts': `;(globalThis as any).__kinds = ((globalThis as any).__kinds ?? 0) + 1
 export type Kind = 'page'
 `,
-            'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+          'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 ${comment}import { type Kind } from '../kinds'
 const kind: Kind = 'page'
 export const Route = createFileRoute('/')({ component: Page })
@@ -151,16 +147,15 @@ function Page() {
   return <p>shown {kind}</p>
 }
 `,
-          },
-          ready: 'shown page',
-        })
-        return app.evaluate<number | null>('globalThis.__kinds ?? null')
-      }
-      const [plain, commented] = await Promise.all([
-        evaluations(''),
-        evaluations('/* @refresh reset */\n'),
-      ])
-      expect(commented).toBe(plain)
-    },
-  )
+        },
+        ready: 'shown page',
+      })
+      return app.evaluate<number | null>('globalThis.__kinds ?? null')
+    }
+    const [plain, commented] = await Promise.all([
+      evaluations(''),
+      evaluations('/* @refresh reset */\n'),
+    ])
+    expect(commented).toBe(plain)
+  })
 })

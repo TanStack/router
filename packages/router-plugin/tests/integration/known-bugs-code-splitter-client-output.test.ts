@@ -65,7 +65,7 @@ export const Route = createFileRoute('/')({
     expect(await secretPlacement('vite', 'ssr: () => !!readSecret()')).toBe(
       'nowhere',
     )
-  }, 60_000)
+  })
 
   // Bug: build-level canary of the method pin in
   // pages/known-bugs-code-splitter.test.ts (same root cause).
@@ -74,7 +74,7 @@ export const Route = createFileRoute('/')({
     expect(
       await secretPlacement('vite', 'ssr() { return !!readSecret() }'),
     ).toBe('nowhere')
-  }, 60_000)
+  })
 
   // Bug: build-level canary of the typed-wrapper pin in
   // pages/known-bugs-code-splitter.test.ts (same root cause: options wrapped in
@@ -92,7 +92,6 @@ export const Route = createFileRoute('/')({
         ),
       ).toBe('nowhere')
     },
-    60_000,
   )
 })
 
@@ -161,7 +160,6 @@ export const Route = createFileRoute('/')({
         await serverCodePlacement(bundler, true),
       )
     },
-    60_000,
   )
 })
 
@@ -231,7 +229,6 @@ export const Route = createFileRoute('/')({
       expect(split || warned).toBe(true)
       expect(loggedInPage).toBe(false)
     },
-    60_000,
   )
 
   // Bug: the code splitter's `console.warn` (today: "will not be
@@ -247,6 +244,5 @@ export const Route = createFileRoute('/')({
     async (bundler) => {
       expect((await productionWarnings(bundler, null)).loggedInPage).toBe(false)
     },
-    60_000,
   )
 })

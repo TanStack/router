@@ -13,8 +13,6 @@ import { describe, expect, test } from 'vitest'
 import { failedRscBuild } from './rsc-app'
 import { openRscPage, startRscPreviewServer } from './rsc-serial'
 
-const timeout = 60_000
-
 /** `pkg-cond`, `.` exported as `browser.js` to the browser and `server.js` to the rest. */
 function conditionalPackage(files: Record<string, string>) {
   return {
@@ -78,49 +76,41 @@ export const pkgPing = createServerFn({ method: 'GET' }).handler(() => '${mark}'
 `
 
 describe('Vite production build with RSC: a package whose export conditions give the browser and the server different files', () => {
-  test(
-    'both conditions re-export one defining module: the build succeeds and the browser call answers',
-    async () => {
-      const server = await startRscPreviewServer({
-        files: conditionalPackage({
-          'fn.js': serverFn('MARK_ONE'),
-          'browser.js': `export { pkgPing } from './fn.js'\n`,
-          'server.js': `export { pkgPing } from './fn.js'\n`,
-        }),
-      })
-      const page = await openRscPage(server, '/cond')
-      await page
-        .locator('[data-testid=loader]', { hasText: /MARK_ONE/ })
-        .waitFor()
-      const response = page.waitForResponse((r) =>
-        r.url().includes('/_serverFn/'),
-      )
-      await page.locator('[data-testid=cond]').click()
-      expect((await response).status()).toBe(200)
-      await page
-        .locator('[data-testid=cond]', { hasText: /cond MARK_ONE/ })
-        .waitFor()
-    },
-    timeout,
-  )
+  test('both conditions re-export one defining module: the build succeeds and the browser call answers', async () => {
+    const server = await startRscPreviewServer({
+      files: conditionalPackage({
+        'fn.js': serverFn('MARK_ONE'),
+        'browser.js': `export { pkgPing } from './fn.js'\n`,
+        'server.js': `export { pkgPing } from './fn.js'\n`,
+      }),
+    })
+    const page = await openRscPage(server, '/cond')
+    await page
+      .locator('[data-testid=loader]', { hasText: /MARK_ONE/ })
+      .waitFor()
+    const response = page.waitForResponse((r) =>
+      r.url().includes('/_serverFn/'),
+    )
+    await page.locator('[data-testid=cond]').click()
+    expect((await response).status()).toBe(200)
+    await page
+      .locator('[data-testid=cond]', { hasText: /cond MARK_ONE/ })
+      .waitFor()
+  })
 
-  test(
-    "each condition's file defines the function: the build fails, naming the browser's file",
-    async () => {
-      const { error } = await failedRscBuild({
-        files: conditionalPackage({
-          'browser.js': serverFn('MARK_BROWSER'),
-          'server.js': serverFn('MARK_SERVER'),
-        }),
-      })
-      const lines = error.split('\n')
-      expect(lines).toContain('  - pkgPing of node_modules/pkg-cond/browser.js')
-      // the way out for a package that declares Start: its conditions
-      // (Gemini's review of the implementation, F6.1: the error told the
-      // package to declare Start)
-      expect(lines).toContain(conditionalWayOut)
-      expect(lines.some((line) => line.includes('must declare'))).toBe(false)
-    },
-    timeout,
-  )
+  test("each condition's file defines the function: the build fails, naming the browser's file", async () => {
+    const { error } = await failedRscBuild({
+      files: conditionalPackage({
+        'browser.js': serverFn('MARK_BROWSER'),
+        'server.js': serverFn('MARK_SERVER'),
+      }),
+    })
+    const lines = error.split('\n')
+    expect(lines).toContain('  - pkgPing of node_modules/pkg-cond/browser.js')
+    // the way out for a package that declares Start: its conditions
+    // (Gemini's review of the implementation, F6.1: the error told the
+    // package to declare Start)
+    expect(lines).toContain(conditionalWayOut)
+    expect(lines.some((line) => line.includes('must declare'))).toBe(false)
+  })
 })

@@ -13,8 +13,6 @@ import { build, rootRouteOf, routeHead } from '../build-harness'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
 import type { Framework } from '../build-harness'
 
-const timeout = 120_000
-
 /** Each route's loader, with what the route file declares before the route. */
 interface Shape {
   loader: string
@@ -143,34 +141,32 @@ const builds: Array<{ bundler: Bundler; framework: Framework }> = [
 ]
 
 describe.each(builds)('$bundler, $framework', ({ bundler, framework }) => {
-  test(
-    'a split object-form loader loads its handler with the loader chunk and keeps its other keys',
-    async () => {
-      const app = await build({
-        bundler,
-        framework,
-        env: 'client',
-        pluginOptions: {
-          codeSplittingOptions: {
-            defaultBehavior: [['loader'], ['component']],
-          },
+  test('a split object-form loader loads its handler with the loader chunk and keeps its other keys', async () => {
+    const app = await build({
+      bundler,
+      framework,
+      env: 'client',
+      pluginOptions: {
+        codeSplittingOptions: {
+          defaultBehavior: [['loader'], ['component']],
         },
-        files: appFiles(framework),
-      })
-      const placement = (marker: string) =>
-        Object.fromEntries(
-          Object.keys(shapes).map((name) => [
-            name,
-            app.where(`${marker}_${name}`),
-          ]),
-        )
-      expect(placement('MARK_HANDLER')).toEqual(
-        Object.fromEntries(Object.keys(shapes).map((name) => [name, 'lazy'])),
+      },
+      files: appFiles(framework),
+    })
+    const placement = (marker: string) =>
+      Object.fromEntries(
+        Object.keys(shapes).map((name) => [
+          name,
+          app.where(`${marker}_${name}`),
+        ]),
       )
-      expect(placement('MARK_HEAVY')).toEqual(
-        Object.fromEntries(Object.keys(shapes).map((name) => [name, 'lazy'])),
-      )
-      const run = await app.run(`const out = {}
+    expect(placement('MARK_HANDLER')).toEqual(
+      Object.fromEntries(Object.keys(shapes).map((name) => [name, 'lazy'])),
+    )
+    expect(placement('MARK_HEAVY')).toEqual(
+      Object.fromEntries(Object.keys(shapes).map((name) => [name, 'lazy'])),
+    )
+    const run = await app.run(`const out = {}
 for (const name of ${JSON.stringify(names)}) {
   const loader = entry[name].options.loader
   out[name] = {
@@ -179,19 +175,17 @@ for (const name of ${JSON.stringify(names)}) {
   }
 }
 return { loaded: out, settingsInits: globalThis.__settingsInits }`)
-      expect(run.result).toEqual({
-        loaded: Object.fromEntries(
-          names.map((name) => [
-            name,
-            {
-              staleReloadMode: 'blocking',
-              data: `MARK_HEAVY_${name} MARK_HANDLER_${name}${name === 'shared' ? ' 1' : ''}`,
-            },
-          ]),
-        ),
-        settingsInits: 1,
-      })
-    },
-    timeout,
-  )
+    expect(run.result).toEqual({
+      loaded: Object.fromEntries(
+        names.map((name) => [
+          name,
+          {
+            staleReloadMode: 'blocking',
+            data: `MARK_HEAVY_${name} MARK_HANDLER_${name}${name === 'shared' ? ' 1' : ''}`,
+          },
+        ]),
+      ),
+      settingsInits: 1,
+    })
+  })
 })

@@ -13,8 +13,6 @@ import {
   treeRebuildApp,
 } from './route-edits-after-tree-rebuild'
 
-const timeout = 90_000
-
 /** Pre-bundled up front, as Vite does for an app that installed them. */
 const reactOptimizeDeps = {
   include: [
@@ -29,25 +27,21 @@ const reactOptimizeDeps = {
 }
 
 describe('Vite dev: route edits after a route tree rebuild', () => {
-  test(
-    'a loader edit shows after a route was added, and after a route was renamed',
-    async () => {
-      const server = await startDevServer({
-        start: {},
-        browser: true,
-        config: { optimizeDeps: reactOptimizeDeps },
-        plugins: [react()],
-        files: treeRebuildApp,
-      })
-      await editLoaderAroundTreeRebuilds({
-        url: server.url,
-        edit: (files) => server.edit(files),
-        rename: (from, to) => server.rename(from, to),
-        settled: () => server.idle(),
-        // Vite reloads the pages of a changed route tree
-        settlePage: (page, inFlight) => settlePage(server, page, inFlight),
-      })
-    },
-    timeout,
-  )
+  test('a loader edit shows after a route was added, and after a route was renamed', async () => {
+    const server = await startDevServer({
+      start: {},
+      browser: true,
+      config: { optimizeDeps: reactOptimizeDeps },
+      plugins: [react()],
+      files: treeRebuildApp,
+    })
+    await editLoaderAroundTreeRebuilds({
+      url: server.url,
+      edit: (files) => server.edit(files),
+      rename: (from, to) => server.rename(from, to),
+      settled: () => server.idle(),
+      // Vite reloads the pages of a changed route tree
+      settlePage: (page, inFlight) => settlePage(server, page, inFlight),
+    })
+  })
 })

@@ -11,7 +11,7 @@ import { test } from '../test'
 import type { RouteHmrPageOptions } from '../route-hmr-page'
 import type { RouterFixtures } from '../test'
 
-describe('route HMR in a real page', { timeout: 60_000 }, () => {
+describe('route HMR in a real page', () => {
   /** A React route at `/` whose component, `name`, keeps a click count. */
   const counterRoute = (
     version: string,

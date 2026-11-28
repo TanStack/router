@@ -139,7 +139,6 @@ test.each(['vite', 'rspack', 'webpack'] as const)(
       html: '<div id="root"><p>MARK_CAFE_COMPONENT</p></div>',
     })
   },
-  120_000,
 )
 
 test.each(['vite', 'rspack', 'webpack'] as const)(
@@ -150,7 +149,6 @@ test.each(['vite', 'rspack', 'webpack'] as const)(
       html: '<div id="root"><p>MARK_QUOTE_COMPONENT</p></div>',
     })
   },
-  120_000,
 )
 
 // Source: splicing gate (B1), a regression of 4ef7358870.
@@ -166,7 +164,6 @@ test.each(['vite', 'rspack', 'webpack'] as const)(
       ],
     })
   },
-  120_000,
 )
 
 // A JavaScript route file (`.jsx`) splits like a TypeScript one in each
@@ -180,7 +177,6 @@ test.each(['vite', 'rspack', 'webpack'] as const)(
       loaded: 'MARK_SHARED',
     })
   },
-  120_000,
 )
 
 // A statement may end without a `;`: at the end of a file with no final
@@ -316,7 +312,6 @@ test.each(unterminated.map((row, i) => [row.name, i] as const))(
     unterminatedResults ??= buildUnterminated()
     expect((await unterminatedResults)[i]).toBe('<p>MARK</p>')
   },
-  60_000,
 )
 
 // A specifier naming a member of Object.prototype must not find it in a table
@@ -348,7 +343,6 @@ export const Route = createFileRoute('/')({ component: () => <p>{x}</p> })
     })
     expect(app.where('MARK_X')).toBe('lazy')
   },
-  60_000,
 )
 
 const stateRoute = `${head}let state = 0
@@ -366,23 +360,19 @@ test.each([
     'a source map comment',
     `${stateRoute}//# sourceMappingURL=data:application/json,{}\n`,
   ],
-])(
-  'a route file with %s builds without a report',
-  async (_name, route) => {
-    const app = await build({
-      bundler: 'vite',
+])('a route file with %s builds without a report', async (_name, route) => {
+  const app = await build({
+    bundler: 'vite',
+    env: 'client',
+    minify: false,
+    files: routeApp(route, {
       env: 'client',
-      minify: false,
-      files: routeApp(route, {
-        env: 'client',
-        files: { 'entry.ts': clientMountEntry },
-      }),
-    })
-    expectNoDiagnostic(app, {
-      severity: 'warning',
-      file: 'routes/index.tsx',
-      root: app.root,
-    })
-  },
-  60_000,
-)
+      files: { 'entry.ts': clientMountEntry },
+    }),
+  })
+  expectNoDiagnostic(app, {
+    severity: 'warning',
+    file: 'routes/index.tsx',
+    root: app.root,
+  })
+})

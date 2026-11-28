@@ -43,12 +43,12 @@ let hosts: HydrateHost
 const openHosts = closeAfterAll()
 beforeAll(async () => {
   hosts = await openHosts(() => createHydrateHost())
-}, 60_000)
+})
 let solidHost: SolidHost
 const openSolidHost = closeAfterAll()
 beforeAll(async () => {
   solidHost = await openSolidHost(() => createSolidHost())
-}, 60_000)
+})
 
 /**
  * The directives a served module carries from the user's file: the string
@@ -464,7 +464,7 @@ function Page() {
     expectRenderedThroughChunks(client)
     expect(client.html).toContain('<p>one</p>')
     expect(client.html).toContain('<p>two</p>')
-  }, 30_000)
+  })
 
   test('client: a split={false} boundary nested in another does not shift the ids of later boundaries', async () => {
     const { client } = await expectRendersLikeSource(
@@ -774,7 +774,7 @@ export function Page() {
     expect(first).toContain('<p>chunk-marker</p>')
     await files.edit(`${source}\n`)
     expect(await render()).toBe(first)
-  }, 30_000)
+  })
 
   // Code in the split code and in the parent maps back to where the user
   // wrote it: the throws of a handler in the parent and of one in the

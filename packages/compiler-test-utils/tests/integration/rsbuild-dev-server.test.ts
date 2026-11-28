@@ -29,7 +29,7 @@ test('rebuilds the edited module and emits the edit', async ({
   expect(server.rebuilt).toContain('src/leaf.ts')
   expect(await joined()).toContain('MARK_V2')
   expect(await joined()).not.toContain('MARK_V1')
-}, 30_000)
+})
 
 // The watcher may start the compile of an edit before its writes finish
 // (on a loaded machine, before the harness even sees the write done): the
@@ -56,13 +56,12 @@ test('a compile that starts before the writes of the edit finish ends the wait',
 
   expect(server.rebuilt).toContain('src/leaf.ts')
   expect(Object.values(await server.outputs()).join('\n')).toContain('MARK_V2')
-}, 30_000)
+})
 
 // Rsbuild's default: each compile after an edit emits hot-update chunks with
 // the edited modules, which a connected browser applies.
 test.for([true, false])(
   'hmr: %s, an edit emits hot-update chunks with the edit only with hmr, and outputs() leaves them out',
-  { timeout: 30_000 },
   async (hmr, { rsbuildServer }) => {
     const server = await rsbuildServer({
       hmr,
@@ -110,7 +109,7 @@ test('a compile a plugin makes fail rejects the wait with its error, without wai
     server.edit({ 'src/entry.ts': `console.log('MARK_V2')\n` }),
   ).rejects.toThrow(/Rsbuild failed to compile[\s\S]*MARK_PLUGIN_FAILURE/)
   expect(Date.now() - started).toBeLessThan(10_000)
-}, 30_000)
+})
 
 /**
  * A plugin like a route generator: at the start of each compile, it writes
@@ -169,7 +168,7 @@ test('settle() waits for the compiles of the files a plugin writes in a compile'
   const outputs = Object.values(await server.outputs()).join('\n')
   expect(outputs).toContain('MARK_GENERATED_V2')
   expect(outputs).not.toContain('MARK_GENERATED_V1')
-}, 30_000)
+})
 
 test('settle() waits for a compile that started after each written file, unless accept() takes it', async ({
   rsbuildServer,
@@ -191,7 +190,7 @@ test('settle() waits for a compile that started after each written file, unless 
   expect(Object.values(await server.outputs()).join('\n')).toContain(
     'MARK_LAZY',
   )
-}, 30_000)
+})
 
 test('settle() rejects at its bound while a plugin writes a file the compiles read on each compile', async ({
   rsbuildServer,
@@ -205,7 +204,7 @@ test('settle() rejects at its bound while a plugin writes a file the compiles re
     name: 'SettleTimeout',
     message: expect.stringMatching(/did not settle within 3000 ms/),
   })
-}, 30_000)
+})
 
 // A plugin may watch an original source itself and hand
 // Rspack a module built from it, so the source is in no compile's
@@ -241,7 +240,7 @@ module.exports = function () {
   await server.write({ 'content/source.txt': 'MARK_SOURCE_V3' })
   await server.settle()
   expect(await joined()).toContain('MARK_SOURCE_V3')
-}, 30_000)
+})
 
 /**
  * Builds `src/virtual.ts` from `content/source.txt` (`loader.cjs`) and
@@ -322,7 +321,7 @@ test('diagnostics keeps the reports of every compile; errors and warnings hold t
     expect.stringMatching(/^warning: [\s\S]*MARK_WARNING_FIRST/),
   ])
   expect(server.diagnostics.slice(since)).toEqual([])
-}, 30_000)
+})
 
 /** An environment compiler, with the app files its last compile read. */
 interface Captured {
@@ -401,7 +400,7 @@ test('the start resolves once the watcher knows every app file the compile read'
   for (const file of client.read) {
     expect(client.known.has(path.join(server.root, file))).toBe(true)
   }
-}, 30_000)
+})
 
 // One compiler may watch for another: Rspack's RSC coordinator makes the
 // server compiler watch the client compiler's files and ignores everything
@@ -448,7 +447,7 @@ test('the start resolves with a compiler whose watcher ignores every file, while
   for (const file of node.read) {
     expect(web.known.has(path.join(server.root, file))).toBe(true)
   }
-}, 30_000)
+})
 
 // A user starts the dev server on files that are already on disk. Files
 // written a moment before the first compile fall within the accuracy
@@ -486,7 +485,7 @@ test("the app's initial files predate the first compile beyond the watcher's acc
     const { mtimeMs } = await stat(path.join(server.root, file))
     expect(mtimeMs + 2000, file).toBeLessThan(firstCompile!)
   }
-}, 30_000)
+})
 
 // A compile that started before an edit's write does not compile it, even
 // if it names the edited file (here for an earlier change of it): `edit()`
@@ -562,4 +561,4 @@ test('a compile that started before the write of an edit does not end its wait',
     compiles.some(({ leaf, done }) => leaf.includes('MARK_V3') && done),
   ).toBe(true)
   expect(Object.values(await server.outputs()).join('\n')).toContain('MARK_V3')
-}, 30_000)
+})

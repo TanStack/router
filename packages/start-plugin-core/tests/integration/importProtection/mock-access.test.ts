@@ -29,8 +29,6 @@ import { clientFixturePlugin, runViteClient } from './client-pages'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 
-const timeout = 30_000
-
 /**
  * `src/secret.server.ts` (a denied file) and `db-lib` (a package denied by
  * a specifier rule), both used by the client through `src/uses.ts`.
@@ -143,7 +141,6 @@ describe.each(deniedImports)('a client import of $specifier', (denied) => {
       )
       expect(result).toEqual([safeMock, safeMock, safeMock])
     },
-    timeout,
   )
 
   test.each([
@@ -165,44 +162,35 @@ describe.each(deniedImports)('a client import of $specifier', (denied) => {
         }),
       })
     },
-    timeout,
   )
 
   // The dev report says who imported it (a production build's names only
   // the denied import: `build-mock.test.ts`).
   // Source: review (production-code audit, 11-18).
-  test(
-    'the report of a call in dev names the importer',
-    async () => {
-      const { logged } = await inPage('error', denied.name, `value()`)
-      const root = (await serverOf('error')).root
-      expect(
-        logged.some(({ text }) => mentionsFile(text, 'src/uses.ts', { root })),
-      ).toBe(true)
-    },
-    timeout,
-  )
+  test('the report of a call in dev names the importer', async () => {
+    const { logged } = await inPage('error', denied.name, `value()`)
+    const root = (await serverOf('error')).root
+    expect(
+      logged.some(({ text }) => mentionsFile(text, 'src/uses.ts', { root })),
+    ).toBe(true)
+  })
 
   // Silent means no side effect a page can see: nothing logged on any
   // channel at any severity (the same output as a page that does not use
   // the mock), and no global the uses define.
-  test(
-    'mockAccess off: no use is reported, and the uses have no side effect',
-    async () => {
-      const control = await inPage('off', denied.name, `return []`)
-      const { logged, all, result } = await inPage(
-        'off',
-        denied.name,
-        `const before = new Set(Object.getOwnPropertyNames(globalThis))
+  test('mockAccess off: no use is reported, and the uses have no side effect', async () => {
+    const control = await inPage('off', denied.name, `return []`)
+    const { logged, all, result } = await inPage(
+      'off',
+      denied.name,
+      `const before = new Set(Object.getOwnPropertyNames(globalThis))
 ${Object.values(uses).join('\n')}
 String(value.member())
 new value.Client()
 return Object.getOwnPropertyNames(globalThis).filter((name) => !before.has(name))`,
-      )
-      expect(logged).toEqual([])
-      expect(all).toEqual(control.all)
-      expect(result).toEqual([])
-    },
-    timeout,
-  )
+    )
+    expect(logged).toEqual([])
+    expect(all).toEqual(control.all)
+    expect(result).toEqual([])
+  })
 })

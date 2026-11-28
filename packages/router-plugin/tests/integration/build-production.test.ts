@@ -7,11 +7,7 @@
  */
 import { describe, test } from 'vitest'
 import { frameworks } from '../build-harness'
-import {
-  expectProductionClientBundle,
-  routeShapes,
-  timeout,
-} from '../production-bundle'
+import { expectProductionClientBundle, routeShapes } from '../production-bundle'
 
 describe.each(['vite', 'rspack'] as const)('%s', (bundler) => {
   test.each(frameworks)(
@@ -19,7 +15,6 @@ describe.each(['vite', 'rspack'] as const)('%s', (bundler) => {
     async (framework) => {
       await expectProductionClientBundle(bundler, framework, true)
     },
-    timeout,
   )
 
   // Bug (Rspack): the router plugin reads the compiler's `mode` when it is
@@ -29,19 +24,15 @@ describe.each(['vite', 'rspack'] as const)('%s', (bundler) => {
   // Impact: the production bundle ships route HMR code (`__tsrRouteHmr`
   // calls, the lazy wrappers' hot slots).
   if (bundler === 'rspack') {
-    test(
-      'a production react client bundle of a configuration without mode has no dev-only code',
-      async () => {
-        await expectProductionClientBundle(
-          bundler,
-          'react',
-          true,
-          undefined,
-          true,
-        )
-      },
-      timeout,
-    )
+    test('a production react client bundle of a configuration without mode has no dev-only code', async () => {
+      await expectProductionClientBundle(
+        bundler,
+        'react',
+        true,
+        undefined,
+        true,
+      )
+    })
   }
 
   // Routes whose route HMR compile differs from the plain route's (SPEC
@@ -60,7 +51,6 @@ describe.each(['vite', 'rspack'] as const)('%s', (bundler) => {
     async ({ route }) => {
       await expectProductionClientBundle(bundler, 'react', true, route)
     },
-    timeout,
   )
 })
 
@@ -71,7 +61,6 @@ test.each([true, false])(
   async (autoCodeSplitting) => {
     await expectProductionClientBundle('rsbuild', 'react', autoCodeSplitting)
   },
-  timeout,
 )
 
 // The route HMR plugin also runs in these builds (it follows `NODE_ENV`,
@@ -84,7 +73,6 @@ test.each(frameworks)(
   async (framework) => {
     await expectProductionClientBundle('vite', framework, false)
   },
-  timeout,
 )
 
 // Bug: with automatic code splitting off, the composed router plugin adds
@@ -100,6 +88,5 @@ describe('rspack', () => {
     async (framework) => {
       await expectProductionClientBundle('rspack', framework, false)
     },
-    timeout,
   )
 })

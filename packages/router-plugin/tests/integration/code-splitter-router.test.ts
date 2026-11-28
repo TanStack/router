@@ -130,7 +130,7 @@ return results`)
       ),
       rendered: Object.fromEntries(cases[env].map(({ path }) => [path, true])),
     })
-  }, 120_000)
+  })
 })
 
 // `defaultBehavior: []` means what it did before this compiler: no route
@@ -175,4 +175,4 @@ return results`)
     placement: { heavy: 'lazy', light: 'eager' },
     rendered: { '/heavy': true, '/light': true },
   })
-}, 120_000)
+})

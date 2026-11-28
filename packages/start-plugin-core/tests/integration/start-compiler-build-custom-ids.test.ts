@@ -232,5 +232,5 @@ describe('relocation', () => {
         portable: (result) => result.called,
       },
     )
-  }, 60_000)
+  })
 })

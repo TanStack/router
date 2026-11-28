@@ -31,8 +31,6 @@ import {
 import type { AnySourceMap } from '@tanstack/compiler-test-utils/source-maps'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
-const timeout = 60_000
-
 /** A server fn whose handler throws, next to a client function that throws. */
 const fail = `import { createServerFn } from '@tanstack/react-start'
 import { secret } from './secret'
@@ -89,64 +87,60 @@ function expectMarkersMapToFile(
 }
 
 describe('vite dev server', () => {
-  test(
-    'the client stub module and every server module of the file map a throw to its line in the file',
-    async () => {
-      const server = await startDevServer({
-        start: {},
-        listen: true,
-        files: { ...startRequestFiles, ...files },
-      })
-      // The client module, as the browser gets it (an inline map).
-      const { status, body } = await server.fetch('/src/fail.ts')
-      expect(status).toBe(200)
-      expect(
-        expectMarkersMapToFile(
-          '/src/fail.ts',
-          body,
-          inlineSourceMap(body),
-          server.root,
-          // (the module's URL path is relative to the app root)
-          path.join(server.root, 'src/fail.ts'),
-        ),
-      ).toEqual(['MARK_CLIENT_THROW'])
-      // A call by id loads the server modules of the file: the SSR caller
-      // and whatever module the resolver runs the handler from. Every module
-      // the SSR environment served is checked.
-      const { getSecret } = await server.import('/src/fail.ts')
-      await expect(callServerFn(server, getSecret)).rejects.toThrow(
-        /MARK_HANDLER_THROW/,
-      )
-      const ssr = server.vite.environments.ssr
-      const modules = [...ssr.moduleGraph.idToModuleMap.values()]
-      const checked: Array<string> = []
-      for (const module of modules) {
-        const result = module.transformResult
-        if (!result) {
-          continue
-        }
-        const held = expectMarkersMapToFile(
-          module.id ?? module.url,
-          result.code,
-          result.map ? (result.map as AnySourceMap) : undefined,
-          server.root,
-          // (the module's id is its file, with its query)
-          module.id ?? path.join(server.root, module.url),
-        )
-        if (held.length > 0) {
-          checked.push(module.url)
-        }
+  test('the client stub module and every server module of the file map a throw to its line in the file', async () => {
+    const server = await startDevServer({
+      start: {},
+      listen: true,
+      files: { ...startRequestFiles, ...files },
+    })
+    // The client module, as the browser gets it (an inline map).
+    const { status, body } = await server.fetch('/src/fail.ts')
+    expect(status).toBe(200)
+    expect(
+      expectMarkersMapToFile(
+        '/src/fail.ts',
+        body,
+        inlineSourceMap(body),
+        server.root,
+        // (the module's URL path is relative to the app root)
+        path.join(server.root, 'src/fail.ts'),
+      ),
+    ).toEqual(['MARK_CLIENT_THROW'])
+    // A call by id loads the server modules of the file: the SSR caller
+    // and whatever module the resolver runs the handler from. Every module
+    // the SSR environment served is checked.
+    const { getSecret } = await server.import('/src/fail.ts')
+    await expect(callServerFn(server, getSecret)).rejects.toThrow(
+      /MARK_HANDLER_THROW/,
+    )
+    const ssr = server.vite.environments.ssr
+    const modules = [...ssr.moduleGraph.idToModuleMap.values()]
+    const checked: Array<string> = []
+    for (const module of modules) {
+      const result = module.transformResult
+      if (!result) {
+        continue
       }
-      // The handler's throw lives in at least one server module.
-      expect(checked.length, checked.join(', ')).toBeGreaterThanOrEqual(1)
-      expect(
-        modules.some((module) =>
-          module.transformResult?.code.includes('MARK_HANDLER_THROW '),
-        ),
-      ).toBe(true)
-    },
-    timeout,
-  )
+      const held = expectMarkersMapToFile(
+        module.id ?? module.url,
+        result.code,
+        result.map ? (result.map as AnySourceMap) : undefined,
+        server.root,
+        // (the module's id is its file, with its query)
+        module.id ?? path.join(server.root, module.url),
+      )
+      if (held.length > 0) {
+        checked.push(module.url)
+      }
+    }
+    // The handler's throw lives in at least one server module.
+    expect(checked.length, checked.join(', ')).toBeGreaterThanOrEqual(1)
+    expect(
+      modules.some((module) =>
+        module.transformResult?.code.includes('MARK_HANDLER_THROW '),
+      ),
+    ).toBe(true)
+  })
 })
 
 /**
@@ -172,40 +166,34 @@ async function emittedMap(
 }
 
 describe('rsbuild dev server', () => {
-  test(
-    'the client stub module and every server module of the file map a throw to its line in the file',
-    async () => {
-      const server = await startRsbuildStartDevServer({
-        files: {
-          ...files,
-          'src/entry.ts': `export { getSecret, fail } from './fail'\n`,
-        },
-        config: { output: { sourceMap: { js: 'source-map' } } },
-      })
-      await server.settle()
-      expect(reportedErrors(server)).toEqual([])
-      const checked: Record<string, Array<string>> = {}
-      for (const environment of ['client', 'ssr']) {
-        for (const [file, code] of Object.entries(
-          await server.outputs(environment),
-        )) {
-          const held = expectMarkersMapToFile(
-            `${environment}:${file}`,
-            code,
-            await emittedMap(server, environment, file),
-            server.root,
-          )
-          if (held.length > 0) {
-            checked[`${environment}:${file}`] = held
-          }
+  test('the client stub module and every server module of the file map a throw to its line in the file', async () => {
+    const server = await startRsbuildStartDevServer({
+      files: {
+        ...files,
+        'src/entry.ts': `export { getSecret, fail } from './fail'\n`,
+      },
+      config: { output: { sourceMap: { js: 'source-map' } } },
+    })
+    await server.settle()
+    expect(reportedErrors(server)).toEqual([])
+    const checked: Record<string, Array<string>> = {}
+    for (const environment of ['client', 'ssr']) {
+      for (const [file, code] of Object.entries(
+        await server.outputs(environment),
+      )) {
+        const held = expectMarkersMapToFile(
+          `${environment}:${file}`,
+          code,
+          await emittedMap(server, environment, file),
+          server.root,
+        )
+        if (held.length > 0) {
+          checked[`${environment}:${file}`] = held
         }
       }
-      const held = Object.values(checked).flat()
-      expect(held, Object.keys(checked).join(', ')).toContain(
-        'MARK_CLIENT_THROW',
-      )
-      expect(held).toContain('MARK_HANDLER_THROW ')
-    },
-    timeout,
-  )
+    }
+    const held = Object.values(checked).flat()
+    expect(held, Object.keys(checked).join(', ')).toContain('MARK_CLIENT_THROW')
+    expect(held).toContain('MARK_HANDLER_THROW ')
+  })
 })

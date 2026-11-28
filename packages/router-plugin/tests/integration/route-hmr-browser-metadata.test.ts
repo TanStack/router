@@ -41,7 +41,6 @@ describe.each(['vite', 'rsbuild'] as const)(
   (bundler) => {
     test.for([false, true])(
       'delivers matching, search, context, head and scripts edits (removal: %s)',
-      { timeout: 60_000 },
       async (removed: boolean, { expect, openRouteHmrPage }) => {
         const app = await openRouteHmrPage({
           bundler,
@@ -110,13 +109,13 @@ export const Route = createFileRoute('/')({ component: () => <p>home</p> })`,
     // target, which differs from its fullPath's trailing slash.
     // Source: mutation testing (SPEC J3.1, G1, G9).
     // Impact: user code importing Route builds a different link after HMR.
-    test(
-      'an edited index export keeps its public navigation target',
-      { timeout: 60_000 },
-      async ({ expect, openRouteHmrPage }) => {
-        const posts = (
-          version: string,
-        ) => `import { createFileRoute, Link } from '@tanstack/react-router'
+    test('an edited index export keeps its public navigation target', async ({
+      expect,
+      openRouteHmrPage,
+    }) => {
+      const posts = (
+        version: string,
+      ) => `import { createFileRoute, Link } from '@tanstack/react-router'
 export const Route = createFileRoute('/posts/')({
   loader: (): { version: string; to: string } => ({ version: '${version}', to: Route.to }),
   component: Posts,
@@ -125,34 +124,33 @@ function Posts() {
   const data = Route.useLoaderData()
   return <p>posts {data.version} <span data-testid="target">{data.to}</span> <Link to={data.to}>index target</Link></p>
 }`
-        const app = await openRouteHmrPage({
-          bundler,
-          files: {
-            'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+      const app = await openRouteHmrPage({
+        bundler,
+        files: {
+          'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({ component: () => <p>home</p> })`,
-            'routes/posts/index.tsx': posts('v1'),
-          },
-          ready: 'home',
-        })
-        if (bundler === 'vite') {
-          // (split: the index route's component loads from its chunk)
-          expect(app.splitOutputs()).toBeGreaterThan(0)
-        }
-        await app.evaluate(`window.__APP_ROUTER__.navigate({ to: '/posts' })`)
-        await app.page.waitForText('posts v1')
-        expect(await app.page.page.locator('a').getAttribute('href')).toBe(
-          '/posts',
-        )
-        expect(
-          await app.edit({ 'routes/posts/index.tsx': posts('v2') }, 'posts v2'),
-        ).toEqual(inPlace)
-        expect(await app.page.page.locator('a').getAttribute('href')).toBe(
-          '/posts',
-        )
-        expect(
-          await app.page.page.locator('[data-testid=target]').textContent(),
-        ).toBe('/posts')
-      },
-    )
+          'routes/posts/index.tsx': posts('v1'),
+        },
+        ready: 'home',
+      })
+      if (bundler === 'vite') {
+        // (split: the index route's component loads from its chunk)
+        expect(app.splitOutputs()).toBeGreaterThan(0)
+      }
+      await app.evaluate(`window.__APP_ROUTER__.navigate({ to: '/posts' })`)
+      await app.page.waitForText('posts v1')
+      expect(await app.page.page.locator('a').getAttribute('href')).toBe(
+        '/posts',
+      )
+      expect(
+        await app.edit({ 'routes/posts/index.tsx': posts('v2') }, 'posts v2'),
+      ).toEqual(inPlace)
+      expect(await app.page.page.locator('a').getAttribute('href')).toBe(
+        '/posts',
+      )
+      expect(
+        await app.page.page.locator('[data-testid=target]').textContent(),
+      ).toBe('/posts')
+    })
   },
 )

@@ -17,8 +17,6 @@ import { buildStart } from '../../build-start'
 import { importersIn } from './hosts'
 import type { StartBuild } from '../../build-harness'
 
-const timeout = 120_000
-
 const files = {
   'src/lib/allowed.server.ts': `export const allowed = () => 'MARK_ALLOWED'\n`,
   'src/lib/denied.server.ts': `export const denied = () => 'MARK_DENIED'\n`,
@@ -30,57 +28,53 @@ export const read = () => [text(allowed()), text(denied())]
 `,
 }
 
-test(
-  'rsbuild: a persistent cache moved to another path builds the app correctly',
-  async () => {
-    const cacheDirectory = mkdtempSync(path.join(runDirectory(), 'cache-'))
-    const build = () =>
-      buildStart({
-        bundler: 'rsbuild',
-        files,
-        entry: 'src/entry.ts',
-        rsbuildConfig: {
-          performance: { buildCache: { cacheDirectory } },
-          // (Rspack's cache of paths relative to the project)
-          tools: {
-            rspack: (config) => {
-              if (
-                typeof config.cache === 'object' &&
-                config.cache.type === 'persistent'
-              ) {
-                config.cache.portable = true
-              }
-            },
+test('rsbuild: a persistent cache moved to another path builds the app correctly', async () => {
+  const cacheDirectory = mkdtempSync(path.join(runDirectory(), 'cache-'))
+  const build = () =>
+    buildStart({
+      bundler: 'rsbuild',
+      files,
+      entry: 'src/entry.ts',
+      rsbuildConfig: {
+        performance: { buildCache: { cacheDirectory } },
+        // (Rspack's cache of paths relative to the project)
+        tools: {
+          rspack: (config) => {
+            if (
+              typeof config.cache === 'object' &&
+              config.cache.type === 'persistent'
+            ) {
+              config.cache.portable = true
+            }
           },
         },
-        start: {
-          importProtection: {
-            behavior: 'mock',
-            mockAccess: 'off',
-            allowImport: (info) => info.specifier.includes('allowed'),
-          },
+      },
+      start: {
+        importProtection: {
+          behavior: 'mock',
+          mockAccess: 'off',
+          allowImport: (info) => info.specifier.includes('allowed'),
         },
-      })
-    const outcome = async (built: StartBuild) => ({
-      read: (await built.client.run(`return entry.read()`)).result,
-      reported: importersIn(built, 'client'),
-      where: built.client.where('MARK_DENIED'),
+      },
     })
-    const expected = {
-      read: ['MARK_ALLOWED', 'mock'],
-      reported: ['src/entry.ts'],
-      where: 'nowhere',
-    }
-    const first = await build()
-    expect(await outcome(first)).toEqual(expected)
-    // the first path gone while the second build reads its cache
-    const moved = `${first.root}-moved`
-    await rename(first.root, moved)
-    try {
-      expect(await outcome(await build())).toEqual(expected)
-    } finally {
-      await rename(moved, first.root)
-    }
-  },
-  timeout,
-)
+  const outcome = async (built: StartBuild) => ({
+    read: (await built.client.run(`return entry.read()`)).result,
+    reported: importersIn(built, 'client'),
+    where: built.client.where('MARK_DENIED'),
+  })
+  const expected = {
+    read: ['MARK_ALLOWED', 'mock'],
+    reported: ['src/entry.ts'],
+    where: 'nowhere',
+  }
+  const first = await build()
+  expect(await outcome(first)).toEqual(expected)
+  // the first path gone while the second build reads its cache
+  const moved = `${first.root}-moved`
+  await rename(first.root, moved)
+  try {
+    expect(await outcome(await build())).toEqual(expected)
+  } finally {
+    await rename(moved, first.root)
+  }
+})

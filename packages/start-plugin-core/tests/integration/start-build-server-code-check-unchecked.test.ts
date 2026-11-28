@@ -20,8 +20,6 @@ vi.hoisted(() => {
   process.env.TSR_COMPILER_VERIFY = '0'
 })
 
-const timeout = 60_000
-
 const SECRET = 'MARK_SECRET'
 
 /** Client code of the loader, wherever the client build puts it. */
@@ -226,7 +224,6 @@ export const getRouter = () => createRouter({ routeTree })
       expect(row.built.client.where(row.loader), 'the loader').toBe('lazy')
       expectServerOnly(row)
     },
-    timeout,
   )
 
   test.each(ROUTE_OPTIONS)(
@@ -236,6 +233,5 @@ export const getRouter = () => createRouter({ routeTree })
         await builtRow(rows.findIndex((r) => r.input === option)),
       )
     },
-    timeout,
   )
 })

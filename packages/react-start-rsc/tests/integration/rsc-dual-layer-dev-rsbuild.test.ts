@@ -105,28 +105,24 @@ test(
 // positive answer by importer gives the real module in both, through the
 // same dev-first start (model audit row 27; Astra 11-19: passes).
 describe('Rsbuild dev with RSC: allowImport for a client component in both layers', () => {
-  test(
-    'a route added while the server was stopped shows both real labels once the generator rebuilt the tree',
-    async () => {
-      let server = await startRscRsbuildDevServer({
-        browser: true,
-        start: {
-          importProtection: {
-            behavior: 'error',
-            allowImport: (info: { importer: string }) =>
-              info.importer.endsWith('/ClientBox.tsx'),
-          },
+  test('a route added while the server was stopped shows both real labels once the generator rebuilt the tree', async () => {
+    let server = await startRscRsbuildDevServer({
+      browser: true,
+      start: {
+        importProtection: {
+          behavior: 'error',
+          allowImport: (info: { importer: string }) =>
+            info.importer.endsWith('/ClientBox.tsx'),
         },
-        files: dualLayerBase,
-      })
-      await server.stop()
-      for (const [file, content] of Object.entries(ucRoute)) {
-        await writeFile(path.join(server.root, file), content)
-      }
-      server = await server.restart()
-      await server.settle()
-      expectRealLabels(await page(server), 2, server.diagnostics)
-    },
-    timeout,
-  )
+      },
+      files: dualLayerBase,
+    })
+    await server.stop()
+    for (const [file, content] of Object.entries(ucRoute)) {
+      await writeFile(path.join(server.root, file), content)
+    }
+    server = await server.restart()
+    await server.settle()
+    expectRealLabels(await page(server), 2, server.diagnostics)
+  })
 })

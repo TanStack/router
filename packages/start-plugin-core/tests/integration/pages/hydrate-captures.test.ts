@@ -8,7 +8,7 @@ let hosts: HydrateHost
 const openHosts = closeAfterAll()
 beforeAll(async () => {
   hosts = await openHosts(() => createHydrateHost())
-}, 60_000)
+})
 
 // `<Hydrate>` moves its children into a lazily loaded chunk on the client.
 // Whatever the children read from the enclosing scopes and the module must

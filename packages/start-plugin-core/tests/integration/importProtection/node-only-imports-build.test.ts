@@ -29,8 +29,6 @@ import { importersIn } from './hosts'
 import type { Plugin } from 'vite'
 import type { StartBuildError, StartBundler } from '../../build-harness'
 
-const timeout = 60_000
-
 /**
  * `verbatimModuleSyntax` as each bundler's TypeScript transform reads it:
  * Vite from `tsconfig.json`, Rsbuild from its SWC options (it does not read
@@ -68,126 +66,102 @@ function expectBundlerFailure(error: StartBuildError) {
 }
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  test(
-    'an import the client keeps only as a type builds, with none of the package in the client',
-    async () => {
-      const built = await buildStart({
-        bundler,
-        files: { ...nodeOnlyPackage, 'src/entry.ts': typeRemainder },
-        entry: 'src/entry.ts',
-      })
-      expect({
-        packageCode: built.client.where(nodeOnlyMark),
-        show: (await built.client.run('return typeof entry.show')).result,
-        violations: built.violations.length,
-      }).toEqual({ packageCode: 'nowhere', show: 'function', violations: 0 })
-    },
-    timeout,
-  )
+  test('an import the client keeps only as a type builds, with none of the package in the client', async () => {
+    const built = await buildStart({
+      bundler,
+      files: { ...nodeOnlyPackage, 'src/entry.ts': typeRemainder },
+      entry: 'src/entry.ts',
+    })
+    expect({
+      packageCode: built.client.where(nodeOnlyMark),
+      show: (await built.client.run('return typeof entry.show')).result,
+      violations: built.violations.length,
+    }).toEqual({ packageCode: 'nowhere', show: 'function', violations: 0 })
+  })
 
-  test(
-    'with verbatimModuleSyntax the import stays, and the build fails in the bundler',
-    async () => {
-      const { files, ...config } = verbatim[bundler]
-      expectBundlerFailure(
-        await rejection(
-          buildStart({
-            bundler,
-            files: {
-              ...nodeOnlyPackage,
-              ...files,
-              'src/entry.ts': typeRemainder,
-            },
-            entry: 'src/entry.ts',
-            ...config,
-          }),
-        ),
-      )
-    },
-    timeout,
-  )
+  test('with verbatimModuleSyntax the import stays, and the build fails in the bundler', async () => {
+    const { files, ...config } = verbatim[bundler]
+    expectBundlerFailure(
+      await rejection(
+        buildStart({
+          bundler,
+          files: {
+            ...nodeOnlyPackage,
+            ...files,
+            'src/entry.ts': typeRemainder,
+          },
+          entry: 'src/entry.ts',
+          ...config,
+        }),
+      ),
+    )
+  })
 
-  test(
-    'an import the client keeps whole fails the build in the bundler',
-    async () => {
-      expectBundlerFailure(
-        await rejection(
-          buildStart({
-            bundler,
-            files: { ...nodeOnlyPackage, 'src/entry.ts': keptWhole },
-            entry: 'src/entry.ts',
-          }),
-        ),
-      )
-    },
-    timeout,
-  )
+  test('an import the client keeps whole fails the build in the bundler', async () => {
+    expectBundlerFailure(
+      await rejection(
+        buildStart({
+          bundler,
+          files: { ...nodeOnlyPackage, 'src/entry.ts': keptWhole },
+          entry: 'src/entry.ts',
+        }),
+      ),
+    )
+  })
 
-  test(
-    'a specifier rule denying the package judges the kept import: mock mode serves the mock and reports the importer',
-    async () => {
-      const built = await buildStart({
+  test('a specifier rule denying the package judges the kept import: mock mode serves the mock and reports the importer', async () => {
+    const built = await buildStart({
+      bundler,
+      files: { ...nodeOnlyPackage, 'src/entry.ts': valueRemainder },
+      entry: 'src/entry.ts',
+      start: { importProtection: { ...deniedPackage, behavior: 'mock' } },
+    })
+    const { result } = await built.client.run(
+      `${describeValuePrelude}return describeValue(entry.show(), ${JSON.stringify(nodeOnlyMark)})`,
+    )
+    expect({
+      packageCode: built.client.where(nodeOnlyMark),
+      show: result,
+      reported: importersIn(built, 'client'),
+    }).toEqual({
+      packageCode: 'nowhere',
+      show: 'a safe mock',
+      reported: ['src/entry.ts'],
+    })
+  })
+
+  test('a specifier rule denying the package judges a re-export under another name: mock mode serves the mock under that name', async () => {
+    const built = await buildStart({
+      bundler,
+      files: { ...nodeOnlyPackage, 'src/entry.ts': aliasedReexport },
+      entry: 'src/entry.ts',
+      start: { importProtection: { ...deniedPackage, behavior: 'mock' } },
+    })
+    const { result } = await built.client.run(
+      `${describeValuePrelude}return [entry.read(), entry.version].map((value) => describeValue(value, ${JSON.stringify(nodeOnlyMark)}))`,
+    )
+    expect({
+      packageCode: built.client.where(nodeOnlyMark),
+      values: result,
+      reported: importersIn(built, 'client'),
+    }).toEqual({
+      packageCode: 'nowhere',
+      values: ['a safe mock', 'a safe mock'],
+      reported: ['src/entry.ts'],
+    })
+  })
+
+  test('a specifier rule denying the package judges the kept import: error mode fails the build, naming the importer', async () => {
+    const error = await rejection(
+      buildStart({
         bundler,
         files: { ...nodeOnlyPackage, 'src/entry.ts': valueRemainder },
         entry: 'src/entry.ts',
-        start: { importProtection: { ...deniedPackage, behavior: 'mock' } },
-      })
-      const { result } = await built.client.run(
-        `${describeValuePrelude}return describeValue(entry.show(), ${JSON.stringify(nodeOnlyMark)})`,
-      )
-      expect({
-        packageCode: built.client.where(nodeOnlyMark),
-        show: result,
-        reported: importersIn(built, 'client'),
-      }).toEqual({
-        packageCode: 'nowhere',
-        show: 'a safe mock',
-        reported: ['src/entry.ts'],
-      })
-    },
-    timeout,
-  )
-
-  test(
-    'a specifier rule denying the package judges a re-export under another name: mock mode serves the mock under that name',
-    async () => {
-      const built = await buildStart({
-        bundler,
-        files: { ...nodeOnlyPackage, 'src/entry.ts': aliasedReexport },
-        entry: 'src/entry.ts',
-        start: { importProtection: { ...deniedPackage, behavior: 'mock' } },
-      })
-      const { result } = await built.client.run(
-        `${describeValuePrelude}return [entry.read(), entry.version].map((value) => describeValue(value, ${JSON.stringify(nodeOnlyMark)}))`,
-      )
-      expect({
-        packageCode: built.client.where(nodeOnlyMark),
-        values: result,
-        reported: importersIn(built, 'client'),
-      }).toEqual({
-        packageCode: 'nowhere',
-        values: ['a safe mock', 'a safe mock'],
-        reported: ['src/entry.ts'],
-      })
-    },
-    timeout,
-  )
-
-  test(
-    'a specifier rule denying the package judges the kept import: error mode fails the build, naming the importer',
-    async () => {
-      const error = await rejection(
-        buildStart({
-          bundler,
-          files: { ...nodeOnlyPackage, 'src/entry.ts': valueRemainder },
-          entry: 'src/entry.ts',
-          start: { importProtection: { ...deniedPackage, behavior: 'error' } },
-        }),
-      )
-      expect(importersIn(error, 'client')).toEqual(['src/entry.ts'])
-    },
-    timeout,
-  )
+        start: { importProtection: { ...deniedPackage, behavior: 'error' } },
+      }),
+    )
+    expect(importersIn(error, 'client')).toEqual(['src/entry.ts'])
+  })
 })
 
 /**
@@ -218,26 +192,22 @@ function throwsOnceForSecret(): Plugin {
 }
 
 describe('vite build', () => {
-  test(
-    'a denied file behind an import the compile could not resolve is still denied when the bundler loads it',
-    async () => {
-      const error = await rejection(
-        buildStart({
-          files: {
-            'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
-            'src/entry.ts': `import { secret } from '#secret'
+  test('a denied file behind an import the compile could not resolve is still denied when the bundler loads it', async () => {
+    const error = await rejection(
+      buildStart({
+        files: {
+          'src/secret.server.ts': `export const secret = () => 'MARK_SECRET'\n`,
+          'src/entry.ts': `import { secret } from '#secret'
 export const read = () => secret()
 `,
-          },
-          entry: 'src/entry.ts',
-          viteConfig: { plugins: [throwsOnceForSecret()] },
-          start: { importProtection: { behavior: 'error' } },
-        }),
-      )
-      expect(
-        reportedViolations(error).map(({ environment }) => environment),
-      ).toContain('client')
-    },
-    timeout,
-  )
+        },
+        entry: 'src/entry.ts',
+        viteConfig: { plugins: [throwsOnceForSecret()] },
+        start: { importProtection: { behavior: 'error' } },
+      }),
+    )
+    expect(
+      reportedViolations(error).map(({ environment }) => environment),
+    ).toContain('client')
+  })
 })

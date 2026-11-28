@@ -22,8 +22,6 @@ import {
 } from './route-set-reload-app'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 
-const timeout = 60_000
-
 const root = `import { HeadContent, Link, Outlet, Scripts, createRootRoute, useHydrated } from '@tanstack/react-router'
 export const Route = createRootRoute({ component: Root })
 function Root() {
@@ -89,34 +87,26 @@ async function homeIsTheIndex(browser: BrowserPage) {
 }
 
 describe.each(['one level', 'nested'] as const)('%s', (fixture) => {
-  test(
-    'a built app: `/` is the index route',
-    async () => {
-      const build = await buildStart({
-        bundler: 'rsbuild',
-        files: { ...rsbuildEntries, ...appFiles(fixture) },
-      })
-      const { url } = await build.preview()
-      await homeIsTheIndex(await openTestPage(new URL('/', url).href))
-    },
-    timeout,
-  )
+  test('a built app: `/` is the index route', async () => {
+    const build = await buildStart({
+      bundler: 'rsbuild',
+      files: { ...rsbuildEntries, ...appFiles(fixture) },
+    })
+    const { url } = await build.preview()
+    await homeIsTheIndex(await openTestPage(new URL('/', url).href))
+  })
 
-  test(
-    'dev: `/` is the index route, after the server-only route is deleted and after it is created again',
-    async () => {
-      const reload = await startReloadServer({
-        files: { 'src/routes/about.tsx': null, ...appFiles(fixture) },
-      })
-      await homeIsTheIndex((await openTab(reload, '/')).browser)
-      const file = serverOnlyFile[fixture]
-      const serverOnly =
-        fixtures[fixture][file as keyof (typeof fixtures)[typeof fixture]]
-      await reload.server.edit({ [file]: null })
-      await homeIsTheIndex((await openTab(reload, '/')).browser)
-      await reload.server.edit({ [file]: serverOnly })
-      await homeIsTheIndex((await openTab(reload, '/')).browser)
-    },
-    timeout,
-  )
+  test('dev: `/` is the index route, after the server-only route is deleted and after it is created again', async () => {
+    const reload = await startReloadServer({
+      files: { 'src/routes/about.tsx': null, ...appFiles(fixture) },
+    })
+    await homeIsTheIndex((await openTab(reload, '/')).browser)
+    const file = serverOnlyFile[fixture]
+    const serverOnly =
+      fixtures[fixture][file as keyof (typeof fixtures)[typeof fixture]]
+    await reload.server.edit({ [file]: null })
+    await homeIsTheIndex((await openTab(reload, '/')).browser)
+    await reload.server.edit({ [file]: serverOnly })
+    await homeIsTheIndex((await openTab(reload, '/')).browser)
+  })
 })

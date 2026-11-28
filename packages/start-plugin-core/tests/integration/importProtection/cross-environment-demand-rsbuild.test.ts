@@ -22,8 +22,6 @@ import { buildStart } from '../../build-start'
 import { rejection, violationsOf } from '../../importProtection/start-apps'
 import { rsbuildRscLinks } from '../../start-plugins'
 
-const timeout = 120_000
-
 const root = {
   'src/router.tsx': `import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
@@ -124,7 +122,6 @@ describe('Rsbuild build, a denied target in a layer of the user', () => {
       const html = await (await fetch(new URL('/', url))).text()
       expect(texts(html, 'label')).toEqual(['EXPECTED_ROUTE_LABEL'])
     },
-    timeout,
   )
 
   test.each(layouts)(
@@ -138,7 +135,6 @@ describe('Rsbuild build, a denied target in a layer of the user', () => {
         })),
       ).toEqual([{ importer: 'src/feature.ts', specifier: './private.client' }])
     },
-    timeout,
   )
 
   // the target the settlement builds real calls a server fn of a file
@@ -146,13 +142,11 @@ describe('Rsbuild build, a denied target in a layer of the user', () => {
   // Source: the RSC phase 1 re-check 2 (/var/tmp/rsc-p1-recheck2/report.md
   // §1, `isolated.py simple`: 2f8afeccc0 answered 500 "Server function info
   // not found", db260cf3a3 rendered `LATE_FN_VALUE`)
-  test(
-    "RSC: the exempt importer's real module calls a server fn only it imports: the page renders its value",
-    async () => {
-      const built = await build(
-        {
-          ...files,
-          'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+  test("RSC: the exempt importer's real module calls a server fn only it imports: the page renders its value", async () => {
+    const built = await build(
+      {
+        ...files,
+        'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { createIsomorphicFn } from '@tanstack/react-start'
 import { read } from '../feature'
 const label = createIsomorphicFn()
@@ -166,45 +160,41 @@ function Home() {
   return <main data-testid="label">{Route.useLoaderData().value}</main>
 }
 `,
-          'src/onlyFn.ts': `import { createServerFn } from '@tanstack/react-start'
+        'src/onlyFn.ts': `import { createServerFn } from '@tanstack/react-start'
 export const onlyFn = createServerFn().handler(() => 'LATE_FN_VALUE')
 `,
-          'src/private.client.ts': `import { onlyFn } from './onlyFn'
+        'src/private.client.ts': `import { onlyFn } from './onlyFn'
 export const denied = () => onlyFn()
 `,
-        },
-        layouts[0]!.rules,
-        { exclude: ['**/feature.ts'] },
-        true,
-      )
-      expect(violationsOf(built)).toEqual([])
-      const { url } = await built.preview()
-      const response = await fetch(new URL('/', url))
-      expect({
-        status: response.status,
-        label: texts(await response.text(), 'label'),
-      }).toEqual({ status: 200, label: ['LATE_FN_VALUE'] })
-    },
-    timeout,
-  )
+      },
+      layouts[0]!.rules,
+      { exclude: ['**/feature.ts'] },
+      true,
+    )
+    expect(violationsOf(built)).toEqual([])
+    const { url } = await built.preview()
+    const response = await fetch(new URL('/', url))
+    expect({
+      status: response.status,
+      label: texts(await response.text(), 'label'),
+    }).toEqual({ status: 200, label: ['LATE_FN_VALUE'] })
+  })
 
   // the RSC analogue: the exempt server component's marked module, moved to
   // the user's layer, renders its value
-  test(
-    "RSC: an exempt server component's client-only-marked module in a layer of the user renders",
-    async () => {
-      const built = await build(
-        {
-          ...root,
-          'src/utils/browserMarked.ts': `import '@tanstack/react-start/client-only'
+  test("RSC: an exempt server component's client-only-marked module in a layer of the user renders", async () => {
+    const built = await build(
+      {
+        ...root,
+        'src/utils/browserMarked.ts': `import '@tanstack/react-start/client-only'
 export const value = () => 'marker value'
 `,
-          'src/utils/ClientBox.tsx': `'use client'
+        'src/utils/ClientBox.tsx': `'use client'
 export function ClientBox() {
   return <span data-testid="client-box">{'client-only label'}</span>
 }
 `,
-          'src/utils/ucServer.tsx': `import { createServerFn } from '@tanstack/react-start'
+        'src/utils/ucServer.tsx': `import { createServerFn } from '@tanstack/react-start'
 import { renderServerComponent } from '@tanstack/react-start/rsc'
 import { ClientBox } from './ClientBox'
 import { value } from './browserMarked'
@@ -220,7 +210,7 @@ export const getUc = createServerFn({ method: 'GET' }).handler(async () =>
   renderServerComponent(<ServerPart />),
 )
 `,
-          'src/routes/uc.tsx': `import { createFileRoute } from '@tanstack/react-router'
+        'src/routes/uc.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { ClientBox } from '../utils/ClientBox'
 import { getUc } from '../utils/ucServer'
 export const Route = createFileRoute('/uc')({
@@ -237,24 +227,22 @@ function Uc() {
   )
 }
 `,
-        },
-        [{ test: /browserMarked\.ts$/, layer: 'reports' }],
-        { exclude: ['**/ucServer.tsx'] },
-        true,
-      )
-      expect(violationsOf(built)).toEqual([])
-      const { url } = await built.preview()
-      const html = await (await fetch(new URL('/uc', url))).text()
-      expect({
-        marked: texts(html, 'marked'),
-        boxes: texts(html, 'client-box'),
-      }).toEqual({
-        marked: ['marker value'],
-        boxes: ['client-only label', 'client-only label'],
-      })
-    },
-    timeout,
-  )
+      },
+      [{ test: /browserMarked\.ts$/, layer: 'reports' }],
+      { exclude: ['**/ucServer.tsx'] },
+      true,
+    )
+    expect(violationsOf(built)).toEqual([])
+    const { url } = await built.preview()
+    const html = await (await fetch(new URL('/uc', url))).text()
+    expect({
+      marked: texts(html, 'marked'),
+      boxes: texts(html, 'client-box'),
+    }).toEqual({
+      marked: ['marker value'],
+      boxes: ['client-only label', 'client-only label'],
+    })
+  })
 })
 
 /**
@@ -316,7 +304,6 @@ describe('Rsbuild build, a denied target the real module of another brings throu
       const html = await (await fetch(new URL('/', url))).text()
       expect(texts(html, 'label')).toEqual(['UP(LOW_REAL)'])
     },
-    timeout,
   )
 })
 
@@ -381,6 +368,5 @@ describe('Rsbuild build, a denied file a round of the settlement brings, which o
         ],
       })
     },
-    timeout,
   )
 })

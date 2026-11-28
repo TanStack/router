@@ -14,8 +14,6 @@ import {
 import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
 import { build, routeApp, routeHead } from '../build-harness'
 
-const timeout = 60_000
-
 const other = `createFileRoute('/' as any)({ component: () => <p>other</p> })`
 const route = `export const Route = createFileRoute('/')({ component: () => <p>page</p> })`
 const namespaceHead = `import * as Router from '@tanstack/react-router'\n`
@@ -61,6 +59,5 @@ describe.each(['vite', 'webpack', 'rspack'] as const)('%s', (bundler) => {
       expect(reported.text).toContain('not supported')
       expect(reported.text).toContain('bound to its `Route` export')
     },
-    timeout,
   )
 })

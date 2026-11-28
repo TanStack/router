@@ -18,8 +18,6 @@ import type {
 } from '@tanstack/compiler-test-utils/build-harness'
 import type { Framework, build } from '../build-harness'
 
-const timeout = 120_000
-
 const bundlers = ['vite', 'rspack', 'webpack'] as const
 
 /** Counts its own evaluations on `globalThis`. */
@@ -231,52 +229,40 @@ return ${stateScript}`,
 describe.each(bundlers)('%s', (bundler) => {
   describe.each(frameworks)('%s', (framework) => {
     describe.each(['ssr', 'client'] as const)('%s build', (env) => {
-      test(
-        'the split component loads lazily and renders',
-        async () => {
-          const result = await cachedBuild(bundler, framework, env)
-          expect(result.placement).toEqual({
-            route: 'eager',
-            component: 'lazy',
-          })
-          expect(result.html).toContain('MARK_COMPONENT 1 1')
-        },
-        timeout,
-      )
+      test('the split component loads lazily and renders', async () => {
+        const result = await cachedBuild(bundler, framework, env)
+        expect(result.placement).toEqual({
+          route: 'eager',
+          component: 'lazy',
+        })
+        expect(result.html).toContain('MARK_COMPONENT 1 1')
+      })
 
-      test(
-        'module state shared by the route and the component is initialised once',
-        async () => {
-          const result = await cachedBuild(bundler, framework, env)
-          expect(result.inits).toEqual({ shared: 1, local: 1 })
-          expect(result.routeShared).toEqual({ shared: 1, local: 1 })
-        },
-        timeout,
-      )
+      test('module state shared by the route and the component is initialised once', async () => {
+        const result = await cachedBuild(bundler, framework, env)
+        expect(result.inits).toEqual({ shared: 1, local: 1 })
+        expect(result.routeShared).toEqual({ shared: 1, local: 1 })
+      })
 
-      test(
-        'the bundle holds no other framework',
-        async () => {
-          const result = await cachedBuild(bundler, framework, env)
-          // The target framework's packages are there (the provenance is
-          // read), no other framework's
-          expect(result.frameworks[framework].length).toBeGreaterThan(0)
-          expect(
-            Object.fromEntries(
-              frameworks
-                .filter((name) => name !== framework)
-                .map((name) => [name, result.frameworks[name]]),
-            ),
-          ).toEqual(
-            Object.fromEntries(
-              frameworks
-                .filter((name) => name !== framework)
-                .map((name) => [name, []]),
-            ),
-          )
-        },
-        timeout,
-      )
+      test('the bundle holds no other framework', async () => {
+        const result = await cachedBuild(bundler, framework, env)
+        // The target framework's packages are there (the provenance is
+        // read), no other framework's
+        expect(result.frameworks[framework].length).toBeGreaterThan(0)
+        expect(
+          Object.fromEntries(
+            frameworks
+              .filter((name) => name !== framework)
+              .map((name) => [name, result.frameworks[name]]),
+          ),
+        ).toEqual(
+          Object.fromEntries(
+            frameworks
+              .filter((name) => name !== framework)
+              .map((name) => [name, []]),
+          ),
+        )
+      })
     })
   })
 })

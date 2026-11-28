@@ -232,9 +232,7 @@ const cases = (['react', 'solid'] as const).flatMap((fw) =>
 
 // one dev server at a time: each runs both environments and a browser page
 describe('Rsbuild dev: route HMR of a binding the route module keeps and a chunk reads', () => {
-  test.for(cases)('$fw: $row.name', { timeout: 90_000 }, ({ fw, row }) =>
-    runRow(fw, row),
-  )
+  test.for(cases)('$fw: $row.name', ({ fw, row }) => runRow(fw, row))
 })
 
 /** The module ids of the client's hot-update chunks since the last edit. */
@@ -248,53 +246,49 @@ async function hotModules(server: RsbuildDevServer) {
 }
 
 describe('Rsbuild dev: hot updates of a route keeping a binding its chunks read', () => {
-  test(
-    'react: a Hydrate child edit and a component edit hold the edited module alone',
-    { timeout: 90_000 },
-    async () => {
-      const route = (
-        label: string,
-      ) => `${imports('react', `import { Hydrate } from '@tanstack/react-start'\nimport { load } from '@tanstack/react-start/hydration'\nimport { Child } from '../child'\n`)}const value = { text: 'k' }
+  test('react: a Hydrate child edit and a component edit hold the edited module alone', async () => {
+    const route = (
+      label: string,
+    ) => `${imports('react', `import { Hydrate } from '@tanstack/react-start'\nimport { load } from '@tanstack/react-start/hydration'\nimport { Child } from '../child'\n`)}const value = { text: 'k' }
 export const Route = createFileRoute('/')({
   loader: () => { ${loaderCount}; return value.text },
   component: Page,
 })
 ${page('react', 'value.text', label, '<Hydrate when={load()}><Child text={value.text} /></Hydrate>')}`
-      const child = (label: string) =>
-        `export function Child(props: { text: string }) { return <b>${label} {props.text}</b> }\n`
-      const { server, page: browser } = await open('react', {
-        [FILE]: route('a'),
-        'src/child.tsx': child('one'),
-      })
-      const p = browser.page
-      /** What the page shows of the edit, the component's state and the loader runs. */
-      const shown = async () => ({
-        state: await p.evaluate(`document.querySelector('#c')?.textContent`),
-        loaderRuns: await p.evaluate<number>('globalThis.__loaderRuns ?? 0'),
-      })
-      await browser.waitForText('one k', { selector: '#app' })
-      await p.locator('#c').click()
-      await p.locator('#c').click()
-      await browser.waitForText('n=2', { selector: '#app' })
-      const before = await shown()
+    const child = (label: string) =>
+      `export function Child(props: { text: string }) { return <b>${label} {props.text}</b> }\n`
+    const { server, page: browser } = await open('react', {
+      [FILE]: route('a'),
+      'src/child.tsx': child('one'),
+    })
+    const p = browser.page
+    /** What the page shows of the edit, the component's state and the loader runs. */
+    const shown = async () => ({
+      state: await p.evaluate(`document.querySelector('#c')?.textContent`),
+      loaderRuns: await p.evaluate<number>('globalThis.__loaderRuns ?? 0'),
+    })
+    await browser.waitForText('one k', { selector: '#app' })
+    await p.locator('#c').click()
+    await p.locator('#c').click()
+    await browser.waitForText('n=2', { selector: '#app' })
+    const before = await shown()
 
-      await server.edit({ 'src/child.tsx': child('two') })
-      await browser.waitForText('two k', { selector: '#app' })
-      expect(await shown()).toEqual({ ...before, state: 'n=2' })
-      const childUpdate = await hotModules(server)
-      expect(childUpdate).toHaveLength(1)
-      expect(childUpdate[0]).toMatch(/src\/child\.tsx$/)
+    await server.edit({ 'src/child.tsx': child('two') })
+    await browser.waitForText('two k', { selector: '#app' })
+    expect(await shown()).toEqual({ ...before, state: 'n=2' })
+    const childUpdate = await hotModules(server)
+    expect(childUpdate).toHaveLength(1)
+    expect(childUpdate[0]).toMatch(/src\/child\.tsx$/)
 
-      await server.edit({ [FILE]: route('b') })
-      await browser.waitForText('b k', { selector: '#app' })
-      expect(await shown()).toEqual({ ...before, state: 'n=2' })
-      // one module of the route file: its component's chunk (the route
-      // module self-accepts, so an update holding it too would be wider)
-      const componentUpdate = await hotModules(server)
-      expect(componentUpdate).toHaveLength(1)
-      expect(componentUpdate[0]).toContain('src/routes/index.tsx')
-      expect(browser.loads()).toBe(1)
-      expect(browser.errors).toEqual([])
-    },
-  )
+    await server.edit({ [FILE]: route('b') })
+    await browser.waitForText('b k', { selector: '#app' })
+    expect(await shown()).toEqual({ ...before, state: 'n=2' })
+    // one module of the route file: its component's chunk (the route
+    // module self-accepts, so an update holding it too would be wider)
+    const componentUpdate = await hotModules(server)
+    expect(componentUpdate).toHaveLength(1)
+    expect(componentUpdate[0]).toContain('src/routes/index.tsx')
+    expect(browser.loads()).toBe(1)
+    expect(browser.errors).toEqual([])
+  })
 })

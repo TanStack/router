@@ -17,8 +17,6 @@ import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 import { rootDocument, routerFile } from '../start-compose-app'
 import type { RsbuildPlugin, Rspack } from '@rsbuild/core'
 
-const timeout = 60_000
-
 /** Has every compile watch the app's `src` directory, as Tailwind's PostCSS plugin does. */
 const watchSourceDirectory: RsbuildPlugin = {
   name: 'watch-source-directory',
@@ -78,84 +76,76 @@ function Page() {
 `
 
 describe('Rsbuild dev with HMR: an app that watches its source directory', () => {
-  test(
-    'a route component edit applies in place and builds no module of a package, and a server fn edit reaches the next call',
-    async () => {
-      const server = await startRsbuildStartDevServer({
-        hmr: true,
-        browser: true,
-        config: {
-          // Start serves the pages, not an HTML template
-          tools: { htmlPlugin: false },
-          plugins: [watchSourceDirectory],
-        },
-        files: {
-          ...appFiles,
-          'src/greet.functions.ts': greetModule('V1'),
-          'src/routes/index.tsx': indexRoute('MARK_LABEL_V1'),
-        },
-      })
-      expect(server.errors).toEqual([])
-      const page = await openTestPage(server.url!)
-      await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
-      await page.page.locator('[data-testid=count]').click()
-      await page.waitForText('count 1', { selector: '[data-testid=count]' })
+  test('a route component edit applies in place and builds no module of a package, and a server fn edit reaches the next call', async () => {
+    const server = await startRsbuildStartDevServer({
+      hmr: true,
+      browser: true,
+      config: {
+        // Start serves the pages, not an HTML template
+        tools: { htmlPlugin: false },
+        plugins: [watchSourceDirectory],
+      },
+      files: {
+        ...appFiles,
+        'src/greet.functions.ts': greetModule('V1'),
+        'src/routes/index.tsx': indexRoute('MARK_LABEL_V1'),
+      },
+    })
+    expect(server.errors).toEqual([])
+    const page = await openTestPage(server.url!)
+    await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
+    await page.page.locator('[data-testid=count]').click()
+    await page.waitForText('count 1', { selector: '[data-testid=count]' })
 
-      await server.edit({ 'src/routes/index.tsx': indexRoute('MARK_LABEL_V2') })
-      expect(server.errors).toEqual([])
-      await page.waitForText('MARK_LABEL_V2', {
-        selector: '[data-testid=label]',
-      })
-      // in place: the page kept its state
-      await page.waitForText('count 1', { selector: '[data-testid=count]' })
-      // no module of a package is built again for it
-      expect(server.rebuilt.filter((file) => !file.startsWith('src/'))).toEqual(
-        [],
-      )
+    await server.edit({ 'src/routes/index.tsx': indexRoute('MARK_LABEL_V2') })
+    expect(server.errors).toEqual([])
+    await page.waitForText('MARK_LABEL_V2', {
+      selector: '[data-testid=label]',
+    })
+    // in place: the page kept its state
+    await page.waitForText('count 1', { selector: '[data-testid=count]' })
+    // no module of a package is built again for it
+    expect(server.rebuilt.filter((file) => !file.startsWith('src/'))).toEqual(
+      [],
+    )
 
-      await server.edit({ 'src/greet.functions.ts': greetModule('V2') })
-      expect(server.errors).toEqual([])
-      await page.page.locator('[data-testid=call]').click()
-      await page.waitForText('called MARK_HANDLER_V2', {
-        selector: '[data-testid=called]',
-      })
-      expect(page.loads()).toBe(1)
-      expect(page.errors).toEqual([])
-    },
-    timeout,
-  )
+    await server.edit({ 'src/greet.functions.ts': greetModule('V2') })
+    expect(server.errors).toEqual([])
+    await page.page.locator('[data-testid=call]').click()
+    await page.waitForText('called MARK_HANDLER_V2', {
+      selector: '[data-testid=called]',
+    })
+    expect(page.loads()).toBe(1)
+    expect(page.errors).toEqual([])
+  })
 
   // Rspack reports the watched directory, and `src/lib.ts` itself (the
   // resolution of `./lib` looked for it before `src/lib/index.ts`).
-  test(
-    'a created file that shadows a resolution compiles the importer again',
-    async () => {
-      const server = await startRsbuildStartDevServer({
-        compileTimeout: 20_000,
-        config: { plugins: [watchSourceDirectory] },
-        files: {
-          'src/lib/index.ts': `export const base = {
+  test('a created file that shadows a resolution compiles the importer again', async () => {
+    const server = await startRsbuildStartDevServer({
+      compileTimeout: 20_000,
+      config: { plugins: [watchSourceDirectory] },
+      files: {
+        'src/lib/index.ts': `export const base = {
   handler: (fn: () => Promise<string>) => fn,
 }
 `,
-          'src/a.ts': `import { base } from './lib'
+        'src/a.ts': `import { base } from './lib'
 export const a = base.handler(async () => 'MARK_A')
 `,
-          'src/entry.ts': `import { a } from './a'\nconsole.log(a)\n`,
-        },
-      })
-      const client = async () =>
-        Object.values(await server.outputs('client')).join('\n')
-      expect(server.errors).toEqual([])
-      expect(await client()).toContain('MARK_A')
-      await server.edit({
-        'src/lib.ts': `import { createServerFn } from '@tanstack/react-start'
+        'src/entry.ts': `import { a } from './a'\nconsole.log(a)\n`,
+      },
+    })
+    const client = async () =>
+      Object.values(await server.outputs('client')).join('\n')
+    expect(server.errors).toEqual([])
+    expect(await client()).toContain('MARK_A')
+    await server.edit({
+      'src/lib.ts': `import { createServerFn } from '@tanstack/react-start'
 export const base = createServerFn()
 `,
-      })
-      expect(server.errors).toEqual([])
-      expect(await client()).not.toContain('MARK_A')
-    },
-    timeout,
-  )
+    })
+    expect(server.errors).toEqual([])
+    expect(await client()).not.toContain('MARK_A')
+  })
 })

@@ -26,8 +26,6 @@ import { test } from '../../src/test'
 import type { AddressInfo } from 'node:net'
 import type { Rspack } from '@rsbuild/core'
 
-const timeout = 60_000
-
 const testsDir = path.dirname(fileURLToPath(import.meta.url))
 const packageDirectory = path.dirname(path.dirname(testsDir))
 
@@ -50,109 +48,101 @@ ${hot}.accept('./text.js', (updated) => show(updated?.text ?? text))
   'other.js': `export const other = 'other v1'\n`,
 })
 
-test(
-  'vite: the page shows an accepted update in place, and reloads for one nothing accepts',
-  async ({ devServer }) => {
-    const server = await devServer({
-      browser: true,
-      files: {
-        'index.html': `<div id="app"></div><script type="module" src="/main.js"></script>`,
-        ...app('import.meta.hot'),
-      },
-    })
-    const page = await closeAtEnd(() => openPage(server.url!))
-    await page.waitForText('text v1 other v1')
-    expect(page.loads()).toBe(1)
+test('vite: the page shows an accepted update in place, and reloads for one nothing accepts', async ({
+  devServer,
+}) => {
+  const server = await devServer({
+    browser: true,
+    files: {
+      'index.html': `<div id="app"></div><script type="module" src="/main.js"></script>`,
+      ...app('import.meta.hot'),
+    },
+  })
+  const page = await closeAtEnd(() => openPage(server.url!))
+  await page.waitForText('text v1 other v1')
+  expect(page.loads()).toBe(1)
 
-    await server.write({ 'text.js': `export const text = 'text v2'\n` })
-    await page.waitForText('text v2 other v1')
-    expect(page.loads()).toBe(1)
+  await server.write({ 'text.js': `export const text = 'text v2'\n` })
+  await page.waitForText('text v2 other v1')
+  expect(page.loads()).toBe(1)
 
-    await server.write({ 'other.js': `export const other = 'other v2'\n` })
-    await page.waitForText('text v2 other v2')
-    await expect.poll(() => page.loads()).toBe(2)
-  },
-  timeout,
-)
+  await server.write({ 'other.js': `export const other = 'other v2'\n` })
+  await page.waitForText('text v2 other v2')
+  await expect.poll(() => page.loads()).toBe(2)
+})
 
-test(
-  'rsbuild: the page shows an accepted update in place, and reloads for one nothing accepts',
-  async ({ rsbuildServer }) => {
-    const server = await rsbuildServer({
-      browser: true,
-      entry: 'main.js',
-      config: { html: { mountId: 'app' } },
-      files: app('import.meta.webpackHot'),
-    })
-    const page = await closeAtEnd(() => openPage(server.url!))
-    await page.waitForText('text v1 other v1')
-    expect(page.loads()).toBe(1)
+test('rsbuild: the page shows an accepted update in place, and reloads for one nothing accepts', async ({
+  rsbuildServer,
+}) => {
+  const server = await rsbuildServer({
+    browser: true,
+    entry: 'main.js',
+    config: { html: { mountId: 'app' } },
+    files: app('import.meta.webpackHot'),
+  })
+  const page = await closeAtEnd(() => openPage(server.url!))
+  await page.waitForText('text v1 other v1')
+  expect(page.loads()).toBe(1)
 
-    await server.edit({ 'text.js': `export const text = 'text v2'\n` })
-    await page.waitForText('text v2 other v1')
-    expect(page.loads()).toBe(1)
+  await server.edit({ 'text.js': `export const text = 'text v2'\n` })
+  await page.waitForText('text v2 other v1')
+  expect(page.loads()).toBe(1)
 
-    await server.edit({ 'other.js': `export const other = 'other v2'\n` })
-    await page.waitForText('text v2 other v2')
-    await expect.poll(() => page.loads()).toBe(2)
-  },
-  timeout,
-)
+  await server.edit({ 'other.js': `export const other = 'other v2'\n` })
+  await page.waitForText('text v2 other v2')
+  await expect.poll(() => page.loads()).toBe(2)
+})
 
 // The page's console has only the app's output. The harness reads Rsbuild's
 // logger without raising `logLevel`, to which Rsbuild ties the HMR client's
 // log level by default: at `warn`, the client prints each compile's
 // warnings (and its failed connection attempts) in the page.
-test(
-  'rsbuild: Rsbuild’s HMR client prints nothing in the page',
-  async ({ rsbuildServer }) => {
-    const server = await rsbuildServer({
-      browser: true,
-      entry: 'main.js',
-      config: { html: { mountId: 'app' } },
-      files: app('import.meta.webpackHot'),
-      plugins: [
-        {
-          name: 'compile-warner',
-          setup(api) {
-            api.modifyRspackConfig((config) => {
-              config.plugins.push({
-                apply(compiler: Rspack.Compiler) {
-                  compiler.hooks.thisCompilation.tap(
-                    'compile-warner',
-                    (compilation) => {
-                      compilation.warnings.push(
-                        new compiler.webpack.WebpackError(
-                          'MARK_COMPILE_WARNING',
-                        ),
-                      )
-                    },
-                  )
-                },
-              })
+test('rsbuild: Rsbuild’s HMR client prints nothing in the page', async ({
+  rsbuildServer,
+}) => {
+  const server = await rsbuildServer({
+    browser: true,
+    entry: 'main.js',
+    config: { html: { mountId: 'app' } },
+    files: app('import.meta.webpackHot'),
+    plugins: [
+      {
+        name: 'compile-warner',
+        setup(api) {
+          api.modifyRspackConfig((config) => {
+            config.plugins.push({
+              apply(compiler: Rspack.Compiler) {
+                compiler.hooks.thisCompilation.tap(
+                  'compile-warner',
+                  (compilation) => {
+                    compilation.warnings.push(
+                      new compiler.webpack.WebpackError('MARK_COMPILE_WARNING'),
+                    )
+                  },
+                )
+              },
             })
-          },
+          })
         },
-      ],
-    })
-    const page = await closeAtEnd(() => openPage(server.url!))
-    await page.waitForText('text v1 other v1')
-    // The client applied an update in place: it was connected, and got the
-    // first compile's warnings before
-    await server.edit({ 'text.js': `export const text = 'text v2'\n` })
-    await page.waitForText('text v2 other v1')
-    expect(page.loads()).toBe(1)
-    expect(page.console).toEqual([])
-    expect(page.errors).toEqual([])
-    // The harness's channel has the warning
-    expect(
-      server.diagnostics.some(({ text }) =>
-        text.includes('MARK_COMPILE_WARNING'),
-      ),
-    ).toBe(true)
-  },
-  timeout,
-)
+      },
+    ],
+  })
+  const page = await closeAtEnd(() => openPage(server.url!))
+  await page.waitForText('text v1 other v1')
+  // The client applied an update in place: it was connected, and got the
+  // first compile's warnings before
+  await server.edit({ 'text.js': `export const text = 'text v2'\n` })
+  await page.waitForText('text v2 other v1')
+  expect(page.loads()).toBe(1)
+  expect(page.console).toEqual([])
+  expect(page.errors).toEqual([])
+  // The harness's channel has the warning
+  expect(
+    server.diagnostics.some(({ text }) =>
+      text.includes('MARK_COMPILE_WARNING'),
+    ),
+  ).toBe(true)
+})
 
 test('a page given its document shows it at its URL, and an init script runs before the page’s own code, on every load', async () => {
   // No server listens there: the document is the one given.
@@ -243,41 +233,37 @@ test('waitForText fails when the text shows only after its bound', async () => {
   await expect(waited).rejects.toThrow(/did not show ready within 100 ms/)
 })
 
-test(
-  'pages that fail to open give back their slots',
-  async () => {
-    // A port nothing listens on: every open fails at its navigation
-    const server = createServer()
-    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
-    const { port } = server.address() as AddressInfo
-    await new Promise((resolve) => server.close(resolve))
-    for (let attempt = 0; attempt <= openPageLimit; attempt++) {
-      await expect(openPage(`http://127.0.0.1:${port}/`)).rejects.toThrow()
-    }
-    const page = await closeAtEnd(() =>
-      openPage('http://127.0.0.1:9/page', {
-        html: '<p>opened</p>',
-      }),
-    )
-    expect(await page.text()).toBe('opened')
-  },
-  timeout,
-)
+test('pages that fail to open give back their slots', async () => {
+  // A port nothing listens on: every open fails at its navigation
+  const server = createServer()
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const { port } = server.address() as AddressInfo
+  await new Promise((resolve) => server.close(resolve))
+  for (let attempt = 0; attempt <= openPageLimit; attempt++) {
+    await expect(openPage(`http://127.0.0.1:${port}/`)).rejects.toThrow()
+  }
+  const page = await closeAtEnd(() =>
+    openPage('http://127.0.0.1:9/page', {
+      html: '<p>opened</p>',
+    }),
+  )
+  expect(await page.text()).toBe('opened')
+})
 
-test(
-  'a browser that failed to launch is launched again on the next use',
-  async ({ appRoot }) => {
-    const root = await createAppDirectory(
-      packageDirectory,
-      '.browser-launch-',
-      appRoot,
-    )
-    const executable = path.join(root, 'chromium')
-    const chromiumBuild =
-      process.env.TANSTACK_COMPILER_TESTS_CHROMIUM ?? chromium.executablePath()
-    await writeFile(
-      path.join(root, 'launch.test.ts'),
-      `import { symlink } from 'node:fs/promises'
+test('a browser that failed to launch is launched again on the next use', async ({
+  appRoot,
+}) => {
+  const root = await createAppDirectory(
+    packageDirectory,
+    '.browser-launch-',
+    appRoot,
+  )
+  const executable = path.join(root, 'chromium')
+  const chromiumBuild =
+    process.env.TANSTACK_COMPILER_TESTS_CHROMIUM ?? chromium.executablePath()
+  await writeFile(
+    path.join(root, 'launch.test.ts'),
+    `import { symlink } from 'node:fs/promises'
 import { expect, test } from 'vitest'
 import { openPage } from ${JSON.stringify(path.join(packageDirectory, 'src/browser.ts'))}
 
@@ -289,9 +275,9 @@ test('launch', async () => {
   await page.close()
 })
 `,
-    )
-    const { stdout } = await runNodeProgram(
-      `import { startVitest } from 'vitest/node'
+  )
+  const { stdout } = await runNodeProgram(
+    `import { startVitest } from 'vitest/node'
 const vitest = await startVitest('test', [], {
   root: ${JSON.stringify(root)},
   config: false,
@@ -315,26 +301,24 @@ await vitest.close()
 process.stdout.write('\\n' + JSON.stringify(report))
 process.exit(0)
 `,
+    {
+      cwd: root,
+      env: { ...process.env, TANSTACK_COMPILER_TESTS_CHROMIUM: executable },
+      timeout: 60_000,
+    },
+  )
+  // The child's file ran its one test, which passed
+  expect(JSON.parse(stdout.trim().split('\n').at(-1)!)).toEqual({
+    files: [
       {
-        cwd: root,
-        env: { ...process.env, TANSTACK_COMPILER_TESTS_CHROMIUM: executable },
-        timeout: 60_000,
+        state: 'pass',
+        errors: [],
+        tests: [{ name: 'launch', state: 'pass', errors: [] }],
       },
-    )
-    // The child's file ran its one test, which passed
-    expect(JSON.parse(stdout.trim().split('\n').at(-1)!)).toEqual({
-      files: [
-        {
-          state: 'pass',
-          errors: [],
-          tests: [{ name: 'launch', state: 'pass', errors: [] }],
-        },
-      ],
-      unhandled: [],
-    })
-  },
-  timeout,
-)
+    ],
+    unhandled: [],
+  })
+})
 
 // What a test process opens in its browser is bounded (Chromium fails
 // requests under too many pages), and runs of concurrent tests do not share

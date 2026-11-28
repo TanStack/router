@@ -13,8 +13,6 @@ import { describe, expect, test } from 'vitest'
 import { buildStart } from '../../build-start'
 import { rejection } from '../../importProtection/start-apps'
 
-const timeout = 60_000
-
 describe('Rsbuild build, a user rule putting .mjs files in a layer', () => {
   test.each([
     { name: 'no such rule', rules: [] },
@@ -53,6 +51,5 @@ export function read() {
       expect(failed).toBeInstanceOf(Error)
       expect([...new Set(reported)]).toEqual(['ssr ./private.client'])
     },
-    timeout,
   )
 })

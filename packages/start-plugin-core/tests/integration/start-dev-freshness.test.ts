@@ -10,8 +10,6 @@ import { describe, expect, test } from 'vitest'
 import { callServerFn, startDevServer, startRequestFiles } from '../dev-server'
 import type { Plugin } from 'vite'
 
-const timeout = 60_000
-
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 
 const builder = `import { createServerFn } from '@tanstack/react-start'
@@ -49,36 +47,31 @@ describe('Vite dev: one file event through each environment', () => {
   // object. Both environments re-plan `a.tsx`: the client keeps its
   // handler, and SSR's `fn` is the handler itself.
   // Source: Fable 5.2 review of the Vite host (F6-1).
-  test(
-    "each environment's dependents are compiled again",
-    async () => {
-      const server = await startDevServer({
-        plugins: [ownRead],
-        files: {
-          'src/b.ts': `import { createServerFn } from '@tanstack/react-start'
+  test("each environment's dependents are compiled again", async () => {
+    const server = await startDevServer({
+      plugins: [ownRead],
+      files: {
+        'src/b.ts': `import { createServerFn } from '@tanstack/react-start'
 export const base = createServerFn()
 `,
-          'src/a.tsx': `import { base } from './b'
+        'src/a.tsx': `import { base } from './b'
 export const fn = base.handler(async () => 'MARK_HANDLER')
 `,
-        },
-      })
-      const ssrUrl = async () =>
-        typeof (await server.import('/src/a.tsx')).fn.url
-      expect(
-        containing(await server.load('/src/a.tsx'), 'MARK_HANDLER'),
-      ).toEqual([])
-      expect(await ssrUrl()).toBe('string')
-      await server.edit({
-        'src/b.ts': `export const base = { handler: (fn: () => unknown) => fn }\n`,
-      })
-      expect(
-        containing(await server.load('/src/a.tsx'), 'MARK_HANDLER'),
-      ).not.toEqual([])
-      expect(await ssrUrl()).toBe('undefined')
-    },
-    timeout,
-  )
+      },
+    })
+    const ssrUrl = async () => typeof (await server.import('/src/a.tsx')).fn.url
+    expect(containing(await server.load('/src/a.tsx'), 'MARK_HANDLER')).toEqual(
+      [],
+    )
+    expect(await ssrUrl()).toBe('string')
+    await server.edit({
+      'src/b.ts': `export const base = { handler: (fn: () => unknown) => fn }\n`,
+    })
+    expect(
+      containing(await server.load('/src/a.tsx'), 'MARK_HANDLER'),
+    ).not.toEqual([])
+    expect(await ssrUrl()).toBe('undefined')
+  })
 })
 
 describe('Vite dev: the first save of a file created empty', () => {
@@ -87,28 +80,22 @@ describe('Vite dev: the first save of a file created empty', () => {
   // in place: the editor truncates the file, the watcher reports it, and
   // the text lands a moment later (no event of its own).
   // Source: design 3 steps 0-1 review, finding 4b (a route file starts so).
-  test(
-    'its importers are compiled against the saved text',
-    async () => {
-      const server = await startDevServer({ files: { 'src/c.ts': importer } })
-      await server.edit({ 'src/a.ts': '' })
-      expect(
-        containing(await server.load('/src/c.ts'), 'MARK_PAGE'),
-      ).not.toEqual([])
-      const handle = await open(server.file('src/a.ts'), 'w')
-      try {
-        await sleep(20)
-        await handle.write(builder)
-      } finally {
-        await handle.close()
-      }
-      await server.settle()
-      expect(containing(await server.load('/src/c.ts'), 'MARK_PAGE')).toEqual(
-        [],
-      )
-    },
-    timeout,
-  )
+  test('its importers are compiled against the saved text', async () => {
+    const server = await startDevServer({ files: { 'src/c.ts': importer } })
+    await server.edit({ 'src/a.ts': '' })
+    expect(containing(await server.load('/src/c.ts'), 'MARK_PAGE')).not.toEqual(
+      [],
+    )
+    const handle = await open(server.file('src/a.ts'), 'w')
+    try {
+      await sleep(20)
+      await handle.write(builder)
+    } finally {
+      await handle.close()
+    }
+    await server.settle()
+    expect(containing(await server.load('/src/c.ts'), 'MARK_PAGE')).toEqual([])
+  })
 })
 
 describe('Vite dev: a dependent whose transform is in flight across the event', () => {
@@ -149,42 +136,38 @@ describe('Vite dev: a dependent whose transform is in flight across the event', 
   // of `d.ts` is held after the compiler's transform, `lib.ts` drops its
   // marker. `d.ts` is then served with `lib.ts` itself.
   // Source: Fable 5.2 review of the Vite host (F6-6).
-  test(
-    'it is served compiled against the file as it is after the event',
-    async () => {
-      const { plugin, arm } = holdD()
-      const marked = `import '@tanstack/react-start/server-only'
+  test('it is served compiled against the file as it is after the event', async () => {
+    const { plugin, arm } = holdD()
+    const marked = `import '@tanstack/react-start/server-only'
 export const secret = () => 'MARK_LIB'
 `
-      const server = await startDevServer({
-        plugins: [plugin],
-        start: { importProtection: { behavior: 'mock' } },
-        files: {
-          'src/lib.ts': marked,
-          'src/d.ts': `import { secret } from './lib'
+    const server = await startDevServer({
+      plugins: [plugin],
+      start: { importProtection: { behavior: 'mock' } },
+      files: {
+        'src/lib.ts': marked,
+        'src/d.ts': `import { secret } from './lib'
 export const read = () => secret()
 `,
-        },
-      })
-      expect(containing(await server.load('/src/d.ts'), 'MARK_LIB')).toEqual([])
-      await server.edit({
-        'src/d.ts': `// held\nimport { secret } from './lib'
+      },
+    })
+    expect(containing(await server.load('/src/d.ts'), 'MARK_LIB')).toEqual([])
+    await server.edit({
+      'src/d.ts': `// held\nimport { secret } from './lib'
 export const read = () => secret()
 `,
-      })
-      const reached = arm(1_000)
-      const held = server.transform('/src/d.ts').catch(() => null)
-      await reached
-      await server.edit({
-        'src/lib.ts': `export const secret = () => 'MARK_LIB'\n`,
-      })
-      await held
-      expect(
-        containing(await server.load('/src/d.ts'), 'MARK_LIB'),
-      ).not.toEqual([])
-    },
-    timeout,
-  )
+    })
+    const reached = arm(1_000)
+    const held = server.transform('/src/d.ts').catch(() => null)
+    await reached
+    await server.edit({
+      'src/lib.ts': `export const secret = () => 'MARK_LIB'\n`,
+    })
+    await held
+    expect(containing(await server.load('/src/d.ts'), 'MARK_LIB')).not.toEqual(
+      [],
+    )
+  })
 })
 
 describe('Vite dev: a server fn file saved while its previous compile waits', () => {
@@ -194,63 +177,59 @@ describe('Vite dev: a server fn file saved while its previous compile waits', ()
   // of `newFn` by its id (as a page's) still reaches it: what the
   // superseded compile found does not replace the registered functions of
   // the file. Source: the Astra round 2 architecture review (A2).
-  test(
-    'its new server fn is callable',
-    async () => {
-      let armed: { reached: () => void; release: Promise<void> } | null = null
-      let release!: () => void
-      const server = await startDevServer({
-        plugins: [
-          {
-            name: 'test:slow-old-helper',
-            enforce: 'pre',
-            async resolveId(source) {
-              if (
-                this.environment.name === 'ssr' &&
-                source === './old-helper' &&
-                armed
-              ) {
-                const held = armed
-                armed = null
-                held.reached()
-                await held.release
-              }
-              return null
-            },
+  test('its new server fn is callable', async () => {
+    let armed: { reached: () => void; release: Promise<void> } | null = null
+    let release!: () => void
+    const server = await startDevServer({
+      plugins: [
+        {
+          name: 'test:slow-old-helper',
+          enforce: 'pre',
+          async resolveId(source) {
+            if (
+              this.environment.name === 'ssr' &&
+              source === './old-helper' &&
+              armed
+            ) {
+              const held = armed
+              armed = null
+              held.reached()
+              await held.release
+            }
+            return null
           },
-        ],
-        files: {
-          ...startRequestFiles,
-          'src/old-helper.ts': `export const helper = () => 'MARK_OLD'\n`,
-          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+        },
+      ],
+      files: {
+        ...startRequestFiles,
+        'src/old-helper.ts': `export const helper = () => 'MARK_OLD'\n`,
+        'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 import { helper } from './old-helper'
 export const oldFn = createServerFn().handler(() => helper())
 `,
-        },
-      })
-      const reached = new Promise<void>((resolve) => {
-        armed = {
-          reached: resolve,
-          release: new Promise<void>((r) => {
-            release = r
-          }),
-        }
-      })
-      const held = server.transform('/src/fns.ts', 'ssr').catch(() => null)
-      await reached
-      await server.edit({
-        'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+      },
+    })
+    const reached = new Promise<void>((resolve) => {
+      armed = {
+        reached: resolve,
+        release: new Promise<void>((r) => {
+          release = r
+        }),
+      }
+    })
+    const held = server.transform('/src/fns.ts', 'ssr').catch(() => null)
+    await reached
+    await server.edit({
+      'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 export const newFn = createServerFn().handler(() => 'MARK_NEW')
 `,
-      })
-      await server.transform('/src/fns.ts', 'ssr')
-      release()
-      await held
-      const { newFn } = await server.import('/src/fns.ts')
-      expect(await callServerFn(server, newFn)).toBe('MARK_NEW')
-    },
-    timeout,
-  )
+    })
+    await server.transform('/src/fns.ts', 'ssr')
+    release()
+    await held
+    const { newFn } = await server.import('/src/fns.ts')
+    expect(await callServerFn(server, newFn)).toBe('MARK_NEW')
+  })
 })
 
 describe('Vite dev: a server fn file deleted while its compile waits', () => {
@@ -357,6 +336,5 @@ export const fn = createServerFn().handler(() => label)
       const back = await server.import('/src/display.ts')
       expect(await callServerFn(server, back.fn)).toBe('MARK_JS')
     },
-    timeout,
   )
 })

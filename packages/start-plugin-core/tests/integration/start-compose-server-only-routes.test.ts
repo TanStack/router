@@ -36,8 +36,6 @@ import {
 import type { AppPage, ServedStartBuild } from './start-compose-app'
 import type { StartBuild } from '../build-harness'
 
-const timeout = 60_000
-
 const head = `import { createFileRoute } from '@tanstack/react-router'\n`
 const handler = (method: 'GET' | 'POST', text: string) =>
   `server: { handlers: { ${method}: () => new Response('${text}') } }`
@@ -162,7 +160,7 @@ describe.each(startBundlers)('%s build, served', (bundler) => {
     } finally {
       await page.close()
     }
-  }, timeout)
+  }, 60_000)
 
   test('the server route tree has every route', async () => {
     const { result } = await build.ssr.run(
@@ -247,63 +245,45 @@ describe.each(startBundlers)('%s build, served', (bundler) => {
     expect(clientRoutes).toContain('/pair')
   })
 
-  test(
-    'client-side navigation reaches the page in a lazy file of a route with server handlers',
-    async () => {
-      const page = await openAppPage(served, '/')
-      await page.waitForText('MARK_HOME', { selector: '#app' })
-      await page.follow('pair')
-      expect(await settledOutlet(page, /\/pair$/)).toContain('MARK_PAIR_PAGE')
-      expect(page.loads()).toBe(1)
-    },
-    timeout,
-  )
+  test('client-side navigation reaches the page in a lazy file of a route with server handlers', async () => {
+    const page = await openAppPage(served, '/')
+    await page.waitForText('MARK_HOME', { selector: '#app' })
+    await page.follow('pair')
+    expect(await settledOutlet(page, /\/pair$/)).toContain('MARK_PAIR_PAGE')
+    expect(page.loads()).toBe(1)
+  })
 
-  test(
-    'client-side navigation reaches the page under the server-only ancestor',
-    async () => {
-      const page = await openAppPage(served, '/')
-      await page.waitForText('MARK_HOME', { selector: '#app' })
-      await page.follow('adminusers')
-      await page.waitForText('MARK_ADMIN_PAGE', { selector: '#app' })
-      await page.follow('home')
-      await page.waitForText('MARK_HOME', { selector: '#app' })
-      expect({ loads: page.loads(), errors: page.errors }).toEqual({
-        loads: 1,
-        errors: [],
-      })
-    },
-    timeout,
-  )
+  test('client-side navigation reaches the page under the server-only ancestor', async () => {
+    const page = await openAppPage(served, '/')
+    await page.waitForText('MARK_HOME', { selector: '#app' })
+    await page.follow('adminusers')
+    await page.waitForText('MARK_ADMIN_PAGE', { selector: '#app' })
+    await page.follow('home')
+    await page.waitForText('MARK_HOME', { selector: '#app' })
+    expect({ loads: page.loads(), errors: page.errors }).toEqual({
+      loads: 1,
+      errors: [],
+    })
+  })
 
   // Rsbuild: the server-only route is in the client route tree (pinned
   // above), so the navigation finds a route without a page.
-  test(
-    'client-side navigation to a server-only route finds nothing',
-    async () => {
-      const page = await openAppPage(served, '/')
-      await page.waitForText('MARK_HOME', { selector: '#app' })
-      await page.follow('apiusers')
-      expect(await settledOutlet(page, /\/api\/users$/)).toContain(
-        'MARK_NOT_FOUND',
-      )
-      expect(page.loads()).toBe(1)
-    },
-    timeout,
-  )
+  test('client-side navigation to a server-only route finds nothing', async () => {
+    const page = await openAppPage(served, '/')
+    await page.waitForText('MARK_HOME', { selector: '#app' })
+    await page.follow('apiusers')
+    expect(await settledOutlet(page, /\/api\/users$/)).toContain(
+      'MARK_NOT_FOUND',
+    )
+    expect(page.loads()).toBe(1)
+  })
 
   // Vite: the spread route is pruned (pinned above).
-  test(
-    'client-side navigation reaches the page whose component is spread in',
-    async () => {
-      const page = await openAppPage(served, '/')
-      await page.waitForText('MARK_HOME', { selector: '#app' })
-      await page.follow('spread')
-      expect(await settledOutlet(page, /\/spread$/)).toContain(
-        'MARK_SPREAD_PAGE',
-      )
-      expect(page.loads()).toBe(1)
-    },
-    timeout,
-  )
+  test('client-side navigation reaches the page whose component is spread in', async () => {
+    const page = await openAppPage(served, '/')
+    await page.waitForText('MARK_HOME', { selector: '#app' })
+    await page.follow('spread')
+    expect(await settledOutlet(page, /\/spread$/)).toContain('MARK_SPREAD_PAGE')
+    expect(page.loads()).toBe(1)
+  })
 })

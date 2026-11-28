@@ -22,8 +22,6 @@ import { SettleTimeout } from '../../src/outcome'
 import { test } from '../../src/test'
 import type { BundlerPlugins, Placement } from '../../src/build-harness'
 
-const timeout = 60_000
-
 const testsDir = path.dirname(fileURLToPath(import.meta.url))
 
 /**
@@ -54,7 +52,6 @@ export function unused() {
 describe.each(bundlers)('%s', (bundler) => {
   test.for(['ssr', 'client'] as const)(
     'reports static imports as eager and dynamic imports as lazy, and runs the output (%s)',
-    { timeout },
     async (env, { build }) => {
       const app = await build({ bundler, env, files: dynamicImportApp })
       expect(app.eager).toContain(app.entry.fileName)
@@ -239,7 +236,6 @@ const markersOf = (diagnostics: Array<{ text: string }>) =>
 // channels, as a dev server's channel does.
 test.for(bundlers)(
   '%s: the reports of a build that succeeds keep their severity',
-  { timeout },
   async (bundler, { build }) => {
     const app = await build({
       bundler,
@@ -336,7 +332,6 @@ test.for([
   ['no binding of that name', 'text'],
 ])(
   'vite: a bundle-level read of a name is dangling with %s in a module',
-  { timeout },
   async ([_, parameter], { build }) => {
     const built = build({
       bundler: 'vite',
@@ -371,76 +366,72 @@ test.for([
 
 // A class's static block runs when the class is evaluated: a read there is
 // as much a read at load as one outside every function.
-test(
-  'vite: a bundle-level read in a class static block is dangling with a parameter of the same name in a module',
-  async ({ build }) => {
-    const error = await build({
-      bundler: 'vite',
-      env: 'client',
-      minify: false,
-      files: {
-        'entry.ts': `export function label(productLabel: string) {
+test('vite: a bundle-level read in a class static block is dangling with a parameter of the same name in a module', async ({
+  build,
+}) => {
+  const error = await build({
+    bundler: 'vite',
+    env: 'client',
+    minify: false,
+    files: {
+      'entry.ts': `export function label(productLabel: string) {
   return productLabel.toUpperCase()
 }
 `,
-      },
-      plugins: {
-        vite: () => [
-          {
-            name: 'append-footer',
-            renderChunk: (code: string) =>
-              `${code}\nclass Footer { static { console.log(productLabel) } }\n`,
-          },
-        ],
-      },
-    }).then(
-      () => undefined,
-      (thrown: unknown) => thrown,
-    )
-    expect(error).toBeInstanceOf(DanglingNameError)
-    expect(Object.values((error as DanglingNameError).names).flat()).toEqual([
-      'productLabel',
-    ])
-  },
-  timeout,
-)
+    },
+    plugins: {
+      vite: () => [
+        {
+          name: 'append-footer',
+          renderChunk: (code: string) =>
+            `${code}\nclass Footer { static { console.log(productLabel) } }\n`,
+        },
+      ],
+    },
+  }).then(
+    () => undefined,
+    (thrown: unknown) => thrown,
+  )
+  expect(error).toBeInstanceOf(DanglingNameError)
+  expect(Object.values((error as DanglingNameError).names).flat()).toEqual([
+    'productLabel',
+  ])
+})
 
 // Whatever wraps a bundle-level read (here an object of functions keyed by
 // identifiers, as a minifier writes hashed ids), it runs: only a module's
 // top-level binding can explain it.
-test(
-  'vite: a bundle-level read in a function of an object is dangling with a parameter of the same name in a module',
-  async ({ build }) => {
-    const error = await build({
-      bundler: 'vite',
-      env: 'client',
-      minify: false,
-      files: {
-        'entry.ts': `export function label(productLabel: string) {
+test('vite: a bundle-level read in a function of an object is dangling with a parameter of the same name in a module', async ({
+  build,
+}) => {
+  const error = await build({
+    bundler: 'vite',
+    env: 'client',
+    minify: false,
+    files: {
+      'entry.ts': `export function label(productLabel: string) {
   return productLabel.toUpperCase()
 }
 `,
-      },
-      plugins: {
-        vite: () => [
-          {
-            name: 'append-footer',
-            renderChunk: (code: string) =>
-              `${code}\nconst modules = { a1b2: (e, t, r) => console.log(productLabel) }\nmodules.a1b2()\n`,
-          },
-        ],
-      },
-    }).then(
-      () => undefined,
-      (thrown: unknown) => thrown,
-    )
-    expect(error).toBeInstanceOf(DanglingNameError)
-    expect(Object.values((error as DanglingNameError).names).flat()).toEqual([
-      'productLabel',
-    ])
-  },
-  timeout,
-)
+    },
+    plugins: {
+      vite: () => [
+        {
+          name: 'append-footer',
+          renderChunk: (code: string) =>
+            `${code}\nconst modules = { a1b2: (e, t, r) => console.log(productLabel) }\nmodules.a1b2()\n`,
+        },
+      ],
+    },
+  }).then(
+    () => undefined,
+    (thrown: unknown) => thrown,
+  )
+  expect(error).toBeInstanceOf(DanglingNameError)
+  expect(Object.values((error as DanglingNameError).names).flat()).toEqual([
+    'productLabel',
+  ])
+})
 
 // webpack and Rspack run each module of a lazy chunk in a wrapper of the
 // chunk (a factory of an object or array of module ids, whatever the ids;
@@ -467,7 +458,6 @@ test.for([
   ['rspack', 'deterministic', 'productLabel', false, true],
 ] as const)(
   '%s, %s ids: a read added to a module is dangling with a parameter %s in the module (read added: %s, top-level await: %s)',
-  { timeout },
   async ([bundler, moduleIds, parameter, read, topLevelAwait], { build }) => {
     const outcome = await build({
       bundler,
@@ -589,7 +579,6 @@ test('NODE_ENV is the mode during a build, or unset with nodeEnv: null', async (
 
 test.for(['webpack', 'rspack'] as const)(
   '%s: rebuildAfter describes the output of the rebuild after the edit',
-  { timeout },
   async (bundler, { build }) => {
     const app = await build({
       bundler,
@@ -609,7 +598,6 @@ test.for(['webpack', 'rspack'] as const)(
 // ends); it is reported with v1, then `resume()` starts the edit's build.
 test.for(['webpack', 'rspack'] as const)(
   '%s: rebuildAfter describes the rebuild of the edit when it lands during a build',
-  { timeout },
   async (bundler, { build }) => {
     const overlap: Record<string, unknown> = {}
     let compile!: () => void
@@ -747,7 +735,6 @@ test('a build keeps what it printed, in its result and, when it fails, in its er
 // refusal cannot pass on it.
 test.for(bundlers)(
   '%s: a wait that ran out of time inside a build is thrown as it is, not as a failed build',
-  { timeout },
   async (bundler, { build }) => {
     const waitRanOut = () => {
       throw new SettleTimeout('a wait ran out of time')
@@ -785,7 +772,6 @@ test.for([
   ['the rebuild of an edit', true],
 ] as const)(
   'webpack: a wait that ran out of time while resolving an import, in %s, is thrown as it is',
-  { timeout },
   async ([_, watched], { build }) => {
     const late = `import './late'\nexport const value = 1\n`
     const resolving = () => ({
@@ -814,7 +800,6 @@ test.for([
 
 test.for(['webpack', 'rspack'] as const)(
   '%s: rebuildAfter: an edit no build takes is a SettleTimeout; one that breaks the build, a BuildError of its file',
-  { timeout },
   async (bundler, { build }) => {
     const files = { 'entry.ts': `export const value = 'v1'\n` }
     await expect(
@@ -857,7 +842,6 @@ export function unused() {
 
   test.for(bundlers)(
     '"sideEffects": false in package.json drops a module whose exports are unused (%s)',
-    { timeout },
     async (bundler, { build }) => {
       const placements: Record<string, Placement> = {}
       for (const sideEffects of [undefined, false]) {
@@ -902,7 +886,6 @@ export const noSideEffects = recordAnnotated('MARK_NO_SIDE_EFFECTS')
   // unused code inside a kept module only when minifying.
   test.for(bundlers)(
     '/* @__PURE__ */ and #__NO_SIDE_EFFECTS__ let an unused call be dropped (%s)',
-    { timeout },
     async (bundler, { build }) => {
       const app = await build({ bundler, files: annotatedCallsApp })
       expect({
@@ -983,7 +966,6 @@ setTimeout(() => { throw new Error('MARK_UNCAUGHT') })
 
 test.for(['webpack', 'rspack'] as const)(
   '%s: concurrent native loaders keep console messages in their own builds',
-  { timeout },
   async (bundler, { build }) => {
     const buildApp = () =>
       build({

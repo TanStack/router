@@ -15,8 +15,6 @@ import { describe, expect, test } from 'vitest'
 import { recorder, summary } from './rsc-environments-app'
 import { startRscRsbuildDevServer } from './rsc-serial'
 
-const timeout = 60_000
-
 const route = `import { createFileRoute } from '@tanstack/react-router'
 import { createIsomorphicFn } from '@tanstack/react-start'
 import { read } from '../feature'
@@ -64,7 +62,6 @@ describe('Rsbuild dev with RSC, a denied file of a child compiler only', () => {
     ),
   )(
     '$shape, $behavior: onViolation hears about it once',
-    { timeout },
     async ({ entry, child, reported, behavior }) => {
       const { violations, start } = recorder(behavior)
       await startRscRsbuildDevServer({

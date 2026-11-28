@@ -33,58 +33,48 @@ vi.hoisted(() => {
   process.env.TSR_COMPILER_VERIFY = '0'
 })
 
-const timeout = 60_000
-
 describe('Rsbuild with RSC, a server function resolver that goes back to an earlier content, self-checks off', () => {
-  test(
-    "a production build fails, naming the differing function's provider",
-    async () => {
-      const failed = await rejection(
-        buildStart({
-          bundler: 'rsbuild',
-          files: {
-            ...rscAppFiles,
-            ...resolverRepeatFiles,
-            'src/entry.ts': `export {}\n`,
-            'tsconfig.json': JSON.stringify({
-              compilerOptions: { jsx: 'react-jsx' },
-            }),
-          },
-          entry: 'src/entry.ts',
-          symlinks: rsbuildRscLinks(),
-          rsbuildConfig: { tools: { rspack: resolverRepeatRspack } } as never,
-          start: { rsc: { enabled: true } } as never,
-        }),
-      )
-      // (each diagnostic of the build: the error carries them all)
-      expectDiagnostic(failed.diagnostics, {
-        severity: 'error',
-        file: 'src/fn1.ts',
-        times: 1,
-        root: failed.root,
-      })
-    },
-    timeout,
-  )
+  test("a production build fails, naming the differing function's provider", async () => {
+    const failed = await rejection(
+      buildStart({
+        bundler: 'rsbuild',
+        files: {
+          ...rscAppFiles,
+          ...resolverRepeatFiles,
+          'src/entry.ts': `export {}\n`,
+          'tsconfig.json': JSON.stringify({
+            compilerOptions: { jsx: 'react-jsx' },
+          }),
+        },
+        entry: 'src/entry.ts',
+        symlinks: rsbuildRscLinks(),
+        rsbuildConfig: { tools: { rspack: resolverRepeatRspack } } as never,
+        start: { rsc: { enabled: true } } as never,
+      }),
+    )
+    // (each diagnostic of the build: the error carries them all)
+    expectDiagnostic(failed.diagnostics, {
+      severity: 'error',
+      file: 'src/fn1.ts',
+      times: 1,
+      root: failed.root,
+    })
+  })
 
-  test(
-    "a dev server warns, naming the differing function's provider, and its compile does not fail",
-    async () => {
-      const server = await startRsbuildRscApp(resolverRepeatFiles, {
-        tools: { rspack: resolverRepeatRspack },
-      })
-      await fetch(new URL('/', server.url))
-      expectDiagnostic(server.diagnostics, {
-        severity: 'warning',
-        file: 'src/fn1.ts',
-        root: server.root,
-      })
-      expect(
-        findDiagnostics(server.diagnostics, { severity: 'error' }).map(
-          ({ text }) => text,
-        ),
-      ).toEqual([])
-    },
-    timeout,
-  )
+  test("a dev server warns, naming the differing function's provider, and its compile does not fail", async () => {
+    const server = await startRsbuildRscApp(resolverRepeatFiles, {
+      tools: { rspack: resolverRepeatRspack },
+    })
+    await fetch(new URL('/', server.url))
+    expectDiagnostic(server.diagnostics, {
+      severity: 'warning',
+      file: 'src/fn1.ts',
+      root: server.root,
+    })
+    expect(
+      findDiagnostics(server.diagnostics, { severity: 'error' }).map(
+        ({ text }) => text,
+      ),
+    ).toEqual([])
+  })
 })

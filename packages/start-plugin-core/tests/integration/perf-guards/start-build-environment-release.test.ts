@@ -19,8 +19,6 @@ import type { StartBundler } from '../../build-harness'
 import type { RsbuildPlugin, Rspack } from '@rsbuild/core'
 import type { Plugin } from 'vite'
 
-const timeout = 60_000
-
 const files = {
   'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 export const getGreeting = createServerFn().handler(() => 'MARK_GREETING')
@@ -92,31 +90,27 @@ function rsbuildProbe(probe: Probe): RsbuildPlugin {
 describe.each(startBundlers)(
   'a %s build of several environments',
   (bundler) => {
-    test(
-      'releases the client compiler state before the SSR environment builds',
-      async () => {
-        vi.stubEnv('TSR_COMPILER_STATS', '1')
-        onTestFinished(() => {
-          vi.unstubAllEnvs()
-        })
-        const probe: Probe = {}
-        const { ssr } = await buildStart({
-          bundler,
-          files,
-          ...(bundler === 'vite'
-            ? { viteConfig: { plugins: [viteProbe(probe)] } }
-            : { rsbuildConfig: { plugins: [rsbuildProbe(probe)] } }),
-        })
-        expect(ssr.where('MARK_GREETING')).not.toBe('nowhere')
-        // the client built first: nothing of it is left
-        expect(probe.start).toEqual({ plans: 0, importProtectionEnvs: 1 })
-        // the SSR build compiles with its own state, released after it
-        expect(probe.end!.plans).toBeGreaterThan(0)
-        expect(probe.end!.importProtectionEnvs).toBe(1)
-        expect(counts(bundler).plans).toBe(0)
-      },
-      timeout,
-    )
+    test('releases the client compiler state before the SSR environment builds', async () => {
+      vi.stubEnv('TSR_COMPILER_STATS', '1')
+      onTestFinished(() => {
+        vi.unstubAllEnvs()
+      })
+      const probe: Probe = {}
+      const { ssr } = await buildStart({
+        bundler,
+        files,
+        ...(bundler === 'vite'
+          ? { viteConfig: { plugins: [viteProbe(probe)] } }
+          : { rsbuildConfig: { plugins: [rsbuildProbe(probe)] } }),
+      })
+      expect(ssr.where('MARK_GREETING')).not.toBe('nowhere')
+      // the client built first: nothing of it is left
+      expect(probe.start).toEqual({ plans: 0, importProtectionEnvs: 1 })
+      // the SSR build compiles with its own state, released after it
+      expect(probe.end!.plans).toBeGreaterThan(0)
+      expect(probe.end!.importProtectionEnvs).toBe(1)
+      expect(counts(bundler).plans).toBe(0)
+    })
   },
 )
 
@@ -127,28 +121,24 @@ describe.each(startBundlers)(
  * plugins are never released (Rolldown's native plugins hold Vite's callbacks
  * strongly, and those reach the plugins again).
  */
-test(
-  'the stats registry keeps no finished Rsbuild build alive',
-  async () => {
-    vi.stubEnv('TSR_COMPILER_STATS', '1')
-    onTestFinished(() => {
-      vi.unstubAllEnvs()
-    })
-    const builds = 3
-    for (let build = 0; build < builds; build++) {
-      await buildStart({ bundler: 'rsbuild', files })
-    }
-    setFlagsFromString('--expose-gc')
-    const gc = runInNewContext('gc') as () => void
-    for (let round = 0; round < 5; round++) {
-      await new Promise((resolve) => setTimeout(resolve, 10))
-      gc()
-    }
-    // (at most one is left: the schema library memoises the last value it
-    // parsed, here the last build's options)
-    expect(
-      compilerStats()['start:rsbuild:session']?.instances ?? 0,
-    ).toBeLessThan(builds)
-  },
-  timeout,
-)
+test('the stats registry keeps no finished Rsbuild build alive', async () => {
+  vi.stubEnv('TSR_COMPILER_STATS', '1')
+  onTestFinished(() => {
+    vi.unstubAllEnvs()
+  })
+  const builds = 3
+  for (let build = 0; build < builds; build++) {
+    await buildStart({ bundler: 'rsbuild', files })
+  }
+  setFlagsFromString('--expose-gc')
+  const gc = runInNewContext('gc') as () => void
+  for (let round = 0; round < 5; round++) {
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    gc()
+  }
+  // (at most one is left: the schema library memoises the last value it
+  // parsed, here the last build's options)
+  expect(compilerStats()['start:rsbuild:session']?.instances ?? 0).toBeLessThan(
+    builds,
+  )
+})

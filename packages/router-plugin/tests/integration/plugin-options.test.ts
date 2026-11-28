@@ -16,8 +16,6 @@ import type {
 } from '@tanstack/compiler-test-utils/build-harness'
 import type { RouterPluginOptions } from '../build-harness'
 
-const timeout = 120_000
-
 const bundlers = ['vite', 'rspack', 'webpack'] as const
 
 /** A route whose component is split by default. */
@@ -124,7 +122,6 @@ test.each([
     expect(await read(app, 'routeTree.gen.ts')).not.toBeNull()
     expect(result).toContain('MARK_COMPONENT')
   },
-  timeout,
 )
 
 describe('plugin.vite.environmentName', () => {
@@ -140,30 +137,25 @@ describe('plugin.vite.environmentName', () => {
       expect(app.where('MARK_COMPONENT')).toBe(placement)
       expect(html).toContain('MARK_COMPONENT')
     },
-    timeout,
   )
 })
 
 // The halves take a context made by `createRouterPluginContext()`; one it
 // didn't make (written by hand, or the factory of the package's other module
 // format) fails the build with what to call, not inside a transform.
-test(
-  'a context not made by createRouterPluginContext() fails the build, naming the factory (vite)',
-  async () => {
-    const context = { routesByFile: new Map() }
-    await expect(
-      build({
-        bundler: 'vite',
-        env: 'client',
-        files: routeApp(route(), { env: 'client' }),
-        routerPlugins: (config) => [
-          tanstackRouterGenerator(config, context),
-          ...tanStackRouterCodeSplitter(config, context),
-        ],
-      }),
-    ).rejects.toThrow(
-      /`createRouterPluginContext\(\)` from '@tanstack\/router-plugin\/context'/,
-    )
-  },
-  timeout,
-)
+test('a context not made by createRouterPluginContext() fails the build, naming the factory (vite)', async () => {
+  const context = { routesByFile: new Map() }
+  await expect(
+    build({
+      bundler: 'vite',
+      env: 'client',
+      files: routeApp(route(), { env: 'client' }),
+      routerPlugins: (config) => [
+        tanstackRouterGenerator(config, context),
+        ...tanStackRouterCodeSplitter(config, context),
+      ],
+    }),
+  ).rejects.toThrow(
+    /`createRouterPluginContext\(\)` from '@tanstack\/router-plugin\/context'/,
+  )
+})

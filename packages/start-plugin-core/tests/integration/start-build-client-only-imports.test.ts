@@ -16,8 +16,6 @@ import { buildStartShared, startBundlers } from '../build-harness'
 import { reportedViolations } from '../importProtection/start-apps'
 import type { StartBuild } from '../build-harness'
 
-const timeout = 60_000
-
 const files = {
   'node_modules/browser-lib/package.json': JSON.stringify({
     name: 'browser-lib',
@@ -76,7 +74,7 @@ describe.each(startBundlers)('%s build', (bundler) => {
         entry: 'src/entry.ts',
       }),
     )
-  }, timeout)
+  }, 60_000)
 
   test('reports no import-protection violation', () => {
     expect(

@@ -13,8 +13,6 @@ import {
 } from '../start-compose-app'
 import type { RsbuildConfig } from '@rsbuild/core'
 
-const timeout = 30_000
-
 /** A dev server of an app whose `/` route tells where its loader ran. */
 function startApp(options: { config?: RsbuildConfig } = {}) {
   return startRsbuildStartDevServer({
@@ -42,35 +40,27 @@ describe('Rsbuild dev server options', () => {
   // undefined`, read from the normalized config).
   // On main, dev compresses every response by default, and a compressed
   // streamed page reaches the browser only once its stream ends.
-  test(
-    'without server.compress, the server-rendered page is not compressed',
-    async () => {
-      const server = await startApp()
-      const response = await fetch(new URL('/', server.url), {
-        headers: { 'accept-encoding': 'gzip' },
-      })
-      expect(response.status).toBe(200)
-      expect(response.headers.get('content-encoding')).toBeNull()
-      expect(await response.text()).toContain('MARK_SERVER')
-    },
-    timeout,
-  )
+  test('without server.compress, the server-rendered page is not compressed', async () => {
+    const server = await startApp()
+    const response = await fetch(new URL('/', server.url), {
+      headers: { 'accept-encoding': 'gzip' },
+    })
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-encoding')).toBeNull()
+    expect(await response.text()).toContain('MARK_SERVER')
+  })
 
   // Source: src/rsbuild/plugin.ts (`compress: false` merged last; it worked
   // around an Rsbuild bug fixed in @rsbuild/core 2.0.5).
   // On main, #8544: dev responses are never compressed.
-  test(
-    'server.compress true compresses the server-rendered page, whose content stays intact',
-    async () => {
-      const server = await startApp({ config: { server: { compress: true } } })
-      const response = await fetch(new URL('/', server.url), {
-        headers: { 'accept-encoding': 'gzip' },
-      })
-      expect(response.status).toBe(200)
-      expect(response.headers.get('content-type')).toMatch(/^text\/html/)
-      expect(response.headers.get('content-encoding')).toBe('gzip')
-      expect(await response.text()).toContain('MARK_SERVER')
-    },
-    timeout,
-  )
+  test('server.compress true compresses the server-rendered page, whose content stays intact', async () => {
+    const server = await startApp({ config: { server: { compress: true } } })
+    const response = await fetch(new URL('/', server.url), {
+      headers: { 'accept-encoding': 'gzip' },
+    })
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-type')).toMatch(/^text\/html/)
+    expect(response.headers.get('content-encoding')).toBe('gzip')
+    expect(await response.text()).toContain('MARK_SERVER')
+  })
 })

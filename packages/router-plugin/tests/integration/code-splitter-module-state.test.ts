@@ -123,7 +123,7 @@ return [await entry.render(component), await entry.render(component), entry.stor
     // Pinned in known-bugs-code-splitter.test.ts ("a binding read by an exported function").
     // `store.count` is 2: the chunk mutated the store the route module exports
     expect(result).toEqual(['<p>1/1/1</p>', '<p>2/2/2</p>', 2])
-  }, 30_000)
+  })
 
   // `export default count` holds the first value of `count`; the split
   // component reads the binding itself, which `bump()` changes.
@@ -150,7 +150,7 @@ return [before, await entry.render(component), entry.Route.options.loader(), ent
       },
     )
     expect(result).toEqual(['<p>0</p>', '<p>1</p>', 1, 0])
-  }, 30_000)
+  })
 
   // `export default items` above `var items = …` holds `undefined` (the
   // statement runs before the initialiser); the split component reads the
@@ -192,7 +192,6 @@ export const Route = createFileRoute('/')({
         expect(first).toBe(exportedUndefined)
       }
     },
-    30_000,
   )
 
   // A later `var` changes the binding, not what the export took (with a
@@ -230,7 +229,6 @@ export const Route = createFileRoute('/')({
         expect(first).toEqual(exported)
       }
     },
-    30_000,
   )
 
   // Only the deleted option reads `a`: the literal keeps both calls, so `b`
@@ -249,7 +247,7 @@ export const Route = createFileRoute('/')({
       { deleteNodes: ['server'] },
     )
     expect(result).toBe('<p>2</p>')
-  }, 30_000)
+  })
 
   // A `var` declared again takes the new value there, like an assignment:
   // the split component sees the binding's last value, whatever the
@@ -265,7 +263,6 @@ export const Route = createFileRoute('/')({
         rendered: rows.map(({ name }) => [name, '<p title="MARK_PAGE">2</p>']),
       })
     },
-    60_000,
   )
 
   // Source: #8504 (code-splitter-exported-bindings-identity.test.ts).
@@ -297,5 +294,5 @@ export function createStore() {
       },
     )
     expect(html).toBe('<p>5</p>')
-  }, 30_000)
+  })
 })

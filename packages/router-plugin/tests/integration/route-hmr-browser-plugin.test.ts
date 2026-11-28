@@ -19,7 +19,6 @@ import { expectEditShownOrReportedFallback } from '../route-hmr-page'
 import { openRouteHmrPage } from '../serial'
 import type { RouteHmrPageOptions } from '../route-hmr-page'
 
-const timeout = 90_000
 const inPlace = { reloaded: false, errors: [] }
 
 /**
@@ -97,7 +96,6 @@ describe('the router plugin configured with', () => {
 
   it.for(rows)(
     '$name applies an edit of a route file in place',
-    { timeout },
     async ({ target = 'react', options }, { expect }) => {
       const app = await openRouteHmrPage({
         ...options,
@@ -128,7 +126,7 @@ describe('vite: an edited root route created with', () => {
     'createRootRouteWithContext()({',
     'createRootRouteWithContext<{ user: string }>()({',
     'createRootRouteWithContext <{ user: string }>()({',
-  ])('`%s` shows in place', { timeout }, async (call: string, { expect }) => {
+  ])('`%s` shows in place', async (call: string, { expect }) => {
     const root = (version: string) =>
       `import { createRootRoute, createRootRouteWithContext } from '@tanstack/react-router'
 export const Route = ${call}
@@ -197,7 +195,6 @@ export const Route = (() =>
       ),
     )(
       '$shape shows (autoCodeSplitting: $autoCodeSplitting)',
-      { timeout },
       async ({ shape, autoCodeSplitting }) => {
         const route = factoryRoutes[shape as keyof typeof factoryRoutes]
         const app = await openRouteHmrPage({

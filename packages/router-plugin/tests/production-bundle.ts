@@ -31,8 +31,6 @@ import type {
 } from '@tanstack/compiler-test-utils/build-harness'
 import type { Framework } from './build-harness'
 
-export const timeout = 120_000
-
 const route = (
   framework: Framework,
 ) => `${routeHead(framework)}function Page() {

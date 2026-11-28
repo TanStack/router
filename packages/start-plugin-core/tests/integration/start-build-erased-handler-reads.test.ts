@@ -17,8 +17,6 @@ import {
 } from '../build-harness'
 import type { StartBuild } from '../build-harness'
 
-const timeout = 60_000
-
 const files = {
   'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute()
@@ -70,21 +68,17 @@ describe.each(startBundlers)('%s build', (bundler) => {
         start: { serverFns: { generateFunctionId: idOf } },
       }),
     )
-  }, timeout)
+  }, 60_000)
 
-  test(
-    'a server fn only an erased handler and the split component call is in the lazy chunk; both calls give one payload',
-    async () => {
-      expect(build.client.where(innerId)).toBe('lazy')
-      const { result } = await build.ssr.run(`${callByIdPrelude}return [
+  test('a server fn only an erased handler and the split component call is in the lazy chunk; both calls give one payload', async () => {
+    expect(build.client.where(innerId)).toBe('lazy')
+    const { result } = await build.ssr.run(`${callByIdPrelude}return [
   await callById(${JSON.stringify(innerId)}, { username: 'TEST' }),
   await callById(${JSON.stringify(outerId)}, { username: 'TEST' }),
 ]`)
-      expect(result).toEqual([
-        { payload: { username: 'TEST' } },
-        { payload: { username: 'TEST' } },
-      ])
-    },
-    timeout,
-  )
+    expect(result).toEqual([
+      { payload: { username: 'TEST' } },
+      { payload: { username: 'TEST' } },
+    ])
+  })
 })

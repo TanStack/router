@@ -289,7 +289,6 @@ return {
       })
       expect(uncaughtErrors(run)).toEqual([])
     },
-    30_000,
   )
 })
 
@@ -680,6 +679,5 @@ return { made, other: (await compiled()).some((request) => !before.has(request))
       }
       expect([...split]).toEqual([])
     },
-    30_000,
   )
 })
