@@ -60,6 +60,8 @@ export function getOrCreateGate(
     resolve: () => {
       if (gate.resolved) return
       gate.resolved = true
+      // Lets React's use() read the resolved gate without suspending
+      Object.assign(promise, { status: 'fulfilled', value: undefined })
       resolvePromise()
       gate.resolveListeners.forEach((listener) => listener())
       gate.resolveListeners.clear()
