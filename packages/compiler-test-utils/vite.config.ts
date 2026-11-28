@@ -13,6 +13,9 @@ export default defineConfig({
     maxWorkers: 4,
     reporters: ['default', '@tanstack/compiler-test-utils/budget-reporter'],
     globalSetup: ['./src/run-directory.ts'],
+    // Known-bug pins pass only on their assertion; `COMPILER_TESTS_PINS=run`
+    // runs them as ordinary tests (as in the other compiler test projects)
+    setupFiles: ['./src/pins-setup.ts'],
     projects: [
       {
         // Fast tier (`test:unit`): in process; a Vite dev server in
