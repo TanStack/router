@@ -737,6 +737,8 @@ export async function runInPage<T = unknown>(
   host: PluginHost,
   url: string,
   script = '',
+  /** Clears the origin's `localStorage` and `sessionStorage` first. */
+  clearStorage = false,
 ): Promise<PageRun<T>> {
   const errors: Array<string> = []
   const messages: Array<string> = []
@@ -755,14 +757,15 @@ export async function runInPage<T = unknown>(
   }
   page.on('pageerror', onError)
   page.on('console', onConsole)
+  let run: PageRun<T>
   try {
     await page.goto(host.dev.url!)
     // A string, run as the page's own code: a function would be serialised
     // from this module as the test runner transformed it
     const result = (await page.evaluate(
-      `(async () => {\nconst module = await import(${JSON.stringify(new URL(url, host.dev.url).href)})\n${script}\n})()`,
+      `(async () => {\n${clearStorage ? 'localStorage.clear(); sessionStorage.clear()\n' : ''}const module = await import(${JSON.stringify(new URL(url, host.dev.url).href)})\n${script}\n})()`,
     )) as T
-    return { result, errors, console: messages }
+    run = { result, errors, console: messages }
   } catch (error) {
     throw new Error(
       [
@@ -775,10 +778,11 @@ export async function runInPage<T = unknown>(
   } finally {
     page.off('pageerror', onError)
     page.off('console', onConsole)
-    // Out of the app's document: it no longer follows the dev server (an
-    // edit of the next route would reach it)
-    await page.goto('about:blank').catch(() => {})
   }
+  // Out of the app's document: it no longer follows the dev server (an edit
+  // of the next route would reach it)
+  await page.goto('about:blank')
+  return run
 }
 
 function hostKey(options: RouteAppOptions, root: boolean) {
@@ -1112,16 +1116,29 @@ export async function loadRoute(
     await writeRoute(state, owner, files)
   }
 
-  const pageOf = async () => (await (filePage ??= openPage('about:blank'))).page
+  /**
+   * The file's page (a browser context of its own); a route's first run
+   * starts without the cookies and the origin's storage of an earlier test.
+   */
+  let fresh = true
+  const pageOf = async (clear: boolean) => {
+    const { page } = await (filePage ??= openPage('about:blank'))
+    if (clear) {
+      await page.context().clearCookies()
+    }
+    return page
+  }
   const runPage = async <T>(
     body: string,
     runOptions: { before?: string } = {},
   ) => {
     await writeRoute(state, owner, files)
     const hmr = state.host.dev.hmr.length
+    const clear = fresh
+    fresh = false
     try {
       return await runInPage<T>(
-        await pageOf(),
+        await pageOf(clear),
         state.host,
         appUrl(probeFile),
         `${prelude(url, [...own], at, `${options.pageScript ?? ''}\n${runOptions.before ?? ''}`)}
@@ -1133,6 +1150,7 @@ ${body}
   })(),
   new Promise((_, reject) => setTimeout(() => reject(new Error('the page run did not settle within ${pageRunBound} ms')), ${pageRunBound})),
 ])`,
+        clear,
       )
     } catch (error) {
       const sent = state.host.dev.hmr
