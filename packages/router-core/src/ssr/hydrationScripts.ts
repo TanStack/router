@@ -178,7 +178,7 @@ class HydrationScriptsOwner implements HydrationScriptOutput {
   private opening: string | undefined
 
   constructor(
-    private readonly nonce: string | undefined,
+    private readonly getNonce: (() => string | undefined) | undefined,
     initialSources?: ReadonlyArray<string>,
   ) {
     // ServerSsr exposes this method as a bare callback, so keep this single
@@ -450,8 +450,9 @@ class HydrationScriptsOwner implements HydrationScriptOutput {
   }
 
   private pullReady() {
-    const scriptOpening = (this.opening ??= this.nonce
-      ? `<script nonce="${escapeAttribute(this.nonce)}">`
+    const nonce = this.getNonce?.()
+    const scriptOpening = (this.opening ??= nonce
+      ? `<script nonce="${escapeAttribute(nonce)}">`
       : '<script>')
     let codeUnits = scriptOpening.length + DYNAMIC_CLOSE_SOURCE.length
     let batchLength = 0
@@ -556,7 +557,7 @@ class HydrationScriptsOwner implements HydrationScriptOutput {
     // cleared prefix. Once tags are composed, the same empty array can become
     // the dynamic queue without allocating a replacement.
     const sources = this.queuedSources as Array<string>
-    const tags = createInitialTags(sources, this.nonce)
+    const tags = createInitialTags(sources, this.getNonce?.())
     this.initialTaken = true
     this.releaseAccounting(sources)
     sources.length = 0
@@ -682,8 +683,8 @@ class HydrationScriptsOwner implements HydrationScriptOutput {
 
 /** Create the hydration-script owner for one server request. */
 export function createHydrationScripts(
-  nonce: string | undefined,
+  getNonce: (() => string | undefined) | undefined,
   initialSources?: ReadonlyArray<string>,
 ): HydrationScripts {
-  return new HydrationScriptsOwner(nonce, initialSources)
+  return new HydrationScriptsOwner(getNonce, initialSources)
 }
