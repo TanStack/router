@@ -14,13 +14,14 @@ const testsDir = path.join(
 
 /**
  * The slow-tier files whose tests run concurrently (project
- * `integration-concurrent`): the route HMR files (`route-hmr-browser*`),
- * whose every test opens its own dev server, page and app directory,
- * starts only dev servers, and asserts only on its own server's log and
- * its own page. Every other project runs one test at a time. Left out:
- * the files whose warning and error assertions read what the process
- * printed (`RouteHmrPage.warnings`, Rsbuild's `serverErrors`), which
- * concurrent tests share. Paths relative to `tests/`.
+ * `integration-concurrent`): the route HMR files (`route-hmr-browser*`)
+ * and `moreConcurrentTests`, whose every test opens its own dev server,
+ * page and app directory, starts only dev servers, edits only its own
+ * app, and asserts only on its own server's log and its own page. Every
+ * other project runs one test at a time. Left out: the files whose
+ * warning and error assertions read what the process printed
+ * (`RouteHmrPage.warnings`, Rsbuild's `serverErrors`), which concurrent
+ * tests share. Paths relative to `tests/`.
  */
 const serialHmrTests = [
   'route-hmr-browser-plugin.test.ts',
@@ -37,6 +38,13 @@ const concurrentTests = readdirSync(path.join(testsDir, 'integration'))
       !serialHmrTests.includes(file),
   )
   .map((file) => `integration/${file}`)
+const moreConcurrentTests = [
+  'integration/code-splitter-refresh-placements.test.ts',
+  'integration/route-hmr-rsbuild-dev-maps.test.ts',
+  'integration/known-bugs-route-hmr-removals.test.ts',
+  'integration/known-bugs-route-hmr-kept-binding.test.ts',
+]
+concurrentTests.push(...moreConcurrentTests)
 
 /**
  * The slow-tier files the other platforms run (`test:integration:smoke`,
@@ -52,11 +60,16 @@ const smokeTests = [
   'integration/split-module-ids.test.ts',
 ]
 if (process.env.VITEST) {
-  for (const file of smokeTests) {
-    if (!existsSync(path.join(testsDir, file))) {
-      throw new Error(
-        `vite.config.ts: the smoke test file tests/${file} does not exist; update \`smokeTests\``,
-      )
+  for (const [list, files] of Object.entries({
+    smokeTests,
+    moreConcurrentTests,
+  })) {
+    for (const file of files) {
+      if (!existsSync(path.join(testsDir, file))) {
+        throw new Error(
+          `vite.config.ts: the test file tests/${file} does not exist; update \`${list}\``,
+        )
+      }
     }
   }
 }
