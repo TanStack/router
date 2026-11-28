@@ -31,7 +31,7 @@ export const Route = createFileRoute('/')({ component: () => <main><Widget /></m
       },
     })
     const browser = await openRscPage(server, '/')
-    await browser.locator('body', { hasText: 'widget' }).waitFor()
+    await browser.locator('body', { hasText: /widget/ }).waitFor()
     await waitForHydration(browser)
     await browser.locator('[data-testid=widget]').click()
     // The answer, or what the page shows once its requests are done

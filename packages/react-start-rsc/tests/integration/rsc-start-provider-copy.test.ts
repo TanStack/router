@@ -201,7 +201,7 @@ describe.each(['vite', 'rsbuild'] as const)('a %s build', (bundler) => {
     async ({ i, answers, renders }, { openRscPage }) => {
       const opened = await openRscPage(server, '/provider-copy')
       await opened
-        .locator('[data-testid=label]', { hasText: 'MARK_PAGE' })
+        .locator('[data-testid=label]', { hasText: /MARK_PAGE/ })
         .waitFor()
       await waitForHydration(opened)
       if (renders !== undefined) {
@@ -212,7 +212,10 @@ describe.each(['vite', 'rsbuild'] as const)('a %s build', (bundler) => {
       await opened.locator(`[data-testid=call-${i}]`).click()
       await opened
         .locator(`[data-testid=called-${i}]`, {
-          hasText: `called ${JSON.stringify(answers)}`,
+          // (exactly: the answers' JSON, escaped as a pattern)
+          hasText: new RegExp(
+            `^called ${JSON.stringify(answers).replace(/[[\]{}()*+?.\\^$|]/g, '\\$&')}$`,
+          ),
         })
         .waitFor()
     },

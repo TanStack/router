@@ -45,7 +45,7 @@ test("editing a server component's CSS updates the page without a full reload", 
   let loads = 0
   page.on('load', () => loads++)
   await openRscPage(server, '/')
-  await page.locator('body', { hasText: 'MARK_CARD' }).waitFor()
+  await page.locator('body', { hasText: /MARK_CARD/ }).waitFor()
   const background = (expected: string) =>
     waitForStyle(page, '[data-testid=card]', 'background-color', expected)
   await background('rgb(254, 243, 199)')

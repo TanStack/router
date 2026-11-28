@@ -323,8 +323,8 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
     // Separate documents and results: renderA's stylesheet must not mask
     // renderB missing its own delivery, even though both helpers share CSS.
     for (const [name, marker, selector, expected] of [
-      ['a', 'MARK_A', '[data-testid=card]', CARD_BACKGROUND],
-      ['b', 'MARK_B', '[data-testid=badge]', BADGE_BACKGROUND],
+      ['a', /MARK_A/, '[data-testid=card]', CARD_BACKGROUND],
+      ['b', /MARK_B/, '[data-testid=badge]', BADGE_BACKGROUND],
     ] as const) {
       const page = await openRscPage(app.server, `/pair-${name}`)
       await page.locator('main', { hasText: marker }).waitFor()

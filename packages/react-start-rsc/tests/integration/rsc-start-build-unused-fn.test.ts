@@ -49,7 +49,7 @@ async function expectLabelOnly(page: Page, server: RscPreviewServer) {
   await openRscPage(page, server, '/label')
   await waitForHydration(page)
   await page
-    .locator('[data-testid=label]', { hasText: 'MARK_ORDINARY_LABEL' })
+    .locator('[data-testid=label]', { hasText: /MARK_ORDINARY_LABEL/ })
     .waitFor()
   const dist = path.join(server.root, 'dist')
   const entries = await readdir(dist, { recursive: true, withFileTypes: true })

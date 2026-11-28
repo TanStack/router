@@ -116,7 +116,7 @@ for (const bundler of ['vite', 'rsbuild'] as const) {
       )({ files: files(fixed) })
       const page = await openRscPage(server, '/')
       await page
-        .locator('[data-testid=part]', { hasText: 'MARK_PART_RENDERED' })
+        .locator('[data-testid=part]', { hasText: /MARK_PART_RENDERED/ })
         .waitFor()
       await waitForHydration(page)
       expect(pageErrors).toEqual([])

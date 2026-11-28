@@ -183,10 +183,10 @@ export const clientHelperApp = {
 export async function expectCompClicks(page: Page): Promise<void> {
   await waitForHydration(page)
   await page
-    .locator('[data-testid=root]', { hasText: 'SERVER_ROOT comp' })
+    .locator('[data-testid=root]', { hasText: /SERVER_ROOT comp/ })
     .waitFor({ timeout: 5_000 })
   await page.locator('[data-testid=comp]').click()
   await page
-    .locator('[data-testid=comp]', { hasText: 'comp MARK_OK' })
+    .locator('[data-testid=comp]', { hasText: /comp MARK_OK/ })
     .waitFor()
 }

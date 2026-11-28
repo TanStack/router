@@ -89,7 +89,7 @@ describe('Vite production build with RSC: a package whose export conditions give
       })
       const page = await openRscPage(server, '/cond')
       await page
-        .locator('[data-testid=loader]', { hasText: 'MARK_ONE' })
+        .locator('[data-testid=loader]', { hasText: /MARK_ONE/ })
         .waitFor()
       const response = page.waitForResponse((r) =>
         r.url().includes('/_serverFn/'),
@@ -97,7 +97,7 @@ describe('Vite production build with RSC: a package whose export conditions give
       await page.locator('[data-testid=cond]').click()
       expect((await response).status()).toBe(200)
       await page
-        .locator('[data-testid=cond]', { hasText: 'cond MARK_ONE' })
+        .locator('[data-testid=cond]', { hasText: /cond MARK_ONE/ })
         .waitFor()
     },
     timeout,

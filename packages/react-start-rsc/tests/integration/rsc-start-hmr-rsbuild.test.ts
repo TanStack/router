@@ -29,20 +29,20 @@ describe('Rsbuild dev: edits with a separate RSC provider (SPEC J3.6)', () => {
     page.on('load', () => loads++)
     const browser = await openRscPage(server, '/')
     await browser
-      .locator('body', { hasText: 'Page v1 MARK_HANDLER_V1' })
+      .locator('body', { hasText: /Page v1 MARK_HANDLER_V1/ })
       .waitFor()
     await waitForHydration(browser)
     await browser.locator('[data-testid=count]').click()
     await browser.locator('[data-testid=count]').click()
-    await browser.locator('body', { hasText: 'count 2' }).waitFor()
-    await callFromPage(browser, 'called Page v1 MARK_HANDLER_V1')
+    await browser.locator('body', { hasText: /count 2/ }).waitFor()
+    await callFromPage(browser, /called Page v1 MARK_HANDLER_V1/)
 
     // The handler
     await server.edit({
       'src/routes/index.tsx': route('MARK_HANDLER_V2', 'Page v1'),
     })
     expect(server.errors).toEqual([])
-    await callFromPage(browser, 'called Page v1 MARK_HANDLER_V2')
+    await callFromPage(browser, /called Page v1 MARK_HANDLER_V2/)
     expect(loads).toBe(1)
     // The client's output of the route never has the handler (J4.12)
     const client = [
@@ -57,12 +57,12 @@ describe('Rsbuild dev: edits with a separate RSC provider (SPEC J3.6)', () => {
     })
     expect(server.errors).toEqual([])
     await browser
-      .locator('[data-testid=text]', { hasText: 'Page v2' })
+      .locator('[data-testid=text]', { hasText: /Page v2/ })
       .waitFor()
     expect(await browser.locator('[data-testid=count]').textContent()).toBe(
       'count 2',
     )
-    await callFromPage(browser, 'called Page v2 MARK_HANDLER_V2')
+    await callFromPage(browser, /called Page v2 MARK_HANDLER_V2/)
 
     expect(loads).toBe(1)
     expect(pageErrors).toEqual([])
@@ -108,7 +108,7 @@ export const baseText = 'base: builder'
     page.on('load', () => loads++)
     const browser = await openRscPage(server, '/')
     await browser
-      .locator('body', { hasText: 'Page v1 MARK_HANDLER_V1' })
+      .locator('body', { hasText: /Page v1 MARK_HANDLER_V1/ })
       .waitFor()
     await waitForHydration(browser)
     expect(Object.values(await server.outputs('client')).join('\n')).toContain(
@@ -125,9 +125,9 @@ export const baseText = 'base: builder'
     // React Refresh re-renders 30 ms after the update applies, in one commit
     // with the call button's new handler: click once the page shows the edit
     await browser
-      .locator('[data-testid=base]', { hasText: 'base: builder' })
+      .locator('[data-testid=base]', { hasText: /base: builder/ })
       .waitFor()
-    await callFromPage(browser, 'called Page v1 MARK_HANDLER_V1')
+    await callFromPage(browser, /called Page v1 MARK_HANDLER_V1/)
     expect(loads).toBe(1)
     expect(pageErrors).toEqual([])
   })
@@ -157,7 +157,7 @@ export const baseText = 'base: builder'
     let loads = 0
     page.on('load', () => loads++)
     const browser = await openRscPage(server, '/')
-    await browser.locator('body', { hasText: 'Page v1 MARK_HANDLER' }).waitFor()
+    await browser.locator('body', { hasText: /Page v1 MARK_HANDLER/ }).waitFor()
     await waitForHydration(browser)
 
     await server.edit({
@@ -177,7 +177,9 @@ export const Route = createFileRoute('/about')({ component: () => <p>about</p> }
         'src/routes/index.tsx': route('MARK_HANDLER', text),
       })
       expect(server.errors).toEqual([])
-      await browser.locator('[data-testid=text]', { hasText: text }).waitFor()
+      await browser
+        .locator('[data-testid=text]', { hasText: new RegExp(text) })
+        .waitFor()
     }
     expect(pageErrors).toEqual([])
   })

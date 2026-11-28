@@ -402,19 +402,19 @@ describe('Vite production build with RSC', () => {
     const page = await openRscPage(server, '/env')
     await page
       .locator('[data-testid=label]', {
-        hasText: 'ssr MARK_DEFAULT provider MARK_REACT_SERVER:1',
+        hasText: /ssr MARK_DEFAULT provider MARK_REACT_SERVER:1/,
       })
       .waitFor()
     await waitForHydration(page)
     await page.locator('[data-testid=call]').click()
     await page
       .locator('[data-testid=called]', {
-        hasText: 'called MARK_REACT_SERVER:1',
+        hasText: /called MARK_REACT_SERVER:1/,
       })
       .waitFor()
     await page.locator('[data-testid=where]').click()
     await page
-      .locator('[data-testid=browser]', { hasText: 'browser MARK_BROWSER' })
+      .locator('[data-testid=browser]', { hasText: /browser MARK_BROWSER/ })
       .waitFor()
     const client = await Promise.all(
       (await filesOf(path.join(server.root, 'dist/client'))).map((file) =>
@@ -439,7 +439,7 @@ describe('Vite production build with RSC', () => {
   }) => {
     const page = await openRscPage(server, '/context')
     await page
-      .locator('[data-testid=label]', { hasText: 'MARK_THEME MARK_DATA' })
+      .locator('[data-testid=label]', { hasText: /^MARK_THEME MARK_DATA$/ })
       .waitFor()
     expect(pageErrors).toEqual([])
   })
@@ -460,7 +460,7 @@ describe('Vite production build with RSC', () => {
     await waitForHydration(page)
     await page.locator('[data-testid=call]').click()
     await page
-      .locator('[data-testid=called]', { hasText: 'called MARK_NESTED_FN' })
+      .locator('[data-testid=called]', { hasText: /called MARK_NESTED_FN/ })
       .waitFor()
     const read = async (dir: string) =>
       Promise.all(
@@ -491,12 +491,16 @@ describe('Vite production build with RSC', () => {
     const expected = 'server-only MARK_ALIASED_SERVER_ONLY client-only threw'
     const page = await openRscPage(server, '/aliased')
     await page
-      .locator('[data-testid=loaded]', { hasText: `loaded ${expected}` })
+      .locator('[data-testid=loaded]', {
+        hasText: new RegExp(`loaded ${expected}`),
+      })
       .waitFor()
     await waitForHydration(page)
     await page.locator('[data-testid=call]').click()
     await page
-      .locator('[data-testid=called]', { hasText: `called ${expected}` })
+      .locator('[data-testid=called]', {
+        hasText: new RegExp(`called ${expected}`),
+      })
       .waitFor()
     const client = await Promise.all(
       (await filesOf(path.join(server.root, 'dist/client'))).map((file) =>
@@ -520,12 +524,16 @@ describe('Vite production build with RSC', () => {
     const expected = 'MARK_ISO_SERVER threw'
     const page = await openRscPage(server, '/handler-fns')
     await page
-      .locator('[data-testid=loaded]', { hasText: `loaded ${expected}` })
+      .locator('[data-testid=loaded]', {
+        hasText: new RegExp(`loaded ${expected}`),
+      })
       .waitFor()
     await waitForHydration(page)
     await page.locator('[data-testid=call]').click()
     await page
-      .locator('[data-testid=called]', { hasText: `called ${expected}` })
+      .locator('[data-testid=called]', {
+        hasText: new RegExp(`called ${expected}`),
+      })
       .waitFor()
     const rsc = await Promise.all(
       (await filesOf(path.join(server.root, 'dist/server/rsc'))).map((file) =>
@@ -570,7 +578,7 @@ describe('Vite production build with RSC', () => {
     const page = await openRscPage(server, '/private')
     await page
       .locator('[data-testid=label]', {
-        hasText: 'label MARK_GREET:MARK_INTERNAL',
+        hasText: /label MARK_GREET:MARK_INTERNAL/,
       })
       .waitFor()
     await waitForHydration(page)
@@ -609,7 +617,7 @@ describe('Vite production build with RSC', () => {
     openRscPage,
   }) => {
     const page = await openRscPage(server, '/control')
-    await page.locator('[data-testid=control]', { hasText: 'caller' }).waitFor()
+    await page.locator('[data-testid=control]', { hasText: /caller/ }).waitFor()
     await waitForHydration(page)
     const css = await page.evaluate(() =>
       [...document.styleSheets]
@@ -631,7 +639,7 @@ describe('Vite production build with RSC', () => {
     async (row, { pageErrors, openRscPage }) => {
       const page = await openRscPage(server, '/css')
       await page
-        .locator(`section[data-row=${row}]`, { hasText: 'MARK_CARD' })
+        .locator(`section[data-row=${row}]`, { hasText: /MARK_CARD/ })
         .waitFor()
       await waitForHydration(page)
       expect(

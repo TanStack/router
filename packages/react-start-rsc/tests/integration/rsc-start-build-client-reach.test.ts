@@ -429,7 +429,7 @@ describe("Vite production build with RSC: server fns only 'use client' component
     await waitForHydration(page)
     await page.locator('[data-testid=greet]').click()
     await page
-      .locator('[data-testid=greet]', { hasText: 'called MARK_GREET' })
+      .locator('[data-testid=greet]', { hasText: /called MARK_GREET/ })
       .waitFor()
     expect(pageErrors).toEqual([])
   })
@@ -452,7 +452,9 @@ describe("Vite production build with RSC: server fns only 'use client' component
       )
       await page.locator(button).click()
       expect((await response).status()).toBe(200)
-      await page.locator(button, { hasText: `${name} MARK_PING` }).waitFor()
+      await page
+        .locator(button, { hasText: new RegExp(`${name} MARK_PING`) })
+        .waitFor()
       expect(pageErrors).toEqual([])
     },
   )
@@ -487,7 +489,7 @@ describe("Vite production build with RSC: server fns only 'use client' component
       kind: 'a file of the app',
       pathname: '/way-out-app',
       name: 'onlyClient',
-      server: { selector: '[data-testid=uses]', text: 'USES MARK_ONLYCLIENT' },
+      server: { selector: '[data-testid=uses]', text: /USES MARK_ONLYCLIENT/ },
     },
     {
       kind: 'a file of an installed package',
@@ -495,7 +497,7 @@ describe("Vite production build with RSC: server fns only 'use client' component
       name: 'pkgPing',
       server: {
         selector: '[data-testid=loaderPing]',
-        text: 'MARK_PKGPING USES MARK_PKGPING',
+        text: /MARK_PKGPING USES MARK_PKGPING/,
       },
     },
     // (no way out needed: the reach walk enters a package that declares
@@ -506,7 +508,7 @@ describe("Vite production build with RSC: server fns only 'use client' component
       name: 'declPing',
       server: {
         selector: '[data-testid=declUses]',
-        text: 'USES MARK_DECLPING',
+        text: /USES MARK_DECLPING/,
       },
     },
   ])(

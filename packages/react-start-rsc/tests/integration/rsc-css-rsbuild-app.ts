@@ -171,7 +171,7 @@ export class Sub extends Base { static label = 'MARK_CYCLE' }`,
  */
 export const helperRow = {
   path: '/helper',
-  marker: 'MARK_HELPER',
+  marker: /MARK_HELPER/,
   files: {
     'src/helperCard.module.css': `.card { background: #e0f2fe; }\n`,
     'src/renderHelperCard.tsx': `import { renderServerComponent } from '@tanstack/react-start/rsc'
@@ -226,7 +226,7 @@ export async function show(
   page: Page,
   server: Pick<RsbuildDevServer, 'url'>,
   path: string,
-  marker = 'MARK_CARD',
+  marker = /MARK_CARD/,
 ): Promise<Page> {
   await openRscPage(page, server, path)
   await page.locator('body', { hasText: marker }).waitFor()
@@ -264,7 +264,7 @@ export function describeRscCssRows(mode: 'dev' | 'build') {
     }) => {
       await openRscPage(page, server, '/control')
       await page
-        .locator('[data-testid=control]', { hasText: 'caller' })
+        .locator('[data-testid=control]', { hasText: /caller/ })
         .waitFor()
       await waitForHydration(page)
       const css = await page.evaluate(() =>
@@ -321,7 +321,7 @@ export function describeRscCssRows(mode: 'dev' | 'build') {
       'exports that read each other, $name, keep the server component styled',
       async ({ path }, { page, pageErrors }) => {
         expect(server.errors).toEqual([])
-        await show(page, server, path, 'MARK_CYCLE')
+        await show(page, server, path, /MARK_CYCLE/)
         await waitForStyle(
           page,
           '[data-testid=card]',

@@ -82,14 +82,14 @@ function Page() {
     const browser = await openRscPage(server, '/')
     await browser
       .locator('[data-testid=label]', {
-        hasText: 'ssr MARK_DEFAULT provider MARK_REACT_SERVER:1',
+        hasText: /ssr MARK_DEFAULT provider MARK_REACT_SERVER:1/,
       })
       .waitFor()
     await waitForHydration(browser)
-    await callFromPage(browser, 'called MARK_REACT_SERVER:1')
+    await callFromPage(browser, /called MARK_REACT_SERVER:1/)
     await browser.locator('[data-testid=where]').click()
     await browser
-      .locator('[data-testid=browser]', { hasText: 'browser MARK_BROWSER' })
+      .locator('[data-testid=browser]', { hasText: /browser MARK_BROWSER/ })
       .waitFor()
 
     const leaks: Array<string> = []

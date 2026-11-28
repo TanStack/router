@@ -153,11 +153,11 @@ test("a server fn only its route's component calls renders on the server and ans
 }) => {
   expect(server.errors).toEqual([])
   const page = await openRscPage(server, '/component-fn')
-  await page.locator('[data-testid=label]', { hasText: 'MARK_PAGE' }).waitFor()
+  await page.locator('[data-testid=label]', { hasText: /MARK_PAGE/ }).waitFor()
   await waitForHydration(page)
   await page.locator('[data-testid=call]').click()
   await page
-    .locator('[data-testid=called]', { hasText: 'called MARK_HANDLER' })
+    .locator('[data-testid=called]', { hasText: /called MARK_HANDLER/ })
     .waitFor()
 })
 
@@ -218,7 +218,7 @@ async function expectOnlyClientCalledFnsCallable(
   await openRscPage(page, server, '/private')
   await page
     .locator('[data-testid=label]', {
-      hasText: 'label MARK_GREET:MARK_INTERNAL',
+      hasText: /label MARK_GREET:MARK_INTERNAL/,
     })
     .waitFor()
   await waitForHydration(page)
@@ -363,7 +363,7 @@ function Page() {
   expect(built.errors).toEqual([])
   const page = await openRscPage(built, '/quiet')
   await page
-    .locator('[data-testid=value]', { hasText: 'MARK_SERVER_ONLY' })
+    .locator('[data-testid=value]', { hasText: /MARK_SERVER_ONLY/ })
     .waitFor()
   await waitForHydration(page)
   const url = (await page.locator('[data-testid=url]').textContent())!

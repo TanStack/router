@@ -63,7 +63,7 @@ function Page() {
 `
 
 /** Clicks the page's call button and waits for the answer. */
-async function callFromPage(page: Page, expected: string) {
+async function callFromPage(page: Page, expected: RegExp) {
   await page.locator('[data-testid=call]').click()
   await page.locator('[data-testid=called]', { hasText: expected }).waitFor()
 }
@@ -125,14 +125,14 @@ function Page() {
     const page = await openRscPage(server, '/env')
     await page
       .locator('[data-testid=label]', {
-        hasText: 'ssr MARK_DEFAULT provider MARK_REACT_SERVER:1',
+        hasText: /ssr MARK_DEFAULT provider MARK_REACT_SERVER:1/,
       })
       .waitFor()
     await waitForHydration(page)
-    await callFromPage(page, 'called MARK_REACT_SERVER:1')
+    await callFromPage(page, /called MARK_REACT_SERVER:1/)
     await page.locator('[data-testid=where]').click()
     await page
-      .locator('[data-testid=browser]', { hasText: 'browser MARK_BROWSER' })
+      .locator('[data-testid=browser]', { hasText: /browser MARK_BROWSER/ })
       .waitFor()
     const client = Object.values(await server.outputs('client')).join('\n')
     expect({
@@ -156,18 +156,18 @@ function Page() {
     await openRscPage(server, '/edit')
     await page
       .locator('[data-testid=label]', {
-        hasText: 'MARK_LABEL_V1 MARK_HANDLER_V1',
+        hasText: /MARK_LABEL_V1 MARK_HANDLER_V1/,
       })
       .waitFor()
     await waitForHydration(page)
-    await callFromPage(page, 'called MARK_HANDLER_V1')
+    await callFromPage(page, /called MARK_HANDLER_V1/)
 
     await server.edit({ 'src/routes/edit.tsx': editRoute('V2') })
     expect(server.errors).toEqual([])
     await page
-      .locator('[data-testid=label]', { hasText: 'MARK_HANDLER_V2' })
+      .locator('[data-testid=label]', { hasText: /MARK_HANDLER_V2/ })
       .waitFor()
-    await callFromPage(page, 'called MARK_HANDLER_V2')
+    await callFromPage(page, /called MARK_HANDLER_V2/)
     expect(loads).toBe(1)
     const update = Object.values(await server.hotUpdates('client')).join('\n')
     expect({

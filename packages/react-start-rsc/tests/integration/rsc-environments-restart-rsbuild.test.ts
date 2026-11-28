@@ -90,8 +90,10 @@ test(
     )
 
     let since = await restartAfter(whereFiles('B'))
-    // (the cache restored the modules the edit left alone)
-    expect.soft(server.rebuiltBy.ssr).not.toContain('src/routes/__root.tsx')
+    expect(
+      server.rebuiltBy.ssr,
+      'the cache restored the modules the edit left alone',
+    ).not.toContain('src/routes/__root.tsx')
     await expectAt(
       'an edit of what both environments read: each shows it, and each reports its denied import again',
       'B',

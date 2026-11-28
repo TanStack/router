@@ -65,7 +65,7 @@ describe('Rsbuild build with RSC', () => {
       })
       const page = await openRscPage(server, '/c')
       await page
-        .locator('[data-testid=widget]', { hasText: 'MARK_SECRET' })
+        .locator('[data-testid=widget]', { hasText: /MARK_SECRET/ })
         .waitFor()
       expect(summary(violations)).toEqual([])
     },
@@ -158,7 +158,7 @@ describe('Rsbuild dev with RSC', () => {
       })
       const page = await openRscPage(server, '/c')
       await page
-        .locator('[data-testid=root]', { hasText: 'SERVER_ROOT' })
+        .locator('[data-testid=root]', { hasText: /SERVER_ROOT/ })
         .waitFor()
       // (a dev server names the denied file of an importer it does not
       // compile: it serves the file before it knows who imports it)

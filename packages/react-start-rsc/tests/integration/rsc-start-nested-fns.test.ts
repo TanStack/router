@@ -102,7 +102,7 @@ describe('Vite dev with a separate RSC provider', () => {
     expect(typeof inSsr.fns.make).toBe('function')
     const page = await openRscPage(server, '/')
     await page
-      .locator('[data-testid=label]', { hasText: 'loaded MARK_NESTED' })
+      .locator('[data-testid=label]', { hasText: /loaded MARK_NESTED/ })
       .waitFor()
     await waitForHydration(page)
     expect(pageErrors).toEqual([])
@@ -149,7 +149,7 @@ describe('Rsbuild dev with an RSC layer', () => {
     expect(server.errors).toEqual([])
     const page = await openRscPage(server, '/')
     await page
-      .locator('[data-testid=label]', { hasText: 'loaded MARK_NESTED' })
+      .locator('[data-testid=label]', { hasText: /loaded MARK_NESTED/ })
       .waitFor()
     await waitForHydration(page)
     expect(pageErrors).toEqual([])

@@ -143,7 +143,7 @@ export function rendered(html: string) {
 }
 
 /**
- * The document `/` at `url` answers 200 and shows `expected`; at
+ * The document `/` at `url` answers 200 and shows `expected`; at a named
  * `checkpoint` of a history, the history goes on (a soft assertion).
  */
 export async function expectPage(
@@ -153,11 +153,12 @@ export async function expectPage(
 ) {
   const response = await fetch(new URL('/', url))
   const html = await response.text()
-  expect
-    .soft({ status: response.status, ...rendered(html) }, checkpoint)
-    .toEqual({
-      status: 200,
-      ...expected,
-    })
+  ;(checkpoint === undefined ? expect : expect.soft)(
+    { status: response.status, ...rendered(html) },
+    checkpoint,
+  ).toEqual({
+    status: 200,
+    ...expected,
+  })
   return html
 }

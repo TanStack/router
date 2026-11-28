@@ -174,7 +174,7 @@ export async function expectRoutesWork(
     await waitForHydration(page)
     await page.locator('[data-testid=comp]').click()
     await page
-      .locator('[data-testid=comp]', { hasText: 'comp MARK_OK' })
+      .locator('[data-testid=comp]', { hasText: /comp MARK_OK/ })
       .waitFor()
   }
 }

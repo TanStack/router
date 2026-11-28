@@ -160,12 +160,12 @@ describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
     await page.locator('[data-testid=used]').click()
     await page
       .locator('[data-testid=outcome]', {
-        hasText: 'used-id answered MARK_USED',
+        hasText: /used-id answered MARK_USED/,
       })
       .waitFor()
     await page.locator('[data-testid=display]').click()
     await page
-      .locator('[data-testid=outcome]', { hasText: 'display refused' })
+      .locator('[data-testid=outcome]', { hasText: /display refused/ })
       .waitFor()
     // (no report names the module: the server build provides what the
     // client calls)
@@ -188,11 +188,11 @@ describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
     await waitForHydration(page)
     await page.locator('[data-testid=greet]').click()
     await page
-      .locator('[data-testid=called]', { hasText: 'MARK_GREET' })
+      .locator('[data-testid=called]', { hasText: /MARK_GREET/ })
       .waitFor()
     await page.locator('[data-testid=quoted]').click()
     await page
-      .locator('[data-testid=called]', { hasText: 'MARK_QUOTED' })
+      .locator('[data-testid=called]', { hasText: /MARK_QUOTED/ })
       .waitFor()
     // (the build succeeded: a report naming the file is a warning)
     expect(

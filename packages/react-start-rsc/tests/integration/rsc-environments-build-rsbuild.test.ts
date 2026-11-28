@@ -264,7 +264,7 @@ export const Route = createFileRoute('/')({
       expect(server.errors).toEqual([])
       const page = await openRscPage(server, '/')
       await page
-        .locator('[data-testid=page]', { hasText: 'page MARK_SHARED' })
+        .locator('[data-testid=page]', { hasText: /page MARK_SHARED/ })
         .waitFor({ timeout: 5_000 })
       const fromWorker = await page.evaluate(
         () =>

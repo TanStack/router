@@ -26,7 +26,7 @@ export const where = () => 'MARK_REACT_SERVER:' + globalThis.__envMarkerInits
 }
 
 /** Clicks the page's call button and waits for the answer. */
-export async function callFromPage(browser: Page, expected: string) {
+export async function callFromPage(browser: Page, expected: RegExp) {
   await browser.locator('[data-testid=call]').click()
   await browser.locator('[data-testid=called]', { hasText: expected }).waitFor()
 }

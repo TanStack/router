@@ -75,8 +75,10 @@ test(
 
     await server.stop()
     server = await server.restart()
-    // (the cache restored the modules)
-    expect.soft(server.rebuiltBy.ssr).not.toContain('src/routes/__root.tsx')
+    expect(
+      server.rebuiltBy.ssr,
+      'the cache restored the modules',
+    ).not.toContain('src/routes/__root.tsx')
     await expectPage(
       server.url!,
       mocked,

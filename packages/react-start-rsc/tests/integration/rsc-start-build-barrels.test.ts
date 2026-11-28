@@ -95,11 +95,15 @@ describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
     const page = await openRscPage(server, '/barrels')
     await waitForHydration(page)
     await page
-      .locator('[data-testid=loaded]', { hasText: `loaded ${results}` })
+      .locator('[data-testid=loaded]', {
+        hasText: new RegExp(`^loaded ${results}$`),
+      })
       .waitFor()
     await page.locator('[data-testid=call]').click()
     await page
-      .locator('[data-testid=called]', { hasText: `called ${results}` })
+      .locator('[data-testid=called]', {
+        hasText: new RegExp(`^called ${results}$`),
+      })
       .waitFor()
   }, 90_000)
 })

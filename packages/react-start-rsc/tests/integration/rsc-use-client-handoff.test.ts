@@ -74,12 +74,12 @@ interface Asked {
   importerLoc?: { line: number; column: number }
 }
 
-/** Each call of `allowImport` (`env`, importer by file name, `specifier`, `line:column`), sorted. */
+/** Each call of `allowImport` (`env`, the importer in the app, `specifier`, `line:column`), sorted. */
 const imports = (asked: Array<Asked>) =>
   asked
     .map(
       (a) =>
-        `${a.env} ${a.importer.split('/').pop()} ${a.specifier}${a.importerLoc ? ` ${a.importerLoc.line}:${a.importerLoc.column}` : ''}`,
+        `${a.env} ${a.importer.replace(/.*\/\.rsc-[^/]*\//, '')} ${a.specifier}${a.importerLoc ? ` ${a.importerLoc.line}:${a.importerLoc.column}` : ''}`,
     )
     .sort()
 
@@ -120,8 +120,8 @@ describe.each(hosts)('$host build with RSC', ({ bundler }) => {
         }),
       ).toEqual(['client-only label', 'client-only label'])
       expect(imports(asked)).toEqual([
-        'rsc ucServer.tsx ./ClientBox.client 3:27',
-        'ssr uc.tsx ../utils/ClientBox.client 2:27',
+        'rsc src/utils/ucServer.tsx ./ClientBox.client 3:27',
+        'ssr src/routes/uc.tsx ../utils/ClientBox.client 2:27',
       ])
     },
     timeout,
@@ -159,7 +159,7 @@ describe.each(hosts)('$host build with RSC', ({ bundler }) => {
         }),
       ).toEqual(['client-only label'])
       expect(imports(asked)).toEqual([
-        'rsc ucServer.tsx ./ClientBox.client 3:27',
+        'rsc src/utils/ucServer.tsx ./ClientBox.client 3:27',
       ])
     },
     timeout,

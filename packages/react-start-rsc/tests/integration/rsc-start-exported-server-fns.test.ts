@@ -65,13 +65,13 @@ describe.each(['vite', 'rsbuild'] as const)('a %s build', (bundler) => {
   }) => {
     const opened = await openRscPage(server, '/two-exported')
     await opened
-      .locator('[data-testid=label]', { hasText: 'MARK_PAGE' })
+      .locator('[data-testid=label]', { hasText: /MARK_PAGE/ })
       .waitFor()
     await waitForHydration(opened)
     await opened.locator('[data-testid=call]').click()
     await opened
       .locator('[data-testid=called]', {
-        hasText: 'called MARK_FIRST MARK_SECOND',
+        hasText: /called MARK_FIRST MARK_SECOND/,
       })
       .waitFor()
   })
