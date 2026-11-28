@@ -10,7 +10,7 @@
  */
 import react from '@vitejs/plugin-react'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
-import { closeAtEnd } from './test-end'
+import { closeAtEnd } from './serial'
 import type {
   PluginHost,
   PluginHostApp,

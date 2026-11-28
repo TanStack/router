@@ -36,7 +36,7 @@ import react from '@vitejs/plugin-react'
 import { parseSync } from 'vite'
 import webpack from 'webpack'
 import WebpackDevServer from 'webpack-dev-server'
-import { expect, onTestFinished } from 'vitest'
+import { expect } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import { openDiagnosticChannel } from '@tanstack/compiler-test-utils/diagnostic-channel'
@@ -50,7 +50,7 @@ import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-p
 import { tanstackRouter as tanstackRouterRspack } from '../src/rspack'
 import { tanstackRouter } from '../src/vite'
 import { tanstackRouter as tanstackRouterWebpack } from '../src/webpack'
-import { closeAtEnd } from './test-end'
+import { closeAtEnd } from './serial'
 import { holdsMarker } from './route-app'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
@@ -249,8 +249,10 @@ export async function generatorDevApp(
    * stderr carries no severity: it counts as a warning, a report, not as an
    * error), merged (`openDiagnosticChannel`).
    */
-  const channel = openDiagnosticChannel()
-  onTestFinished(() => channel.close())
+  const channel = await closeAtEnd(
+    () => Promise.resolve(openDiagnosticChannel()),
+    (opened) => opened.close(),
+  )
   const printed = () => channel.diagnostics
 
   const files = {

@@ -153,108 +153,113 @@ export const Route = createRootRoute({})
     },
   })
   const root = app.root
-  // Files older than the watcher's start: webpack's watcher reports a file
-  // modified right before it started as changed
-  const past = new Date(Date.now() - 60_000)
-  for (const file of [entry, ...Object.keys(options.files)]) {
-    await utimes(path.join(root, file), past, past)
-  }
-
-  const compiler = webpack({
-    mode: 'development',
-    ...(options.devtool ? { devtool: options.devtool } : {}),
-    context: root,
-    entry: { main: `./${entry}` },
-    output: { path: path.join(root, 'dist'), publicPath: '/' },
-    resolve: { extensions: ['.ts', '.tsx', '.js'] },
-    module: {
-      rules: [
-        {
-          test: /\.tsx?$/,
-          include: root,
-          loader: require.resolve('babel-loader'),
-          options: {
-            babelrc: false,
-            configFile: false,
-            presets:
-              target === 'react'
-                ? [require.resolve('@babel/preset-typescript')]
-                : [
-                    [
-                      require.resolve('@babel/preset-typescript'),
-                      { isTSX: true, allExtensions: true },
-                    ],
-                    [
-                      require.resolve('babel-preset-solid'),
-                      { generate: 'dom' },
-                    ],
-                  ],
-          },
-        },
-      ],
-    },
-    plugins: [
-      tanstackRouter({
-        target,
-        routesDirectory: path.join(root, 'routes'),
-        generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
-        autoCodeSplitting: true,
-        ...options.pluginOptions,
-      }),
-    ],
-    infrastructureLogging: { level: 'none' },
-    stats: 'none',
-  })
-
   /** Compiles started and ended, whether one is running, and its errors. */
   let started = 0
   let compiling = false
   let invalidated = false
   let compileErrors: Array<string> = []
-  compiler.hooks.invalid.tap('webpack-hmr-page', () => {
-    invalidated = true
-  })
-  compiler.hooks.watchRun.tap('webpack-hmr-page', () => {
-    started++
-    compiling = true
-    invalidated = false
-  })
-  compiler.hooks.done.tap('webpack-hmr-page', (stats) => {
-    compiling = false
-    compileErrors = stats.hasErrors()
-      ? stats
-          .toJson({ all: false, errors: true })
-          .errors!.map((error) => error.message)
-      : []
-  })
-  compiler.hooks.failed.tap('webpack-hmr-page', (error) => {
-    compiling = false
-    compileErrors = [error.stack ?? error.message]
-  })
-
-  const server = new WebpackDevServer(
-    {
-      host: '127.0.0.1',
-      port: 0,
-      hot: true,
-      static: { directory: path.join(root, 'public'), watch: false },
-      historyApiFallback: true,
-      setupExitSignals: false,
-      client: { overlay: false, logging: 'warn' },
-    },
-    compiler,
-  )
+  let server: WebpackDevServer | undefined
   let listening = false
   let page: BrowserPage | undefined
   const close = async () => {
-    await page?.close()
-    if (listening) {
-      await server.stop()
+    try {
+      await page?.close()
+      if (listening) {
+        await server!.stop()
+      }
+    } finally {
+      await app.dispose()
     }
-    await app.dispose()
   }
   let port: number
+  // (from here on, whatever throws closes what started and removes the app)
   try {
+    // Files older than the watcher's start: webpack's watcher reports a file
+    // modified right before it started as changed
+    const past = new Date(Date.now() - 60_000)
+    for (const file of [entry, ...Object.keys(options.files)]) {
+      await utimes(path.join(root, file), past, past)
+    }
+
+    const compiler = webpack({
+      mode: 'development',
+      ...(options.devtool ? { devtool: options.devtool } : {}),
+      context: root,
+      entry: { main: `./${entry}` },
+      output: { path: path.join(root, 'dist'), publicPath: '/' },
+      resolve: { extensions: ['.ts', '.tsx', '.js'] },
+      module: {
+        rules: [
+          {
+            test: /\.tsx?$/,
+            include: root,
+            loader: require.resolve('babel-loader'),
+            options: {
+              babelrc: false,
+              configFile: false,
+              presets:
+                target === 'react'
+                  ? [require.resolve('@babel/preset-typescript')]
+                  : [
+                      [
+                        require.resolve('@babel/preset-typescript'),
+                        { isTSX: true, allExtensions: true },
+                      ],
+                      [
+                        require.resolve('babel-preset-solid'),
+                        { generate: 'dom' },
+                      ],
+                    ],
+            },
+          },
+        ],
+      },
+      plugins: [
+        tanstackRouter({
+          target,
+          routesDirectory: path.join(root, 'routes'),
+          generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
+          autoCodeSplitting: true,
+          ...options.pluginOptions,
+        }),
+      ],
+      infrastructureLogging: { level: 'none' },
+      stats: 'none',
+    })
+
+    compiler.hooks.invalid.tap('webpack-hmr-page', () => {
+      invalidated = true
+    })
+    compiler.hooks.watchRun.tap('webpack-hmr-page', () => {
+      started++
+      compiling = true
+      invalidated = false
+    })
+    compiler.hooks.done.tap('webpack-hmr-page', (stats) => {
+      compiling = false
+      compileErrors = stats.hasErrors()
+        ? stats
+            .toJson({ all: false, errors: true })
+            .errors!.map((error) => error.message)
+        : []
+    })
+    compiler.hooks.failed.tap('webpack-hmr-page', (error) => {
+      compiling = false
+      compileErrors = [error.stack ?? error.message]
+    })
+
+    server = new WebpackDevServer(
+      {
+        host: '127.0.0.1',
+        port: 0,
+        hot: true,
+        static: { directory: path.join(root, 'public'), watch: false },
+        historyApiFallback: true,
+        setupExitSignals: false,
+        client: { overlay: false, logging: 'warn' },
+      },
+      compiler,
+    )
     await server.start()
     listening = true
     port = (server.server!.address() as AddressInfo).port

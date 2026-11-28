@@ -228,34 +228,32 @@ describe('vite dev server', () => {
     const host = await hosting
     paging = openPage('about:blank')
     const page = await paging
-    {
-      const {
-        result: { stacks, loadedWithRoute },
-      } = await runInPage<{
-        stacks: Record<string, string | undefined>
-        loadedWithRoute: Array<string>
-      }>(
-        page.page,
-        host,
-        '/probe.ts',
-        'return { loadedWithRoute: module.loadedWithRoute, stacks: await module.throws() }',
-      )
-      // The map of every module a frame names, as the dev server serves it
-      // (Vite inlines it)
-      const maps = new Map<string, AnySourceMap | undefined>()
-      const origin = new URL(host.dev.url!).origin
-      for (const location of new Set(
-        Object.values(stacks).flatMap((stack) => frameLocations(stack ?? '')),
-      )) {
-        const url = new URL(location)
-        if (url.origin !== origin) {
-          continue
-        }
-        const { body } = await host.dev.fetch(url.pathname + url.search)
-        maps.set(location, inlineSourceMap(body))
+    const {
+      result: { stacks, loadedWithRoute },
+    } = await runInPage<{
+      stacks: Record<string, string | undefined>
+      loadedWithRoute: Array<string>
+    }>(
+      page.page,
+      host,
+      '/probe.ts',
+      'return { loadedWithRoute: module.loadedWithRoute, stacks: await module.throws() }',
+    )
+    // The map of every module a frame names, as the dev server serves it
+    // (Vite inlines it)
+    const maps = new Map<string, AnySourceMap | undefined>()
+    const origin = new URL(host.dev.url!).origin
+    for (const location of new Set(
+      Object.values(stacks).flatMap((stack) => frameLocations(stack ?? '')),
+    )) {
+      const url = new URL(location)
+      if (url.origin !== origin) {
+        continue
       }
-      throws = { stacks, maps, root: host.root, origin, loadedWithRoute }
+      const { body } = await host.dev.fetch(url.pathname + url.search)
+      maps.set(location, inlineSourceMap(body))
     }
+    throws = { stacks, maps, root: host.root, origin, loadedWithRoute }
   }, timeout)
 
   // The module each throw runs in maps it to its line in the route file,

@@ -40,7 +40,7 @@ import {
 } from '@tanstack/compiler-test-utils/build-harness'
 import { mergeRsbuildConfig } from '@rsbuild/core'
 import { pluginReact } from '@rsbuild/plugin-react'
-import { closeAtEnd } from './test-end'
+import { closeAtEnd } from './serial'
 import type {
   App,
   AppInfo,

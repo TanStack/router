@@ -52,7 +52,7 @@ import { DanglingNameError } from '@tanstack/compiler-test-utils/build-harness'
 import { readNames } from '@tanstack/compiler-test-utils/free-names'
 import { clientGlobals } from '@tanstack/compiler-test-utils/known-globals'
 import { tanstackRouter } from '../src/vite'
-import { closeAtEnd } from './test-end'
+import { closeAtEnd } from './serial'
 import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import type {
   BrowserPage,
@@ -1149,20 +1149,20 @@ export async function loadRoute(
     body: string,
     runOptions: { before?: string } = {},
   ) => {
-    await writeRoute(state, owner, files)
-    const hmr = state.host.dev.hmr.length
-    const clear = fresh
-    fresh = false
     // The file's page, one run at a time (no test runs two at once: a
-    // second would replace the first one's document)
+    // second would replace the first one's document, or its route)
     if (pageHeld) {
       throw new Error(
         `"${expect.getState().currentTestName}" starts a page run while another one runs: await the first run`,
       )
     }
     pageHeld = true
+    const hmr = state.host.dev.hmr.length
     const opened = (filePage ??= openPage('about:blank'))
     try {
+      await writeRoute(state, owner, files)
+      const clear = fresh
+      fresh = false
       const { page } = await opened
       if (clear) {
         await page.context().clearCookies()

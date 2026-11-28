@@ -21,7 +21,6 @@ const serialModules = [
   'production-bundle',
   'route-hosts-setup',
   'serial',
-  'test-end',
 ]
 const serialExports = {
   'route-app': ['loadRoute', 'closeRouteHosts'],
@@ -29,9 +28,11 @@ const serialExports = {
 }
 const message =
   "Serial only: registers its close with Vitest's global onTestFinished. Concurrent files open through the fixtures of tests/test.ts; helper modules take what they open as a value."
-/** The relative spellings of a module of `tests/`, with or without an extension. */
-const spellings = (/** @type {string} */ name) =>
-  ['./', '../', '../../'].flatMap((up) => [up + name, `${up}${name}.*`])
+/** A module of `tests/` by any path, with or without an extension (no package's). */
+const spellings = (/** @type {Array<string>} */ names) => [
+  ...names.flatMap((name) => [`**/${name}`, `**/${name}.*`]),
+  '!@tanstack/**',
+]
 const noSerialImports = [
   'error',
   {
@@ -44,20 +45,26 @@ const noSerialImports = [
       { name: '@tanstack/compiler-test-utils/test-scope', message },
     ],
     patterns: [
-      { group: serialModules.flatMap(spellings), message },
+      { group: spellings(serialModules), message },
       ...Object.entries(serialExports).map(([name, importNames]) => ({
-        group: spellings(name),
+        group: spellings([name]),
         importNames,
         message,
       })),
     ],
   },
 ]
-const serialImportExpression = {
-  // (`.` for the slash: a selector's regex ends at its first `/`)
-  selector: `ImportExpression[source.value=/^(?:vitest|@tanstack.compiler-test-utils.test-scope|(?:\\.\\.?.)+(?:${[...serialModules, ...Object.keys(serialExports)].join('|')})(?:\\.[cm]?[jt]s)?)$/]`,
-  message,
-}
+const serialImportExpressions = [
+  {
+    // (`\x2f` for the slash: a selector's regex ends at its first `/`)
+    selector: `ImportExpression[source.value=/^(?:vitest|@tanstack\\x2fcompiler-test-utils\\x2ftest-scope|(?:[^@].*\\x2f)?(?:${[...serialModules, ...Object.keys(serialExports)].join('|')})(?:\\.[cm]?[jt]sx?)?)$/]`,
+    message,
+  },
+  {
+    selector: "ImportExpression[source.type!='Literal']",
+    message: `${message} (A dynamic import names its module as a string.)`,
+  },
+]
 /**
  * No test of a file runs at once with another but in `integration-concurrent`
  * (a project setting, not a test's): a serial file's openers register on
@@ -77,7 +84,7 @@ const noConcurrentTests = [
   },
 ]
 const tests = (/** @type {Array<string>} */ names) =>
-  names.map((name) => `tests/${name}.ts`)
+  names.map((name) => `tests/${name}.{ts,tsx}`)
 
 export default [
   ...rootConfig,
@@ -89,18 +96,18 @@ export default [
   },
   {
     name: 'router-plugin/no-concurrent-tests',
-    files: ['tests/**/*.ts'],
+    files: ['tests/**/*.{ts,tsx}'],
     rules: { 'no-restricted-syntax': ['error', ...noConcurrentTests] },
   },
   {
     name: 'router-plugin/no-serial-openers',
-    files: ['tests/**/!(*.test).ts'],
+    files: ['tests/**/!(*.test).{ts,tsx}'],
     ignores: tests([...serialModules, ...Object.keys(serialExports)]),
     rules: {
       'no-restricted-imports': noSerialImports,
       'no-restricted-syntax': [
         'error',
-        serialImportExpression,
+        ...serialImportExpressions,
         ...noConcurrentTests,
       ],
     },
@@ -112,7 +119,7 @@ export default [
       'no-restricted-imports': noSerialImports,
       'no-restricted-syntax': [
         'error',
-        serialImportExpression,
+        ...serialImportExpressions,
         ...noConcurrentTests,
       ],
     },

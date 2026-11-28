@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url'
 import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
 import { createAppDirectory } from '@tanstack/compiler-test-utils/app-directory'
-import { closeAtEnd } from './test-end'
+import { closeAtEnd } from './serial'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
