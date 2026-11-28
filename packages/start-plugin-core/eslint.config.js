@@ -29,7 +29,7 @@ const serialOnly = {
     'startRsbuildRscApp',
     'startViteRscApp',
     'startEditHost',
-    'closedWithTest',
+    'closeAtEnd',
     'openTestPage',
   ],
 }
@@ -46,6 +46,25 @@ const concurrentFiles = [
   'tests/settled-source.ts',
 ]
 
+/**
+ * No test of a file runs at once with another but in `integration-concurrent`
+ * (a project setting, not a test's): a serial file's openers close with
+ * whichever test runs.
+ */
+const noConcurrentTests = [
+  {
+    selector: "MemberExpression[property.name='concurrent']",
+    message:
+      'Tests run concurrently only in integration-concurrent (vite.config.ts), as a project.',
+  },
+  {
+    selector:
+      "CallExpression > ObjectExpression > Property[key.name='concurrent']",
+    message:
+      'Tests run concurrently only in integration-concurrent (vite.config.ts), as a project.',
+  },
+]
+
 export default [
   ...rootConfig,
   ...compilerSourceConfig,
@@ -55,17 +74,29 @@ export default [
     ignores: noncompilerTests.map((file) => `tests/${file}`),
   },
   {
+    files: ['tests/**/*.ts'],
+    rules: { 'no-restricted-syntax': ['error', ...noConcurrentTests] },
+  },
+  {
     files: concurrentFiles,
     rules: {
       'no-restricted-imports': [
         'error',
         {
+          paths: [
+            {
+              name: '@tanstack/compiler-test-utils/test-scope',
+              message: serialOnly.message,
+            },
+          ],
           patterns: [
             // (any module and spelling: a name is what is restricted)
             { regex: '.', ...serialOnly },
             {
+              // the helpers of `concurrentFiles`, by their paths from
+              // tests/integration (where the concurrent files are)
               regex:
-                '^\\.\\.?/(?!(hydrate-pages(-react|-solid)?|build-harness|settled-source)(\\.[cm]?[jt]sx?)?$)',
+                '^(?!(\\./hydrate-pages(-react|-solid)?|\\.\\./(build-harness|settled-source))(\\.[cm]?[jt]sx?)?$)\\.',
               message:
                 'A helper of a concurrent file is one of `concurrentFiles` in eslint.config.js, checked by the same rules.',
             },
@@ -74,27 +105,12 @@ export default [
       ],
       'no-restricted-syntax': [
         'error',
+        ...noConcurrentTests,
         {
           selector: 'ImportExpression',
           message:
             'Concurrent files import statically: the rule checks what they import.',
         },
-      ],
-    },
-  },
-  {
-    // Every other file runs one test at a time: the openers close with the
-    // current test (Vitest's global `onTestFinished`).
-    files: ['tests/**/*.ts'],
-    rules: {
-      'no-restricted-properties': [
-        'error',
-        ...['test', 'it', 'describe', 'suite'].map((object) => ({
-          object,
-          property: 'concurrent',
-          message:
-            'Tests of a file run at once only in `integration-concurrent` (vite.config.ts).',
-        })),
       ],
     },
   },
