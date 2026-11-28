@@ -75,24 +75,6 @@ const serialImportExpressions = [
     message,
   },
 ]
-/**
- * No test of a file runs at once with another but in `integration-concurrent`
- * (a project setting, not a test's): a serial file's openers close with
- * whichever test runs.
- */
-const noConcurrentTests = [
-  {
-    selector: "MemberExpression[property.name='concurrent']",
-    message:
-      'Tests run concurrently only in integration-concurrent (tests/concurrent-tests.json), as a project.',
-  },
-  {
-    selector:
-      "CallExpression > ObjectExpression > Property[key.name='concurrent']",
-    message:
-      'Tests run concurrently only in integration-concurrent (tests/concurrent-tests.json), as a project.',
-  },
-]
 const inTests = (/** @type {Array<string>} */ files) =>
   files.map((file) => `tests/${file}`)
 
@@ -105,10 +87,6 @@ export default [
     ignores: inTests(noncompilerTests),
   },
   {
-    files: ['tests/**/*.{ts,tsx}'],
-    rules: { 'no-restricted-syntax': ['error', ...noConcurrentTests] },
-  },
-  {
     files: ['tests/**/!(*.test).{ts,tsx}', ...inTests(concurrentTests)],
     ignores: serialModules.flatMap((module) => [
       `tests/${module}.ts`,
@@ -116,11 +94,7 @@ export default [
     ]),
     rules: {
       'no-restricted-imports': noSerialImports,
-      'no-restricted-syntax': [
-        'error',
-        ...noConcurrentTests,
-        ...serialImportExpressions,
-      ],
+      'no-restricted-syntax': ['error', ...serialImportExpressions],
     },
   },
 ]

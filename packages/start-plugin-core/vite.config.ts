@@ -142,6 +142,11 @@ const config = defineConfig({
       4,
       Math.max(1, Math.floor(os.availableParallelism() / 2)),
     ),
+    // One test at a time in a file, whatever a row asks (`.concurrent`, a
+    // `concurrent` option): a serial file's openers close with the current
+    // test. `integration-concurrent` alone runs its files' tests at once.
+    // (In the config: the CLI flag does not reach the projects.)
+    maxConcurrency: 1,
     reporters: ['default', '@tanstack/compiler-test-utils/budget-reporter'],
     globalSetup: ['@tanstack/compiler-test-utils/run-directory'],
     setupFiles: [
