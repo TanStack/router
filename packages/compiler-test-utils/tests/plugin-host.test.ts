@@ -11,15 +11,11 @@
  * The plugins here stand for any public plugin: nothing in the host knows
  * them (no hook placement, id or query).
  */
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { expect, onTestFinished, test } from 'vitest'
+import { expect } from 'vitest'
 import { expectNoProblems, problems } from '../src/diagnostic-channel'
 import { expectDiagnostic } from '../src/diagnostics'
-import { createPluginHost } from '../src/plugin-host'
+import { test } from '../src/test'
 import type { Plugin } from 'vite'
-
-const testsDir = path.dirname(fileURLToPath(import.meta.url))
 
 /**
  * A plugin as a user configures one: serves `virtual:counter` (a module
@@ -67,17 +63,16 @@ export const run = () => {
 `,
 }
 
-async function host(warn?: 'console' | 'context') {
-  return createPluginHost({
-    dir: testsDir,
-    registerCleanup: onTestFinished,
-    files,
-    plugins: [userPlugin({ warn })],
-  })
-}
+/** The plugin host's options: the app and the user's plugin. */
+const served = (warn?: 'console' | 'context') => ({
+  files,
+  plugins: [userPlugin({ warn })],
+})
 
-test('server code runs through the module runner; a module is one instance whatever the specifier', async () => {
-  const app = await host()
+test('server code runs through the module runner; a module is one instance whatever the specifier', async ({
+  pluginHost,
+}) => {
+  const app = await pluginHost(served())
   const server = await app.importServer('/src/server.ts')
   expect(server.marker).toBe('MARKED')
   // Two increments through two spellings, read through a third: one module
@@ -85,8 +80,10 @@ test('server code runs through the module runner; a module is one instance whate
   expect(await app.transform('/src/server.ts', 'ssr')).toContain('MARKED')
 })
 
-test('an edit settles; the next evaluation runs the edited module', async () => {
-  const app = await host()
+test('an edit settles; the next evaluation runs the edited module', async ({
+  pluginHost,
+}) => {
+  const app = await pluginHost(served())
   expect((await app.importServer('/src/server.ts')).marker).toBe('MARKED')
   await app.edit({
     'src/server.ts': `export const marker = 'edited __MARK__'\n`,
@@ -96,10 +93,10 @@ test('an edit settles; the next evaluation runs the edited module', async () => 
   )
 })
 
-test.each(['console', 'context'] as const)(
+test.for(['console', 'context'] as const)(
   'a plugin warning through %s is in the merged diagnostics',
-  async (warn) => {
-    const app = await host(warn)
+  async (warn, { pluginHost }) => {
+    const app = await pluginHost(served(warn))
     const since = app.diagnostics.length
     await app.importServer('/src/server.ts')
     const reported = app.diagnostics.slice(since)
@@ -116,14 +113,21 @@ test.each(['console', 'context'] as const)(
   },
 )
 
-test('nothing reported: a quiet plugin leaves no problem on any channel', async () => {
-  const app = await host()
+test('nothing reported: a quiet plugin leaves no problem on any channel', async ({
+  pluginHost,
+}) => {
+  const app = await pluginHost(served())
   await app.importServer('/src/server.ts')
   expectNoProblems(app.diagnostics)
 })
 
-test('two live apps keep console diagnostics scoped to their own work', async () => {
-  const [first, second] = await Promise.all([host('console'), host('console')])
+test('two live apps keep console diagnostics scoped to their own work', async ({
+  pluginHost,
+}) => {
+  const [first, second] = await Promise.all([
+    pluginHost(served('console')),
+    pluginHost(served('console')),
+  ])
   await Promise.all([
     first.importServer('/src/server.ts'),
     second.importServer('/src/server.ts'),

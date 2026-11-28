@@ -7,18 +7,15 @@
 import { watch } from 'node:fs'
 import { readFile, stat, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { expect, onTestFinished, test } from 'vitest'
-import { createRsbuildDevServer } from '../../src/rsbuild-dev-server'
+import { expect } from 'vitest'
+import { test } from '../../src/test'
 import type { RsbuildPlugin, Rspack } from '@rsbuild/core'
 import type { FSWatcher } from 'node:fs'
 
-const testsDir = path.dirname(fileURLToPath(import.meta.url))
-
-test('rebuilds the edited module and emits the edit', async () => {
-  const server = await createRsbuildDevServer({
-    dir: testsDir,
-    registerCleanup: onTestFinished,
+test('rebuilds the edited module and emits the edit', async ({
+  rsbuildServer,
+}) => {
+  const server = await rsbuildServer({
     files: {
       'src/entry.ts': `import { leaf } from './leaf'\nconsole.log(leaf)\n`,
       'src/leaf.ts': `export const leaf = 'MARK_V1'\n`,
@@ -39,10 +36,10 @@ test('rebuilds the edited module and emits the edit', async () => {
 // wait must still end with that compile, which started after the module's
 // write. Here a large file nothing imports, which the test accepts no
 // compile for, keeps the writes going after the module's.
-test('a compile that starts before the writes of the edit finish ends the wait', async () => {
-  const server = await createRsbuildDevServer({
-    dir: testsDir,
-    registerCleanup: onTestFinished,
+test('a compile that starts before the writes of the edit finish ends the wait', async ({
+  rsbuildServer,
+}) => {
+  const server = await rsbuildServer({
     files: {
       'src/entry.ts': `import { leaf } from './leaf'\nconsole.log(leaf)\n`,
       'src/leaf.ts': `export const leaf = 'MARK_V1'\n`,
@@ -63,12 +60,11 @@ test('a compile that starts before the writes of the edit finish ends the wait',
 
 // Rsbuild's default: each compile after an edit emits hot-update chunks with
 // the edited modules, which a connected browser applies.
-test.each([true, false])(
+test.for([true, false])(
   'hmr: %s, an edit emits hot-update chunks with the edit only with hmr, and outputs() leaves them out',
-  async (hmr) => {
-    const server = await createRsbuildDevServer({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+  { timeout: 30_000 },
+  async (hmr, { rsbuildServer }) => {
+    const server = await rsbuildServer({
       hmr,
       files: {
         'src/entry.ts': `import { leaf } from './leaf'\nconsole.log(leaf)\n`,
@@ -86,14 +82,13 @@ test.each([true, false])(
     ).toEqual([])
     expect(Object.values(outputs).join('\n')).toContain('MARK_V2')
   },
-  30_000,
 )
 
-test('a compile a plugin makes fail rejects the wait with its error, without waiting for the timeout', async () => {
+test('a compile a plugin makes fail rejects the wait with its error, without waiting for the timeout', async ({
+  rsbuildServer,
+}) => {
   let compile = 0
-  const server = await createRsbuildDevServer({
-    dir: testsDir,
-    registerCleanup: onTestFinished,
+  const server = await rsbuildServer({
     compileTimeout: 20_000,
     files: { 'src/entry.ts': `console.log('MARK_V1')\n` },
     plugins: [
@@ -161,10 +156,10 @@ console.log(generated, source)
   'src/generated.ts': `export const generated = 'MARK_GENERATED_V1'\n`,
 }
 
-test('settle() waits for the compiles of the files a plugin writes in a compile', async () => {
-  const server = await createRsbuildDevServer({
-    dir: testsDir,
-    registerCleanup: onTestFinished,
+test('settle() waits for the compiles of the files a plugin writes in a compile', async ({
+  rsbuildServer,
+}) => {
+  const server = await rsbuildServer({
     files: generatedApp,
     plugins: [generator()],
   })
@@ -176,10 +171,10 @@ test('settle() waits for the compiles of the files a plugin writes in a compile'
   expect(outputs).not.toContain('MARK_GENERATED_V1')
 }, 30_000)
 
-test('settle() waits for a compile that started after each written file, unless accept() takes it', async () => {
-  const server = await createRsbuildDevServer({
-    dir: testsDir,
-    registerCleanup: onTestFinished,
+test('settle() waits for a compile that started after each written file, unless accept() takes it', async ({
+  rsbuildServer,
+}) => {
+  const server = await rsbuildServer({
     files: { 'src/entry.ts': `console.log('MARK_V1')\n` },
   })
   await server.write({ 'notes.txt': 'unread' })
@@ -198,10 +193,10 @@ test('settle() waits for a compile that started after each written file, unless 
   )
 }, 30_000)
 
-test('settle() rejects at its bound while a plugin writes a file the compiles read on each compile', async () => {
-  const server = await createRsbuildDevServer({
-    dir: testsDir,
-    registerCleanup: onTestFinished,
+test('settle() rejects at its bound while a plugin writes a file the compiles read on each compile', async ({
+  rsbuildServer,
+}) => {
+  const server = await rsbuildServer({
     files: generatedApp,
     plugins: [generator(true)],
   })
@@ -218,10 +213,10 @@ test('settle() rejects at its bound while a plugin writes a file the compiles re
 // watcher invalidates the compiler, and the compile that follows the write
 // ends the wait. (The old wait required every written file to be a
 // dependency of the compile and timed out here.)
-test('edit() and settle() wait for the compile a plugin-owned watcher starts', async () => {
-  const server = await createRsbuildDevServer({
-    dir: testsDir,
-    registerCleanup: onTestFinished,
+test('edit() and settle() wait for the compile a plugin-owned watcher starts', async ({
+  rsbuildServer,
+}) => {
+  const server = await rsbuildServer({
     files: {
       'src/entry.ts': `import { text } from './virtual'\nconsole.log(text)\n`,
       'src/virtual.ts': `export const text = 'placeholder'\n`,
@@ -287,11 +282,11 @@ function ownWatcher(): RsbuildPlugin {
 // A plugin that reports a problem once (Start's import protection with
 // `log: 'once'`) reports it in the first compile that sees it; a dev server
 // compiles again on its own, so the diagnostics of every compile are kept.
-test('diagnostics keeps the reports of every compile; errors and warnings hold the last compile', async () => {
+test('diagnostics keeps the reports of every compile; errors and warnings hold the last compile', async ({
+  rsbuildServer,
+}) => {
   let compile = 0
-  const server = await createRsbuildDevServer({
-    dir: testsDir,
-    registerCleanup: onTestFinished,
+  const server = await rsbuildServer({
     files: { 'src/entry.ts': `console.log('MARK_V1')\n` },
     plugins: [
       {
@@ -387,11 +382,11 @@ function watchedBy({ compiler, read }: Captured) {
 // watchpack then scans the app's directories; a file deleted before that is
 // never reported (oracle/KNOWN-BUGS.md, "Upstream issues"). The start
 // resolves only once the watcher knows every app file the compile read.
-test('the start resolves once the watcher knows every app file the compile read', async () => {
+test('the start resolves once the watcher knows every app file the compile read', async ({
+  rsbuildServer,
+}) => {
   const compilers: Array<Captured> = []
-  const server = await createRsbuildDevServer({
-    dir: testsDir,
-    registerCleanup: onTestFinished,
+  const server = await rsbuildServer({
     files: {
       'src/entry.ts': `import { leaf } from './leaf'\nconsole.log(leaf)\n`,
       'src/leaf.ts': `export const leaf = 'MARK_V1'\n`,
@@ -412,11 +407,11 @@ test('the start resolves once the watcher knows every app file the compile read'
 // server compiler watch the client compiler's files and ignores everything
 // in the client's own watcher. The start must still resolve, with every
 // file known to a watcher, when a compiler's watcher ignores everything.
-test('the start resolves with a compiler whose watcher ignores every file, while another watches them', async () => {
+test('the start resolves with a compiler whose watcher ignores every file, while another watches them', async ({
+  rsbuildServer,
+}) => {
   const compilers: Array<Captured> = []
-  const server = await createRsbuildDevServer({
-    dir: testsDir,
-    registerCleanup: onTestFinished,
+  const server = await rsbuildServer({
     compileTimeout: 10_000,
     files: {
       'src/entry.ts': `import { leaf } from './leaf'\nconsole.log(leaf)\n`,
@@ -460,11 +455,11 @@ test('the start resolves with a compiler whose watcher ignores every file, while
 // watchpack allows for modification times (up to 2 s), so its first scan
 // would report them changed and Rspack would start a second compile by
 // itself, during a test's first edit.
-test("the app's initial files predate the first compile beyond the watcher's accuracy", async () => {
+test("the app's initial files predate the first compile beyond the watcher's accuracy", async ({
+  rsbuildServer,
+}) => {
   let firstCompile: number | undefined
-  const server = await createRsbuildDevServer({
-    dir: testsDir,
-    registerCleanup: onTestFinished,
+  const server = await rsbuildServer({
     files: {
       'src/entry.ts': `import { leaf } from './leaf'\nconsole.log(leaf)\n`,
       'src/leaf.ts': `export const leaf = 'MARK_V1'\n`,
@@ -497,13 +492,13 @@ test("the app's initial files predate the first compile beyond the watcher's acc
 // if it names the edited file (here for an earlier change of it): `edit()`
 // waits for a compile that started once the file held the edit. A plugin
 // holds that earlier compile in `watchRun` until the edit began.
-test('a compile that started before the write of an edit does not end its wait', async () => {
+test('a compile that started before the write of an edit does not end its wait', async ({
+  rsbuildServer,
+}) => {
   let hold: { held: () => void; release: Promise<void> } | undefined
   /** The contents of `src/leaf.ts` when each compile started; then `done`. */
   const compiles: Array<{ leaf: string; done: boolean }> = []
-  const server = await createRsbuildDevServer({
-    dir: testsDir,
-    registerCleanup: onTestFinished,
+  const server = await rsbuildServer({
     files: {
       'src/entry.ts': `import { leaf } from './leaf'\nconsole.log(leaf)\n`,
       'src/leaf.ts': `export const leaf = 'MARK_V1'\n`,

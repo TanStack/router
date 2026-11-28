@@ -13,11 +13,10 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createBuilder } from 'vite'
-import { expect, onTestFinished, test } from 'vitest'
+import { expect } from 'vitest'
 import { createApp, withBuildEnvironment } from '../../src/build-harness'
 import { expectNoProblems } from '../../src/diagnostic-channel'
-import { createPluginHost } from '../../src/plugin-host'
-import { createRsbuildPluginHost } from '../../src/rsbuild-plugin-host'
+import { test } from '../../src/test'
 import type { ChannelDiagnostic } from '../../src/diagnostic-channel'
 import type { RsbuildPlugin, Rspack } from '@rsbuild/core'
 import type { Plugin } from 'vite'
@@ -52,10 +51,8 @@ const viteFiles = {
 
 test(
   'vite build: console output of Rolldown-called hooks is in the build diagnostics',
-  async () => {
-    const app = await createPluginHost({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+  async ({ pluginHost }) => {
+    const app = await pluginHost({
       files: viteFiles,
       plugins: [consoleWarner()],
       serve: false,
@@ -77,10 +74,10 @@ test(
 
 test(
   'withBuildEnvironment: a Vite build’s console output and default-logger warnings are in its messages',
-  async () => {
+  async ({ appRoot }) => {
     const app = await createApp({
       dir: testsDir,
-      registerCleanup: onTestFinished,
+      parent: appRoot,
       files: viteFiles,
     })
     const messages: Array<ChannelDiagnostic> = []
@@ -147,12 +144,11 @@ function rspackWarner(): RsbuildPlugin {
   }
 }
 
-test.each(['dev', 'build'] as const)(
+test.for(['dev', 'build'] as const)(
   'rsbuild %s: console output of Rspack compiler and compilation hooks is in the diagnostics',
-  async (mode) => {
-    const host = await createRsbuildPluginHost({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+  { timeout },
+  async (mode, { rsbuildPluginHost }) => {
+    const host = await rsbuildPluginHost({
       files: { 'src/entry.ts': 'export const value = 1\n' },
       serve: mode === 'dev',
       plugins: [rspackWarner()],
@@ -166,7 +162,6 @@ test.each(['dev', 'build'] as const)(
     )
     expect(diagnostics.filter(({ shared }) => shared)).toEqual([])
   },
-  timeout,
 )
 
 /** Resolves once `count` callers wait on it: work that overlaps for sure. */
@@ -222,12 +217,10 @@ async function expectSeparated(
 
 test(
   'vite build: concurrent builds keep native-hook output naming their app, and share output naming neither',
-  async () => {
+  async ({ pluginHost }) => {
     await expectSeparated(async (meet) => {
       let root = ''
-      const app = await createPluginHost({
-        dir: testsDir,
-        registerCleanup: onTestFinished,
+      const app = await pluginHost({
         files: viteFiles,
         serve: false,
         plugins: [
@@ -250,13 +243,12 @@ test(
   timeout,
 )
 
-test.each(['dev', 'build'] as const)(
+test.for(['dev', 'build'] as const)(
   'rsbuild %s: concurrent apps keep native-hook output naming their app, and share output naming neither',
-  async (mode) => {
+  { timeout },
+  async (mode, { rsbuildPluginHost }) => {
     await expectSeparated(async (meet) => {
-      const host = await createRsbuildPluginHost({
-        dir: testsDir,
-        registerCleanup: onTestFinished,
+      const host = await rsbuildPluginHost({
         files: { 'src/entry.ts': 'export const value = 1\n' },
         serve: mode === 'dev',
         plugins: [
@@ -295,5 +287,4 @@ test.each(['dev', 'build'] as const)(
       }
     })
   },
-  timeout,
 )

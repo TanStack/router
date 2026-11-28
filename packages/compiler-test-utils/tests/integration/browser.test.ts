@@ -6,12 +6,12 @@
  * an update nothing accepts reloads the page. A page can be given its
  * document, and an init script runs before the page's own code.
  */
-import { rm, writeFile } from 'node:fs/promises'
+import { writeFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from '@playwright/test'
-import { expect, onTestFinished, test } from 'vitest'
+import { expect, onTestFinished } from 'vitest'
 import { createAppDirectory } from '../../src/app-directory'
 import {
   openPage,
@@ -19,11 +19,9 @@ import {
   runInPage,
   runPageLimit,
 } from '../../src/browser'
-import { createDevServer } from '../../src/dev-server'
 import { SettleTimeout, settleTimeoutIn } from '../../src/outcome'
-import { createPluginHost } from '../../src/plugin-host'
-import { createRsbuildDevServer } from '../../src/rsbuild-dev-server'
 import { runNodeProgram } from '../../src/run-node'
+import { test } from '../../src/test'
 import type { AddressInfo } from 'node:net'
 import type { Rspack } from '@rsbuild/core'
 
@@ -53,10 +51,8 @@ ${hot}.accept('./text.js', (updated) => show(updated?.text ?? text))
 
 test(
   'vite: the page shows an accepted update in place, and reloads for one nothing accepts',
-  async () => {
-    const server = await createDevServer({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+  async ({ devServer }) => {
+    const server = await devServer({
       browser: true,
       files: {
         'index.html': `<div id="app"></div><script type="module" src="/main.js"></script>`,
@@ -82,10 +78,8 @@ test(
 
 test(
   'rsbuild: the page shows an accepted update in place, and reloads for one nothing accepts',
-  async () => {
-    const server = await createRsbuildDevServer({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+  async ({ rsbuildServer }) => {
+    const server = await rsbuildServer({
       browser: true,
       entry: 'main.js',
       config: { html: { mountId: 'app' } },
@@ -114,10 +108,8 @@ test(
 // warnings (and its failed connection attempts) in the page.
 test(
   'rsbuild: Rsbuild’s HMR client prints nothing in the page',
-  async () => {
-    const server = await createRsbuildDevServer({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+  async ({ rsbuildServer }) => {
+    const server = await rsbuildServer({
       browser: true,
       entry: 'main.js',
       config: { html: { mountId: 'app' } },
@@ -275,9 +267,12 @@ test(
 
 test(
   'a browser that failed to launch is launched again on the next use',
-  async () => {
-    const root = await createAppDirectory(packageDirectory, '.browser-launch-')
-    onTestFinished(() => rm(root, { recursive: true, force: true }))
+  async ({ appRoot }) => {
+    const root = await createAppDirectory(
+      packageDirectory,
+      '.browser-launch-',
+      appRoot,
+    )
     const executable = path.join(root, 'chromium')
     const chromiumBuild =
       process.env.TANSTACK_COMPILER_TESTS_CHROMIUM ?? chromium.executablePath()
@@ -390,11 +385,11 @@ return { earlier, held: await (await fetch('/hold?run=${index}')).text() }`,
 // later run gets. When the page left only after the run returned, such a
 // reload, started while the page was on its way to `about:blank`, outlived
 // that navigation and interrupted the next run's navigation (under load).
-test('a run returns once its page left the run’s document: a message the dev server sends next reaches no page', async () => {
+test('a run returns once its page left the run’s document: a message the dev server sends next reaches no page', async ({
+  pluginHost,
+}) => {
   let answers = 0
-  const host = await createPluginHost({
-    dir: testsDir,
-    registerCleanup: onTestFinished,
+  const host = await pluginHost({
     client: true,
     plugins: [
       {

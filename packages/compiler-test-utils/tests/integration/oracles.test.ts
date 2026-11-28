@@ -6,27 +6,17 @@
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, onTestFinished, test } from 'vitest'
-import { bundleApp as bundleAppIn, bundlers } from '../../src/build-harness'
+import { describe, expect } from 'vitest'
+import { bundlers } from '../../src/build-harness'
 import {
   captureThrow,
   expectDiagnostic,
   mentionsFile,
 } from '../../src/diagnostics'
 import { traceStack } from '../../src/source-maps'
-import type { BundleOptions } from '../../src/build-harness'
+import { test } from '../../src/test'
 
 const timeout = 60_000
-
-const testsDir = path.dirname(fileURLToPath(import.meta.url))
-
-function bundleApp(options: Omit<BundleOptions, 'dir'>) {
-  return bundleAppIn({
-    dir: testsDir,
-    registerCleanup: onTestFinished,
-    ...options,
-  })
-}
 
 // One unexpected token, so every parser reports the same position: line 2,
 // column 26 (1-based), the `*`.
@@ -47,9 +37,9 @@ export function fail(reason: Reason = 'MARK_FAIL'): string {
 describe.each(bundlers)('%s', (bundler) => {
   test(
     'a build error names the broken file and its line',
-    async () => {
+    async ({ build }) => {
       const diagnostics = await captureThrow(() =>
-        bundleApp({
+        build({
           bundler,
           files: {
             'entry.ts': `export { value } from './src/broken'\n`,
@@ -68,8 +58,8 @@ describe.each(bundlers)('%s', (bundler) => {
 
   test(
     'a throw in a built chunk resolves through its stack to the line of the throw',
-    async () => {
-      const app = await bundleApp({
+    async ({ build }) => {
+      const app = await build({
         bundler,
         files: {
           'entry.ts': `export async function load() {

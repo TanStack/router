@@ -6,12 +6,13 @@
  * Vitest of their own, in a child Node process, with the setup file of the
  * compiler test projects.
  */
-import { rm, writeFile } from 'node:fs/promises'
+import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { expect, onTestFinished, test } from 'vitest'
+import { expect } from 'vitest'
 import { createAppDirectory } from '../src/app-directory'
 import { runNodeProgram } from '../src/run-node'
+import { test } from '../src/test'
 
 const packageDirectory = path.dirname(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -19,9 +20,12 @@ const packageDirectory = path.dirname(
 const setupFile = path.join(packageDirectory, 'src/pins-setup.ts')
 
 /** Runs `pins` (a test file's code) in a Vitest of its own; each test's state. */
-async function runPinsFile(pins: string, env: NodeJS.ProcessEnv = {}) {
-  const root = await createAppDirectory(packageDirectory, '.pins-')
-  onTestFinished(() => rm(root, { recursive: true, force: true }))
+async function runPinsFile(
+  appRoot: string,
+  pins: string,
+  env: NodeJS.ProcessEnv = {},
+) {
+  const root = await createAppDirectory(packageDirectory, '.pins-', appRoot)
   await writeFile(path.join(root, 'pins.test.ts'), pins)
   const { stdout } = await runNodeProgram(
     `import { startVitest } from 'vitest/node'
@@ -89,8 +93,8 @@ test.fails('an assertion fails, then a cleanup times out', () => {
 test.fails('nothing fails', () => {})
 `
 
-test('a pin passes only when an assertion of it fails', async () => {
-  expect(await runPinsFile(pins)).toEqual({
+test('a pin passes only when an assertion of it fails', async ({ appRoot }) => {
+  expect(await runPinsFile(appRoot, pins)).toEqual({
     'an assertion fails': 'pass',
     'a polled assertion fails': 'pass',
     'a soft assertion fails': 'pass',
@@ -108,13 +112,15 @@ test('a pin passes only when an assertion of it fails', async () => {
   })
 }, 60_000)
 
-test('with COMPILER_TESTS_PINS=run, pins are ordinary tests', async () => {
-  expect(await runPinsFile(pins, { COMPILER_TESTS_PINS: 'run' })).toMatchObject(
-    {
-      'an assertion fails': 'fail',
-      'the harness throws': 'fail',
-      'the test times out': 'fail',
-      'nothing fails': 'pass',
-    },
-  )
+test('with COMPILER_TESTS_PINS=run, pins are ordinary tests', async ({
+  appRoot,
+}) => {
+  expect(
+    await runPinsFile(appRoot, pins, { COMPILER_TESTS_PINS: 'run' }),
+  ).toMatchObject({
+    'an assertion fails': 'fail',
+    'the harness throws': 'fail',
+    'the test times out': 'fail',
+    'nothing fails': 'pass',
+  })
 }, 60_000)

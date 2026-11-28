@@ -8,27 +8,13 @@
 import { existsSync } from 'node:fs'
 import { readFile, readdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { describe, expect, onTestFinished, test } from 'vitest'
-import {
-  createDevServer as createDevServerIn,
-  describeHmr,
-} from '../src/dev-server'
+import { describe, expect } from 'vitest'
+import { describeHmr } from '../src/dev-server'
 import { saveAppFile } from '../src/save-file'
-import type { DevServerOptions } from '../src/dev-server'
+import { test } from '../src/test'
 import type { Plugin, ViteDevServer } from 'vite'
 
 const timeout = 30_000
-
-const testsDir = path.dirname(fileURLToPath(import.meta.url))
-
-function createDevServer(options: Omit<DevServerOptions, 'dir'>) {
-  return createDevServerIn({
-    dir: testsDir,
-    registerCleanup: onTestFinished,
-    ...options,
-  })
-}
 
 /**
  * `main.ts` accepts its own updates and imports `dep.ts`, which imports
@@ -56,8 +42,8 @@ const sleep = (ms: number) =>
 describe('dev server harness', () => {
   test(
     'serves an edited module in each environment after settle()',
-    async () => {
-      const server = await createDevServer({ files })
+    async ({ devServer }) => {
+      const server = await devServer({ files })
       expect(await server.transform('/leaf.ts')).toContain('v1')
       expect((await server.import('/dep.ts')).dep).toBe('dep:v1')
 
@@ -73,8 +59,8 @@ describe('dev server harness', () => {
 
   test(
     'load() requests every module a module imports transitively, also the ones it imports lazily, in each environment',
-    async () => {
-      const server = await createDevServer({ files })
+    async ({ devServer }) => {
+      const server = await devServer({ files })
       expect(Object.keys(await server.load('/main.ts')).sort()).toEqual([
         '/dep.ts',
         '/leaf.ts',
@@ -91,8 +77,8 @@ describe('dev server harness', () => {
 
   test(
     'reports an update to the accepting module, and a full reload when nothing accepts',
-    async () => {
-      const server = await createDevServer({ files })
+    async ({ devServer }) => {
+      const server = await devServer({ files })
       await server.load('/main.ts')
       await server.load('/orphan.ts')
 
@@ -112,7 +98,7 @@ describe('dev server harness', () => {
 
   test(
     'reports created, renamed and deleted files to the plugins, and the files they write meanwhile',
-    async () => {
+    async ({ devServer }) => {
       const seen: Array<string> = []
       /**
        * Writes `generated.ts` listing the other `.ts` files when one of them
@@ -149,7 +135,7 @@ describe('dev server harness', () => {
           }
         },
       }
-      const server = await createDevServer({
+      const server = await devServer({
         files: { 'a.ts': `export const a = 1\n` },
         plugins: [generator],
       })
@@ -187,8 +173,8 @@ describe('dev server harness', () => {
   // same; settle() waits for that event, whatever the clock says.
   test(
     'reports a write that leaves the contents as they were as a change',
-    async () => {
-      const server = await createDevServer({ files })
+    async ({ devServer }) => {
+      const server = await devServer({ files })
       await server.edit({ 'leaf.ts': files['leaf.ts'] })
       expect(server.events).toEqual([{ event: 'change', file: 'leaf.ts' }])
     },
@@ -201,7 +187,7 @@ describe('dev server harness', () => {
   // which the watcher drops a second change of a file.
   test(
     'never settles while a plugin rewrites a file with the same contents on each event',
-    async () => {
+    async ({ devServer }) => {
       const rewriter: Plugin = {
         name: 'rewriter',
         async watchChange(id) {
@@ -217,7 +203,7 @@ describe('dev server harness', () => {
         },
       }
       // (a short bound: the loop shows after the first round)
-      const server = await createDevServer({
+      const server = await devServer({
         files,
         plugins: [rewriter],
         settleTimeout: 1_000,
@@ -236,7 +222,7 @@ describe('dev server harness', () => {
 
   test(
     'settle() waits for the handling of each file of an edit, however long a plugin takes',
-    async () => {
+    async ({ devServer }) => {
       const handling: Array<string> = []
       const slow: Plugin = {
         name: 'slow',
@@ -250,7 +236,7 @@ describe('dev server harness', () => {
           handling.push(`end ${relative}`)
         },
       }
-      const server = await createDevServer({ files, plugins: [slow] })
+      const server = await devServer({ files, plugins: [slow] })
       await server.load('/main.ts')
       await server.load('/orphan.ts')
       const messages = await server.edit({
@@ -270,8 +256,8 @@ describe('dev server harness', () => {
   )
   test(
     'serves a request over HTTP like the client environment',
-    async () => {
-      const server = await createDevServer({ files, listen: true })
+    async ({ devServer }) => {
+      const server = await devServer({ files, listen: true })
       const response = await server.fetch('/leaf.ts')
       expect(response.status).toBe(200)
       // HTTP responses inline the source map
@@ -287,10 +273,10 @@ describe('dev server harness', () => {
 
   test(
     'settles when a plugin restarts the server while handling a file event, and keeps reporting',
-    async () => {
+    async ({ devServer }) => {
       let restarts = 0
       let restartable: ViteDevServer | undefined
-      const server = await createDevServer({
+      const server = await devServer({
         files: { ...files, 'restart.json': '{}' },
         plugins: [
           {
@@ -324,8 +310,8 @@ describe('dev server harness', () => {
 
   test(
     'rejects settle() with the error a plugin throws while handling a file event',
-    async () => {
-      const server = await createDevServer({
+    async ({ devServer }) => {
+      const server = await devServer({
         files,
         plugins: [
           {
@@ -348,13 +334,13 @@ describe('dev server harness', () => {
   // background.
   test(
     'idle() waits for the background transforms of the imports of a served module',
-    async () => {
+    async ({ devServer }) => {
       let release!: () => void
       const released = new Promise<void>((resolve) => {
         release = resolve
       })
       const transformed: Array<string> = []
-      const server = await createDevServer({
+      const server = await devServer({
         files,
         plugins: [
           {
@@ -392,8 +378,8 @@ describe('bundledDev', () => {
 
   test(
     'clientBundle() bundles the client from the entry, again after an edit the dev engine watched; the other environments are served as usual',
-    async () => {
-      const server = await createDevServer({
+    async ({ devServer }) => {
+      const server = await devServer({
         bundledDev: { entry: 'main.ts' },
         files: {
           'main.ts': `import { dep } from './dep'\nexport const value = dep\n`,
@@ -421,8 +407,8 @@ describe('bundledDev', () => {
 
   test(
     'clientBundle() rejects when the client fails to bundle',
-    async () => {
-      const server = await createDevServer({
+    async ({ devServer }) => {
+      const server = await devServer({
         bundledDev: { entry: 'main.ts' },
         files: { 'main.ts': `export { value } from './missing-module'\n` },
       })

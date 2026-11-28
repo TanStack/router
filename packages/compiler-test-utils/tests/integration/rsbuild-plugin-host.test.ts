@@ -8,21 +8,16 @@
  * and Rsbuild's logger's, each compilation report once.
  */
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { expect, onTestFinished, test, vi } from 'vitest'
+import { expect, onTestFinished, vi } from 'vitest'
 import { describeBuild } from '../../src/build-harness'
 import { problems } from '../../src/diagnostic-channel'
 import { expectDiagnostic } from '../../src/diagnostics'
 import { SettleTimeout } from '../../src/outcome'
-import {
-  RsbuildHostBuildError,
-  createRsbuildPluginHost,
-} from '../../src/rsbuild-plugin-host'
+import { RsbuildHostBuildError } from '../../src/rsbuild-plugin-host'
+import { test } from '../../src/test'
 import type { RsbuildPlugin, Rspack } from '@rsbuild/core'
 
 const timeout = 60_000
-
-const testsDir = path.dirname(fileURLToPath(import.meta.url))
 
 /** Rewrites `__MARK__` (a loader of its own) and warns through the console. */
 function userPlugin(): RsbuildPlugin {
@@ -65,10 +60,8 @@ const environments = {
 
 test(
   'dev: server code through loadBundle, client code in the page, an edit, merged diagnostics',
-  async () => {
-    const host = await createRsbuildPluginHost({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+  async ({ rsbuildPluginHost }) => {
+    const host = await rsbuildPluginHost({
       files,
       plugins: [userPlugin()],
       config: { environments },
@@ -100,7 +93,7 @@ test(
 
 test(
   'build: plugins run under the production NODE_ENV, whatever the worker’s',
-  async () => {
+  async ({ rsbuildPluginHost }) => {
     const seen: Array<string | undefined> = []
     const recordNodeEnv: RsbuildPlugin = {
       name: 'record-node-env',
@@ -114,9 +107,7 @@ test(
     onTestFinished(() => {
       vi.unstubAllEnvs()
     })
-    const host = await createRsbuildPluginHost({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+    const host = await rsbuildPluginHost({
       files,
       plugins: [recordNodeEnv],
       config: { environments },
@@ -131,10 +122,8 @@ test(
 
 test(
   'build: each environment output, and the production client evidence for the dangling-name check',
-  async () => {
-    const host = await createRsbuildPluginHost({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+  async ({ rsbuildPluginHost }) => {
+    const host = await rsbuildPluginHost({
       files,
       plugins: [userPlugin()],
       config: { environments },
@@ -173,12 +162,11 @@ test(
   timeout,
 )
 
-test.each(['dev', 'build'] as const)(
+test.for(['dev', 'build'] as const)(
   'the %s host records warnings through Rsbuild’s logger',
-  async (mode) => {
-    const host = await createRsbuildPluginHost({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+  { timeout },
+  async (mode, { rsbuildPluginHost }) => {
+    const host = await rsbuildPluginHost({
       files: { 'src/entry.ts': 'export const value = 1' },
       serve: mode === 'dev',
       plugins: [
@@ -199,16 +187,13 @@ test.each(['dev', 'build'] as const)(
       file: 'src/entry.ts',
     })
   },
-  timeout,
 )
 
 test(
   'concurrent Rsbuild apps retain their own native-loader diagnostics',
-  async () => {
+  async ({ rsbuildPluginHost }) => {
     const start = () =>
-      createRsbuildPluginHost({
-        dir: testsDir,
-        registerCleanup: onTestFinished,
+      rsbuildPluginHost({
         files: { 'src/entry.ts': "export const value = '__MARK__'" },
         plugins: [userPlugin()],
       })
@@ -273,17 +258,16 @@ function compilationReporter(severity: 'warning' | 'error'): RsbuildPlugin {
 // Rsbuild's logger prints each compile's report again (and a status line
 // for a compile that failed); the channel records the report once, from
 // the compilation.
-test.each([
+test.for([
   ['dev', 'warning'],
   ['dev', 'error'],
   ['build', 'warning'],
   ['build', 'error'],
 ] as const)(
   'the %s host records a compilation %s once',
-  async (mode, severity) => {
-    const host = await createRsbuildPluginHost({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+  { timeout },
+  async ([mode, severity], { rsbuildPluginHost }) => {
+    const host = await rsbuildPluginHost({
       files: { 'src/entry.ts': 'export const value = 1' },
       serve: mode === 'dev',
       plugins: [compilationReporter(severity)],
@@ -306,15 +290,12 @@ test.each([
     })
     expect(problems(diagnostics)).toHaveLength(1)
   },
-  timeout,
 )
 
 test(
   'a wait that ran out of time during a build is thrown as it is, not as a failed build',
-  async () => {
-    const host = await createRsbuildPluginHost({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+  async ({ rsbuildPluginHost }) => {
+    const host = await rsbuildPluginHost({
       files: { 'src/entry.ts': 'export const value = 1' },
       serve: false,
       plugins: [

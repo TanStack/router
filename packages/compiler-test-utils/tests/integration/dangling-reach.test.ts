@@ -8,14 +8,11 @@
  * chunk where the check passes it, and the page throws `ReferenceError`.
  * Source: the X1 round-4 review probes (Fable's 30 cells, Astra's apps).
  */
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { expect, onTestFinished, test } from 'vitest'
-import { DanglingNameError, bundleApp } from '../../src/build-harness'
+import { expect } from 'vitest'
+import { DanglingNameError } from '../../src/build-harness'
+import { test } from '../../src/test'
 
 const timeout = 60_000
-const testsDir = path.dirname(fileURLToPath(import.meta.url))
-
 const head = `export function label(productLabel: string) {
   return productLabel.toUpperCase()
 }
@@ -134,7 +131,7 @@ const webpackLike = () => ({
   },
 })
 
-test.each(
+test.for(
   (['vite', 'webpack', 'rspack'] as const).flatMap((bundler) =>
     Object.keys(shapes).flatMap((shape) =>
       [false, true].map((minify) => [bundler, shape, minify] as const),
@@ -142,10 +139,9 @@ test.each(
   ),
 )(
   '%s: a read %s is dangling (minified: %s)',
-  async (bundler, shape, minify) => {
-    const outcome = await bundleApp({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+  { timeout },
+  async ([bundler, shape, minify], { build }) => {
+    const outcome = await build({
       bundler,
       env: 'client',
       minify,
@@ -180,12 +176,11 @@ test.each(
       'droppedLabel',
     ])
   },
-  timeout,
 )
 
 // An app's own function whose read follows a return: only the reads it runs
 // count (minified or not; webpack, as Astra's apps).
-test.each(
+test.for(
   (
     [
       [
@@ -224,10 +219,9 @@ test.each(
   ),
 )(
   'webpack: an app function reading a name nothing binds %s (minimized: %s)',
-  async (_, minimize, body, expected) => {
-    const outcome = await bundleApp({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+  { timeout },
+  async ([_, minimize, body, expected], { build }) => {
+    const outcome = await build({
       bundler: 'webpack',
       env: 'client',
       files: {
@@ -253,14 +247,13 @@ test.each(
       expect(outcome).toBe(expected)
     }
   },
-  timeout,
 )
 
 // A bundle-level read after a `try` that always returns never runs: the
 // chunk loads.
 test(
   'webpack: a footer read after a try that returns, with an empty finally, is no read',
-  async () => {
+  async ({ build }) => {
     const footer = () => ({
       apply(compiler: {
         webpack: {
@@ -313,9 +306,7 @@ test(
         )
       },
     })
-    const outcome = await bundleApp({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+    const outcome = await build({
       bundler: 'webpack',
       env: 'client',
       files: { 'entry.ts': `export const value = () => 1\n` },

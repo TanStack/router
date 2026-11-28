@@ -7,17 +7,15 @@
  */
 import { appendFile } from 'node:fs/promises'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { expect, onTestFinished, test, vi } from 'vitest'
+import { expect, onTestFinished, vi } from 'vitest'
 import { withBuildEnvironment } from '../../src/build-harness'
 import { expectDiagnostic } from '../../src/diagnostics'
 import { SettleTimeout } from '../../src/outcome'
-import { HostBuildError, createPluginHost } from '../../src/plugin-host'
+import { HostBuildError } from '../../src/plugin-host'
+import { test } from '../../src/test'
 import type { Plugin } from 'vite'
 
 const timeout = 60_000
-
-const testsDir = path.dirname(fileURLToPath(import.meta.url))
 
 /** Rewrites `__MARK__` in the app's modules; warns through `this.warn`. */
 const userPlugin: Plugin = {
@@ -52,10 +50,8 @@ export const read = () => absent
 
 test(
   'client code runs in the shared page: rendered by the module, with the real hot context, and a missing import throws',
-  async () => {
-    const app = await createPluginHost({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+  async ({ pluginHost }) => {
+    const app = await pluginHost({
       files,
       plugins: [userPlugin],
       client: true,
@@ -100,10 +96,8 @@ test(
 // connected (a held message is sent right after `connected`, before it).
 test(
   'a full reload sent while no page runs is not handed to the next page that connects',
-  async () => {
-    const app = await createPluginHost({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+  async ({ pluginHost }) => {
+    const app = await pluginHost({
       files,
       plugins: [],
       client: true,
@@ -138,10 +132,8 @@ test(
 
 test(
   'vite build runs the same public plugins; chunks, describe() and diagnostics',
-  async () => {
-    const app = await createPluginHost({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+  async ({ pluginHost }) => {
+    const app = await pluginHost({
       files,
       plugins: [userPlugin],
       serve: false,
@@ -165,10 +157,8 @@ test(
 
 test(
   'vite build builds for production, whatever NODE_ENV the worker runs under',
-  async () => {
-    const app = await createPluginHost({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+  async ({ pluginHost }) => {
+    const app = await pluginHost({
       files: {
         'src/env.ts': `export const env = [process.env.NODE_ENV, import.meta.env.PROD, import.meta.env.DEV]\n`,
       },
@@ -202,10 +192,8 @@ test(
 
 test(
   'a dev server’s client code keeps its NODE_ENV while a build of the worker runs',
-  async () => {
-    const app = await createPluginHost({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+  async ({ pluginHost }) => {
+    const app = await pluginHost({
       files: {
         'src/env.ts': `export const env = process.env.NODE_ENV\n`,
       },
@@ -223,10 +211,8 @@ test(
 
 test(
   'a define of NODE_ENV the config gives wins over the dev server’s',
-  async () => {
-    const app = await createPluginHost({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+  async ({ pluginHost }) => {
+    const app = await pluginHost({
       files: {
         'src/env.ts': `export const env = process.env.NODE_ENV\n`,
       },
@@ -243,10 +229,8 @@ test(
 
 test(
   'a failed build rejects with its error and what it reported',
-  async () => {
-    const app = await createPluginHost({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+  async ({ pluginHost }) => {
+    const app = await pluginHost({
       files: { ...files, 'src/label.ts': `export const label = (` },
       plugins: [userPlugin],
       serve: false,
@@ -265,10 +249,8 @@ test(
 
 test(
   'a wait that ran out of time during a build is thrown as it is, not as a failed build',
-  async () => {
-    const app = await createPluginHost({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+  async ({ pluginHost }) => {
+    const app = await pluginHost({
       files,
       plugins: [
         {

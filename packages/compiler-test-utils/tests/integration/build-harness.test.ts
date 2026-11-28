@@ -7,11 +7,10 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { describe, expect, onTestFinished } from 'vitest'
 import {
   BuildError,
   DanglingNameError,
-  bundleApp as bundleAppIn,
   bundlers,
   createApp,
   describeBuild,
@@ -20,26 +19,12 @@ import {
 import { expectNoProblems } from '../../src/diagnostic-channel'
 import { findDiagnostics } from '../../src/diagnostics'
 import { SettleTimeout } from '../../src/outcome'
-import type {
-  BundleOptions,
-  BundlerPlugins,
-  Placement,
-} from '../../src/build-harness'
+import { test } from '../../src/test'
+import type { BundlerPlugins, Placement } from '../../src/build-harness'
 
 const timeout = 60_000
 
 const testsDir = path.dirname(fileURLToPath(import.meta.url))
-
-/** Builds a one-off app (`bundleApp`) in this directory, without a plugin. */
-function bundleApp(
-  options: Omit<BundleOptions, 'dir'> & { plugins?: BundlerPlugins },
-) {
-  return bundleAppIn({
-    dir: testsDir,
-    registerCleanup: onTestFinished,
-    ...options,
-  })
-}
 
 /**
  * The entry imports `./eager` statically and `./lazy` on demand, and never
@@ -67,10 +52,11 @@ export function unused() {
 }
 
 describe.each(bundlers)('%s', (bundler) => {
-  test.each(['ssr', 'client'] as const)(
+  test.for(['ssr', 'client'] as const)(
     'reports static imports as eager and dynamic imports as lazy, and runs the output (%s)',
-    async (env) => {
-      const app = await bundleApp({ bundler, env, files: dynamicImportApp })
+    { timeout },
+    async (env, { build }) => {
+      const app = await build({ bundler, env, files: dynamicImportApp })
       expect(app.eager).toContain(app.entry.fileName)
       expect(app.lazy).not.toHaveLength(0)
       expect({
@@ -93,11 +79,10 @@ return [entry.value, await entry.load()]`)
         env === 'client' ? '<div id="root"></div>' : undefined,
       )
     },
-    timeout,
   )
 
-  test('emits source maps naming the source files', async () => {
-    const app = await bundleApp({
+  test('emits source maps naming the source files', async ({ build }) => {
+    const app = await build({
       bundler,
       files: dynamicImportApp,
       sourcemap: true,
@@ -110,8 +95,10 @@ return [entry.value, await entry.load()]`)
     ).toContain('lazy.ts')
   })
 
-  test('maps a frame of an error stack through the source map of its chunk', async () => {
-    const app = await bundleApp({
+  test('maps a frame of an error stack through the source map of its chunk', async ({
+    build,
+  }) => {
+    const app = await build({
       bundler,
       files: {
         'entry.ts': `export async function load() {
@@ -146,8 +133,10 @@ export function fail(reason: Reason = 'MARK_FAIL'): string {
 
   // `<T>(value: T) => value` and `<number>input` only parse as TypeScript
   // without JSX, which is how every bundler reads a `.ts` file.
-  test('compiles the TypeScript-only syntax of a .ts module', async () => {
-    const app = await bundleApp({
+  test('compiles the TypeScript-only syntax of a .ts module', async ({
+    build,
+  }) => {
+    const app = await build({
       bundler,
       files: {
         'entry.ts': `const identity = <T>(value: T): T => value
@@ -160,8 +149,8 @@ export function read(input: unknown) {
     expect((await app.run('return entry.read(1)')).result).toBe(2)
   })
 
-  test('builds an app with a symlinked module', async () => {
-    const app = await bundleApp({
+  test('builds an app with a symlinked module', async ({ build }) => {
+    const app = await build({
       bundler,
       files: {
         'entry.ts': `export { linked } from './linked'\n`,
@@ -172,9 +161,9 @@ export function read(input: unknown) {
     expect((await app.run('return entry.linked')).result).toBe('MARK_LINKED')
   })
 
-  test('reports a build error through the bundler', async () => {
+  test('reports a build error through the bundler', async ({ build }) => {
     await expect(
-      bundleApp({
+      build({
         bundler,
         files: { 'entry.ts': `import { missing } from './missing'\nmissing()` },
       }),
@@ -248,10 +237,11 @@ const markersOf = (diagnostics: Array<{ text: string }>) =>
 // Severity is part of a report (SPEC §5.7: a clause that says "warn" and
 // allows no refusal asks for a warning): the result keeps it on both
 // channels, as a dev server's channel does.
-test.each(bundlers)(
+test.for(bundlers)(
   '%s: the reports of a build that succeeds keep their severity',
-  async (bundler) => {
-    const app = await bundleApp({
+  { timeout },
+  async (bundler, { build }) => {
+    const app = await build({
       bundler,
       files: { 'entry.ts': `export const value = 1\n` },
       plugins: reportingPlugins,
@@ -290,13 +280,14 @@ test.each(bundlers)(
         : { warning: ['MARK_PLUGIN_WARNING'], error: [] },
     )
   },
-  timeout,
 )
 
 // Vite's logger: an error logged by a build that does not fail is a report
 // of that build, an error, not a warning.
-test('vite: an error logged by a build that succeeds is reported as an error', async () => {
-  const app = await bundleApp({
+test('vite: an error logged by a build that succeeds is reported as an error', async ({
+  build,
+}) => {
+  const app = await build({
     bundler: 'vite',
     files: { 'entry.ts': `export const value = 1\n` },
     plugins: {
@@ -316,7 +307,9 @@ test('vite: an error logged by a build that succeeds is reported as an error', a
 })
 
 // Like `vite build`, which minifies client builds but not SSR builds.
-test('a Vite production build minifies the client, not SSR', async () => {
+test('a Vite production build minifies the client, not SSR', async ({
+  build,
+}) => {
   const files = {
     'entry.ts': `export function read() {
   const keepThisLocalName = { value: 'MARK_LOCAL' }
@@ -325,8 +318,8 @@ test('a Vite production build minifies the client, not SSR', async () => {
 }
 `,
   }
-  const ssr = await bundleApp({ bundler: 'vite', env: 'ssr', files })
-  const client = await bundleApp({ bundler: 'vite', env: 'client', files })
+  const ssr = await build({ bundler: 'vite', env: 'ssr', files })
+  const client = await build({ bundler: 'vite', env: 'client', files })
   expect([
     ssr.where('keepThisLocalName'),
     client.where('keepThisLocalName'),
@@ -338,15 +331,14 @@ test('a Vite production build minifies the client, not SSR', async () => {
 // name no module reads free is a dangling name, whatever names the modules
 // bind inside their functions: only a module's top-level binding is one a
 // bundler can drop.
-test.each([
+test.for([
   ['a parameter of the same name', 'productLabel'],
   ['no binding of that name', 'text'],
 ])(
   'vite: a bundle-level read of a name is dangling with %s in a module',
-  async (_, parameter) => {
-    const built = bundleAppIn({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+  { timeout },
+  async ([_, parameter], { build }) => {
+    const built = build({
       bundler: 'vite',
       env: 'client',
       minify: false,
@@ -375,17 +367,14 @@ test.each([
       'productLabel',
     ])
   },
-  timeout,
 )
 
 // A class's static block runs when the class is evaluated: a read there is
 // as much a read at load as one outside every function.
 test(
   'vite: a bundle-level read in a class static block is dangling with a parameter of the same name in a module',
-  async () => {
-    const error = await bundleAppIn({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+  async ({ build }) => {
+    const error = await build({
       bundler: 'vite',
       env: 'client',
       minify: false,
@@ -421,10 +410,8 @@ test(
 // top-level binding can explain it.
 test(
   'vite: a bundle-level read in a function of an object is dangling with a parameter of the same name in a module',
-  async () => {
-    const error = await bundleAppIn({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+  async ({ build }) => {
+    const error = await build({
       bundler: 'vite',
       env: 'client',
       minify: false,
@@ -461,7 +448,7 @@ test(
 // module's code holds, of a name only a function of a module binds, is
 // dangling, whatever the wrapper. Loading the chunk throws `ReferenceError`;
 // the same chunk without the read loads.
-test.each([
+test.for([
   ['webpack', 'deterministic', 'productLabel', true, false],
   ['webpack', 'deterministic', 'text', true, false],
   ['webpack', 'natural', 'productLabel', true, false],
@@ -480,10 +467,9 @@ test.each([
   ['rspack', 'deterministic', 'productLabel', false, true],
 ] as const)(
   '%s, %s ids: a read added to a module is dangling with a parameter %s in the module (read added: %s, top-level await: %s)',
-  async (bundler, moduleIds, parameter, read, topLevelAwait) => {
-    const outcome = await bundleAppIn({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+  { timeout },
+  async ([bundler, moduleIds, parameter, read, topLevelAwait], { build }) => {
+    const outcome = await build({
       bundler,
       env: 'client',
       configure: (options) => {
@@ -579,15 +565,14 @@ console.log('MARK_FACTORY')
       'productLabel',
     ])
   },
-  timeout,
 )
 
-test('NODE_ENV is the mode during a build, or unset with nodeEnv: null', async () => {
+test('NODE_ENV is the mode during a build, or unset with nodeEnv: null', async ({
+  build,
+}) => {
   const seen: Record<string, string | undefined> = {}
   for (const nodeEnv of [undefined, null] as const) {
-    await bundleAppIn({
-      dir: testsDir,
-      registerCleanup: onTestFinished,
+    await build({
       bundler: 'vite',
       files: { 'entry.ts': `export const value = 1\n` },
       nodeEnv,
@@ -602,17 +587,17 @@ test('NODE_ENV is the mode during a build, or unset with nodeEnv: null', async (
   expect(seen).toEqual({ undefined: 'production', null: undefined })
 })
 
-test.each(['webpack', 'rspack'] as const)(
+test.for(['webpack', 'rspack'] as const)(
   '%s: rebuildAfter describes the output of the rebuild after the edit',
-  async (bundler) => {
-    const app = await bundleApp({
+  { timeout },
+  async (bundler, { build }) => {
+    const app = await build({
       bundler,
       files: { 'entry.ts': `export const value = 'v1'\n` },
       rebuildAfter: { 'entry.ts': `export const value = 'v2'\n` },
     })
     expect((await app.run('return entry.value')).result).toBe('v2')
   },
-  timeout,
 )
 
 // An edit can land while a build runs that already read the file: that
@@ -622,9 +607,10 @@ test.each(['webpack', 'rspack'] as const)(
 // reported. Build 2 is held, with the watching suspended so the edit cannot
 // restart it, until the watcher reports the edit (or 10 s pass, or the test
 // ends); it is reported with v1, then `resume()` starts the edit's build.
-test.each(['webpack', 'rspack'] as const)(
+test.for(['webpack', 'rspack'] as const)(
   '%s: rebuildAfter describes the rebuild of the edit when it lands during a build',
-  async (bundler) => {
+  { timeout },
+  async (bundler, { build }) => {
     const overlap: Record<string, unknown> = {}
     let compile!: () => void
     const compiled = new Promise<void>((resolve) => (compile = resolve))
@@ -711,7 +697,7 @@ test.each(['webpack', 'rspack'] as const)(
         })
       },
     })
-    const app = await bundleApp({
+    const app = await build({
       bundler,
       files: { 'entry.ts': `export const value = 'v1'\n` },
       plugins: { [bundler]: overlappingBuild },
@@ -724,12 +710,13 @@ test.each(['webpack', 'rspack'] as const)(
     })
     expect((await app.run('return entry.value')).result).toBe('v2')
   },
-  timeout,
 )
 
 // What a build printed is in its result and in its error: the whole-build
 // absence check reads it, which the bundler's reports alone miss.
-test('a build keeps what it printed, in its result and, when it fails, in its error', async () => {
+test('a build keeps what it printed, in its result and, when it fails, in its error', async ({
+  build,
+}) => {
   const printing = (fail: boolean) => () => ({
     name: 'printing',
     buildStart() {
@@ -740,14 +727,14 @@ test('a build keeps what it printed, in its result and, when it fails, in its er
     },
   })
   const files = { 'entry.ts': `export const value = 1\n` }
-  const built = await bundleApp({
+  const built = await build({
     bundler: 'vite',
     files,
     plugins: { vite: printing(false) },
   })
   expectNoProblems(built.warnings)
   expect(() => expectNoProblems(built)).toThrow(/MARK_PRINTED/)
-  const failed = await bundleApp({
+  const failed = await build({
     bundler: 'vite',
     files,
     plugins: { vite: printing(true) },
@@ -758,9 +745,10 @@ test('a build keeps what it printed, in its result and, when it fails, in its er
 
 // A wait that ran out of time is not a failed build: a row expecting a
 // refusal cannot pass on it.
-test.each(bundlers)(
+test.for(bundlers)(
   '%s: a wait that ran out of time inside a build is thrown as it is, not as a failed build',
-  async (bundler) => {
+  { timeout },
+  async (bundler, { build }) => {
     const waitRanOut = () => {
       throw new SettleTimeout('a wait ran out of time')
     }
@@ -780,25 +768,25 @@ test.each(bundlers)(
       }),
     }
     await expect(
-      bundleApp({
+      build({
         bundler,
         files: { 'entry.ts': `export const value = 1\n` },
         plugins: { [bundler]: plugins[bundler] },
       }),
     ).rejects.toBeInstanceOf(SettleTimeout)
   },
-  timeout,
 )
 
 // webpack reports a hook's error during module resolution as a compilation
 // error (the stats keep its message only): the timeout is still thrown as it
 // is, in a build and in the rebuild of an edit.
-test.each([
+test.for([
   ['a build', false],
   ['the rebuild of an edit', true],
 ] as const)(
   'webpack: a wait that ran out of time while resolving an import, in %s, is thrown as it is',
-  async (_, watched) => {
+  { timeout },
+  async ([_, watched], { build }) => {
     const late = `import './late'\nexport const value = 1\n`
     const resolving = () => ({
       apply: (compiler: any) =>
@@ -814,7 +802,7 @@ test.each([
         ),
     })
     await expect(
-      bundleApp({
+      build({
         bundler: 'webpack',
         files: { 'entry.ts': watched ? `export const value = 1\n` : late },
         plugins: { webpack: resolving },
@@ -822,22 +810,22 @@ test.each([
       }),
     ).rejects.toBeInstanceOf(SettleTimeout)
   },
-  timeout,
 )
 
-test.each(['webpack', 'rspack'] as const)(
+test.for(['webpack', 'rspack'] as const)(
   '%s: rebuildAfter: an edit no build takes is a SettleTimeout; one that breaks the build, a BuildError of its file',
-  async (bundler) => {
+  { timeout },
+  async (bundler, { build }) => {
     const files = { 'entry.ts': `export const value = 'v1'\n` }
     await expect(
-      bundleApp({
+      build({
         bundler,
         files,
         rebuildAfter: { 'notes.txt': 'not imported\n' },
         rebuildTimeout: 1_000,
       }),
     ).rejects.toBeInstanceOf(SettleTimeout)
-    const broken = await bundleApp({
+    const broken = await build({
       bundler,
       files,
       rebuildAfter: { 'entry.ts': `export const value = (\n` },
@@ -845,7 +833,6 @@ test.each(['webpack', 'rspack'] as const)(
     expect(broken).toBeInstanceOf(BuildError)
     expect((broken as BuildError).errors.join('\n')).toContain('entry.ts')
   },
-  timeout,
 )
 
 describe('side-effect hints', () => {
@@ -868,12 +855,13 @@ export function unused() {
 `,
   }
 
-  test.each(bundlers)(
+  test.for(bundlers)(
     '"sideEffects": false in package.json drops a module whose exports are unused (%s)',
-    async (bundler) => {
+    { timeout },
+    async (bundler, { build }) => {
       const placements: Record<string, Placement> = {}
       for (const sideEffects of [undefined, false]) {
-        const app = await bundleApp({
+        const app = await build({
           bundler,
           files: unusedModuleApp,
           sideEffects,
@@ -882,7 +870,6 @@ export function unused() {
       }
       expect(placements).toEqual({ undefined: 'eager', false: 'nowhere' })
     },
-    timeout,
   )
 
   /**
@@ -913,26 +900,26 @@ export const noSideEffects = recordAnnotated('MARK_NO_SIDE_EFFECTS')
 
   // What each bundler drops in a production build. webpack and Rspack drop
   // unused code inside a kept module only when minifying.
-  test.each(bundlers)(
+  test.for(bundlers)(
     '/* @__PURE__ */ and #__NO_SIDE_EFFECTS__ let an unused call be dropped (%s)',
-    async (bundler) => {
-      const app = await bundleApp({ bundler, files: annotatedCallsApp })
+    { timeout },
+    async (bundler, { build }) => {
+      const app = await build({ bundler, files: annotatedCallsApp })
       expect({
         plain: app.where('MARK_PLAIN'),
         pure: app.where('MARK_PURE'),
         noSideEffects: app.where('MARK_NO_SIDE_EFFECTS'),
       }).toEqual({ plain: 'eager', pure: 'nowhere', noSideEffects: 'nowhere' })
     },
-    timeout,
   )
 })
 
 describe('client runs in the browser', () => {
   /** Describes classic script chunks written to an app's `dist`. */
-  async function classicBuild(files: Record<string, string>) {
+  async function classicBuild(appRoot: string, files: Record<string, string>) {
     const app = await createApp({
       dir: testsDir,
-      registerCleanup: onTestFinished,
+      parent: appRoot,
       files: Object.fromEntries(
         Object.entries(files).map(([file, code]) => [`dist/${file}`, code]),
       ),
@@ -965,8 +952,10 @@ describe('client runs in the browser', () => {
     })
   }
 
-  test('a classic script entry loads with the chunks of its group, and the page is /', async () => {
-    const build = await classicBuild({
+  test('a classic script entry loads with the chunks of its group, and the page is /', async ({
+    appRoot,
+  }) => {
+    const build = await classicBuild(appRoot, {
       'static/vendor.js': `var vendorValue = 'MARK_VENDOR'\n`,
       'static/index.js': `globalThis.__entry = { read: () => [vendorValue, this === window, location.pathname] }\n`,
     })
@@ -977,8 +966,10 @@ describe('client runs in the browser', () => {
     ])
   })
 
-  test('an error the page does not catch fails the run', async () => {
-    const build = await classicBuild({
+  test('an error the page does not catch fails the run', async ({
+    appRoot,
+  }) => {
+    const build = await classicBuild(appRoot, {
       'static/vendor.js': '',
       'static/index.js': `globalThis.__entry = {}
 setTimeout(() => { throw new Error('MARK_UNCAUGHT') })
@@ -990,11 +981,12 @@ setTimeout(() => { throw new Error('MARK_UNCAUGHT') })
   })
 })
 
-test.each(['webpack', 'rspack'] as const)(
+test.for(['webpack', 'rspack'] as const)(
   '%s: concurrent native loaders keep console messages in their own builds',
-  async (bundler) => {
-    const build = () =>
-      bundleApp({
+  { timeout },
+  async (bundler, { build }) => {
+    const buildApp = () =>
+      build({
         files: {
           'entry.js': 'export const value = 1',
           'warning-loader.cjs': `module.exports = function(code) { console.warn(this.resourcePath + ' MARK_LOADER_WARNING'); return code }`,
@@ -1010,7 +1002,7 @@ test.each(['webpack', 'rspack'] as const)(
           })
         },
       })
-    const [first, second] = await Promise.all([build(), build()])
+    const [first, second] = await Promise.all([buildApp(), buildApp()])
     for (const [app, other] of [
       [first, second],
       [second, first],
@@ -1026,5 +1018,4 @@ test.each(['webpack', 'rspack'] as const)(
       ).toBe(false)
     }
   },
-  timeout,
 )

@@ -10,21 +10,17 @@
  * that the page's `invalidate()` asked the server for, also when what the
  * page sends reaches the server late.
  */
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { expect, onTestFinished, test } from 'vitest'
+import { expect, onTestFinished } from 'vitest'
 import { openPage } from '../../src/browser'
-import { createDevServer } from '../../src/dev-server'
 import {
   hmrSyncInitScript,
   hmrSyncModule,
   settlePage,
   trackRequests,
 } from '../../src/hmr-sync'
+import { test } from '../../src/test'
 
 const timeout = 60_000
-
-const testsDir = path.dirname(fileURLToPath(import.meta.url))
 
 /**
  * An entry that shows the texts of `text.js` and `other.js` and applies
@@ -52,11 +48,9 @@ test.for([
 ])(
   'once settled, an accepted update shows in place and one nothing accepts has reloaded the page ($name)',
   { timeout },
-  async ({ sync }) => {
-    const server = await createDevServer({
-      dir: testsDir,
+  async ({ sync }, { devServer }) => {
+    const server = await devServer({
       prefix: '.hmr-sync-',
-      registerCleanup: onTestFinished,
       browser: true,
       files: app(sync),
       // The edited modules come late (a slow transform): the page handles
@@ -100,11 +94,9 @@ test.for([
 test(
   'once settled, an update whose accept callback invalidates it has reloaded the page, also when the page reaches the server late',
   { timeout },
-  async () => {
-    const server = await createDevServer({
-      dir: testsDir,
+  async ({ devServer }) => {
+    const server = await devServer({
       prefix: '.hmr-sync-',
-      registerCleanup: onTestFinished,
       browser: true,
       files: {
         'index.html': `<div id="app"></div><script type="module" src="/main.js"></script>`,
