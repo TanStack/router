@@ -22,7 +22,7 @@ export interface SourceMapLike {
   file?: string
   sourceRoot?: string
   version: number | string
-  sources: Array<string>
+  sources: Array<string | null>
   names: Array<string>
   sourcesContent?: Array<string | null>
   mappings: string
@@ -112,6 +112,15 @@ export function indexToLineColumn(
   }
 }
 
+function normalizeSourceNames(
+  sources: SourceMapLike['sources'],
+): Array<string> {
+  // Keep the source indexes in mappings valid when a source name is missing.
+  return sources.every((source) => source !== null)
+    ? sources
+    : sources.map((source) => source ?? '')
+}
+
 export function normalizeSourceMap(map: SourceMapLike | null | undefined):
   | {
       version: number
@@ -131,6 +140,7 @@ export function normalizeSourceMap(map: SourceMapLike | null | undefined):
     ...map,
     version: Number(map.version),
     file: map.file ?? '',
+    sources: normalizeSourceNames(map.sources),
     names: Array.isArray(map.names) ? map.names : [],
     sourcesContent:
       map.sourcesContent?.map((value) => value ?? '') ?? undefined,
@@ -283,6 +293,7 @@ function toRawSourceMap(map: SourceMapLike): RawSourceMap {
     ...map,
     file: map.file ?? '',
     version: Number(map.version),
+    sources: normalizeSourceNames(map.sources),
     sourcesContent: map.sourcesContent?.map((s) => s ?? '') ?? [],
   }
 }
