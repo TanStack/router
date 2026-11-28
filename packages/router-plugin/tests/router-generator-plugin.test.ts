@@ -95,7 +95,7 @@ describe('route generator plugin embedded in a host plugin', () => {
   it('generates nothing when the host disables it', async () => {
     const project = await createProject(
       { '__root.tsx': rootRouteSource },
-      { enabled: () => false },
+      () => ({ enabled: false }),
     )
 
     await project.start()
@@ -104,30 +104,26 @@ describe('route generator plugin embedded in a host plugin', () => {
     await expect(project.routeTree()).rejects.toThrow('ENOENT')
   })
 
-  it('tells the host the config and the root it would generate for', async () => {
-    const seen: Array<{ routesDirectory: string; root: string }> = []
+  it('tells the host the config it generates for', async () => {
+    const seen: Array<string> = []
     const project = await createProject(
       { '__root.tsx': rootRouteSource },
-      {
-        enabled: ({ config, root }) => {
-          seen.push({ routesDirectory: config.routesDirectory, root })
-          return true
-        },
+      (config) => {
+        seen.push(config.routesDirectory)
+        return {}
       },
     )
 
     await project.start()
 
-    expect(seen).toEqual([
-      { routesDirectory: path.dirname(project.route('x')), root: tempDir },
-    ])
+    expect(seen).toEqual([path.dirname(project.route('x'))])
     expect(await project.routeTree()).toContain('rootRouteImport')
   })
 
   it('writes the route tree at startup only when the host turns watching off', async () => {
     const project = await createProject(
       { '__root.tsx': rootRouteSource },
-      { watch: () => false },
+      () => ({ watch: false }),
     )
 
     await project.start()
@@ -141,7 +137,7 @@ describe('route generator plugin embedded in a host plugin', () => {
     const moved = routeSource('/moved-from')
     const project = await createProject(
       { '__root.tsx': rootRouteSource, 'moved.tsx': moved },
-      { writeRouteFiles: () => false },
+      () => ({ writeRouteFiles: false }),
     )
 
     await project.start()

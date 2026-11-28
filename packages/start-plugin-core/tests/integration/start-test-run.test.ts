@@ -138,6 +138,23 @@ export const readSession = () => getCookie('session')
     timeout,
   )
 
+  test(
+    'with a router entry but no routes directory: no route tree is generated and nothing is logged',
+    async () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const app = await createStartApp(
+        { ...files, 'src/router.ts': 'export function getRouter() {}\n' },
+        library,
+      )
+      const { warnings } = await startViteTestServer(app)
+
+      await expect(app.read('src/routeTree.gen.ts')).rejects.toThrow('ENOENT')
+      expect(error).not.toHaveBeenCalled()
+      expect(warnings).toEqual([])
+    },
+    timeout,
+  )
+
   // Start asked Vite to pre-bundle `@tanstack/react-store` by a path through
   // `@tanstack/react-router`, which only resolves from a project that
   // depends on the router itself. Vite warned ("Failed to resolve

@@ -15,10 +15,11 @@ const PLUGIN_NAME = 'unplugin:router-generator'
 export function createRouterGeneratorPlugin(
   options: Partial<Config | (() => Config)> | undefined = {},
   routerPluginContext: RouterPluginContext,
-  hostOptions: RouterGeneratorHostOptions = {},
+  hostOptions?: RouterGeneratorHostOptions,
 ): ReturnType<UnpluginFactory<Partial<Config | (() => Config)> | undefined>> {
   let ROOT: string = process.cwd()
   let userConfig: Config
+  let host: ReturnType<RouterGeneratorHostOptions> = {}
   let generator: Generator | undefined
 
   const getRoutesDirectoryPath = () => {
@@ -36,14 +37,15 @@ export function createRouterGeneratorPlugin(
     } else {
       userConfig = getConfig(options, ROOT)
     }
-    if (hostOptions.enabled?.({ config: userConfig, root: ROOT }) === false) {
+    host = hostOptions?.(userConfig) ?? {}
+    if (host.enabled === false) {
       generator = undefined
       return
     }
     generator = new Generator({
       config: userConfig,
       root: ROOT,
-      writeRouteFiles: hostOptions.writeRouteFiles?.(),
+      writeRouteFiles: host.writeRouteFiles,
     })
   }
 
@@ -53,7 +55,7 @@ export function createRouterGeneratorPlugin(
   }) => {
     let generatorEvent: GeneratorEvent | undefined = undefined
     if (opts) {
-      if (hostOptions.watch?.() === false) {
+      if (host.watch === false) {
         return
       }
       const filePath = normalize(opts.file)

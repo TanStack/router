@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import { createRouterPluginContext } from '@tanstack/router-plugin/context'
 import {
   tanStackRouterCodeSplitter,
@@ -8,7 +9,6 @@ import { normalizePath } from 'vite'
 import { VITE_ENVIRONMENT_NAMES } from '../../constants'
 import { startGeneratorConfig } from '../../start-router-plugin/generator-config'
 import { pruneServerOnlySubtrees } from '../../start-router-plugin/pruneServerOnlySubtrees'
-import { hasRouteTreeSources } from '../../start-router-plugin/has-route-tree-sources'
 import { SERVER_PROP } from '../../start-router-plugin/constants'
 import { escapeRegExp } from '../../utils'
 import type { GetConfigFn } from '../../types'
@@ -177,16 +177,19 @@ export function tanStackStartRouter(
           clientRouteTree: clientTreeGeneratorPlugin,
         }),
       routerPluginContext,
-      {
-        enabled: ({ config }) =>
-          !isTestRun() ||
-          hasRouteTreeSources({
-            routerFilePath: getConfig().resolvedStartConfig.routerFilePath,
-            generatorConfig: config,
-          }),
-        watch: () => !isTestRun(),
-        writeRouteFiles: () => !isTestRun(),
-      },
+      (config) =>
+        isTestRun()
+          ? {
+              // A package that only uses Start's compile-time APIs has no
+              // router entry and no routes: nothing to generate.
+              enabled:
+                !!getConfig().resolvedStartConfig.routerFilePath &&
+                (!!config.virtualRouteConfig ||
+                  existsSync(config.routesDirectory)),
+              watch: false,
+              writeRouteFiles: false,
+            }
+          : {},
     ),
     tanStackRouterCodeSplitter(
       () => {

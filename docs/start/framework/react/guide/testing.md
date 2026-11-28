@@ -82,7 +82,7 @@ In a client test `describeRuntime()` returns `'client'`, and `./secrets.server` 
 
 A test can import a route file or the generated route tree.
 
-The route tree is generated once, when Vitest starts, and only for a project that has a router entry and a root route. It is not regenerated while Vitest watches. After you add, move or delete a route file, restart Vitest.
+The route tree is generated once, when Vitest starts, and only for a project that has a router entry and a routes directory. It is not regenerated while Vitest watches. After you add, move or delete a route file, restart Vitest.
 
 A test run never writes to your route files. The dev server fills in an empty route file and corrects the path in a file you moved. A test run leaves both as they are and logs a warning.
 

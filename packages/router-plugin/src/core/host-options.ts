@@ -2,16 +2,17 @@ import type { Config } from './config'
 
 /**
  * Lets a plugin that embeds the route generator, such as TanStack Start,
- * change when it runs. Every function is called late, once the bundler's
- * config is known, and every option defaults to the standalone behaviour.
+ * change when it runs. The function is called late, once the bundler's
+ * config is known, with the generator's config. Every option defaults to
+ * the standalone behaviour.
  */
-export interface RouterGeneratorHostOptions {
-  /** Return `false` to create no generator at all for this config. */
-  enabled?: (opts: { config: Config; root: string }) => boolean
-  /** Return `false` to ignore file changes after the first run. */
-  watch?: () => boolean
-  /** Return `false` to keep the generator from writing route files. */
-  writeRouteFiles?: () => boolean
+export type RouterGeneratorHostOptions = (config: Config) => {
+  /** `false` creates no generator at all for this config. */
+  enabled?: boolean
+  /** `false` ignores file changes after the first run. */
+  watch?: boolean
+  /** `false` keeps the generator from writing route files. */
+  writeRouteFiles?: boolean
 }
 
 /**
