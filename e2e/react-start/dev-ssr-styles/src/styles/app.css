@@ -12,3 +12,8 @@ body {
     border: 3px solid black;
   }
 }
+
+/* Removed by lazy-ssr.spec.ts while hydration is held back. */
+[data-testid='lazy-ssr-hmr-probe'] {
+  border-top: 5px solid rgb(0, 0, 0);
+}
