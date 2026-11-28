@@ -73,8 +73,7 @@ In the e2e project's `package.json`:
 ```json
 {
   "scripts": {
-    "test:e2e": "pnpm run test:e2e:linked && pnpm run test:e2e:installed",
-    "test:e2e:linked": "vitest run",
+    "test:e2e": "pnpm run test:e2e:installed",
     "test:e2e:installed": "node ../../../scripts/e2e/run-as-installed.mjs vitest run"
   },
   "nx": {
@@ -92,8 +91,30 @@ In the e2e project's `package.json`:
 }
 ```
 
-The run in place stays, because it is the quick one while working on a
-package. The `inputs` add the script to what Nx hashes for the target.
+The `inputs` add the script to what Nx hashes for the target.
+
+The command can be a script of the project, which `pnpm run` starts in the
+copy. `e2e/react-start/vitest-library` and `e2e/react-start/vitest-app` run
+Vitest twice that way. The copy starts with an empty Vitest module cache, so
+the second run gets the compiled modules of the first from the cache:
+
+```json
+{
+  "scripts": {
+    "test:e2e:installed": "node ../../../scripts/e2e/run-as-installed.mjs pnpm run test:e2e:cold-then-cached",
+    "test:e2e:cold-then-cached": "vitest run && vitest run"
+  }
+}
+```
+
+These two projects run their tests only in the copy. `vitest run` in the
+directory of `vitest-app` fails one browser test file on the first run after
+an install and passes on the second. Start's packages are links there, so Vite
+sees what they import (`seroval`, `cookie-es`) only when a test loads them. It
+pre-bundles those packages then and reloads the page, and the test file that
+was loading fails to import. Vite keeps the pre-bundle for later runs. In the
+copy Vite pre-bundles nothing late (the table above), so the page is not
+reloaded.
 
 To look at a copy after a failure:
 

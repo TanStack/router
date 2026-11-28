@@ -7,22 +7,19 @@ import { playwright } from '@vitest/browser-playwright'
 // Start only. It needs the Start compiler, so that each test environment gets
 // the code a Start app would run there.
 //
-// `test:e2e` type-checks the project and runs these tests three times:
-// - here, where `@tanstack/*` are links to `packages/*`, with an empty Vitest
-//   cache (`test:e2e:linked`),
-// - here again, now with the compiled modules of the first run in Vitest's
-//   cache (`test:e2e:cached`): a test run must not depend on the Start
-//   compiler having seen a file in the same process,
-// - in a copy that is installed like a user's project
-//   (`test:e2e:installed`, `scripts/e2e/run-as-installed.md` says why that
-//   differs).
+// `test:e2e` type-checks the project here and runs these tests in a copy that
+// is installed like a user's project (`test:e2e:installed`,
+// `scripts/e2e/run-as-installed.md` says why that differs from a run here).
+// The copy runs them twice: with an empty Vitest cache, and again with the
+// compiled modules of the first run in the cache. A test run must not depend
+// on the Start compiler having seen a file in the same process.
 export default defineConfig({
   plugins: [tanstackStart(), react()],
   test: {
     watch: false,
     // Vitest keeps the modules it compiled in one cache for the whole
-    // repository. This project keeps its own, so that `test:e2e:linked` can
-    // empty it and compile every file with the packages as they are built now.
+    // repository. This project keeps its own, so that `vitest --clearCache`
+    // in this directory empties only this one.
     fsModuleCachePath: 'node_modules/.vitest-cache',
     projects: [
       {
