@@ -102,6 +102,7 @@
     "solid-native-ssr-transfer",
     "solid-router-dev-ssr-detection",
     "solid-router-devtools-state",
+    "solid-router-doctype-no-copy",
     "solid-router-no-router-owned-loading-boundaries",
     "solid-router-observe-blocker-interaction",
     "solid-router-observe-first-load-redirect",

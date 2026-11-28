@@ -1,5 +1,11 @@
 # @tanstack/solid-router
 
+## 2.0.0-rc.13
+
+### Patch Changes
+
+- [#9017](https://github.com/TanStack/router/pull/9017) [`7e5c0fc`](https://github.com/TanStack/router/commit/7e5c0fcd5111fd7bed6a8dfadecd9095953e2572) - `renderRouterToStream` renders the document type with the shell instead of prepending it to the first stream chunk, so a page rendered as one chunk is no longer held in memory twice.
+
 ## 2.0.0-rc.12
 
 ### Patch Changes
