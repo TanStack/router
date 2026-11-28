@@ -23,13 +23,17 @@ import type { RscPreviewServer } from './rsc-app'
 const timeout = 120_000
 
 let server: RscPreviewServer
-test.beforeAll(async ({ fileRoot }) => {
+test.aroundAll(async (runSuite, { fileRoot }) => {
   server = await startRscRsbuildPreviewServer(fileRoot, {
     performance: { buildCache: true },
     files: reachFiles,
     buildAgainWith: {},
   })
-  return () => server.close()
+  try {
+    await runSuite()
+  } finally {
+    await server.close()
+  }
 }, timeout)
 
 // SPEC J4.2: a server fn only client-only code imports is callable by id

@@ -19,6 +19,7 @@ import { test } from './test'
 // answered "Server function info not found").
 test('Rsbuild dev with RSC, no cache: every server fn the client calls answers after a fresh start, a restart and an edit of every server fn', async ({
   browser,
+  signal,
   startRscRsbuildDevServer,
 }) => {
   const server = await startRscRsbuildDevServer({
@@ -26,5 +27,5 @@ test('Rsbuild dev with RSC, no cache: every server fn the client calls answers a
     config: { performance: { buildCache: false } },
     files: reachFiles,
   })
-  await expectReachHistory(browser, server, () => server.restart())
+  await expectReachHistory({ browser, signal }, server, () => server.restart())
 }, 120_000)

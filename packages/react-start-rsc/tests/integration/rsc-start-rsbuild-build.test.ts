@@ -81,7 +81,7 @@ function Page() {
 
 let server: RscPreviewServer & { errors: Array<string> }
 
-test.beforeAll(async ({ fileRoot }) => {
+test.aroundAll(async (runSuite, { fileRoot }) => {
   server = await startRscRsbuildPreviewServer(fileRoot, {
     files: {
       ...privateFnFiles,
@@ -139,7 +139,11 @@ function Page() {
 `,
     },
   })
-  return () => server.close()
+  try {
+    await runSuite()
+  } finally {
+    await server.close()
+  }
 })
 
 // Found by the react-start/rsc e2e app (rsbuild-ssr): the SSR output named

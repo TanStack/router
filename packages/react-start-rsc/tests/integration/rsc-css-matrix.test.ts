@@ -76,11 +76,15 @@ const matrix = importForms.flatMap((form) =>
 
 describe('RSC helpers by import form (Vite dev)', () => {
   let app: RscCssApp
-  test.beforeAll(async ({ browser, fileRoot }) => {
+  test.aroundAll(async (runSuite, { browser, fileRoot }) => {
     app = await rscCssApp(fileRoot, browser, {
       rows: matrix.map(({ row }) => row),
     })
-    return () => app.close()
+    try {
+      await runSuite()
+    } finally {
+      await app.close()
+    }
   })
 
   test.each(matrix)(

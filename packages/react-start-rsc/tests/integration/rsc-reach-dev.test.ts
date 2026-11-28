@@ -12,10 +12,11 @@ import { test } from './test'
 
 test('Vite dev with RSC: every server fn the client calls answers after a fresh start, a restart and an edit of every server fn', async ({
   browser,
+  signal,
   startRscDevServer,
 }) => {
   const server = await startRscDevServer({ browser: true, files: reachFiles })
-  await expectReachHistory(browser, server, async () => {
+  await expectReachHistory({ browser, signal }, server, async () => {
     await server.vite.restart()
     return server
   })

@@ -79,8 +79,9 @@ const config = defineConfig({
         },
       },
       {
-        // The files whose one build is a `beforeAll` their tests await, each
-        // test a page of its own on it: their tests run at once.
+        // The files whose one build is opened by an `aroundAll` their tests
+        // run inside, each test a page of its own on it: their tests run at
+        // once.
         extends: true,
         test: {
           name: 'integration-concurrent',

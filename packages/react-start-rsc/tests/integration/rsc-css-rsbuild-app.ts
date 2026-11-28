@@ -243,7 +243,7 @@ export function describeRscCssRows(mode: 'dev' | 'build') {
   describe(`RSC CSS through the real transport (Rsbuild ${mode})`, () => {
     let server: Pick<RsbuildDevServer, 'url' | 'errors' | 'close'>
 
-    test.beforeAll(async ({ fileRoot }) => {
+    test.aroundAll(async (runSuite, { fileRoot }) => {
       server =
         mode === 'dev'
           ? await startRscRsbuildDevServer(fileRoot, {
@@ -251,7 +251,11 @@ export function describeRscCssRows(mode: 'dev' | 'build') {
               files: appFiles,
             })
           : await startRscRsbuildPreviewServer(fileRoot, { files: appFiles })
-      return () => server.close()
+      try {
+        await runSuite()
+      } finally {
+        await server.close()
+      }
     })
 
     test('loading only the client callers does not supply the server stylesheet', async ({

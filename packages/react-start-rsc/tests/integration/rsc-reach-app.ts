@@ -102,17 +102,24 @@ export function editedReach(): Record<string, string> {
 /** The test ids of the buttons: the client-only positions and the counter. */
 const buttons = [...clientOnlyPositions.map(({ name }) => name), 'counter']
 
+/** The test's browser and signal. */
+interface Actor {
+  browser: Browser
+  signal: AbortSignal
+}
+
 /**
  * What every button's click gives (`clickOutcome`), each clicked in a page
  * of its own (a new context of `browser`), by test id; a click that failed
- * is recorded as its error.
+ * is recorded as its error. Stops at the test's timeout (`signal`).
  */
 export async function everyOutcome(
-  browser: Browser,
+  { browser, signal }: Actor,
   server: { url?: string },
 ): Promise<Record<string, ClickOutcome | Error>> {
   const outcomes: Record<string, ClickOutcome | Error> = {}
   for (const name of buttons) {
+    signal.throwIfAborted()
     const context = await browser.newContext()
     try {
       outcomes[name] = await clickOutcome(
@@ -143,25 +150,22 @@ export const answer = (name: string, edited = false): ClickOutcome => ({
  * (`everyOutcome`).
  */
 export async function expectReachHistory(
-  browser: Browser,
+  actor: Actor,
   server: { url?: string; edit: (files: Record<string, string>) => unknown },
   restart: () => Promise<typeof server>,
 ) {
   const answers = (edited?: boolean) =>
     Object.fromEntries(buttons.map((name) => [name, answer(name, edited)]))
   expect
-    .soft(await everyOutcome(browser, server), 'a fresh start')
+    .soft(await everyOutcome(actor, server), 'a fresh start')
     .toEqual(answers())
   server = await restart()
   expect
-    .soft(await everyOutcome(browser, server), 'after a restart')
+    .soft(await everyOutcome(actor, server), 'after a restart')
     .toEqual(answers())
   await server.edit(editedReach())
   expect
-    .soft(
-      await everyOutcome(browser, server),
-      'after an edit of every server fn',
-    )
+    .soft(await everyOutcome(actor, server), 'after an edit of every server fn')
     .toEqual(answers(true))
 }
 

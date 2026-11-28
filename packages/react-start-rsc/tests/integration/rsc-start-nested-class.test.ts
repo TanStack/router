@@ -73,12 +73,16 @@ registry.add(createServerFn().middleware([auth]).handler(async () => 'MARK_HANDL
 describe.each(['vite', 'rsbuild'] as const)('a %s build', (bundler) => {
   let server: RscPreviewServer
 
-  test.beforeAll(async ({ fileRoot }) => {
+  test.aroundAll(async (runSuite, { fileRoot }) => {
     server = await serveRscBuild(fileRoot, {
       bundler,
       files,
     })
-    return () => server.close()
+    try {
+      await runSuite()
+    } finally {
+      await server.close()
+    }
   })
 
   test.for(Object.keys(files).map((f) => f.replace(/.*\/|\.tsx/g, '')))(

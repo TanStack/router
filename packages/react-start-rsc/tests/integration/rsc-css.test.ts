@@ -265,7 +265,7 @@ const rows = {
 
 describe('RSC CSS through the real transport (Vite dev)', () => {
   let app: RscCssApp
-  test.beforeAll(async ({ browser, fileRoot }) => {
+  test.aroundAll(async (runSuite, { browser, fileRoot }) => {
     app = await rscCssApp(fileRoot, browser, {
       rows: Object.values(rows),
       files: {
@@ -309,7 +309,11 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
       // The app's own package (a look-alike row), pre-bundled like the rest.
       config: { optimizeDeps: { include: ['other-rsc'] } },
     })
-    return () => app.close()
+    try {
+      await runSuite()
+    } finally {
+      await app.close()
+    }
   })
 
   test('two render helpers in one module each carry their component CSS', async ({

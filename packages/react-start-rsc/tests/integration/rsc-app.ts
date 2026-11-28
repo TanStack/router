@@ -78,6 +78,7 @@ const nativeImport = createRequire(import.meta.url)(
 async function tanstackStartPlugin(
   parent: string,
   bundler: 'vite' | 'rsbuild',
+  signal: AbortSignal | undefined,
   native = false,
 ): Promise<(options?: Record<string, unknown>) => unknown> {
   const app = await createApp({
@@ -91,9 +92,11 @@ async function tanstackStartPlugin(
   })
   try {
     const url = pathToFileURL(path.join(app.root, 'plugin.mjs')).href
-    return (
-      native ? await nativeImport(url) : await import(/* @vite-ignore */ url)
-    ).tanstackStart
+    const loaded = native
+      ? await nativeImport(url)
+      : await import(/* @vite-ignore */ url)
+    signal?.throwIfAborted()
+    return loaded.tanstackStart
   } finally {
     await app.dispose()
   }
@@ -152,7 +155,11 @@ export async function startRscDevServer(
   options: RscDevServerOptions,
 ): Promise<DevServer> {
   const { files, start, config, ...devServerOptions } = options
-  const tanstackStart = await tanstackStartPlugin(parent, 'vite')
+  const tanstackStart = await tanstackStartPlugin(
+    parent,
+    'vite',
+    options.signal,
+  )
   return createDevServer({
     dir: harnessDir,
     parent,
@@ -222,7 +229,11 @@ export interface RscBuildOptions {
  * failed (null: it built).
  */
 async function buildRscApp(parent: string, options: RscBuildOptions) {
-  const tanstackStart = await tanstackStartPlugin(parent, 'vite')
+  const tanstackStart = await tanstackStartPlugin(
+    parent,
+    'vite',
+    options.signal,
+  )
   const app = await createApp({
     dir: harnessDir,
     parent,
@@ -251,6 +262,7 @@ async function buildRscApp(parent: string, options: RscBuildOptions) {
   const reported: Array<ChannelDiagnostic> = []
   const built = await withBuildEnvironment('production', reported, async () => {
     const builder = await createBuilder(config())
+    options.signal?.throwIfAborted()
     await builder.buildApp()
   }).then(
     () => null,
@@ -390,8 +402,14 @@ export async function startRscRsbuildPreviewServer(
 ): Promise<RscPreviewServer & { errors: Array<string> }> {
   // Loaded by Node: Start's preview middleware imports the built server
   // bundle, which Node runs, not Vitest's module runner
-  const tanstackStart = await tanstackStartPlugin(parent, 'rsbuild', true)
+  const tanstackStart = await tanstackStartPlugin(
+    parent,
+    'rsbuild',
+    options.signal,
+    true,
+  )
   const { createRsbuild } = await rsbuildApi()
+  options.signal?.throwIfAborted()
   const app = await createApp({
     dir: harnessDir,
     parent,
@@ -491,12 +509,14 @@ export async function startRscRsbuildPreviewServer(
       }
       const built = await instance.build()
       await built.close()
+      options.signal?.throwIfAborted()
       if (options.rebuildWith) {
         for (const [file, content] of Object.entries(options.rebuildWith)) {
           await writeFile(path.join(app.root, file), content)
         }
         const rebuilt = await instance.build()
         await rebuilt.close()
+        options.signal?.throwIfAborted()
       }
       if (options.buildAgainWith) {
         for (const [file, content] of Object.entries(options.buildAgainWith)) {
@@ -617,18 +637,29 @@ export async function startRscRsbuildDevServer(
     inAppDirectory = true,
     ...devServerOptions
   } = options
-  const tanstackStart = await tanstackStartPlugin(parent, 'rsbuild')
+  const tanstackStart = await tanstackStartPlugin(
+    parent,
+    'rsbuild',
+    options.signal,
+  )
   const cwd = process.cwd()
-  /** The close of the server the last `restart()` started. */
+  /** Closes the server the last `restart()` starts, once it started. */
   let closeLatest = () => Promise.resolve()
   /** In the test process's directory again once `open()` resolved. */
   const inTestDirectory = async (
     open: () => Promise<RsbuildDevServer>,
   ): Promise<RsbuildDevServer> => {
+    const opening = open()
+    // (its own close, taken before the first server's is replaced below)
+    const closing = opening.then(
+      (server) => server.close,
+      () => async () => {},
+    )
+    closeLatest = () => closing.then((close) => close())
     try {
-      const server = await open()
+      const server = await opening
+      options.signal?.throwIfAborted()
       const { restart } = server
-      closeLatest = server.close
       // `rsbuild dev` run again in the app: new plugin instances (`plugins`
       // is called again), the directory's caches kept
       return Object.assign(server, {
@@ -681,7 +712,11 @@ export async function startRscRsbuildDevServer(
   )
   const { close } = server
   return Object.assign(server, {
-    close: () => Promise.all([close(), closeLatest()]).then(() => {}),
+    // (the restarted server first: the first's close removes the app)
+    close: async () => {
+      await closeLatest()
+      await close()
+    },
   })
 }
 

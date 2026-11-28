@@ -377,12 +377,16 @@ describe("Vite production build with RSC: server fns only 'use client' component
 
   // The build fails when the early compile follows the development-only
   // import into its provider's dependency, which has no production entry.
-  test.beforeAll(async ({ fileRoot }) => {
+  test.aroundAll(async (runSuite, { fileRoot }) => {
     server = await startRscPreviewServer(fileRoot, {
       files,
       config: { build: { minify: false } },
     })
-    return () => server.close()
+    try {
+      await runSuite()
+    } finally {
+      await server.close()
+    }
   })
 
   // SPEC J4.2: a server fn the client calls is callable by id, whichever

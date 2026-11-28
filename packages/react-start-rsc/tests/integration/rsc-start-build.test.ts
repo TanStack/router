@@ -371,7 +371,7 @@ async function filesOf(dir: string): Promise<Array<string>> {
 describe('Vite production build with RSC', () => {
   let server: RscPreviewServer
 
-  test.beforeAll(async ({ fileRoot }) => {
+  test.aroundAll(async (runSuite, { fileRoot }) => {
     server = await startRscPreviewServer(fileRoot, {
       files: { ...files, ...privateFnFiles },
       config: {
@@ -384,7 +384,11 @@ describe('Vite production build with RSC', () => {
         build: { minify: false },
       },
     })
-    return () => server.close()
+    try {
+      await runSuite()
+    } finally {
+      await server.close()
+    }
   })
 
   // J4.3, J4.16, J4.12: the provider runs the handler with `react-server`

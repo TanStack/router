@@ -71,7 +71,7 @@ async function callFromPage(page: Page, expected: string) {
 describe('Rsbuild dev with RSC', () => {
   let server: RsbuildDevServer
 
-  test.beforeAll(async ({ fileRoot }) => {
+  test.aroundAll(async (runSuite, { fileRoot }) => {
     server = await startRscRsbuildDevServer(fileRoot, {
       browser: true,
       files: {
@@ -106,7 +106,11 @@ function Page() {
         'src/routes/edit.tsx': editRoute('V1'),
       },
     })
-    return () => server.close()
+    try {
+      await runSuite()
+    } finally {
+      await server.close()
+    }
   })
 
   // J4.3, J4.16: the provider runs the handler with `react-server` and
