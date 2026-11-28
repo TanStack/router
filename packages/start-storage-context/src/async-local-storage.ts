@@ -57,7 +57,11 @@ export function getStartContext<TThrow extends boolean = true>(opts?: {
   const context = startStorage.getStore()
   if (!context && opts?.throwIfNotFound !== false) {
     throw new Error(
-      `No Start context found in AsyncLocalStorage. Make sure you are using the function within the server runtime.`,
+      `No Start context found in AsyncLocalStorage. Make sure you are using the function within the server runtime.${
+        process.env.NODE_ENV === 'test'
+          ? ` In a test, run this code inside runInRequest(), which the testing/server entry of your Start package exports (for example '@tanstack/react-start/testing/server').`
+          : ''
+      }`,
     )
   }
   return context as any

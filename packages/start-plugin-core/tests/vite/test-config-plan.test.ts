@@ -42,6 +42,24 @@ describe('createViteTestConfigPlan', () => {
     expect(ENTRY_POINTS.router in plan.resolve.alias).toBe(false)
   })
 
+  // No server takes the request of a client test, so the module that sends
+  // it is replaced by the one that asks the mocks of `mockServerFn`.
+  test.each(['react', 'solid', 'vue'] as const)(
+    'sends the server function calls of %s client code to the mocks',
+    (framework) => {
+      const plan = createViteTestConfigPlan({
+        framework,
+        entryPaths: { ...entryPaths, router: '' },
+        optimizeDepsExclude: [],
+        noExternal: [],
+      })
+
+      expect(plan.resolve.alias).toMatchObject({
+        [`@tanstack/${framework}-start/client-rpc`]: `@tanstack/${framework}-start/testing/client-rpc`,
+      })
+    },
+  )
+
   test('keeps the libraries built on Start out of pre-bundling and externalization', () => {
     const plan = createViteTestConfigPlan({
       framework: 'solid',

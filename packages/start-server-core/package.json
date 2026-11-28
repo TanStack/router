@@ -88,6 +88,12 @@
         "default": "./dist/esm/virtual-modules.js"
       }
     },
+    "./testing": {
+      "import": {
+        "types": "./dist/esm/testing/index.d.ts",
+        "default": "./dist/esm/testing/index.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "imports": {

@@ -94,9 +94,9 @@ In the e2e project's `package.json`:
 The `inputs` add the script to what Nx hashes for the target.
 
 `e2e/react-start/vitest-library` and `e2e/react-start/vitest-app` are set up
-like this. Their script runs Vitest twice. The copy starts with an empty
-Vitest module cache, so the second run gets the compiled modules of the first
-from the cache.
+like this. Their script (`test:e2e:in-copy`) type-checks the project and then
+runs Vitest twice. The copy starts with an empty Vitest module cache, so the
+second run gets the compiled modules of the first from the cache.
 
 These two projects run their tests only in the copy. Running Vitest in the
 directory of `vitest-app` can fail on the first run; its
@@ -107,6 +107,15 @@ To look at a copy after a failure:
 ```sh
 node ../../../scripts/e2e/run-as-installed.mjs --keep test:e2e:cold-then-cached
 ```
+
+## Type checks
+
+`e2e/react-start/vitest-*` type-check in the copy (`tsc6 --noEmit` in their
+`test:e2e:in-copy` script), and no longer in their own directory. In the
+workspace pnpm installs `vitest` once per set of peers, so
+`@tanstack/start-client-core` and an e2e project can resolve different copies,
+and the types that Start adds to Vitest's test context reach only one of them.
+A user's project has one copy, and so does the installed copy.
 
 ## In CI
 

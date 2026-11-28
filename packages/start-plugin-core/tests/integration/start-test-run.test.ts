@@ -85,8 +85,11 @@ export const where = createIsomorphicFn()
     timeout,
   )
 
+  // A client test has no server to send a server function call to. The
+  // client code gets the `createClientRpc` that asks `mockServerFn`'s mocks,
+  // in place of the one that sends the request.
   test(
-    'the client code of a server function has no handler',
+    "the client code of a server function calls the test's mocks, not a server",
     async () => {
       const app = await createStartApp(
         {
@@ -100,6 +103,39 @@ export const greet = createServerFn({ method: 'POST' }).handler(() => 'MARK_HAND
 
       const client = await compiled(server, 'client', 'src/greeting.ts')
       expect(client).not.toContain('MARK_HANDLER')
+      expect(client).toMatch(/react-start\/dist\/esm\/testing\/client-rpc\.js/)
+    },
+    timeout,
+  )
+
+  // A test runner can keep compiled modules across runs (Vitest does, on
+  // disk). The call site of a server function then comes from that cache, the
+  // compiler of the new process never sees it and has no record of the
+  // function. The resolver asked the compiler for that record and failed
+  // with "Invalid server function ID".
+  test(
+    'the server finds a server function whose call site this process did not compile',
+    async () => {
+      const app = await createStartApp({
+        'src/greeting.ts': `import { createServerFn } from '@tanstack/react-start'
+export const greet = createServerFn({ method: 'POST' }).handler(() => 'MARK_HANDLER')
+`,
+      })
+      const earlier = await startViteTestServer(app)
+      const callSite = await compiled(earlier.server, 'ssr', 'src/greeting.ts')
+      const id = /createSsrRpc\)?\(\s*["']([^"']+)["']/.exec(callSite)?.[1]
+      expect(id).toBeTypeOf('string')
+      await earlier.server.close()
+
+      const { server } = await startViteTestServer(app)
+      const resolver = await importOnServer(
+        server,
+        '#tanstack-start-server-fn-resolver',
+      )
+
+      const serverFn = await resolver.getServerFnById(id, { origin: 'server' })
+      expect(serverFn).toBeTypeOf('function')
+      expect(serverFn.serverFnMeta).toMatchObject({ name: 'greet' })
     },
     timeout,
   )
@@ -406,6 +442,9 @@ describe('Vitest with its module cache', () => {
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 export default defineConfig({
   plugins: [tanstackStart()],
+  // (Start's packages are links to directories outside this app, and Vite
+  // loads no file from outside the app for client code otherwise)
+  server: { fs: { strict: false } },
   test: {
     environment: 'jsdom',
     include: ['tests/**/*.test.ts'],

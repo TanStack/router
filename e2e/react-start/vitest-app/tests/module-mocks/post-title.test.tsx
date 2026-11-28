@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-// A test that replaces a server function with a module mock (`vi.mock`).
-// Start's compiler must leave this working: the
+// A test that replaces a server function with a module mock (`vi.mock`)
+// instead of `mockServerFn`. Start's compiler must leave this working: the
 // module the mock replaces, the original that `importOriginal` loads, and the
 // module that imports the mocked function. The project runs its tests in Node
 // by default, and this file switches to jsdom with the comment above.
