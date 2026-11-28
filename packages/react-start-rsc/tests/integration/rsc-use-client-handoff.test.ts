@@ -74,18 +74,14 @@ interface Asked {
   importerLoc?: { line: number; column: number }
 }
 
-/** What `allowImport` was asked about the imports of the app's files (`file`, `env`, `specifier`, `line:column`). */
+/** Each call of `allowImport` (`env`, importer by file name, `specifier`, `line:column`), sorted. */
 const imports = (asked: Array<Asked>) =>
-  [
-    ...new Set(
-      asked
-        .filter((a) => !a.importer.endsWith('ClientBox.client.tsx'))
-        .map(
-          (a) =>
-            `${a.env} ${a.importer.split('/').pop()} ${a.specifier}${a.importerLoc ? ` ${a.importerLoc.line}:${a.importerLoc.column}` : ''}`,
-        ),
-    ),
-  ].sort()
+  asked
+    .map(
+      (a) =>
+        `${a.env} ${a.importer.split('/').pop()} ${a.specifier}${a.importerLoc ? ` ${a.importerLoc.line}:${a.importerLoc.column}` : ''}`,
+    )
+    .sort()
 
 const hosts = [
   { host: 'Vite', bundler: 'vite' },
