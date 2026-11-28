@@ -50,7 +50,7 @@ import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-p
 import { tanstackRouter as tanstackRouterRspack } from '../src/rspack'
 import { tanstackRouter } from '../src/vite'
 import { tanstackRouter as tanstackRouterWebpack } from '../src/webpack'
-import { closeAtEnd } from './serial'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import { holdsMarker } from './route-app'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'

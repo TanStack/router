@@ -5,7 +5,7 @@ import { describe, expect, test } from 'vitest'
 import { servedDirectories } from '@tanstack/compiler-test-utils/app-directory'
 import { runAsDevCommand } from '@tanstack/compiler-test-utils/dev-command'
 import { closeViteServer } from '@tanstack/compiler-test-utils/dev-server'
-import { closeAtEnd } from '../test-end'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import { openTestPage } from '../test-page'
 import {
   clientEntryFiles,

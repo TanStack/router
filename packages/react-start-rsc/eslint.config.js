@@ -9,8 +9,9 @@ import concurrentTests from './tests/concurrent-tests.json' with { type: 'json' 
  * Serial only (TEST-TOOLS-DESIGN.md, Decision B): what registers a close with
  * Vitest's global hooks, on whichever test runs. The concurrent files, and
  * every helper module (any of them may be imported by a concurrent file), use
- * none of it: Vitest's global `test`, `it` and hooks, `rsc-serial.ts`, and the
- * suite of `rsc-css-rsbuild-rows.ts`, by any spelling or dynamic import.
+ * none of it: Vitest's global `test`, `it` and hooks, compiler-test-utils'
+ * `test-end`, `rsc-serial.ts`, and the suite of `rsc-css-rsbuild-rows.ts`, by
+ * any spelling or dynamic import.
  */
 const serialModules = [
   'tests/integration/rsc-serial.ts',
@@ -25,6 +26,10 @@ const noSerialImports = [
       {
         name: 'vitest',
         importNames: ['it', 'onTestFailed', 'onTestFinished', 'test'],
+        message: serialOnly,
+      },
+      {
+        name: '@tanstack/compiler-test-utils/test-end',
         message: serialOnly,
       },
     ],
@@ -43,7 +48,7 @@ const noSerialImports = [
 ]
 const serialImportExpression = {
   selector:
-    'ImportExpression[source.value=/vitest|rsc-serial|rsc-css-rsbuild-rows/]',
+    'ImportExpression[source.value=/vitest|test-end|rsc-serial|rsc-css-rsbuild-rows/]',
   message: serialOnly,
 }
 

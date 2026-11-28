@@ -9,7 +9,7 @@
  * `@vitejs/plugin-vue` became a test-only devDependency.
  */
 import { expect, test } from 'vitest'
-import { closeAtEnd } from '../test-end'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import { createStartHost } from '../regression-helpers'
 
 /**

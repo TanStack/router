@@ -31,6 +31,7 @@
     "./run-node": "./src/run-node.ts",
     "./source-maps": "./src/source-maps.ts",
     "./test": "./src/test.ts",
+    "./test-end": "./src/test-end.ts",
     "./test-scope": "./src/test-scope.ts",
     "./test-scope-setup": "./src/test-scope-setup.ts",
     "./workspace-packages": "./src/workspace-packages.ts",

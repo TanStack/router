@@ -8,7 +8,7 @@ import { concurrentTests } from './concurrent-tests.js'
  * Vitest's global hooks, on whichever test runs. The concurrent files, and
  * every other helper module of `tests/` (a concurrent file may import any of
  * them), use none of it, by any spelling or dynamic import: Vitest's global
- * `test`, `it` and test hooks, compiler-test-utils' `test-scope`, the serial
+ * `test`, `it` and test hooks, compiler-test-utils' `test-end`, the serial
  * modules, and the serial openers of `route-app.ts` and `build-harness.ts`.
  */
 const serialModules = [
@@ -42,7 +42,7 @@ const noSerialImports = [
         importNames: ['it', 'onTestFailed', 'onTestFinished', 'test'],
         message,
       },
-      { name: '@tanstack/compiler-test-utils/test-scope', message },
+      { name: '@tanstack/compiler-test-utils/test-end', message },
     ],
     patterns: [
       { group: spellings(serialModules), message },
@@ -57,7 +57,7 @@ const noSerialImports = [
 const serialImportExpressions = [
   {
     // (`\x2f` for the slash: a selector's regex ends at its first `/`)
-    selector: `ImportExpression[source.value=/^(?:vitest|@tanstack\\x2fcompiler-test-utils\\x2ftest-scope|(?:[^@].*\\x2f)?(?:${[...serialModules, ...Object.keys(serialExports)].join('|')})(?:\\.[cm]?[jt]sx?)?)$/]`,
+    selector: `ImportExpression[source.value=/^(?:vitest|@tanstack\\x2fcompiler-test-utils\\x2ftest-end|(?:[^@].*\\x2f)?(?:${[...serialModules, ...Object.keys(serialExports)].join('|')})(?:\\.[cm]?[jt]sx?)?)$/]`,
     message,
   },
   {

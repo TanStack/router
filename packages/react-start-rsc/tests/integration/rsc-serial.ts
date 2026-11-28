@@ -1,14 +1,12 @@
 /**
- * The openers of serial tests (TEST-TOOLS-DESIGN.md, Decision B): each
- * registers its close with Vitest's `onTestFinished` when called, while the
- * calling test is the current one, and the close waits for the start (a
- * start that failed has nothing left to close: the openers remove their app
- * then). Concurrent files and the helper modules never import this module
- * (ESLint, `eslint.config.js`). KNOWN-BUGS, "Accepted limits": what a test
+ * The openers of serial tests (TEST-TOOLS-DESIGN.md, Decision B), closed
+ * with the current test (`closeAtEnd`; a start that failed has nothing left
+ * to close: the openers remove their app then). Concurrent files and the
+ * helper modules never import this module (ESLint, `eslint.config.js`). KNOWN-BUGS, "Accepted limits": what a test
  * that timed out still opens is closed with the next test.
  */
 import { openPage } from '@tanstack/compiler-test-utils/browser'
-import { onTestFinished } from 'vitest'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import {
   openRscBuild,
   openRscDevServer,
@@ -20,21 +18,15 @@ import {
 import type { Page } from '@tanstack/compiler-test-utils/test'
 
 /** `open` (in the run's directory), closed when the current test finishes. */
-function closedAfterTest<
-  TOptions,
-  TOpened extends { close: () => Promise<void> },
->(open: (options: TOptions) => Promise<TOpened>) {
-  return (options: TOptions): Promise<TOpened> => {
-    const opening = open(options)
-    onTestFinished(() =>
-      opening.then(
-        (opened) => opened.close(),
-        () => {},
-      ),
+const closedAfterTest =
+  <TOptions, TOpened extends { close: () => Promise<void> }>(
+    open: (options: TOptions) => Promise<TOpened>,
+  ) =>
+  (options: TOptions): Promise<TOpened> =>
+    closeAtEnd(
+      () => open(options),
+      (opened) => opened.close(),
     )
-    return opening
-  }
-}
 
 export const startRscDevServer = closedAfterTest(openRscDevServer)
 export const startRscRsbuildDevServer = closedAfterTest(openRscRsbuildDevServer)

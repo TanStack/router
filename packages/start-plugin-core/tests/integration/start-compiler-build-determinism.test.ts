@@ -19,7 +19,7 @@ import {
   expectDeterministic,
   reorderedRecords,
 } from '@tanstack/compiler-test-utils/determinism'
-import { closeAtEnd } from '../test-end'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import { callFromClient, createStartHost, inPage } from '../regression-helpers'
 import type { StartCase } from '../regression-helpers'
 

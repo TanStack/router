@@ -34,7 +34,7 @@ import {
   loadMarker,
   loadedModulesExpression,
 } from '@tanstack/compiler-test-utils/importers'
-import { closeAtEnd } from '../test-end'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import { openTestPage } from '../test-page'
 import { startDevServer } from '../dev-server'
 import {

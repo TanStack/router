@@ -18,7 +18,7 @@ import {
   runNodeProgram,
   runNodeStep,
 } from '@tanstack/compiler-test-utils/run-node'
-import { closeAtEnd } from '../test-end'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import { closeAfterAll } from '../file-end'
 import {
   buildStartShared,

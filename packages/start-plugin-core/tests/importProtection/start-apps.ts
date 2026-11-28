@@ -27,7 +27,7 @@ import {
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
-import { closeAtEnd } from '../test-end'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import { startDevServer } from '../dev-server'
 import {
   rscDependency,

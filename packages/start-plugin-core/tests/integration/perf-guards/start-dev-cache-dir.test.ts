@@ -11,7 +11,7 @@
  */
 import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import { compilerStats } from '@tanstack/router-utils/compiler'
-import { closeAtEnd } from '../../test-end'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import { createStartHost } from '../../start-host'
 import type { StartHost } from '../../start-host'
 

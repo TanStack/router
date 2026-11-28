@@ -25,7 +25,7 @@
  * protection N1, B1 and B2.
  */
 import { describe, expect, test } from 'vitest'
-import { closeAtEnd } from '../../test-end'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import { openTestPage } from '../../test-page'
 import { startBundlers } from '../../build-harness'
 import { buildStart } from '../../build-start'

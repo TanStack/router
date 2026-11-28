@@ -20,7 +20,7 @@ import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
 import { expect } from 'vitest'
 import { tanstackRouter } from '../src/vite'
-import { closeAtEnd } from './serial'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import { loadRoute } from './route-app'
 import type {
   DevServer,

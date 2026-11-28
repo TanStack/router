@@ -11,7 +11,7 @@
  * aliasing and export specifiers".
  */
 import { expect, test } from 'vitest'
-import { closeAtEnd } from '../test-end'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import {
   createStartHost,
   fromPage,

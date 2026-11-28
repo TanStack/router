@@ -52,7 +52,7 @@ import { DanglingNameError } from '@tanstack/compiler-test-utils/build-harness'
 import { readNames } from '@tanstack/compiler-test-utils/free-names'
 import { clientGlobals } from '@tanstack/compiler-test-utils/known-globals'
 import { tanstackRouter } from '../src/vite'
-import { closeAtEnd } from './serial'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import type {
   BrowserPage,

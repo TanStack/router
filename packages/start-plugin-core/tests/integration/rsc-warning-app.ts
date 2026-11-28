@@ -23,7 +23,7 @@ import { pluginReact } from '@rsbuild/plugin-react'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
-import { closeAtEnd } from '../test-end'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import {
   rscDependency,
   rscPluginFactory,

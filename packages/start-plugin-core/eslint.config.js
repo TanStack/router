@@ -10,7 +10,7 @@ import noncompilerTests from './tests/noncompiler-tests.json' with { type: 'json
  * concurrent files (`integration-concurrent`), and every helper module of
  * `tests/` but these (a concurrent file may import any of them), use none
  * of it, by any spelling or dynamic import: Vitest's `onTestFinished` and
- * `onTestFailed`, compiler-test-utils' `test-scope`, and these modules
+ * `onTestFailed`, compiler-test-utils' `test-end`, and these modules
  * (paths under `tests/`): the ones that register, and every module that
  * imports one of them. A helper that imports one and is not listed is an
  * error, so the list is complete.
@@ -46,7 +46,6 @@ const serialModules = [
   'integration/start-router-server-only-switch',
   'render',
   'rsbuild-dev-server',
-  'test-end',
   'test-page',
 ]
 const message =
@@ -63,7 +62,7 @@ const noSerialImports = [
         importNames: ['onTestFinished', 'onTestFailed'],
         message,
       },
-      { name: '@tanstack/compiler-test-utils/test-scope', message },
+      { name: '@tanstack/compiler-test-utils/test-end', message },
     ],
     patterns: [{ regex: serialModulePath, message }],
   },
@@ -71,7 +70,7 @@ const noSerialImports = [
 const serialImportExpressions = [
   {
     // (`.` for the slash: a selector's regex ends at its first `/`)
-    selector: `ImportExpression[source.value=/^(?:vitest|@tanstack.compiler-test-utils.test-scope|(?:\\.\\.?.)+(?:.*.)?(?:${serialModules.map((module) => module.split('/').at(-1)).join('|')})(?:\\.[cm]?[jt]sx?)?)$/]`,
+    selector: `ImportExpression[source.value=/^(?:vitest|@tanstack.compiler-test-utils.test-end|(?:\\.\\.?.)+(?:.*.)?(?:${serialModules.map((module) => module.split('/').at(-1)).join('|')})(?:\\.[cm]?[jt]sx?)?)$/]`,
     message,
   },
 ]

@@ -3,7 +3,7 @@
  * registers with the current test is serial as a whole, eslint.config.js).
  */
 import { buildStartShared } from './build-harness'
-import { closeAtEnd } from './test-end'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import type { StartBuild, StartBuildOptions } from './build-harness'
 
 /**

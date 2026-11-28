@@ -23,7 +23,7 @@
  * the "export * diamonds" row failed in about 1 of 10 runs.)
  */
 import { describe, expect, test } from 'vitest'
-import { closeAtEnd } from '../test-end'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import { callFromClient, createStartHost } from '../regression-helpers'
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
