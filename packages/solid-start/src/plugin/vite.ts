@@ -14,6 +14,7 @@ import type { PluginOption } from 'vite'
 // over the dev module graph in dev, the client build's `.vite/manifest.json`
 // in builds. Solid's server renderer consumes either shape natively.
 const SOLID_MANIFEST_ID = 'virtual:solid-manifest'
+const START_MANIFEST_ID = 'tanstack-start-manifest:v'
 
 // @tanstack/solid-router's inert stand-in for that manifest (see the stub's
 // doc comment). We swap its content for the real thing in the server
@@ -103,21 +104,49 @@ export function tanstackStart(
           return undefined
         }
 
+        const hasStartManifest = await this.resolve(START_MANIFEST_ID, id)
+        const startManifestImport = hasStartManifest
+          ? `import { tsrStartManifest } from '${START_MANIFEST_ID}'\n`
+          : ''
+        const inlineStylesExpr = hasStartManifest
+          ? `process.env.TSS_INLINE_CSS_ENABLED === 'true' ? tsrStartManifest().inlineCss?.styles : undefined`
+          : 'undefined'
+
         // TanStack Start already emits entry/route CSS and preloads through
         // its own route manifest, so neutralize `isEntry` before handing the
         // built manifest to Solid — otherwise its registerEntryAssets pass
-        // duplicates the entry stylesheet link. Lazy() module lookups are
-        // unaffected. The dev flavor is a `{ resolve }` bridge and passes
-        // through untouched (Solid skips entry registration for resolvers).
+        // duplicates the entry stylesheet link. When inlineCss is enabled,
+        // also drop CSS entries already inlined into Start's manifest so
+        // Solid's lazy() resolver does not emit duplicate stylesheet links.
+        // The dev flavor is a `{ resolve }` bridge and passes through untouched
+        // (Solid skips entry registration for resolvers).
         return `import manifest from '${SOLID_MANIFEST_ID}'
+${startManifestImport}const inlineStyles = ${inlineStylesExpr}
+const manifestBase =
+  manifest && typeof manifest === 'object' && typeof manifest._base === 'string' && manifest._base
+    ? manifest._base.endsWith('/')
+      ? manifest._base
+      : \`\${manifest._base}/\`
+    : '/'
 const clientAssetsManifest =
   manifest && typeof manifest === 'object' && typeof manifest.resolve !== 'function'
     ? Object.fromEntries(
-        Object.entries(manifest).map(([key, entry]) =>
-          entry && typeof entry === 'object' && entry.isEntry
-            ? [key, { ...entry, isEntry: false }]
-            : [key, entry],
-        ),
+        Object.entries(manifest).map(([key, entry]) => {
+          if (!entry || typeof entry !== 'object') {
+            return [key, entry]
+          }
+          let nextEntry = entry.isEntry ? { ...entry, isEntry: false } : entry
+          if (inlineStyles && Array.isArray(entry.css)) {
+            const css = entry.css.filter((file) => {
+              const href = manifestBase + (file.startsWith('/') ? file.slice(1) : file)
+              return !Object.prototype.hasOwnProperty.call(inlineStyles, href)
+            })
+            if (css.length !== entry.css.length) {
+              nextEntry = { ...nextEntry, css }
+            }
+          }
+          return [key, nextEntry]
+        }),
       )
     : manifest
 export default clientAssetsManifest
