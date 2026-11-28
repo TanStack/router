@@ -10,7 +10,8 @@
  */
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
+import { describe, expect, test } from 'vitest'
 import { createAppDirectory } from '@tanstack/compiler-test-utils/app-directory'
 import { build, routeApp, routeHead } from '../build-harness'
 import { until } from '../generator-watch-session'
@@ -117,12 +118,10 @@ self.onmessage = () => self.postMessage(Object.keys(routeTree.children ?? {}))
   test(
     'in watch mode an edited route and a new route are split in the child compiler',
     async () => {
-      const root = await createAppDirectory(__dirname, '.child-compiler-')
-      let close: () => Promise<unknown> = () => Promise.resolve()
-      onTestFinished(async () => {
-        await close()
-        await rm(root, { recursive: true, force: true })
-      })
+      const root = await closeAtEnd(
+        () => createAppDirectory(__dirname, '.child-compiler-'),
+        (dir) => rm(dir, { recursive: true, force: true }),
+      )
       const file = (relative: string) => path.join(root, relative)
       // Route files without JSX: the bundler compiles them without a loader
       const page = (id: string, marker: string) =>
@@ -186,35 +185,36 @@ export const Route = createRootRoute({})
       let nextBuild = new Promise<void>((resolve) => {
         built = resolve
       })
-      const watching = compiler.watch(
-        { aggregateTimeout: 50 },
-        (error: Error | null, stats: any) => {
-          if (error) {
-            errors.push(String(error))
-          } else if (stats.hasErrors()) {
-            const { errors: own, children } = stats.toJson({
-              all: false,
-              errors: true,
-              children: true,
-            })
-            for (const entry of [
-              ...own,
-              ...children.flatMap((child: any) => child.errors),
-            ]) {
-              errors.push(entry.message)
-            }
-          }
-          built()
-          nextBuild = new Promise<void>((resolve) => {
-            built = resolve
-          })
-        },
+      await closeAtEnd(
+        () =>
+          Promise.resolve(
+            compiler.watch(
+              { aggregateTimeout: 50 },
+              (error: Error | null, stats: any) => {
+                if (error) {
+                  errors.push(String(error))
+                } else if (stats.hasErrors()) {
+                  const { errors: own, children } = stats.toJson({
+                    all: false,
+                    errors: true,
+                    children: true,
+                  })
+                  for (const entry of [
+                    ...own,
+                    ...children.flatMap((child: any) => child.errors),
+                  ]) {
+                    errors.push(entry.message)
+                  }
+                }
+                built()
+                nextBuild = new Promise<void>((resolve) => {
+                  built = resolve
+                })
+              },
+            ),
+          ),
+        (opened: any) => new Promise((resolve) => opened.close(resolve)),
       )
-      close = () =>
-        new Promise((resolve) => {
-          close = () => Promise.resolve()
-          watching.close(resolve)
-        })
 
       /** Waits for a worker asset with `marker`, then gives the worker's assets with it. */
       const placementOf = async (marker: string) => {

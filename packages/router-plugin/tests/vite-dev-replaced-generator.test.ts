@@ -79,35 +79,38 @@ export default async function () {
         .replace('"FAIL"', JSON.stringify(file('fail'))),
     )
     const published: Array<string> = []
-    const server = await createServer({
-      root,
-      configFile: false,
-      logLevel: 'silent',
-      // (the test reports each file event itself)
-      server: {
-        middlewareMode: true,
-        ws: false,
-        watch: { ignored: [path.join(root, '**')] },
-      },
-      optimizeDeps: { noDiscovery: true },
-      plugins: [
-        tanstackRouterGenerator({
-          // (a generator plugin of the app: what each generation publishes)
+    const server = await closeAtEnd(
+      () =>
+        createServer({
+          root,
+          configFile: false,
+          logLevel: 'silent',
+          // (the test reports each file event itself)
+          server: {
+            middlewareMode: true,
+            ws: false,
+            watch: { ignored: [path.join(root, '**')] },
+          },
+          optimizeDeps: { noDiscovery: true },
           plugins: [
-            {
-              name: 'test:published-routes',
-              onRouteTreeChanged({ model }) {
-                published.push(model.routes.map((r) => r.id).join(','))
-              },
-            },
+            tanstackRouterGenerator({
+              // (a generator plugin of the app: what each generation publishes)
+              plugins: [
+                {
+                  name: 'test:published-routes',
+                  onRouteTreeChanged({ model }) {
+                    published.push(model.routes.map((r) => r.id).join(','))
+                  },
+                },
+              ],
+            }),
           ],
         }),
-      ],
-    })
-    onTestFinished(async () => {
-      await writeFile(file('release'), '')
-      await server.close()
-    })
+      async (opened) => {
+        await writeFile(file('release'), '')
+        await opened.close()
+      },
+    )
     const tree = () => readFile(file('src/tree.gen.ts'), 'utf8')
     expect(await tree()).toContain('/slow/old')
 

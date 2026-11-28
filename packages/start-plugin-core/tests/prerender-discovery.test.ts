@@ -6,10 +6,11 @@
  * component in the lazy file: it is prerendered, as on main. A route whose
  * file records no component (an API route) is not.
  */
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { expect, onTestFinished, test } from 'vitest'
+import { expect, test } from 'vitest'
 import { Generator, getConfig } from '@tanstack/router-generator'
 import { prerender } from '../src/prerender'
 import { parseStartConfig } from '../src/schema'
@@ -31,8 +32,10 @@ export const Route = createFileRoute('/api')({ loader: () => 1 })
 }
 
 test('a lazy-only route is discovered for prerendering', async () => {
-  const root = await mkdtemp(path.join(tmpdir(), 'tss-prerender-discovery-'))
-  onTestFinished(() => rm(root, { recursive: true, force: true }))
+  const root = await closeAtEnd(
+    () => mkdtemp(path.join(tmpdir(), 'tss-prerender-discovery-')),
+    (dir) => rm(dir, { recursive: true, force: true }),
+  )
   for (const [file, content] of Object.entries(files)) {
     await mkdir(path.dirname(path.join(root, file)), { recursive: true })
     await writeFile(path.join(root, file), content)

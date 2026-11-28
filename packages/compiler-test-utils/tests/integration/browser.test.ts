@@ -201,11 +201,11 @@ test('a run whose script never settles or whose page never loads carries a Settl
   }).catch((error: unknown) => error)
   expect(settleTimeoutIn(unsettled)).toBeInstanceOf(SettleTimeout)
   const silent = createServer(() => {})
-  await new Promise<void>((resolve) => silent.listen(0, '127.0.0.1', resolve))
   onTestFinished(() => {
     silent.closeAllConnections()
     return new Promise<void>((resolve) => silent.close(() => resolve()))
   })
+  await new Promise<void>((resolve) => silent.listen(0, '127.0.0.1', resolve))
   const port = (silent.address() as AddressInfo).port
   const stalled = await runInPage({
     pageUrl: `http://127.0.0.1:${port}/`,
@@ -355,10 +355,10 @@ test('concurrent runs each hold a page of their own, at most runPageLimit at onc
       response.end('held')
     }, 300)
   })
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   onTestFinished(
     () => new Promise<void>((resolve) => server.close(() => resolve())),
   )
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/`
   const runs = await Promise.all(
     Array.from({ length: runPageLimit + 2 }, (_, index) =>
