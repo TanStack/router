@@ -494,23 +494,26 @@ removes a successful generation only if it is still the current registry entry,
 then aborts its controller. Every copied semantic match that retains a flight
 must acquire a lease, and every discarded match must release one exactly once.
 
-There is one short exception to normal zero-lease cleanup. When one navigation
-replaces another with the same match ID, the predecessor's loader flight can
-reach zero leases before the successor finishes `beforeLoad` and decides whether
-to reuse it. While the current transaction is visibly running `beforeLoad` for
-that same-ID successor, the flight remains discoverable. The same grace period
-applies if any other same-ID flight loses its final lease during that phase.
-Outside this phase, merely having a current `_tx` is not enough to retain a
-zero-lease flight.
+There is one short exception to normal zero-lease cleanup. A navigation has not
+decided whether to reuse same-ID loader work until its loader planning, after
+its `beforeLoad` chain. Its transaction therefore records the same-ID flights
+that are discoverable when it is installed. Until planning ends that
+reservation, a reserved flight that loses its final lease remains discoverable
+instead of being aborted, regardless of which owner released it: the superseded
+navigation's lane or background candidates, a preload, or any other consumer. A
+reservation is not a lease: an unowned reserved generation that fails still
+retires and aborts at settlement without user error hooks. Only the current
+transaction's reservations count; merely having a current `_tx` is not enough to
+retain a zero-lease flight.
 
-Loader planning ends the grace period synchronously. The successor either
-acquires the discoverable flight or one sweep removes and aborts it. A lane with
-no `beforeLoad` reaches loader planning before contextualization yields; an
-asynchronous `beforeLoad` keeps the grace period visible until it settles.
-Preloads neither create nor sweep this navigation-only reservation. An explicit
-`shouldReload: false` declines the flight, while invalidation removes discovery
-for selected IDs before starting the replacement load. No extra flag, counter,
-or completion promise represents the grace period.
+Loader planning ends the reservation synchronously. The successor either
+acquires a reserved flight or retires every unadopted zero-lease one. A
+transaction superseded before planning ends its reservations at installation of
+its successor, which has already recorded its own. Preloads neither create nor
+end this navigation-only reservation. An explicit `shouldReload: false` declines
+the flight, while invalidation removes discovery for selected IDs before
+starting the replacement load. No extra flag, counter, or completion promise
+represents the reservation.
 
 Releasing a set of matches is deliberately two-phase. First every outgoing
 match drops its `_flight` lease and every zero-owner generation not reserved by
