@@ -821,8 +821,9 @@ async function buildWithWebpackApi(
     : await createCompiler(bundler, options, config.diagnosticChannel).then(
         (compiler) =>
           new Promise<StatsJson>((resolve, reject) => {
-            compiler.run((error, result) => {
+            compiler.run((reported, result) => {
               compiler.close(() => {
+                const error = buildFailure(reported, result)
                 if (error) {
                   reject(
                     settleTimeoutIn(error) ??
@@ -893,7 +894,10 @@ async function watchAndRebuild(
     reported = true
     if (unseen?.length === 0) {
       // (now: a later build reuses what Rspack's stats read)
-      outcome ??= { error, json: stats?.toJson(statsOptions) }
+      outcome ??= {
+        error: buildFailure(error, stats),
+        json: stats?.toJson(statsOptions),
+      }
     }
     wake()
   })
@@ -1982,6 +1986,16 @@ export interface StatsJson {
 
 interface WebpackStats {
   toJson: (options: Record<string, unknown>) => StatsJson
+  /** The errors as thrown: webpack keeps a plugin's error as an error's `error`. */
+  compilation: { errors: Array<unknown> }
+}
+
+/**
+ * The error a build reported (`error`) or a `SettleTimeout` one of its
+ * compilation errors carries: the stats' JSON keeps only their messages.
+ */
+function buildFailure(error: Error | null, stats: WebpackStats | undefined) {
+  return error ?? settleTimeoutIn({ errors: stats?.compilation.errors }) ?? null
 }
 
 interface WebpackCompiler {

@@ -790,6 +790,41 @@ test.each(bundlers)(
   timeout,
 )
 
+// webpack reports a hook's error during module resolution as a compilation
+// error (the stats keep its message only): the timeout is still thrown as it
+// is, in a build and in the rebuild of an edit.
+test.each([
+  ['a build', false],
+  ['the rebuild of an edit', true],
+] as const)(
+  'webpack: a wait that ran out of time while resolving an import, in %s, is thrown as it is',
+  async (_, watched) => {
+    const late = `import './late'\nexport const value = 1\n`
+    const resolving = () => ({
+      apply: (compiler: any) =>
+        compiler.hooks.normalModuleFactory.tap('wait', (factory: any) =>
+          factory.hooks.beforeResolve.tapPromise(
+            'wait',
+            async (request: { request: string }) => {
+              if (request.request === './late') {
+                throw new SettleTimeout('a wait ran out of time')
+              }
+            },
+          ),
+        ),
+    })
+    await expect(
+      bundleApp({
+        bundler: 'webpack',
+        files: { 'entry.ts': watched ? `export const value = 1\n` : late },
+        plugins: { webpack: resolving },
+        ...(watched && { rebuildAfter: { 'entry.ts': late } }),
+      }),
+    ).rejects.toBeInstanceOf(SettleTimeout)
+  },
+  timeout,
+)
+
 test.each(['webpack', 'rspack'] as const)(
   '%s: rebuildAfter: an edit no build takes is a SettleTimeout; one that breaks the build, a BuildError of its file',
   async (bundler) => {
