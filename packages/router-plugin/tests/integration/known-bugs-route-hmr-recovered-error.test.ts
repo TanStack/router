@@ -1,3 +1,5 @@
+import { test } from 'vitest'
+import { openRouteHmrPage } from '../serial'
 /**
  * Route HMR after a render error the page recovered from without a route
  * edit (a navigation resets the boundary): a later route edit updates in
@@ -6,8 +8,6 @@
  * client-only root's boundaries recover in place (oracle/KNOWN-BUGS.md,
  * "Fixed": R3-G9-2).
  */
-import { test } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
 
 const throwing = `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({ component: Page })

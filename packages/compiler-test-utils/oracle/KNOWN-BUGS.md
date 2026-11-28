@@ -217,10 +217,11 @@ function info not found` when one of them calls it, and the build says nothing, 
   file the registration throws. A timed-out `restart()` of an Rsbuild dev server resumes the body too (its server is
   closed with the first). Source: the chunk 4 reviews of react-start-rsc (Astra, Gemini, 11-28). No test.
   Workaround: none needed; a concurrent file's fixtures check the test's signal and open nothing after a timeout.
-- **A timed-out test's body runs on, and what it still opens is cleaned at the end of the next test** (router-plugin's
-  serial files, whose openers register their close with Vitest's global `onTestFinished`): Vitest 5.1.2 does not stop
-  the body of a test that ran out of time, so an opener it reaches afterwards registers on the test running then, or
-  throws when none is (at the file's end). Decision B (TEST-TOOLS-DESIGN.md, 2026-11-28); source: Astra's and
+- **A timed-out test's body runs on, and what it opens after the timeout is cleaned at the end of the next test**
+  (router-plugin's serial files, whose openers register their close with Vitest's global `onTestFinished` when they
+  are called): Vitest 5.1.2 does not stop the body of a test that ran out of time, so an opener it calls afterwards
+  registers on the test running then, or throws when none is (at the file's end). What it began to open before the
+  timeout closes with it. Decision B (TEST-TOOLS-DESIGN.md, 2026-11-28); source: Astra's and
   Gemini's probes (`check-option-b-astra.md`). No test. The concurrent files open through the fixtures of
   `tests/test.ts` instead (ESLint `no-restricted-imports`).
 - **An export that starts as a builder and is later replaced by an ordinary object is still read as a builder**

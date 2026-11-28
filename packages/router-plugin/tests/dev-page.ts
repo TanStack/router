@@ -56,11 +56,11 @@ export async function render(component: any, props: Record<string, unknown> = {}
  * Starts the dev server on `files` with `plugins(app)` (the router plugins)
  * followed by `@vitejs/plugin-react`; it closes when the test ends.
  */
-export async function createReactDevPage(options: {
+export function createReactDevPage(options: {
   files: Record<string, string>
   plugins: (app: PluginHostApp) => Array<PluginOption>
 }): Promise<PluginHost> {
-  const host = await createPluginHost({
+  const starting = createPluginHost({
     dir: import.meta.dirname,
     prefix: '.dev-page-',
     files: { ...options.files, [renderProbe.slice(1)]: renderProbeSource },
@@ -68,6 +68,11 @@ export async function createReactDevPage(options: {
     config: { optimizeDeps: { noDiscovery: true, include: prebundled } },
     plugins: (app) => [...options.plugins(app), react()],
   })
-  onTestFinished(() => host.close())
-  return host
+  onTestFinished(() =>
+    starting.then(
+      (host) => host.close(),
+      () => {},
+    ),
+  )
+  return starting
 }

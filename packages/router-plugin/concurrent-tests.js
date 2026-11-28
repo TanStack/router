@@ -38,15 +38,3 @@ export const concurrentTests = [
     .filter((file) => !serialHmrTests.includes(file)),
   ...moreConcurrentTests,
 ]
-
-/**
- * The helper modules the concurrent files import that open things or
- * declare tests: they too open only through the fixtures of `tests/test.ts`
- * (eslint.config.js). Paths relative to `tests/`.
- */
-export const concurrentHelpers = [
-  'route-hmr-edit.ts',
-  ...readdirSync(integrationDir)
-    .filter((file) => file.endsWith('-cases.ts'))
-    .map((file) => `integration/${file}`),
-]

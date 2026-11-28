@@ -299,8 +299,7 @@ export async function generatorDevApp(
    */
   const open = async (pathname: string) => {
     const last = page as BrowserPage | undefined
-    page = await openPage('about:blank')
-    onTestFinished(page.close)
+    page = await closeAtEnd(openPage('about:blank'), (opened) => opened.close())
     await last?.close()
     scripts = []
     const requests = new Set<unknown>()
@@ -475,6 +474,19 @@ export async function generatorDevApp(
   }
 }
 
+/** Registers `opening`'s close for the end of the test, before it is awaited. */
+function closeAtEnd<T>(opening: Promise<T>, close: (opened: T) => unknown) {
+  onTestFinished(() =>
+    opening.then(
+      async (opened) => {
+        await close(opened)
+      },
+      () => {},
+    ),
+  )
+  return opening
+}
+
 /** The part of a dev server the app needs. */
 interface AppServer {
   root: string
@@ -519,13 +531,14 @@ async function viteApp(
   symlinks: Record<string, string>,
   pluginOptions: GeneratorDevAppOptions['pluginOptions'] = {},
 ): Promise<AppServer> {
-  const server = await createDevServer({
-    dir: harnessDir,
-    prefix: '.generator-dev-vite-',
-    browser: true,
-    symlinks,
-    files: {
-      'index.html': `<!doctype html>
+  const server = await closeAtEnd(
+    createDevServer({
+      dir: harnessDir,
+      prefix: '.generator-dev-vite-',
+      browser: true,
+      symlinks,
+      files: {
+        'index.html': `<!doctype html>
 <html>
   <body>
     <div id="app"></div>
@@ -533,23 +546,24 @@ async function viteApp(
   </body>
 </html>
 `,
-      ...files,
-    },
-    config: { optimizeDeps: { include: prebundled } },
-    plugins: ({ root }) => [
-      tanstackRouter({
-        target: 'react',
-        routesDirectory: './routes',
-        generatedRouteTree: './routeTree.gen.ts',
-        autoCodeSplitting: true,
-        ...(typeof pluginOptions === 'function'
-          ? pluginOptions(root)
-          : pluginOptions),
-      }),
-      react(),
-    ],
-  })
-  onTestFinished(() => server.close())
+        ...files,
+      },
+      config: { optimizeDeps: { include: prebundled } },
+      plugins: ({ root }) => [
+        tanstackRouter({
+          target: 'react',
+          routesDirectory: './routes',
+          generatedRouteTree: './routeTree.gen.ts',
+          autoCodeSplitting: true,
+          ...(typeof pluginOptions === 'function'
+            ? pluginOptions(root)
+            : pluginOptions),
+        }),
+        react(),
+      ],
+    }),
+    (opened) => opened.close(),
+  )
   // Where the state after the last settled edit begins in Vite's log
   let settled = 0
   return {
@@ -586,45 +600,47 @@ async function rsbuildApp(
   config: RsbuildConfig,
   printedTexts: () => Array<string>,
 ): Promise<AppServer> {
-  const first = await createRsbuildDevServer({
-    dir: harnessDir,
-    prefix: '.generator-dev-rsbuild-',
-    browser: true,
-    entry: 'main.tsx',
-    symlinks,
-    files,
-    config: mergeRsbuildConfig(
-      {
-        html: { mountId: 'app' },
-        ...(persistentCache && { performance: { buildCache: true } }),
-      },
-      config,
-    ),
-    plugins: ({ root }) => [
-      pluginReact(),
-      {
-        name: 'generator-dev-app',
-        setup(api) {
-          api.modifyRspackConfig((config) => {
-            config.plugins.push(
-              tanstackRouterRspack({
-                target: 'react',
-                // The Rspack plugin resolves relative paths from the working
-                // directory
-                routesDirectory: path.join(root, 'routes'),
-                generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
-                autoCodeSplitting: true,
-                ...(typeof pluginOptions === 'function'
-                  ? pluginOptions(root)
-                  : pluginOptions),
-              }),
-            )
-          })
+  const first = await closeAtEnd(
+    createRsbuildDevServer({
+      dir: harnessDir,
+      prefix: '.generator-dev-rsbuild-',
+      browser: true,
+      entry: 'main.tsx',
+      symlinks,
+      files,
+      config: mergeRsbuildConfig(
+        {
+          html: { mountId: 'app' },
+          ...(persistentCache && { performance: { buildCache: true } }),
         },
-      } satisfies RsbuildPlugin,
-    ],
-  })
-  onTestFinished(() => first.close())
+        config,
+      ),
+      plugins: ({ root }) => [
+        pluginReact(),
+        {
+          name: 'generator-dev-app',
+          setup(api) {
+            api.modifyRspackConfig((config) => {
+              config.plugins.push(
+                tanstackRouterRspack({
+                  target: 'react',
+                  // The Rspack plugin resolves relative paths from the working
+                  // directory
+                  routesDirectory: path.join(root, 'routes'),
+                  generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
+                  autoCodeSplitting: true,
+                  ...(typeof pluginOptions === 'function'
+                    ? pluginOptions(root)
+                    : pluginOptions),
+                }),
+              )
+            })
+          },
+        } satisfies RsbuildPlugin,
+      ],
+    }),
+    (opened) => opened.close(),
+  )
   return rsbuildAppServer(first, printedTexts)
 }
 
@@ -675,8 +691,9 @@ function rsbuildAppServer(
     restart: async (written) => {
       await server.stop()
       await writeAppFiles(server.root, written)
-      const restarted = await server.restart()
-      onTestFinished(() => restarted.close())
+      const restarted = await closeAtEnd(server.restart(), (opened) =>
+        opened.close(),
+      )
       return rsbuildAppServer(restarted, printedTexts)
     },
   }
@@ -698,12 +715,13 @@ async function webpackApp(
   persistentCache: boolean,
   printedTexts: () => Array<string>,
 ): Promise<AppServer> {
-  const app = await createApp({
-    dir: harnessDir,
-    prefix: '.generator-dev-webpack-',
-    symlinks,
-    files: {
-      'public/index.html': `<!doctype html>
+  const app = await closeAtEnd(
+    createApp({
+      dir: harnessDir,
+      prefix: '.generator-dev-webpack-',
+      symlinks,
+      files: {
+        'public/index.html': `<!doctype html>
 <html>
   <body>
     <div id="app"></div>
@@ -711,10 +729,11 @@ async function webpackApp(
   </body>
 </html>
 `,
-      ...files,
-    },
-  })
-  onTestFinished(() => app.dispose())
+        ...files,
+      },
+    }),
+    (opened) => opened.dispose(),
+  )
   const root = app.root
   // Files older than the watcher's start: webpack's watcher reports a file
   // modified right before it started as changed
@@ -811,7 +830,6 @@ async function webpackApp(
       },
       compiler,
     )
-    await server.start()
     let stopped: Promise<void> | undefined
     const stop = () => {
       stopped ??= (async () => {
@@ -823,7 +841,7 @@ async function webpackApp(
       })()
       return stopped
     }
-    onTestFinished(stop)
+    await closeAtEnd(server.start(), stop)
     const port = (server.server!.address() as AddressInfo).port
     /** `started` at the last write; `-1`: the first compile is owed. */
     let writtenAt = -1

@@ -1090,15 +1090,19 @@ export async function loadRoute(
   const shared = custom ? undefined : hosts.get(key)
   const created = shared === undefined
   const starting = shared ?? startHost(options, root, files)
-  if (!custom && created) {
+  if (custom) {
+    onTestFinished(() =>
+      starting.then(
+        ({ host }) => host.close(),
+        () => {},
+      ),
+    )
+  } else if (created) {
     hosts.set(key, starting)
     // (a start that failed is not reused)
     starting.catch(() => hosts.delete(key))
   }
   const state = await starting
-  if (custom) {
-    onTestFinished(() => state.host.close())
-  }
   const mark = created ? 0 : state.host.diagnostics.length
   if (created) {
     state.current = files

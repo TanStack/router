@@ -1,3 +1,5 @@
+import { describe, expect, test } from 'vitest'
+import { openRouteHmrPage } from '../serial'
 /**
  * Route options the compiler cannot read, shared across evaluations of the
  * route file (SPEC J2.8, J3.3): the route adopts the object it is given, so a
@@ -5,8 +7,6 @@
  * edit of the file reloads the page (the dev full-reload allowance) and leaves
  * no error, each time.
  */
-import { describe, expect, test } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
 
 const timeout = 60_000
 

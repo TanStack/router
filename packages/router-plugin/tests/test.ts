@@ -49,9 +49,16 @@ const bound =
       return opened
     })
 
+type Opener<TOpen> = TOpen extends (
+  at: At,
+  options: infer TOptions,
+) => infer TOpened
+  ? (options: TOptions) => TOpened
+  : never
+
 export const test = base.extend<{
-  openRouteHmrPage: typeof hmrPage.openRouteHmrPage
-  openWebpackHmrPage: typeof webpackPage.openWebpackHmrPage
+  openRouteHmrPage: Opener<typeof hmrPage.openRouteHmrPageAt>
+  openWebpackHmrPage: Opener<typeof webpackPage.openWebpackHmrPageAt>
 }>({
   openRouteHmrPage: bound(
     async () => (await import('./route-hmr-page')).openRouteHmrPageAt,

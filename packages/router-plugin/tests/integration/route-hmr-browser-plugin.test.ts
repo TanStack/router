@@ -15,10 +15,8 @@
  * route-hmr-browser-plugin-routes.test.ts.
  */
 import { describe, it } from 'vitest'
-import {
-  expectEditShownOrReportedFallback,
-  openRouteHmrPage,
-} from '../route-hmr-page'
+import { expectEditShownOrReportedFallback } from '../route-hmr-page'
+import { openRouteHmrPage } from '../serial'
 import type { RouteHmrPageOptions } from '../route-hmr-page'
 
 const timeout = 90_000

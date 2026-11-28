@@ -184,11 +184,13 @@ export function routeApp(
  * that `routerPlugins` already gives (by its name) is not added again. The
  * app is removed when the test ends.
  */
-export async function build(options: BuildOptions): Promise<BuildResult> {
-  const app = await buildShared(options)
-  onTestFinished(() => app.dispose())
-  return app
+export function build(options: BuildOptions): Promise<BuildResult> {
+  const building = buildShared(options)
+  onTestFinished(() => building.then(disposeApp, () => {}))
+  return building
 }
+
+const disposeApp = (app: BuildResult) => app.dispose()
 
 type BuildOptions = Omit<BundleOptions, 'dir'> & {
   pluginOptions?: RouterPluginOptions
@@ -390,12 +392,12 @@ const rsbuildEntryGlobal = '__routerBuildHarnessEntry'
  * where, does not depend on that. `files` holds the routes and `entry.ts`
  * (see `routeApp`). The app is removed when the test ends.
  */
-export async function buildWithRsbuild(
+export function buildWithRsbuild(
   options: RsbuildBuildOptions,
 ): Promise<BuildResult> {
-  const app = await buildSharedWithRsbuild(options)
-  onTestFinished(() => app.dispose())
-  return app
+  const building = buildSharedWithRsbuild(options)
+  onTestFinished(() => building.then(disposeApp, () => {}))
+  return building
 }
 
 type RsbuildBuildOptions = Pick<

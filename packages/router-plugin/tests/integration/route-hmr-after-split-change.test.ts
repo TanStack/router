@@ -10,7 +10,7 @@
  */
 import { describe, expect, test } from 'vitest'
 import { inPlace } from '../route-hmr-edit'
-import { openRouteHmrPage } from '../route-hmr-page'
+import { openRouteHmrPage } from '../serial'
 
 const timeout = 60_000
 

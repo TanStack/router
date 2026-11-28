@@ -1,3 +1,5 @@
+import { describe, it } from 'vitest'
+import { openRouteHmrPage } from '../serial'
 /**
  * Route HMR of route files the router plugin recognises, as the developer
  * sees it (`route-hmr-page.ts`): route files the framework plugin gives no
@@ -5,8 +7,6 @@
  * constructor and the app's own helper. The router plugin's configurations
  * and routes created inside functions: route-hmr-browser-plugin.test.ts.
  */
-import { describe, it } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
 
 const timeout = 90_000
 const inPlace = { reloaded: false, errors: [] }

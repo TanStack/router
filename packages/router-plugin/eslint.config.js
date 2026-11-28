@@ -1,13 +1,63 @@
 // @ts-check
 
 import rootConfig, { compilerSourceConfig } from '../../eslint.config.js'
-import { concurrentHelpers, concurrentTests } from './concurrent-tests.js'
+import { concurrentTests } from './concurrent-tests.js'
 
-/** Relative import patterns of a helper module of `tests/`. */
-const helper = (/** @type {string} */ name) => [`./${name}`, `../${name}`]
-
+/**
+ * Serial only (TEST-TOOLS-DESIGN.md, Decision B): what registers a close with
+ * Vitest's global hooks, on whichever test runs. The concurrent files, and
+ * every other helper module of `tests/` (a concurrent file may import any of
+ * them), use none of it, by any spelling or dynamic import: Vitest's global
+ * `test`, `it` and test hooks, the serial modules, and the serial openers of
+ * `route-app.ts` and `build-harness.ts`.
+ */
+const serialModules = [
+  'batch-build',
+  'dev-page',
+  'dev-server',
+  'generator-dev-app',
+  'generator-dev-scenarios',
+  'generator-watch-session',
+  'production-bundle',
+  'route-hosts-setup',
+  'serial',
+]
+const serialExports = {
+  'route-app': ['loadRoute', 'closeRouteHosts'],
+  'build-harness': ['build', 'buildWithRsbuild', 'buildAndRun'],
+}
 const message =
-  'registers its close with the global onTestFinished, which a concurrent test does not own: open through the fixtures of tests/test.ts'
+  "Serial only: registers its close with Vitest's global onTestFinished. Concurrent files open through the fixtures of tests/test.ts; helper modules take what they open as a value."
+/** The relative spellings of a module of `tests/`, with or without an extension. */
+const spellings = (/** @type {string} */ name) =>
+  ['./', '../', '../../'].flatMap((up) => [up + name, `${up}${name}.*`])
+const noSerialImports = [
+  'error',
+  {
+    paths: [
+      {
+        name: 'vitest',
+        importNames: ['it', 'onTestFailed', 'onTestFinished', 'test'],
+        message,
+      },
+    ],
+    patterns: [
+      { group: serialModules.flatMap(spellings), message },
+      ...Object.entries(serialExports).map(([name, importNames]) => ({
+        group: spellings(name),
+        importNames,
+        message,
+      })),
+    ],
+  },
+]
+const serialImportExpression = {
+  // (`.` for the slash: a selector's regex ends at its first `/`)
+  selector: `ImportExpression[source.value=/^(?:vitest|(?:\\.\\.?.)+(?:${[...serialModules, ...Object.keys(serialExports)].join('|')})(?:\\.[cm]?[jt]s)?)$/]`,
+  message,
+}
+const tests = (/** @type {Array<string>} */ names) =>
+  names.map((name) => `tests/${name}.ts`)
 
 export default [
   ...rootConfig,
@@ -18,58 +68,20 @@ export default [
     ignores: ['tests/**/test-files/**'],
   },
   {
-    // The concurrent files and the helpers they import open nothing whose
-    // close goes to Vitest's global `onTestFinished` (the serial files'
-    // openers): with tests running at once, it is another test's
-    files: [...concurrentTests, ...concurrentHelpers].map(
-      (file) => `tests/${file}`,
-    ),
+    name: 'router-plugin/no-serial-openers',
+    files: ['tests/**/!(*.test).ts'],
+    ignores: tests([...serialModules, ...Object.keys(serialExports)]),
     rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: [
-            {
-              name: 'vitest',
-              importNames: ['onTestFinished', 'onTestFailed'],
-              message: 'a concurrent test registers through its own context',
-            },
-          ],
-          patterns: [
-            ...[
-              'dev-page',
-              'dev-server',
-              'generator-dev-app',
-              'generator-dev-scenarios',
-              'generator-watch-session',
-              'batch-build',
-              'production-bundle',
-            ].map((name) => ({ group: helper(name), message })),
-            { group: helper('route-app'), importNames: ['loadRoute'], message },
-            {
-              group: helper('build-harness'),
-              importNames: [
-                'build',
-                'buildWithRsbuild',
-                'buildAndRun',
-                'buildShared',
-                'buildSharedWithRsbuild',
-              ],
-              message,
-            },
-            {
-              group: helper('route-hmr-page'),
-              importNames: ['openRouteHmrPage'],
-              message,
-            },
-            {
-              group: helper('webpack-hmr-page'),
-              importNames: ['openWebpackHmrPage'],
-              message,
-            },
-          ],
-        },
-      ],
+      'no-restricted-imports': noSerialImports,
+      'no-restricted-syntax': ['error', serialImportExpression],
+    },
+  },
+  {
+    name: 'router-plugin/concurrent-tests',
+    files: concurrentTests.map((file) => `tests/${file}`),
+    rules: {
+      'no-restricted-imports': noSerialImports,
+      'no-restricted-syntax': ['error', serialImportExpression],
     },
   },
 ]

@@ -9,7 +9,8 @@
  * Refresh patches keeps its state, and no warning is reported.
  */
 import { describe, test } from 'vitest'
-import { countMounts, mountsOf, openRouteHmrPage } from '../route-hmr-page'
+import { countMounts, mountsOf } from '../route-hmr-page'
+import { openRouteHmrPage } from '../serial'
 
 const timeout = 90_000
 

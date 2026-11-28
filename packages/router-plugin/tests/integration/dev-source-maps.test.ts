@@ -35,7 +35,7 @@ import {
 import { tanstackRouter } from '../../src/vite'
 import { rootRoute, routeHead } from '../build-harness'
 import { pageHtml, runInPage } from '../route-app'
-import { openWebpackHmrPage } from '../webpack-hmr-page'
+import { openWebpackHmrPage } from '../serial'
 import type { AnySourceMap } from '@tanstack/compiler-test-utils/source-maps'
 
 const timeout = 60_000

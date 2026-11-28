@@ -30,8 +30,7 @@ import {
 } from '@tanstack/compiler-test-utils/hmr-sync'
 import { entryFile, loadRoute, probeFile } from '../route-app'
 import { routeShapes } from '../production-bundle'
-import { openRouteHmrPage } from '../route-hmr-page'
-import { openWebpackHmrPage } from '../webpack-hmr-page'
+import { openRouteHmrPage, openWebpackHmrPage } from '../serial'
 import type { TargetFramework } from '../route-app'
 
 const timeout = 60_000

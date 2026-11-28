@@ -247,12 +247,17 @@ return [
  * router package). The app resolves the real router packages
  * (`@tanstack/{react,solid,vue}-router`, dependencies of this package).
  */
-export async function routerDevServer(
+export function routerDevServer(
   options: RouterDevServerOptions,
 ): Promise<DevServer> {
-  const server = await startRouterDevServer(options)
-  onTestFinished(() => server.close())
-  return server
+  const starting = startRouterDevServer(options)
+  onTestFinished(() =>
+    starting.then(
+      (server) => server.close(),
+      () => {},
+    ),
+  )
+  return starting
 }
 
 /** `routerDevServer` for a file's hook: the caller closes it. */

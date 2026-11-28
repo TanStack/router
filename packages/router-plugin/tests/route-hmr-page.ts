@@ -33,7 +33,7 @@ import react from '@vitejs/plugin-react'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import solid from 'vite-plugin-solid'
-import { expect, onTestFinished } from 'vitest'
+import { expect } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import { openDiagnosticChannel } from '@tanstack/compiler-test-utils/diagnostic-channel'
@@ -387,17 +387,11 @@ const defaultEditTimeout = 15_000
 const editQuietFailure = 3_000
 
 /**
- * Starts a dev server on an app of `files` (see `RouteHmrPageOptions`), opens
- * it in a browser page and waits until it shows `ready`; closed when the
- * test ends.
+ * Starts a dev server on an app of `files` (see `RouteHmrPageOptions`) in a
+ * new directory of `at.parent` (or the shared one), opens it in a browser
+ * page and waits until it shows `ready`. `close()` closes the page and the
+ * server (which removes the app); a start that fails does so itself.
  */
-export async function openRouteHmrPage(options: RouteHmrPageOptions) {
-  const app = await openRouteHmrPageAt({}, options)
-  onTestFinished(() => app.close())
-  return app
-}
-
-/** `openRouteHmrPage` in a new directory of `at.parent`, for a fixture (it closes it). */
 export async function openRouteHmrPageAt(
   at: At,
   options: RouteHmrPageOptions,

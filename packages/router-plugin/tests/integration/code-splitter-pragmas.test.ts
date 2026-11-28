@@ -8,7 +8,7 @@ import {
   expectDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { build, frameworks, routeApp, routeHead } from '../build-harness'
-import { openRouteHmrPage } from '../route-hmr-page'
+import { openRouteHmrPage } from '../serial'
 import type { Bundler } from '@tanstack/compiler-test-utils/build-harness'
 import type { Framework } from '../build-harness'
 

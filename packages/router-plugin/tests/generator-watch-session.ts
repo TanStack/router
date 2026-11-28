@@ -104,12 +104,16 @@ export async function startWatchSession(
   bundler: WatchBundler,
   options: WatchSessionOptions = {},
 ): Promise<WatchSession> {
-  const root = await createAppDirectory(harnessDir, '.generator-watch-')
+  const creating = createAppDirectory(harnessDir, '.generator-watch-')
   let close: () => Promise<unknown> = () => Promise.resolve()
   onTestFinished(async () => {
     await close()
-    await rm(root, { recursive: true, force: true })
+    await creating.then(
+      (root) => rm(root, { recursive: true, force: true }),
+      () => {},
+    )
   })
+  const root = await creating
   const file = (relative: string) => path.join(root, relative)
   await mkdir(file('routes'), { recursive: true })
   // An app package of its own: the generated route tree imports route

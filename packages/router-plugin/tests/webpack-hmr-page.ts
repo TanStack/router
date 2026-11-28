@@ -29,7 +29,6 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import webpack from 'webpack'
 import WebpackDevServer from 'webpack-dev-server'
-import { onTestFinished } from 'vitest'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { trackRequests } from '@tanstack/compiler-test-utils/hmr-sync'
@@ -129,16 +128,11 @@ const editTimeout = 20_000
 const editQuietFailure = 3_000
 
 /**
- * Starts a webpack dev server on an app of `files`, opens it in a browser
- * page and waits until it shows `ready`; closed when the test ends.
+ * Starts a webpack dev server on an app of `files` (in a new directory of
+ * `at.parent`, or the shared one), opens it in a browser page and waits
+ * until it shows `ready`. `close()` closes the page and the server and
+ * removes the app; a start that fails does so itself.
  */
-export async function openWebpackHmrPage(options: WebpackHmrPageOptions) {
-  const app = await openWebpackHmrPageAt({}, options)
-  onTestFinished(() => app.close())
-  return app
-}
-
-/** `openWebpackHmrPage` in a new directory of `at.parent`, for a fixture (it closes it). */
 export async function openWebpackHmrPageAt(
   at: At,
   options: WebpackHmrPageOptions,
@@ -250,14 +244,20 @@ export const Route = createRootRoute({})
     },
     compiler,
   )
-  await server.start()
-  const port = (server.server!.address() as AddressInfo).port
+  let listening = false
   let page: BrowserPage | undefined
   const close = async () => {
     await page?.close()
-    await server.stop()
+    if (listening) {
+      await server.stop()
+    }
+    await app.dispose()
   }
+  let port: number
   try {
+    await server.start()
+    listening = true
+    port = (server.server!.address() as AddressInfo).port
     at.signal?.throwIfAborted()
     page = await openPage(`http://127.0.0.1:${port}/`)
     at.signal?.throwIfAborted()
