@@ -19,7 +19,7 @@ import {
   expectDiagnostic,
   expectNoDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { StartBuildError, buildStart } from '../build-harness'
+import { StartBuildError, buildStart, buildStartShared } from '../build-harness'
 import { typeCheck } from './start-compose-app'
 import type { StartBuild, StartBundler } from '../build-harness'
 
@@ -132,18 +132,19 @@ export function hydrateBuildSuite(bundler: StartBundler) {
     // each test reads its own page (its own markers and modules).
     let shared: Promise<StartBuild> | undefined
     let sharedHtml: ReturnType<typeof renderPages> | undefined
-    let disposeShared: (() => Promise<void>) | undefined
     const sharedApp = () =>
-      (shared ??= buildStart({
+      (shared ??= buildStartShared({
         bundler,
         entry,
         sourcemap: true,
-        registerCleanup: (cleanup) => {
-          disposeShared = cleanup
-        },
         files: { ...pageEntries, ...sharedFiles },
       }))
-    afterAll(() => disposeShared?.())
+    afterAll(() =>
+      shared?.then(
+        (opened) => opened.close(),
+        () => {},
+      ),
+    )
 
     /** The page `name` of the shared build, hydrated (`hydratePage`). */
     async function hydrateShared(

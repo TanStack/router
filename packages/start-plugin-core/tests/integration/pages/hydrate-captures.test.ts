@@ -1,9 +1,13 @@
-import { afterEach, describe, expect, test } from 'vitest'
-import { expectRendersLikeSource, useHydrateHost } from '../../render'
+import { afterEach, beforeAll, describe, expect, test } from 'vitest'
+import { createHydrateHost, expectRendersLikeSource } from '../../render'
 import { generatedNames } from '../../hydrate-helpers'
-import type { ClientOptions } from '../../render'
+import type { ClientOptions, HydrateHost } from '../../render'
 
-const hosts = useHydrateHost()
+let hosts: HydrateHost
+beforeAll(async () => {
+  hosts = await createHydrateHost()
+  return () => hosts.close()
+})
 
 // `<Hydrate>` moves its children into a lazily loaded chunk on the client.
 // Whatever the children read from the enclosing scopes and the module must
@@ -30,11 +34,10 @@ async function renderPage(
   props?: Record<string, unknown>,
   options: ClientOptions = {},
 ) {
-  const { client } = await expectRendersLikeSource(
-    await hosts(),
-    `${head}${code}`,
-    { ...options, props },
-  )
+  const { client } = await expectRendersLikeSource(hosts, `${head}${code}`, {
+    ...options,
+    props,
+  })
   return client.html
 }
 
@@ -219,7 +222,7 @@ export function Page() {
     'client: a $scope binding named like the tag the children render runs once',
     async ({ code }) => {
       const { client } = await expectRendersLikeSource(
-        await hosts(),
+        hosts,
         `${head}${code}`,
         {
           setup: `globalThis.__sideEffects = 0
@@ -330,7 +333,7 @@ export function Page() {
   const introducedNames = async () => [
     ...new Set([
       ...(await generatedNames(
-        await hosts(),
+        hosts,
         page('[captured]', `const captured = 'c'\n  `),
       )),
       ...fixedNames,
@@ -352,7 +355,7 @@ export function Page() {
     globals = await introducedNames()
     // In every realm (the server, the reference and the page)
     const { client } = await expectRendersLikeSource(
-      await hosts(),
+      hosts,
       `export const before = [${globals.join(', ')}]
 ${page(`['child']`)}`,
       {
@@ -385,7 +388,7 @@ export const cleanup = names`,
         .join('\n  ')
       const read = reads === 'names' ? `[${names.join(', ')}]` : reads
       const { client } = await expectRendersLikeSource(
-        await hosts(),
+        hosts,
         `import { lazyRouteComponent } from '@tanstack/react-router'
 ${scope === 'module' ? declare : ''}
 export const fromModule = ${scope === 'module' ? `[${names.join(', ')}].join('|')` : 'null'}
@@ -435,7 +438,7 @@ export function Page() {
 // Source: Qwik optimizer nested_segment_param_does_not_collide_with_captured_props
 test('client: a nested boundary reads the locals of the component around its enclosing boundary', async () => {
   const { client } = await expectRendersLikeSource(
-    await hosts(),
+    hosts,
     `${head}export function Page({ isOpen, fee }) {
   const label = 'fee'
   return <Hydrate when={load()}><section><Hydrate when={load()}><p>{label + ':' + (isOpen ? fee : 0)}</p></Hydrate></section></Hydrate>

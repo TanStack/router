@@ -12,16 +12,21 @@
  * the hydrated page must show the markup the server rendered, without a
  * hydration error.
  */
-import { describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import {
+  createHydrateHost,
   expectRendersLikeSource,
   renderServer,
   renderSource,
-  useHydrateHost,
 } from '../../render'
 import { generatedNames } from '../../hydrate-helpers'
+import type { HydrateHost } from '../../render'
 
-const hosts = useHydrateHost()
+let hosts: HydrateHost
+beforeAll(async () => {
+  hosts = await createHydrateHost()
+  return () => hosts.close()
+})
 
 const head = `import { Hydrate } from '@tanstack/react-start'
 import { load } from '@tanstack/react-start/hydration'
@@ -64,11 +69,8 @@ export function Page() {
       // Whichever names the compiler picks for this page, including the
       // names it passes captured values under (none is a valid choice: then
       // nothing can collide).
-      const names = await generatedNames(await hosts(), page([], true))
-      const { client } = await expectRendersLikeSource(
-        await hosts(),
-        page(names),
-      )
+      const names = await generatedNames(hosts, page([], true))
+      const { client } = await expectRendersLikeSource(hosts, page(names))
       expect(client.html).toContain(`<p>${names.map(value).join('|')}</p>`)
       expect(client.html).toContain('<b>nested</b>')
     },
@@ -115,7 +117,7 @@ export function Page() {
     'client: split children reading Route $name use the one route',
     async ({ code, rendered }) => {
       const { client } = await expectRendersLikeSource(
-        await hosts(),
+        hosts,
         `${head}import { createFileRoute } from '@tanstack/react-router'
 ${code}`,
         {
@@ -131,7 +133,7 @@ ${code}`,
   // On main, the boundary throws "Route is not defined" when it hydrates.
   test('client: an unexported component named Route that the children render reaches the chunk', async () => {
     const { client } = await expectRendersLikeSource(
-      await hosts(),
+      hosts,
       `${head}function Route() {
   return <p>local</p>
 }
@@ -145,7 +147,7 @@ export function Page() {
   // On main, the boundary throws "label is not defined" when it hydrates.
   test('client: a var declared in a nested block that the children read reaches the chunk', async () => {
     const { client } = await expectRendersLikeSource(
-      await hosts(),
+      hosts,
       `${head}try {
   var label = JSON.parse('"nested"')
 } catch {}
@@ -160,7 +162,7 @@ export function Page() {
   // Source: React Compiler fixture ts-import-equals-declaration.ts
   test('client: a TypeScript import alias used by the split children is declared in the chunk', async () => {
     const { client } = await expectRendersLikeSource(
-      await hosts(),
+      hosts,
       `${head}import { visible } from '@tanstack/react-start/hydration'
 import * as ui from './ui'
 import Card = ui.Card
@@ -216,7 +218,7 @@ export function Page() {
     async ({ code, rendered }) => {
       // Rendered twice.
       const { client } = await expectRendersLikeSource(
-        await hosts(),
+        hosts,
         `${head}${code}`,
         {
           render: '[h(m.Page, { key: 1 }), h(m.Page, { key: 2 })]',
@@ -246,14 +248,13 @@ export function h(type, props, ...children) {
 
   // Control for the JSX pragma pin below (same rendering).
   test('server: a module with a classic JSX pragma renders through its factory', async () => {
-    const source = await renderSource(await hosts(), pragmaModule, {
+    const source = await renderSource(hosts, pragmaModule, {
       files: pragmaFiles,
     })
     expect(source.html).toContain('<div data-h="">')
     expect(source.html).toContain('<p data-h=""><i data-h=""></i></p>')
     expect(
-      (await renderServer(await hosts(), pragmaModule, { files: pragmaFiles }))
-        .html,
+      (await renderServer(hosts, pragmaModule, { files: pragmaFiles })).html,
     ).toBe(source.html)
   })
 })

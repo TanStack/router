@@ -169,7 +169,7 @@ async function previewFixed(
     files: { ...rsbuildEntries, ...files },
   })
   expect(build.violations).toEqual([])
-  return (await build.preview(onTestFinished)).url
+  return (await build.preview()).url
 }
 
 describe.each(startBundlers)('%s build', (bundler) => {

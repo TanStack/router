@@ -13,7 +13,7 @@ import {
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterAll, describe, expect, test, vi } from 'vitest'
-import { buildStart, startBundlers } from '../../build-harness'
+import { buildStartShared, startBundlers } from '../../build-harness'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import {
   distinct,
@@ -30,7 +30,7 @@ import {
   runRsbuildClient,
   runViteClient,
   startBrowserRsbuildDevServer,
-  startBrowserStartDevServer,
+  startBrowserStartDevServerShared,
 } from './client-pages'
 import type { RsbuildConfig } from '@rsbuild/core'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'
@@ -657,25 +657,21 @@ try {
     ),
   ]
 
-  // (the shared server and builds are removed after the last row)
-  const cleanups: Array<() => Promise<void>> = []
-  afterAll(async () => {
-    for (const cleanup of cleanups.reverse()) {
-      await cleanup()
-    }
-  })
-  const registerCleanup = (cleanup: () => Promise<void>) => {
-    cleanups.push(cleanup)
-  }
-
   type Channel = 'vite dev' | `${(typeof startBundlers)[number]} build`
   const hosts = new Map<
     Channel,
     Promise<{
       run: (name: string) => Promise<unknown>
       hasRealCode: (i: number) => boolean
+      close: () => Promise<void>
     }>
   >()
+  // (the shared server and builds are closed after the last row)
+  afterAll(async () => {
+    for (const host of hosts.values()) {
+      await (await host.catch(() => undefined))?.close()
+    }
+  })
   /** The app served or built once per channel: a row's run of its twin, and whether a twin's secrets shipped. */
   function hostOf(channel: Channel) {
     let host = hosts.get(channel)
@@ -683,15 +679,15 @@ try {
       host = (async () => {
         if (channel === 'vite dev') {
           // (the options `startProtectedDevServer` gives Start)
-          const server = await startBrowserStartDevServer({
+          const server = await startBrowserStartDevServerShared({
             files: appOf(names.filter((name) => !twins[name]!.buildsOnly)),
             start: {
               importProtection: twinOptions,
               router: { entry: 'entry.ts' },
             },
-            registerCleanup,
           })
           return {
+            close: server.close,
             run: async (name: string) => {
               // The mock reports each use in the browser console.
               const silenced = vi
@@ -708,7 +704,7 @@ try {
             hasRealCode: () => false,
           }
         }
-        const { client } = await buildStart({
+        const build = await buildStartShared({
           bundler: channel === 'vite build' ? 'vite' : 'rsbuild',
           files: appOf(names),
           entry: 'src/entry.ts',
@@ -719,14 +715,15 @@ try {
               mockAccess: 'off',
             },
           },
-          registerCleanup,
         })
+        const { client } = build
         const shipped = new Set(
           names.flatMap((_, i) =>
             secretsOf(i).filter((secret) => client.where(secret) !== 'nowhere'),
           ),
         )
         return {
+          close: build.close,
           run: async (name: string) =>
             (await client.run(scriptOf(name))).result,
           hasRealCode: (i: number) =>

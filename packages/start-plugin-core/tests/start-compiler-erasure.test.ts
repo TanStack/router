@@ -1,12 +1,13 @@
-import { describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   callFromClient,
   callServerFnThroughCallers,
+  createStartHost,
   inPage,
   serveCase,
-  useStartHost,
 } from './regression-helpers'
+import type { StartHost } from './start-host'
 import type { ServedCase } from './regression-helpers'
 
 // Erasure of code meant for the other environment, against `main` (R155,
@@ -216,7 +217,11 @@ ${page('check', '\n  schema({})')}`,
   }
 }
 
-const host = useStartHost({ files: routeFiles() })
+let host: StartHost
+beforeAll(async () => {
+  host = await createStartHost({ files: routeFiles() })
+  return () => host.close()
+})
 
 const serverFn = `import { createServerFn } from '@tanstack/react-start'\n`
 
@@ -254,7 +259,7 @@ export const connect = () => db
 describe('main parity', () => {
   // e02: a cycle through an effectful declaration only the handler reads
   test('a cycle through an effectful const goes from the client; the server runs it once', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...callsFile,
       'module.tsx': `${serverFn}import { connect } from './calls'
 const pool = connect('pool', () => getPool())
@@ -269,7 +274,7 @@ export const fn = createServerFn().handler(async () => getPool().name)`,
   // e06, e07: an effectful initialiser the handler alone reads leaves the
   // client with its import; one an export reads too stays and runs once
   test('an effectful initialiser only the handler reads leaves the client with its import', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...callsFile,
       'module.tsx': `${serverFn}import { connect } from './calls'
 const db = connect('db')
@@ -281,7 +286,7 @@ export const fn = createServerFn().handler(async () => db.q())`,
   })
 
   test('an effectful initialiser an export reads too stays on the client and runs once', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...callsFile,
       'module.tsx': `${serverFn}import { connect } from './calls'
 const db = connect('db')
@@ -298,7 +303,7 @@ export const g = () => db.q()`,
   // e08, n1: named, default and namespace imports only the handler reads
   // leave the client; a bare import and an import nothing reads stay
   test('imports the handler reads leave the client; a bare and a never-read import stay', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'a.server.ts': `export const named = 'a'`,
       'b.server.ts': `export default 'b'`,
       'c.server.ts': `export const x = 'c'`,
@@ -325,7 +330,7 @@ export const fn = createServerFn().handler(async () => [named, def, ns.x])`,
   // e11, e11b: a statement reading a binding only the handler reads keeps
   // the binding and its import, and runs, in both environments
   test('statements on a binding only the handler reads stay and run in both environments', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...callsFile,
       'module.tsx': `${serverFn}import { connect } from './calls'
 const db = connect('db')
@@ -345,7 +350,7 @@ export const fn = createServerFn().handler(async () => db.q())`,
 
   // e12: `export { db }` keeps it on the client
   test('a binding the handler reads and `export { }` names stays on the client', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...callsFile,
       'module.tsx': `${serverFn}import { connect } from './calls'
 const db = connect('db')
@@ -361,7 +366,7 @@ export { db }`,
   // e26: a kept function writes the container the handler reads: the server
   // has one container
   test('an exported function writing the container the handler reads works on the server', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${serverFn}const cache = new Map<string, number>()
 export function remember(k: string, v: number) { cache.set(k, v) }
 export const size = createServerFn().handler(async () => cache.size)`,
@@ -382,7 +387,7 @@ return typeof m.remember`,
   // e29b: the handler assigns a `let` an export reads: the client keeps the
   // `let`; on the server, the export sees what the handler assigned
   test('a `let` the handler assigns and an export reads is one binding on the server', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...dbServer('load.server.ts'),
       'module.tsx': `${serverFn}import { db } from './load.server'
 let cache: unknown
@@ -400,7 +405,7 @@ export const peek = () => cache`,
   // t2, t3: a value import the handler reads by value and kept code only in
   // a type (`typeof db`, `x is Model`) leaves the client
   test('a const the handler reads, and kept code only by `typeof`, leaves the client', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...dbServer(),
       'module.tsx': `${serverFn}import { connect } from './db.server'
 const db = connect()
@@ -419,7 +424,7 @@ export const fn = createServerFn().handler(async () => db.q())`,
   })
 
   test('a class the handler constructs and kept code names only in a type predicate leaves the client', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'model.server.ts': `export class Model { name = 'model' }`,
       'module.tsx': `${serverFn}import { Model } from './model.server'
 export const fn = createServerFn().handler(async () => new Model().name)
@@ -437,7 +442,7 @@ describe('better than main (main fails these)', () => {
   // e03: `main` keeps the class (classes are never deleted) and removes the
   // function its static initialiser calls: a ReferenceError at load
   test('a class in a cycle only the handler reads leaves the client whole', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${serverFn}class A { static y = b() }
 function b() { return () => A }
 export const fn = createServerFn().handler(async () => typeof b())`,
@@ -449,7 +454,7 @@ export const fn = createServerFn().handler(async () => typeof b())`,
 
   // e10d, e10g: an enum kept code reads, and an exported enum, stay
   test('an enum kept code reads and an exported enum stay on the client', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...dbServer(),
       'module.tsx': `${serverFn}import { db } from './db.server'
 enum Mode { Fast, Slow }
@@ -474,7 +479,7 @@ return [m.mode(), m.Kind.A]`,
   // and a `const enum` only the handler reads leave the client; `main` keeps
   // them with `./db.server`
   test('merged declarations and a const enum only the handler reads leave the client', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...dbServer(),
       'module.tsx': `${serverFn}import { db } from './db.server'
 function tool() { return db.a }
@@ -494,7 +499,7 @@ export const fn = createServerFn().handler(async () => [tool(), tool.version, E.
   // erased code names, in a type, goes with its import, as a module-level
   // one does; `main` keeps both with `./db.server`
   test('a function local only erased code names in a type leaves the client with its import', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...dbServer(),
       'module.tsx': `import { createServerOnlyFn } from '@tanstack/react-start'
 import { connect } from './db.server'
@@ -513,7 +518,7 @@ export function make() {
   // l6: `handler(createServerOnlyFn(f))`: `main`'s client stub throws
   // instead of calling the server
   test('a handler that is a createServerOnlyFn call runs on the server when the client calls it', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...dbServer(),
       'module.tsx': `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { db } from './db.server'
@@ -541,7 +546,7 @@ export const db = { q: () => 'db', reset: () => {} }
   // export reads. The old engine kept writers beside the binding they write,
   // and with them what they read.
   test('client: a function only the handler calls leaves the client although it assigns a kept `let`', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...callsFile,
       ...recordedServer('db.server'),
       'module.tsx': `${serverFn}import { db } from './db.server'
@@ -560,7 +565,7 @@ export const reset = createServerFn().handler(async () => { clear(); return 'res
   // it stays in place (accepted: main is broken here, its copy clears a
   // second `cache`): one `cache`, and `./db.server` loads with the module
   test('server: that handler stays in place and clears the one `cache` the export reads', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...callsFile,
       ...recordedServer('db.server'),
       'module.tsx': `${serverFn}import { db } from './db.server'
@@ -579,7 +584,7 @@ export const reset = createServerFn().handler(async () => { clear(); return 'res
   // e13, l10: a container a top-level statement fills stays with the
   // statement and its import, and the statement runs once, at load
   test('a container a statement fills stays in the module and is filled at load, once', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...callsFile,
       'module.tsx': `${serverFn}import { connect } from './calls'
 const table = new Map<string, unknown>()
@@ -595,7 +600,7 @@ export const fn = createServerFn().handler(async ({ data }: { data: string }) =>
   // e11: statements reading what only the handler reads run at load, in
   // source order, once
   test('statements on a binding only the handler reads run at load on the server, in source order', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...callsFile,
       'module.tsx': `${serverFn}import { connect } from './calls'
 const db = connect('db')
@@ -611,7 +616,7 @@ export const fn = createServerFn().handler(async () => db.q())`,
   // e23: `let db; db = connect()` read by a handler: both stay, the
   // assignment runs at load
   test('a `let` a top-level statement assigns stays with the statement, which runs at load', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...callsFile,
       'module.tsx': `${serverFn}import { connect } from './calls'
 let db: ReturnType<typeof connect>
@@ -627,7 +632,7 @@ export const fn = createServerFn().handler(async () => db.q())`,
   // (and what it reads) in the module (R153 amendment: already-unused code
   // stays); the handler module imports the helper
   test('a helper code never used reads stays in the module, with its import', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...callsFile,
       ...recordedServer('db.server'),
       'module.tsx': `${serverFn}import { db } from './db.server'
@@ -643,7 +648,7 @@ export const fn = createServerFn().handler(async () => helper())`,
   // t1: a value import the handler uses only as a type is no import of the
   // module on the server (verbatimModuleSyntax keeps what is written)
   test('a class import the handler uses only as a type does not load on the server', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...callsFile,
       ...recordedServer('client.server'),
       'module.tsx': `${serverFn}import { db } from './client.server'
@@ -694,7 +699,7 @@ const UserSchema = makeSchema(users)
   ])(
     '%s: the value goes with its imports, client and server',
     async (_name, typeExport) => {
-      const served = await serveCase(await host(), {
+      const served = await serveCase(host, {
         ...schemaFiles,
         'module.tsx': `${head}${typeExport}\n${handler}`,
       })
@@ -705,7 +710,7 @@ const UserSchema = makeSchema(users)
   )
 
   test('a function only an exported type reads goes with its import', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...dbServer(),
       'module.tsx': `${serverFn}import { db } from './db.server'
 function Unused() { return db.q() }
@@ -720,7 +725,7 @@ ${handler}`,
   // of code that runs names what it names, through a local alias too; the
   // value leaves with its evaluation, client and server
   test("a value only a running function's annotation names leaves", async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...schemaFiles,
       'module.tsx': `${head}type User = typeof UserSchema
 export function show(u: User) { return String(u) }
@@ -733,7 +738,7 @@ ${handler}`,
   // imports are the host's: one only a type names stays an import, a class
   // only a type names leaves (with the import only it read)
   test('an import a parameter annotation names stays, a class used only as a type leaves', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...callsFile,
       'schema.server.ts': `import { calls } from './calls'
 calls.push('schema.server')
@@ -762,7 +767,7 @@ ${handler}`,
 // Kind A: failed when the handler module imported `cfg` and evaluated
 // `snapshot` at the first call (`'b/b'`).
 test('a handler reads the value its module read at load before a write through a local name', async () => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `${serverFn}const cfg = { url: 'a' }
 const snapshot = cfg.url
 function set(o: { url: string }) { o.url = 'b' }
@@ -803,7 +808,7 @@ export const wrap = (value: unknown) => () => value
   // rule 4, transitively: `snap` calls `read`, a function only handlers
   // reach, which reads `cfg`, which the module keeps
   test('a handler-only declaration reading kept state through a function runs at load', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${serverFn}const cfg = { url: 'a' }
 function read() { return cfg.url }
 const snap = read()
@@ -817,7 +822,7 @@ export const f = createServerFn().handler(async () => snap + '/' + cfg.url)`,
   // rule 4's laziness cost (corpus: petit-meme `server/meme.ts`): the
   // pinned declaration's import loads with the module, as in the source
   test('a pinned declaration runs at load with the module it imports', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...callsFile,
       ...loadsRecorded('wrap.server'),
       'module.tsx': `${serverFn}import { wrap } from './wrap.server'
@@ -835,7 +840,7 @@ export const f = createServerFn().handler(async () => fetcher() + '/' + cfg.url)
   // a declaration that is exactly a function moves: what only it imports
   // loads at the first call; it reads the module's current state
   test('a handler-only function reading kept state stays lazy and reads the current value', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...callsFile,
       ...loadsRecorded('wrap.server'),
       'module.tsx': `${serverFn}import { wrap } from './wrap.server'
@@ -854,7 +859,7 @@ export const f = createServerFn().handler(async () => read())`,
   // load; `initialSize` was read at load (main: '0/0', its copy's
   // container)
   test('a value read at load from a container later filled by server code', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${serverFn}const cache = new Map<string, number>()
 const initialSize = cache.size
 export const fill = () => { cache.set('k', 1); return cache.size }
@@ -867,7 +872,7 @@ export const f = createServerFn().handler(async () => initialSize + '/' + cache.
   // rule 5, probe h_write: the handler assigns `count`, which the module
   // keeps: it stays in place, and server code sees its writes (main: 0)
   test('a handler assigning kept state is what the module reads', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${serverFn}let count = 0
 export const getCount = () => count
 export const inc = createServerFn().handler(async () => ++count)`,
@@ -881,7 +886,7 @@ export const inc = createServerFn().handler(async () => ++count)`,
   // instantiates is the class SSR code sees, and the handler reads the
   // container SSR code fills (main: false, 0)
   test('a class and a container the handler shares with SSR code are one', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${serverFn}export class Session { constructor(public id: string) {} }
 const store = new Map<string, number>()
 export const remember = () => store.set('k', 1).size
@@ -976,7 +981,7 @@ export const f = createServerFn().handler(async () => { conn = 'reset'; return c
       expected: 'reset',
     },
   ])('$name', async ({ code, expected }) => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${serverFn}${code}`,
     })
     expect(await callServerFnThroughCallers(served, 'module.f')).toEqual(
@@ -987,7 +992,7 @@ export const f = createServerFn().handler(async () => { conn = 'reset'; return c
   // (was a pinned known difference under R156: the copy lacked the static
   // block of a class only an export reads; main reads 1)
   test('a class static block whose class only an export reads', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${serverFn}const routes: Array<string> = []
 class Boot { static { routes.push('boot') } }
 export const boot = Boot
@@ -999,7 +1004,7 @@ export const f = createServerFn().handler(async () => routes.length)`,
   // O1 (review-phase1-final 3.1, f6): a statement declaring a name (`if
   // (…) { var conn = … }`) runs once; the handler module imports `conn`.
   test('a statement declaring a name the handler module imports runs once', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...callsFile,
       'module.tsx': `${serverFn}import { connect } from './calls'
 const cfg = { url: 'a' }
@@ -1016,7 +1021,7 @@ export const f = createServerFn().handler(async () => [typeof conn, cfg.url])`,
   })
 
   test('load-time code that reaches nothing the handler copies runs once', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...callsFile,
       'module.tsx': `${serverFn}import { connect } from './calls'
 const cfg = { url: 'a' }
@@ -1046,9 +1051,7 @@ describe('a server fn has one instance on the server', () => {
    * as is).
    */
   async function renderThenCall(route: string, calls: number) {
-    const run = await (
-      await host()
-    ).run<unknown>(`(async () => {
+    const run = await host.run<unknown>(`(async () => {
   const html = await (await fetch(${JSON.stringify(route)})).text()
   const url = /data-url="([^"]+)"/.exec(html)?.[1]?.replace(/&amp;/g, '&')
   if (!url) {
@@ -1087,9 +1090,7 @@ describe('a server fn has one instance on the server', () => {
 
   test('a server fn created in an object that only the split component reads answers from the page and from the client chunk', async () => {
     expect(await renderThenCall('/hoisted-in-object', 1)).toBe('MARK_HOISTED')
-    const run = await (
-      await host()
-    ).run<unknown>(`(async () => {
+    const run = await host.run<unknown>(`(async () => {
   const route = await import('/src/routes/hoisted-in-object.tsx')
   const Page = (await route.Route.options.component.preload?.())?.default ?? route.Route.options.component
   return typeof Page
@@ -1099,9 +1100,7 @@ describe('a server fn has one instance on the server', () => {
   })
 
   test('a declaration only its own text names is copied with the state it fills, on the server', async () => {
-    const run = await (
-      await host()
-    ).run<unknown>(`(async () => {
+    const run = await host.run<unknown>(`(async () => {
   const html = await (await fetch('/self-named-init')).text()
   return /data-n="([^"]+)"/.exec(html)?.[1] ?? html.slice(0, 300)
 })()`)
@@ -1110,9 +1109,7 @@ describe('a server fn has one instance on the server', () => {
   })
 
   test('a class a handler names only in a type leaves the client with its server-only import', async () => {
-    const run = await (
-      await host()
-    ).run<unknown>(`(async () => {
+    const run = await host.run<unknown>(`(async () => {
   const route = await import('/src/routes/class-type-in-handler.tsx')
   await route.Route.options.component.preload?.()
   return [String(globalThis.caseClassTypeRepo), String(globalThis.caseClassTypeDb)]
@@ -1123,9 +1120,7 @@ describe('a server fn has one instance on the server', () => {
 
   /** The `data-loaded` attribute of a route's server render (its loader's value). */
   async function serverLoaded(route: string) {
-    const run = await (
-      await host()
-    ).run<unknown>(`(async () => {
+    const run = await host.run<unknown>(`(async () => {
   const html = await (await fetch(${JSON.stringify(route)})).text()
   return /data-loaded="([^"]*)"/.exec(html)?.[1] ?? html.slice(0, 300)
 })()`)
@@ -1150,9 +1145,7 @@ describe('a server fn has one instance on the server', () => {
   test.each(['server', 'headers'])(
     'a <Hydrate> boundary inside the %s option the client deletes loads nothing of the option',
     async (key) => {
-      const run = await (
-        await host()
-      ).run<unknown>(
+      const run = await host.run<unknown>(
         `(async () => {
   const route = await import('/src/routes/hydrate-in-${key}.tsx')
   await route.Route.options.component.preload?.()
@@ -1171,9 +1164,7 @@ describe('a server fn has one instance on the server', () => {
   )
 
   test('a class only <Hydrate> children name in a type runs when the client route module loads', async () => {
-    const run = await (
-      await host()
-    ).run<unknown>(`(async () => {
+    const run = await host.run<unknown>(`(async () => {
   await import('/src/routes/hydrate-type-class.tsx')
   return String(globalThis.caseHydrateTypeChart)
 })()`)
@@ -1193,9 +1184,7 @@ describe('a server fn has one instance on the server', () => {
   )
 
   test('a `let` two split route options read and a handler assigns is one binding on the server', async () => {
-    const run = await (
-      await host()
-    ).run<unknown>(`(async () => {
+    const run = await host.run<unknown>(`(async () => {
   const html = await (await fetch('/shared-writer')).text()
   const url = /data-url="([^"]+)"/.exec(html)?.[1]?.replace(/&amp;/g, '&')
   if (!url) {
@@ -1212,7 +1201,7 @@ describe('a server fn has one instance on the server', () => {
   // main: one provider copy runs both handlers: 1 2 3 4 (02f8d6b8bd:
   // 1 1 2 2, `a`'s handler module holding its own `b`)
   test('a handler calling a sibling server fn calls its one instance', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${serverFn}let seen = 0
 export const b = createServerFn()
   .validator(() => ({ n: ++seen }))
@@ -1231,7 +1220,7 @@ export const a = createServerFn().handler(() => b({ data: {} }))`,
   // `calls` (R157 rule 3): 1, 2, as main's provider copy and the source.
   // Kind A at b89355a9fe: 0, 0 (the handler module's copy of `calls`).
   test('a handler reads state its validator writes', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${serverFn}let calls = 0
 export const fn = createServerFn()
   .validator((data: unknown) => {

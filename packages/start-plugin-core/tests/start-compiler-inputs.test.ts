@@ -8,15 +8,16 @@
  * The real builds of the same inputs are in
  * `integration/start-build-jsx-and-builders.test.ts` and its neighbours.
  */
-import { describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   callFromClient,
   callOnServer,
+  createStartHost,
   inPage,
   serveCase,
-  useStartHost,
 } from './regression-helpers'
+import type { StartHost } from './start-host'
 import type { Plugin } from 'vite'
 
 /**
@@ -36,7 +37,11 @@ function workersPlatform(): Plugin {
   }
 }
 
-const host = useStartHost({ plugins: [workersPlatform()] })
+let host: StartHost
+beforeAll(async () => {
+  host = await createStartHost({ plugins: [workersPlatform()] })
+  return () => host.close()
+})
 
 const head = `import { createMiddleware, createServerFn } from '@tanstack/react-start'\n`
 
@@ -62,7 +67,7 @@ export const label = () => 'MARK_CLIENT_LABEL'
   const unresolvable = ['cloudflare:workers', 'node:fs']
 
   test('the client compiles and loads neither specifier; the server still reads them', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head}${platform}`,
       'config.txt': 'MARK_FILE',
     })
@@ -141,7 +146,7 @@ export function validateForm(input: unknown) {
 `
 
   test('the client form validates with the schema, the validator-only schema is not loaded, the server rejects invalid input', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': code,
       ...files,
     })
@@ -189,7 +194,7 @@ export function Badge({ name }) {
 
   test('the client calls the server by id without the handler, and renders the JSX', async () => {
     const served = await serveCase(
-      await host(),
+      host,
       {
         'fns.jsx': code,
         'db.server.ts': `export const db = { user: () => 'MARK_USER' }\n`,
@@ -250,7 +255,7 @@ export const whoAmI = createServerFn()
 `
 
   test('the client call runs auth.client(), the server runs auth.server() then the handler', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': code,
       'audit.server.ts': `export const audit = (from: string) => \`user(\${from})\`\n`,
     })
@@ -281,7 +286,7 @@ export const bySpread = createServerFn({ ...opts }).handler(async () => db.x())
   test.each(['byIdentifier', 'bySpread'])(
     '%s: each env keeps the method, the client calls by id, the server runs the handler',
     async (name) => {
-      const served = await serveCase(await host(), {
+      const served = await serveCase(host, {
         'module.tsx': code,
         'db.server.ts': `export const db = { x: () => 'MARK_X' }\n`,
       })

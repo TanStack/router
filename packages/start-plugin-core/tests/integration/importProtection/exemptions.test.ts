@@ -9,7 +9,7 @@
  * match (end of the file): its importers get the real module.
  */
 import { afterAll, afterEach, describe, expect, test, vi } from 'vitest'
-import { buildStart, startBundlers } from '../../build-harness'
+import { buildStartShared, startBundlers } from '../../build-harness'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import {
   inEnvironment,
@@ -138,18 +138,19 @@ describe.each(startBundlers)('%s build', (bundler) => {
   describe.each(exemptions)('$option', ({ importProtection }) => {
     // One build for both tests.
     let built: Promise<StartBuild> | undefined
-    let dispose: (() => Promise<void>) | undefined
     const app = () =>
-      (built ??= buildStart({
+      (built ??= buildStartShared({
         bundler,
         files,
         entry: 'src/entry.ts',
         start: { importProtection: { ...importProtection, behavior: 'mock' } },
-        registerCleanup: (cleanup) => {
-          dispose = cleanup
-        },
       }))
-    afterAll(() => dispose?.())
+    afterAll(() =>
+      built?.then(
+        (opened) => opened.close(),
+        () => {},
+      ),
+    )
 
     async function outcome(): Promise<Outcome> {
       const build = await app()
@@ -287,17 +288,18 @@ function excludedBuild(
   importProtection: ImportProtectionOptions,
 ) {
   let built: Promise<StartBuild> | undefined
-  let dispose: (() => Promise<void>) | undefined
-  afterAll(() => dispose?.())
+  afterAll(() =>
+    built?.then(
+      (opened) => opened.close(),
+      () => {},
+    ),
+  )
   return async (environment: 'client' | 'ssr'): Promise<ExcludedOutcome> => {
-    built ??= buildStart({
+    built ??= buildStartShared({
       bundler,
       files: excludedFiles,
       entry: 'src/entry.ts',
       start: { importProtection: { ...importProtection, behavior: 'mock' } },
-      registerCleanup: (cleanup) => {
-        dispose = cleanup
-      },
     })
     const build = await built
     const { result: read } = await build[environment].run(excludedReadScript)

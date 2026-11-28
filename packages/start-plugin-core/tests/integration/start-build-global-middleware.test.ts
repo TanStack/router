@@ -9,7 +9,7 @@
  * by id; the request middleware runs for the SSR page (rendered by Start's
  * own server entry) and for the HTTP call.
  */
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import {
   buildStart,
   callByIdExports,
@@ -87,7 +87,6 @@ describe.each(startBundlers)('%s build', (bundler) => {
       const build = await buildStart({
         bundler,
         files,
-        registerCleanup: onTestFinished,
       })
       const { client, ssr } = build
       expect({
@@ -95,12 +94,8 @@ describe.each(startBundlers)('%s build', (bundler) => {
         auth: client.where('MARK_AUTH_USER'),
         modules: client.where(/audit\.server|auth\.server/),
       }).toEqual({ audit: 'nowhere', auth: 'nowhere', modules: 'nowhere' })
-      const served = await serveStartBuild(build, {
-        registerCleanup: onTestFinished,
-      })
-      const page = await openAppPage(served, '/', {
-        registerCleanup: onTestFinished,
-      })
+      const served = await serveStartBuild(build)
+      const page = await openAppPage(served, '/')
       const requests: Array<{ url: string; method: string }> = []
       page.page.on('request', (request) => {
         const url = new URL(request.url())

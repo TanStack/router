@@ -64,10 +64,7 @@ describe('Vite dev: a route switching between page and server-only', () => {
   test(
     'the page follows a route that becomes a page, loses its handlers and becomes server-only again',
     async () => {
-      await switchBetweenServerOnlyAndPage(
-        await startPageServer(),
-        onTestFinished,
-      )
+      await switchBetweenServerOnlyAndPage(await startPageServer())
     },
     timeout,
   )
@@ -76,10 +73,7 @@ describe('Vite dev: a route switching between page and server-only', () => {
   test(
     'a route that becomes a page before the client loaded the route tree is in the client route tree',
     async () => {
-      await pageBeforeTheClientLoadedTheTree(
-        await startPageServer(),
-        onTestFinished,
-      )
+      await pageBeforeTheClientLoadedTheTree(await startPageServer())
     },
     timeout,
   )

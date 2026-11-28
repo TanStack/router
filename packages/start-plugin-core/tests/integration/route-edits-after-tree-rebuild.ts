@@ -9,7 +9,7 @@
  * only updated the first evaluation of the route module, while the rebuilt
  * tree held the module's current export as the live route).
  */
-import { expect } from 'vitest'
+import { expect, onTestFinished } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import {
   errorsOutsideReloads,
@@ -77,10 +77,11 @@ export interface TreeRebuildServer {
  */
 export async function editLoaderAroundTreeRebuilds(
   server: TreeRebuildServer,
-  registerCleanup: (fn: () => Promise<void> | void) => void,
 ): Promise<{ loader: BrowserPage; visit: BrowserPage }> {
   const open = async (url: string) => {
-    const page = await openPage(`${server.url}${url}`, { registerCleanup })
+    const page = await openPage(`${server.url}${url}`, {
+      registerCleanup: onTestFinished,
+    })
     await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
     return page
   }

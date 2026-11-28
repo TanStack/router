@@ -1,16 +1,17 @@
-import { describe, expect, test, vi } from 'vitest'
+import { beforeAll, describe, expect, test, vi } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import { expectDeterministic } from '@tanstack/compiler-test-utils/determinism'
 import {
   callFromClient,
   callOnServer,
   callServerFnThroughCallers,
+  createStartHost,
   directivePrologue,
   inPage,
   serveCase,
   serverFnUrls,
-  useStartHost,
 } from '../regression-helpers'
+import type { StartHost } from '../start-host'
 
 // Callers keep the module's exports: the client gets each server fn as an
 // RPC, and calling one from server code runs its handler; a client call
@@ -24,7 +25,11 @@ import {
 // and the two build rows of "a provider for a module ending in a line
 // comment without a newline".
 
-const host = useStartHost()
+let host: StartHost
+beforeAll(async () => {
+  host = await createStartHost()
+  return () => host.close()
+})
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 
@@ -32,7 +37,7 @@ describe('export forms', () => {
   // Source: Next.js server-actions fixtures server-graph/9, /12, /13, /29,
   // /66, /69, client-graph/4, /15
   test('callers keep every export form, each server fn running its own handler', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head}const a = createServerFn().handler(async () => 'a')
 const b = createServerFn().handler(async () => 'b')
 const c = createServerFn().handler(async () => 'c')
@@ -67,7 +72,7 @@ export { a as default, b as named, c as as }`,
     `export default async function () {\n  return fn()\n}`,
     `export default class {\n  call() {\n    return fn()\n  }\n}`,
   ])('an anonymous default export next to a server fn: %s', async (code) => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head}export const fn = createServerFn().handler(async () => 1)\n${code}`,
     })
     expect(await inPage(served, 'return typeof module.default')).toBe(
@@ -83,7 +88,7 @@ export { a as default, b as named, c as as }`,
   ])(
     'a default-exported expression next to a server fn: $code',
     async ({ code, value }) => {
-      const served = await serveCase(await host(), {
+      const served = await serveCase(host, {
         'module.tsx': `${head}export const fn = createServerFn().handler(async () => 1)\n${code}`,
       })
       expect(await inPage(served, 'return module.default')).toEqual(value)
@@ -93,7 +98,7 @@ export { a as default, b as named, c as as }`,
 
   // Source: @vitejs/plugin-rsc source-map/wrap-export/local-export-before-declaration.js
   test('an export list before the server fn declaration', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head}export { fn, fn as alias }
 const fn = createServerFn().handler(async () => 'fn')`,
     })
@@ -108,7 +113,7 @@ const fn = createServerFn().handler(async () => 'fn')`,
 
   // Source: @vitejs/plugin-rsc source-map/wrap-export/dependent-declarators.js
   test('a server fn built from a sibling declarator', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head}import { db } from './db.server'
 export const base = createServerFn(), fn = base.handler(async () => db.x())`,
       'db.server.ts': `export const db = { x: () => 'x' }\n`,
@@ -120,7 +125,7 @@ export const base = createServerFn(), fn = base.handler(async () => db.x())`,
   // Source: @vitejs/plugin-rsc wrap-export.test.ts "re-export simple",
   // "re-export rename", "re-export all simple", "re-export all rename"
   test('re-exports stay in the callers', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head}export { x } from './dep'
 export { x as y } from './dep'
 export * from './star'
@@ -141,7 +146,7 @@ export const fn = createServerFn().handler(async () => 'fn')`,
   // Source: @vitejs/plugin-rsc source-map/wrap-export/reexport-attributes.js;
   // Turbopack tree-shaker analyzer/import-with-clause
   test('import attributes are kept on the imports and re-exports each output keeps', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head}import config from './config.json' with { type: 'json' }
 import secrets from './secrets.json' with { type: 'json' }
 export { default as data } from './data.json' with { type: 'json' }
@@ -163,7 +168,7 @@ export const fn = createServerFn().handler(async () => secrets.key)`,
 
   // Source: Next.js server-actions fixtures server-graph/60, /62, /68, /72
   test('TypeScript-only exports and an enum next to a server fn', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head}import type { Stuff } from './stuff'
 export type X = string
 export { type A } from './a'
@@ -191,7 +196,7 @@ export const fn = createServerFn().handler(async (): Promise<Stuff | string> => 
   // replaces router-utils stripTypeExports "handles the issue #6480
   // scenario", which never checked the symptom. The real `zod`.
   test('an exported type reading a schema the handler uses keeps its imports out of the client', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head}import { z } from 'zod'
 import { PostCategory } from './PostService'
 const postSchema = z.object({ category: z.nativeEnum(PostCategory) })
@@ -213,9 +218,7 @@ export const createPost = createServerFn().handler(async () =>
   // initialised once ...").
   // Source: Next.js server-actions fixtures client-graph/2
   test('side-effect imports and top-level statements stay in the callers, and the handler runs next to them', async () => {
-    const startCase = await (
-      await host()
-    ).case({
+    const startCase = await host.case({
       'module.tsx': `${head}import './polyfill'
 console.log('side-effect-marker')
 export const fn = createServerFn().handler(async () => 'fn')`,
@@ -252,7 +255,7 @@ describe('directives', () => {
   // §5.4, §5.5).
   // Source: Next.js server-actions fixtures server-graph/8
   test('handler directives stay in the provider', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head}export const fn = createServerFn().handler(async function () {
   'use strict'
   'use server'
@@ -275,7 +278,7 @@ describe('directives', () => {
     'module directives stay first in the callers: $directives',
     async ({ prologue, directives }) => {
       const code = `${prologue}${head}export const fn = createServerFn().handler(async () => 1)`
-      const startCase = await (await host()).case({ 'module.tsx': code })
+      const startCase = await host.case({ 'module.tsx': code })
       // Each directive still leads the module the client environment
       // serves, read from the parsed module (their order within the
       // prologue is free, SPEC §5.5; G12 keeps each user directive, it does
@@ -294,7 +297,7 @@ describe('directives', () => {
 // integration/start-compiler-build-custom-ids.test.ts.
 describe('server function ids', () => {
   test('dev providers export the handler', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head}export const getPosts = createServerFn().handler(async () => 'posts')`,
     })
     expect(await callServerFnThroughCallers(served, 'module.getPosts')).toBe(
@@ -318,7 +321,7 @@ export const save = createServerFn().handler(async () => 'save')`
       `export const added = createServerFn().handler(async () => 'added')\n${existing}`,
     ]
     for (const version of versions) {
-      const served = await serveCase(await host(), {
+      const served = await serveCase(host, {
         'module.tsx': `${head}${version}`,
       })
       const names =
@@ -345,7 +348,7 @@ export const save = createServerFn().handler(async () => 'save')`
   // name", "keeps client and server ids aligned"
   test('server fns that share a name in different files get distinct ids the provider uses', async () => {
     const code = `${head}export const load = createServerFn().handler(async () => 1)`
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'a.tsx': code,
       'b/a.tsx': code,
       'module.tsx': `export { load as first } from './a'
@@ -362,7 +365,7 @@ export { load as second } from './b/a'
   // Source: Next.js server-actions fixtures server-graph/66, client-graph/15
   test('non-ASCII and symbol-like server fn names', async () => {
     const names = ['ñandú', '𝑓', 'ᾩ', '$', '_', '$fn']
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx':
         head +
         names
@@ -389,7 +392,7 @@ describe('module formats', () => {
   // Source: Waku vite-plugin-allow-server.test.ts "transforms with trailing
   // comment without new lines"
   test('dev: a provider for a module ending in a line comment without a newline: \n// trailing', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head}export const fn = createServerFn().handler(async () => 'handler')\n// trailing`,
     })
     expect(await callServerFnThroughCallers(served, 'module.fn')).toBe(
@@ -409,7 +412,7 @@ describe('module formats', () => {
   for (const file of ['fn.mts']) {
     test(`${file} may use angle-bracket type assertions`, async () => {
       const served = await serveCase(
-        await host(),
+        host,
         {
           [file]: `${head}import { db } from './db.server'
 const n = <number>(1 as unknown)

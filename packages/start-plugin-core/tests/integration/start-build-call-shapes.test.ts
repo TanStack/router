@@ -30,7 +30,7 @@
  * function call (#8446) is built on its own: today its SSR build does not
  * load.
  */
-import { afterAll, describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import {
   buildStart,
   callByIdExports,
@@ -437,13 +437,11 @@ return results`
 async function observe(
   bundler: StartBundler,
   list: Array<Shape>,
-  registerCleanup?: (cleanup: () => Promise<void>) => void,
 ): Promise<Record<string, Observed>> {
   const build: StartBuild = await buildStart({
     bundler,
     files: appFiles(list),
     entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
-    registerCleanup,
   })
   const client = (
     await build.client.run(
@@ -468,7 +466,6 @@ async function observe(
 }
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  const cleanups: Array<() => Promise<void>> = []
   let shared: Promise<Record<string, Observed> | undefined> | undefined
 
   /** What building `shape` gave: its observation, or the build's error. */
@@ -478,7 +475,6 @@ describe.each(startBundlers)('%s build', (bundler) => {
     shared ??= observe(
       bundler,
       shapes.filter((other) => !envFnHandlers.includes(other.slug)),
-      (cleanup) => cleanups.push(cleanup),
     ).catch(() => undefined)
     const together = envFnHandlers.includes(shape.slug)
       ? undefined
@@ -491,10 +487,6 @@ describe.each(startBundlers)('%s build', (bundler) => {
       (error: unknown) => ({ error }),
     )
   }
-
-  afterAll(async () => {
-    await Promise.all(cleanups.map((cleanup) => cleanup()))
-  })
 
   /** The shape works: nothing of its server-only module in the client. */
   function expectWorks(shape: Shape, observed: Observed) {

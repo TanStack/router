@@ -1,6 +1,6 @@
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import { linkWorkspacePackages } from '@tanstack/compiler-test-utils/workspace-packages'
 import {
@@ -8,11 +8,11 @@ import {
   callOnServer,
   callServerFnThroughCallers,
   compileError,
+  createStartHost,
   expectCompileError,
   inPage,
   serveCase,
   serverFnUrls,
-  useStartHost,
 } from '../regression-helpers'
 import {
   factoryBuilderModule,
@@ -20,6 +20,7 @@ import {
   virtualFactories,
 } from '../compiler-inputs'
 import { untilInDom } from '../page-values'
+import type { StartHost } from '../start-host'
 import type { Plugin } from 'vite'
 
 // Moved: the custom-id build test (formerly :223) is in
@@ -42,8 +43,12 @@ function exactVirtualFactory(): Plugin {
   }
 }
 
-const host = useStartHost({
-  plugins: [virtualFactories(), exactVirtualFactory()],
+let host: StartHost
+beforeAll(async () => {
+  host = await createStartHost({
+    plugins: [virtualFactories(), exactVirtualFactory()],
+  })
+  return () => host.close()
 })
 
 describe('createServerFn compiles correctly', () => {
@@ -66,7 +71,7 @@ describe('createServerFn compiles correctly', () => {
         `import { createServerFn } from '@tanstack/react-start'`,
         `export const fn = createServerFn().handler()`,
       ].join(eol)
-      const startCase = await (await host()).case({ 'module.tsx': source })
+      const startCase = await host.case({ 'module.tsx': source })
       expectCompileError(await compileError(startCase), {
         source,
         at: 'createServerFn()',
@@ -80,7 +85,7 @@ describe('createServerFn compiles correctly', () => {
       ...Array.from({ length: 10 }, (_, i) => `export const v${i} = ${i}`),
       `export const fn = createServerFn().handler()`,
     ].join('\n')
-    const startCase = await (await host()).case({ 'module.tsx': source })
+    const startCase = await host.case({ 'module.tsx': source })
     expectCompileError(await compileError(startCase), {
       source,
       at: 'createServerFn()',
@@ -94,7 +99,7 @@ describe('createServerFn compiles correctly', () => {
   test('rejects a destructured server fn', async () => {
     const source = `import { createServerFn } from '@tanstack/react-start'
 export const { fn } = createServerFn().handler(async () => 1)`
-    const startCase = await (await host()).case({ 'module.tsx': source })
+    const startCase = await host.case({ 'module.tsx': source })
     expectCompileError(await compileError(startCase), {
       source,
       at: '{ fn }',
@@ -102,7 +107,7 @@ export const { fn } = createServerFn().handler(async () => 1)`
   })
 
   test('should not remove handler identifier bindings that are still referenced', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `import { createServerFn } from '@tanstack/react-start'
 import { getUsers } from './server'
 
@@ -125,7 +130,7 @@ export const ref = getUsers`,
   // client must not load either: the stub replaces the argument list, and
   // the server fn runs its first argument (coverage review B, F1)
   test('a handler called with a second argument leaves the client with it', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `import { createServerFn } from '@tanstack/react-start'
 import { db } from './db.server'
 export const fn = (createServerFn() as any).handler(async () => 'first', async () => db.x())`,
@@ -140,7 +145,7 @@ export const fn = (createServerFn() as any).handler(async () => 'first', async (
     // serves them): the public one re-exports the factory the
     // implementation one defines.
     const served = await serveCase(
-      await host(),
+      host,
       { 'test.ts': queryDistinctModule },
       { file: 'test.ts' },
     )
@@ -168,7 +173,7 @@ export const fn = (createServerFn() as any).handler(async () => 'first', async (
 // Source: the former test "keeps query-bearing virtual module identities
 // distinct", rerouted through the public plugin.
 test('a server fn whose factory a virtual module serves by its exact id compiles in dev', async () => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `import { createAppServerFn } from 'virtual:exact-server-fn-factory'
 export const fn = createAppServerFn().handler(async () => 'virtual-factory-handler')`,
   })
@@ -185,7 +190,7 @@ describe('server fns need a handler', () => {
   test('require a handler function', async () => {
     const source = `import { createServerFn } from '@tanstack/react-start'
 export const greet = createServerFn().handler()`
-    const startCase = await (await host()).case({ 'module.tsx': source })
+    const startCase = await host.case({ 'module.tsx': source })
     for (const environment of ['client', 'ssr'] as const) {
       expectCompileError(await compileError(startCase, environment), {
         source,
@@ -201,7 +206,7 @@ export const greet = createServerFn().handler()`
 describe('server fns of builders, route files and reformatted code', () => {
   // Source: snapshot fixture factory.tsx
   test('a server fn builder with middleware is callable as a factory', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': factoryBuilderModule,
     })
     expect(served.code.client).not.toContain('MARK_AUTHED_HANDLER_BODY')
@@ -267,7 +272,7 @@ function RouteComponent() {
   }
   return <button onClick={handleClick}>{JSON.stringify(results)}</button>
 }`
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': code,
       // The app's code rendering the route's component in the page.
       'mount.tsx': `import { createRoot } from 'react-dom/client'
@@ -341,7 +346,7 @@ export const base = createServerFn()`,
     ]
     for (const { name, call } of calls) {
       test(`a handler called with ${name} is extracted`, async () => {
-        const served = await serveCase(await host(), {
+        const served = await serveCase(host, {
           'module.tsx': `${head}
 import { db } from './db.server'
 export const fn = base${call}async () => db.x())`,
@@ -366,7 +371,7 @@ describe('server fns outside the app root', () => {
   // POSIX absolute /@fs paths outside the app root" (the dev
   // server fn id encoding, an internal helper), rerouted to its outcome.
   test('dev: a server fn in a module outside the app root runs by id', async () => {
-    const started = await host()
+    const started = host
     const shared = await mkdtemp(
       path.join(path.dirname(started.root), '.start-shared-'),
     )
@@ -418,7 +423,7 @@ export const base = createServerFn()`
 
   // Control: one derived builder alone is recognised.
   test('one builder derived from an imported builder: its handler leaves the client', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `import { authed } from './builders'
 import { db } from './db.server'
 export const fn = authed.handler(async () => db.secret())`,
@@ -433,7 +438,7 @@ export const authed = base.middleware([])`,
   })
 
   test('two builders of one module derived from one imported builder: both handlers leave the client', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `import { authedGet, authedPost } from './builders'
 import { db } from './db.server'
 export const getFn = authedGet.handler(async () => db.x())
@@ -478,7 +483,7 @@ export function g(): unknown {
       'base.ts': baseFile,
       'db.server.ts': dbFile,
     }
-    const served = await serveCase(await host(), files)
+    const served = await serveCase(host, files)
     expectNotLoaded(await served.loads(), ['./db.server'])
     expect(await serverFnUrls(served)).toHaveLength(2)
     expect(await callServerFnThroughCallers(served, 'module.fnB')).toBe(

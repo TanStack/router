@@ -20,7 +20,7 @@ import { pluginNames } from '@tanstack/compiler-test-utils/build-harness'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import react from '@vitejs/plugin-react'
 import { onTestFinished } from 'vitest'
-import { startRuntimeLinks } from './build-harness'
+import { closedOnFailure, startRuntimeLinks } from './build-harness'
 import { inProbeRequest, requestFiles } from './request-probe'
 import { startPlugins } from './start-plugins'
 import type { StartFramework } from './start-plugins'
@@ -35,7 +35,7 @@ const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
 export interface StartDevServerOptions extends Omit<
   DevServerOptions,
-  'dir' | 'plugins'
+  'dir' | 'plugins' | 'registerCleanup'
 > {
   /**
    * Other plugins of the app (e.g. a Solid app's JSX plugin), after Start's,
@@ -193,9 +193,26 @@ export function startPlugin(
   return startPlugins(framework, root, start, entries)
 }
 
-/** Starts a Vite dev server with Start's plugin on an app of `files`. */
+/**
+ * Starts a Vite dev server with Start's plugin on an app of `files`,
+ * closed when the current test finishes.
+ */
 export function startDevServer(
   options: StartDevServerOptions,
+): Promise<DevServer> {
+  return openDevServer(options, onTestFinished)
+}
+
+/** `startDevServer` for a server several tests share: the caller closes it. */
+export function startDevServerShared(
+  options: StartDevServerOptions,
+): Promise<DevServer> {
+  return closedOnFailure((register) => openDevServer(options, register))
+}
+
+function openDevServer(
+  options: StartDevServerOptions,
+  registerCleanup?: DevServerOptions['registerCleanup'],
 ): Promise<DevServer> {
   const {
     files,
@@ -208,7 +225,7 @@ export function startDevServer(
   return createDevServer({
     dir: harnessDir,
     prefix: '.start-dev-server-',
-    registerCleanup: onTestFinished,
+    registerCleanup,
     ...devServerOptions,
     files: {
       ...startPluginFiles,

@@ -24,6 +24,7 @@ import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
 import { onTestFinished } from 'vitest'
+import { closedOnFailure } from '../build-harness'
 import {
   rscDependency,
   rscPluginFactory,
@@ -94,22 +95,40 @@ export async function startViteRscApp(
 }
 
 /** An Rsbuild dev server on the RSC app of `files` (over `rscAppFiles`). */
-export async function startRsbuildRscApp(
+export function startRsbuildRscApp(
   files: Record<string, string>,
-  options: {
-    /** Default `onTestFinished`. */
-    registerCleanup?: (cleanup: () => Promise<void>) => void
-    /** The app's Rsbuild `tools` (Start's pages need no `htmlPlugin`). */
-    tools?: Record<string, unknown>
-    /** The app's Rsbuild `dev` options. */
-    dev?: RsbuildConfig['dev']
-    /** The app's Rsbuild `environments` options. */
-    environments?: RsbuildConfig['environments']
-    /** More Rsbuild plugins of the app, after Start's. */
-    plugins?: Array<RsbuildPlugin>
-    /** The app's React plugin (default `pluginReact()`). */
-    react?: RsbuildPlugin
-  } = {},
+  options: RsbuildRscAppOptions = {},
+): Promise<RsbuildDevServer> {
+  return openRsbuildRscApp(files, options, onTestFinished)
+}
+
+/** `startRsbuildRscApp` for a server several tests share: the caller closes it. */
+export function startRsbuildRscAppShared(
+  files: Record<string, string>,
+  options: RsbuildRscAppOptions = {},
+): Promise<RsbuildDevServer> {
+  return closedOnFailure((register) =>
+    openRsbuildRscApp(files, options, register),
+  )
+}
+
+interface RsbuildRscAppOptions {
+  /** The app's Rsbuild `tools` (Start's pages need no `htmlPlugin`). */
+  tools?: Record<string, unknown>
+  /** The app's Rsbuild `dev` options. */
+  dev?: RsbuildConfig['dev']
+  /** The app's Rsbuild `environments` options. */
+  environments?: RsbuildConfig['environments']
+  /** More Rsbuild plugins of the app, after Start's. */
+  plugins?: Array<RsbuildPlugin>
+  /** The app's React plugin (default `pluginReact()`). */
+  react?: RsbuildPlugin
+}
+
+async function openRsbuildRscApp(
+  files: Record<string, string>,
+  options: RsbuildRscAppOptions,
+  registerCleanup: (cleanup: () => Promise<void>) => void,
 ): Promise<RsbuildDevServer> {
   const start = await startRsbuildPluginFactory('react')
   const cwd = process.cwd()
@@ -117,7 +136,7 @@ export async function startRsbuildRscApp(
     return await createRsbuildDevServer({
       dir: appsDir,
       prefix: '.start-rsc-warnings-rsbuild-',
-      registerCleanup: options.registerCleanup ?? onTestFinished,
+      registerCleanup,
       browser: true,
       // Start's plugin defines the entries of its environments
       entry: 'src/router.tsx',

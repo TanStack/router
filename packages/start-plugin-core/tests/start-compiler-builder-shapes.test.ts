@@ -10,7 +10,7 @@
  * refuses it. A parameter that reaches server code by being read is a
  * warning at the parameter, on the client only.
  */
-import { describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import {
   diagnosticPosition,
   expectNoDiagnostic,
@@ -20,13 +20,18 @@ import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   callFromClient,
   compileError,
+  createStartHost,
   expectCompileError,
   serveCase,
-  useStartHost,
 } from './regression-helpers'
+import type { StartHost } from './start-host'
 import type { StartCase } from './regression-helpers'
 
-const host = useStartHost()
+let host: StartHost
+beforeAll(async () => {
+  host = await createStartHost()
+  return () => host.close()
+})
 
 const DB = `export const db = { x: () => 'from the server', y: () => 'more from the server' }\n`
 const P = `import { createServerFn, createMiddleware, createIsomorphicFn, createServerOnlyFn, createStart } from '@tanstack/react-start'
@@ -967,7 +972,7 @@ const unwarned: Array<Shape> = [
 
 describe('builder shapes the client compiles', () => {
   test.each(supported)('$name', async (shape) => {
-    const served = await serveCase(await host(), caseFiles(shape))
+    const served = await serveCase(host, caseFiles(shape))
     for (const file of Object.keys(shape.files ?? {})) {
       for (const environment of ['client', 'ssr'] as const) {
         expect(
@@ -1040,9 +1045,7 @@ const starCycle = {
 // through it: exponential in the modules (seconds at 32, half a minute at
 // 36). A lookup visits each module once.
 test('createServerFn through a cyclic `export *` graph of 32 modules compiles in well under a second', async () => {
-  const startCase = await (
-    await host()
-  ).case(
+  const startCase = await host.case(
     caseFiles({
       name: 'star cycle',
       files: starCycle,
@@ -1058,7 +1061,7 @@ test('createServerFn through a cyclic `export *` graph of 32 modules compiles in
 
 describe('builder shapes the client refuses at the use', () => {
   test.each(refused)('$name', async (shape) => {
-    const startCase = await (await host()).case(caseFiles(shape))
+    const startCase = await host.case(caseFiles(shape))
     const file = shape.file ?? 'module.tsx'
     const source = file === 'module.tsx' ? shape.code : shape.files![file]!
     expect(source).toContain(shape.at)
@@ -1102,7 +1105,7 @@ async function reportedBy(startCase: StartCase, environment: 'client' | 'ssr') {
 
 describe('a parameter that reaches server code by being read', () => {
   test.each(warned)('warns once at the definition: $name', async (shape) => {
-    const startCase = await (await host()).case(caseFiles(shape))
+    const startCase = await host.case(caseFiles(shape))
     const client = await reportedBy(startCase, 'client')
     client.expectNone('error')
     const found = findDiagnostics(client.reported, {
@@ -1124,7 +1127,7 @@ describe('a parameter that reaches server code by being read', () => {
   })
 
   test.each(unwarned)('says nothing: $name', async (shape) => {
-    const startCase = await (await host()).case(caseFiles(shape))
+    const startCase = await host.case(caseFiles(shape))
     const client = await reportedBy(startCase, 'client')
     client.expectNone('error')
     client.expectNone('warning')

@@ -39,8 +39,8 @@
  * and `/media` boundaries without CSS, and `/widget-a` and `/widget-b` render
  * a shared widget whose own boundary has CSS.
  */
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import { buildStart } from '../build-harness'
+import { beforeAll, describe, expect, test } from 'vitest'
+import { buildStartShared } from '../build-harness'
 import { createStartHost } from '../start-host'
 import { rsbuildEntries } from './route-css-cases'
 import type { RsbuildConfig } from '@rsbuild/core'
@@ -608,47 +608,34 @@ export function routeAssetsSuite(
     ...(options.label ? [options.label] : []),
   ].join(' ')
   describe(name, () => {
-    const cleanups: Array<() => Promise<void>> = []
     let url: string
     let shell: Assets
     beforeAll(async () => {
-      const registerCleanup = (cleanup: () => Promise<void>) => {
-        cleanups.push(cleanup)
-      }
-      if (bundler === 'vite') {
-        const host = await createStartHost({
-          serve: false,
-          files: {
-            ...files,
-            ...(sideEffects === false && {
-              'package.json': JSON.stringify({
-                name: 'app',
-                private: true,
-                type: 'module',
-                sideEffects: false,
+      const built = await (bundler === 'vite'
+        ? createStartHost({
+            serve: false,
+            files: {
+              ...files,
+              ...(sideEffects === false && {
+                'package.json': JSON.stringify({
+                  name: 'app',
+                  private: true,
+                  type: 'module',
+                  sideEffects: false,
+                }),
               }),
-            }),
-          },
-        })
-        registerCleanup(() => host.close())
-        url = (await host.preview()).url
-      } else {
-        const build = await buildStart({
-          bundler,
-          registerCleanup,
-          sideEffects,
-          rsbuildConfig,
-          files: { ...rsbuildEntries, ...files },
-        })
-        url = (await build.preview(registerCleanup)).url
-      }
+            },
+          })
+        : buildStartShared({
+            bundler,
+            sideEffects,
+            rsbuildConfig,
+            files: { ...rsbuildEntries, ...files },
+          }))
+      url = (await built.preview()).url
       shell = await linkedMarkers(url, '/no-such-route')
+      return () => built.close()
     }, timeout)
-    afterAll(async () => {
-      for (const cleanup of cleanups.reverse()) {
-        await cleanup()
-      }
-    })
 
     test('the page of an unknown path links no code or CSS only a route or a boundary needs', () => {
       expect({

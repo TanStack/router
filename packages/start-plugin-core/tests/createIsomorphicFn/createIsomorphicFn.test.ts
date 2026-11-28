@@ -1,15 +1,20 @@
-import { describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   compileError,
+  createStartHost,
   expectCompileError,
   inPage,
   serveCase,
-  useStartHost,
 } from '../regression-helpers'
+import type { StartHost } from '../start-host'
 import type { ServedCase } from '../regression-helpers'
 
-const host = useStartHost()
+let host: StartHost
+beforeAll(async () => {
+  host = await createStartHost()
+  return () => host.close()
+})
 
 /** What a call returned, `undefined` spelled out (results cross JSON). */
 const UNDEFINED = '<undefined>'
@@ -65,7 +70,7 @@ import { client } from './x.client'
    * serve and evaluate.
    */
   async function evaluateOutputs(code: string) {
-    return serveCase(await host(), { 'module.tsx': code, ...files })
+    return serveCase(host, { 'module.tsx': code, ...files })
   }
 
   // Source: snapshot fixtures createIsomorphicFnDestructured.tsx (and its
@@ -256,7 +261,7 @@ describe('isomorphic fns next to other code', () => {
 const getEnv = createIsomorphicFn().server(() => 'server').client(() => 'client')
 export const env = getEnv()
 export const fn = createServerFn().handler(async () => 'x')`
-    const served = await serveCase(await host(), { 'module.tsx': code })
+    const served = await serveCase(host, { 'module.tsx': code })
     expect(await inPage(served, 'return module.env')).toBe('client')
     expect((await served.ssr()).env).toBe('server')
   })
@@ -266,7 +271,7 @@ export const fn = createServerFn().handler(async () => 'x')`
 import { db } from './db.server'
 const iso = createIsomorphicFn()
 export const fn = iso.server(() => db.x()).client(() => 'client')`
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': code,
       'db.server.ts': `export const db = { x: () => 'server' }\n`,
     })
@@ -285,9 +290,7 @@ import { client } from './x.client'
 export const name = createIsomorphicFn().client(() => client('MARK_CLIENT_NAME'))['name']
 export const optional = createIsomorphicFn().client(() => client('MARK_CLIENT_OPTIONAL'))?.['name']
 export const called = () => createIsomorphicFn().client(() => client('MARK_CLIENT_CALL'))['call'](null)`
-    const startCase = await (
-      await host()
-    ).case({
+    const startCase = await host.case({
       'module.tsx': code,
       'x.client.ts': `export const client = (value: string) => value\n`,
     })
@@ -306,7 +309,7 @@ export const called = () => createIsomorphicFn().client(() => client('MARK_CLIEN
     const code = `import { createIsomorphicFn } from '@tanstack/react-start'
 export const fn = createIsomorphicFn().server(() => 'server').client(() => 'client')
 export const viaGlobal = () => ws.client()`
-    const served = await serveCase(await host(), { 'module.tsx': code })
+    const served = await serveCase(host, { 'module.tsx': code })
     expect(
       await inPage(
         served,
@@ -326,7 +329,7 @@ try {
 // continue that line (`const x = foo` + `(() => 1)()` would call `foo`).
 describe('replacements after an unterminated statement', () => {
   test('keep the previous statement intact at module and function level, in every environment', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `import { createIsomorphicFn, createServerOnlyFn, createClientOnlyFn } from '@tanstack/react-start'
 const foo = () => () => 'called'
 export const x = foo

@@ -12,8 +12,8 @@
  * layer reaches the core only through a config digest; no test compiled
  * one file in both layers).
  */
-import { afterAll, beforeAll, describe, test } from 'vitest'
-import { startRsbuildRscApp } from '../rsc-warning-app'
+import { beforeAll, describe, test } from 'vitest'
+import { startRsbuildRscAppShared } from '../rsc-warning-app'
 import {
   clientBox,
   expectBothLayers,
@@ -27,15 +27,9 @@ const timeout = 60_000
 describe('Rsbuild dev with RSC: one file, a module in each layer', () => {
   let server: RsbuildDevServer
   beforeAll(async () => {
-    server = await startRsbuildRscApp(layersFiles, {
-      // (the server lives across this file's tests)
-      registerCleanup: () => {},
-    })
+    server = await startRsbuildRscAppShared(layersFiles)
+    return () => server.close()
   }, timeout)
-  afterAll(async () => {
-    // (none when the start failed)
-    await (server as RsbuildDevServer | undefined)?.close()
-  })
 
   test('a server fn module and a client component of both layers serve each layer its role', async () => {
     await expectBothLayers(server.url!, 'MARK_SHARED', 'box')

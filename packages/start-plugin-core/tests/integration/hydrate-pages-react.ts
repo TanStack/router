@@ -14,7 +14,7 @@
  * children (J4.13), which `Hydrate` elements are boundaries (J5.1), and
  * the children under parent updates (J5.8).
  */
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import {
   barrelRows,
   buildHydrationApp,
@@ -468,7 +468,6 @@ return counters().map((button) => button.textContent)`
 export function reactPageSuite(bundler: StartBundler) {
   describe('React Hydrate pages', () => {
     let app: HydrationApp
-    const cleanups: Array<() => Promise<void>> = []
 
     beforeAll(async () => {
       app = await buildHydrationApp({
@@ -479,13 +478,9 @@ export function reactPageSuite(bundler: StartBundler) {
           'src/theme.tsx': themeFile,
           ...hydrateBarrelFiles('react'),
         },
-        registerCleanup: (cleanup) => cleanups.push(cleanup),
       })
+      return () => app.close()
     }, 60_000)
-
-    afterAll(async () => {
-      await Promise.all(cleanups.map((cleanup) => cleanup()))
-    })
 
     /** Hydrates fixture `name`; every child counts one click; no error. */
     async function expectChildrenHydrate(

@@ -1,6 +1,6 @@
 /**
  * Import protection's `'use client'` exception on the compile-level RSC tier
- * (Vite, `useStartHost({ rsc: true, ... })`): a `'use client'` module's
+ * (Vite, `createStartHost({ rsc: true, ... })`): a `'use client'` module's
  * imports are judged where its code runs, not in the provider (SPEC J6.1;
  * the dev and build apps are react-start-rsc's rsc-use-client-*). The other
  * RSC rows: start-compiler-rsc.test.ts.
@@ -11,8 +11,9 @@
  * the last RSC dev server created, so a shared RSC host of the same process
  * could no longer call its provider once this one closed.
  */
-import { describe, expect, test } from 'vitest'
-import { useStartHost } from './start-host'
+import { beforeAll, describe, expect, test } from 'vitest'
+import { createStartHost } from './start-host'
+import type { StartHost } from './start-host'
 
 describe("Vite with RSC: import protection's 'use client' exception", () => {
   const violations: Array<{
@@ -20,20 +21,24 @@ describe("Vite with RSC: import protection's 'use client' exception", () => {
     importer: string
     specifier: string
   }> = []
-  const host = useStartHost({
-    rsc: true,
-    start: {
-      importProtection: {
-        behavior: 'mock',
-        onViolation: (info: {
-          env: string
-          importer: string
-          specifier: string
-        }) => {
-          violations.push(info)
+  let host: StartHost
+  beforeAll(async () => {
+    host = await createStartHost({
+      rsc: true,
+      start: {
+        importProtection: {
+          behavior: 'mock',
+          onViolation: (info: {
+            env: string
+            importer: string
+            specifier: string
+          }) => {
+            violations.push(info)
+          },
         },
       },
-    },
+    })
+    return () => host.close()
   })
 
   // SPEC J6.1: the provider compiles the module, which the RSC plugin
@@ -41,9 +46,7 @@ describe("Vite with RSC: import protection's 'use client' exception", () => {
   // `.client` import is no violation in the rsc environment; SSR runs it,
   // so it is one there (and SSR gets the mock).
   test("a 'use client' module's .client import is judged in SSR, not in the rsc environment", async () => {
-    const c = await (
-      await host()
-    ).case({
+    const c = await host.case({
       'label.client.ts': `export const label = () => 'MARK_CLIENT_LABEL'\n`,
       'module.tsx': `'use client'
 import { label } from './label.client'

@@ -16,12 +16,12 @@ import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   callFromClient,
   callOnServer,
+  createStartHost,
   fromPage,
   inPage,
   serveCase,
   settle,
   throwsError,
-  useStartHosts,
 } from '../../regression-helpers'
 import {
   forms,
@@ -37,6 +37,7 @@ import type {
   PageSettled,
   ServedCase,
   StartCase,
+  StartHost,
 } from '../../regression-helpers'
 
 const frameworks: Array<Framework> = ['react', 'solid', 'vue']
@@ -46,7 +47,6 @@ const frameworks: Array<Framework> = ['react', 'solid', 'vue']
 // tsconfig with `verbatimModuleSyntax` (without it, Vite's TypeScript
 // transform drops unreferenced imports after the compiler and hides leaks);
 // a Vue app's JSX is Vue's own runtime.
-const hosts = useStartHosts()
 
 /** The client does not load the server-only module. */
 async function expectClientFree(served: StartCase) {
@@ -200,10 +200,12 @@ export function mount() {
 
 describe.each(frameworks)('%s', (framework) => {
   const pkg = `@tanstack/${framework}-start`
-  const host = () => hosts(framework)
   // The framework's host (dev server and page) starts before its tests.
+  let host: StartHost
   beforeAll(async () => {
-    await (await host()).page()
+    host = await createStartHost({ framework })
+    await host.page()
+    return () => host.close()
   }, 60_000)
 
   describe.each(constructs)('$name', (construct) => {
@@ -212,7 +214,7 @@ describe.each(frameworks)('%s', (framework) => {
       const code = `${form.imports(pkg, construct.name)}
 ${moduleImports}
 ${construct.code(form.callee(construct.name), form.wrap)}`
-      const served = await serveCase(await host(), {
+      const served = await serveCase(host, {
         'module.tsx': code,
         ...moduleFiles,
       })
@@ -224,7 +226,7 @@ ${construct.code(form.callee(construct.name), form.wrap)}`
   // implementation (`nestedUnderWrappers`): the wrapper stays around the
   // inner implementation, and each environment runs what it keeps.
   test('a factory call under a TypeScript wrapper as another factory’s implementation', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': nestedUnderWrappers(pkg),
     })
     const ssr = await served.ssr()
@@ -287,7 +289,7 @@ export const impl = factory.clientOnly(() => chart())`,
 
     /** Serves `code` (both environments evaluate it) and checks `call`. */
     async function expectEnvOnly(call: EnvOnlyCall, code: string) {
-      const served = await serveCase(await host(), {
+      const served = await serveCase(host, {
         'module.tsx': code,
         ...files,
       })
@@ -340,7 +342,7 @@ export const Page = () => (
     </${tag}>
   </div>
 )`
-      const served = await serveCase(await host(), {
+      const served = await serveCase(host, {
         'module.tsx': code,
         ...chartFile,
         ...renderFiles[framework],

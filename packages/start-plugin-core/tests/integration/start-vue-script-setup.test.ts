@@ -20,13 +20,6 @@ import {
 } from '../regression-helpers'
 import type { StartHost } from '../regression-helpers'
 
-const hosts: Array<StartHost> = []
-afterAll(async () => {
-  for (const host of hosts) {
-    await host.close()
-  }
-})
-
 const builder = `import { createServerFn } from '@tanstack/vue-start'
 export const base = createServerFn()
 export const label = 'x'
@@ -34,11 +27,13 @@ export const label = 'x'
 
 /** One dev host for the cases of this file (each case is its own module). */
 let devHost: Promise<StartHost> | undefined
-const vueHost = () =>
-  (devHost ??= createStartHost({ framework: 'vue' }).then((host) => {
-    hosts.push(host)
-    return host
-  }))
+const vueHost = () => (devHost ??= createStartHost({ framework: 'vue' }))
+afterAll(() =>
+  devHost?.then(
+    (host) => host.close(),
+    () => {},
+  ),
+)
 
 /** A component whose `<script setup>` block is `script`. */
 const sfcOf = (script: string) => `<script setup>
@@ -310,12 +305,8 @@ console.log(fn)
  * (`features.prodDevtools`): the template is not inlined, as in development.
  * `sfcs`: the SFCs by name (`src/<name>.vue`), all exported by the entry.
  */
-const devtoolsBuild = (
-  sfcs: Record<string, string>,
-  registerCleanup?: (cleanup: () => Promise<void>) => void,
-) =>
+const devtoolsBuild = (sfcs: Record<string, string>) =>
   buildStart({
-    registerCleanup,
     framework: 'vue',
     files: {
       'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/vue-router'
@@ -356,16 +347,11 @@ describe('vite build with Vue devtools', () => {
     sfc: recipe.sfc.replaceAll('MARK_SERVER_SECRET', `MARK_RECIPE_${i}`),
   }))
   let recipeBuild: ReturnType<typeof devtoolsBuild> | undefined
-  let disposeRecipeBuild: (() => Promise<void>) | undefined
-  afterAll(() => disposeRecipeBuild?.())
   test.each(marked)(
     '$name builds, and no server code reaches the client',
     async ({ mark }) => {
       recipeBuild ??= devtoolsBuild(
         Object.fromEntries(marked.map(({ sfc }, i) => [`Recipe${i}`, sfc])),
-        (cleanup) => {
-          disposeRecipeBuild = cleanup
-        },
       )
       expect((await recipeBuild).client.where(mark)).toBe('nowhere')
     },

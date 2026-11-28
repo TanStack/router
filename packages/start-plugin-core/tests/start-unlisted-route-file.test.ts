@@ -5,29 +5,34 @@
  * plugin alone: not code-split, its `server` option kept, nothing reported.
  * The generator decides what a route is; the compilers read its registry.
  */
-import { expect, test } from 'vitest'
+import { beforeAll, expect, test } from 'vitest'
 import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
-import { useStartHost } from './regression-helpers'
+import { createStartHost } from './regression-helpers'
+import type { StartHost } from './start-host'
 
-const host = useStartHost({
-  files: {
-    'src/widgets/w.tsx': `import { createFileRoute } from '@tanstack/react-router'
+let host: StartHost
+beforeAll(async () => {
+  host = await createStartHost({
+    files: {
+      'src/widgets/w.tsx': `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/w')({
   component: () => 'MARK_W_PAGE',
   server: { handlers: { GET: () => new Response('MARK_W_SERVER') } },
 })
 `,
-    'src/routes/widget.tsx': `import { createFileRoute } from '@tanstack/react-router'
+      'src/routes/widget.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { Route as Widget } from '../widgets/w'
 export const Route = createFileRoute('/widget')({
   component: () => String(Widget.options.component),
 })
 `,
-  },
+    },
+  })
+  return () => host.close()
 })
 
 test('a route file the generator does not list is served as written, with nothing reported', async () => {
-  const { host: dev, diagnostics, root } = await host()
+  const { host: dev, diagnostics, root } = host
   const served = await dev.transform('/src/widgets/w.tsx', 'client')
 
   // the component stays in the module, `server` stays too

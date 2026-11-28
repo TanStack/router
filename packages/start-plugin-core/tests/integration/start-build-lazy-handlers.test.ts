@@ -19,7 +19,7 @@ import {
   runNodeStep,
 } from '@tanstack/compiler-test-utils/run-node'
 import {
-  buildStart,
+  buildStartShared,
   callByIdExports,
   callByIdPrelude,
   startBundlers,
@@ -522,20 +522,14 @@ const counts = (...names) =>
 
 describe.each(startBundlers)('%s build', (bundler) => {
   let build: StartBuild
-  const cleanups: Array<() => Promise<void>> = []
-
   beforeAll(async () => {
-    build = await buildStart({
+    build = await buildStartShared({
       bundler,
       files,
       entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
-      registerCleanup: (cleanup) => cleanups.push(cleanup),
     })
+    return () => build.close()
   }, timeout)
-
-  afterAll(async () => {
-    await Promise.all(cleanups.map((cleanup) => cleanup()))
-  })
 
   test(
     'SSR: the server-only modules of handlers load on the first call, not with the module defining the fn',
@@ -1181,19 +1175,14 @@ describe.each(startBundlers)(
   '%s build: the files a production server loads',
   (bundler) => {
     let build: StartBuild
-    const cleanups: Array<() => Promise<void>> = []
 
     beforeAll(async () => {
-      build = await buildStart({
+      build = await buildStartShared({
         bundler,
         files: firstRequestFiles,
-        registerCleanup: (cleanup) => cleanups.push(cleanup),
       })
+      return () => build.close()
     }, timeout)
-
-    afterAll(async () => {
-      await Promise.all(cleanups.map((cleanup) => cleanup()))
-    })
 
     test(
       'each handler, and each module only handlers or split chunks import, is emitted once',

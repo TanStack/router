@@ -16,7 +16,7 @@
  * seen by a browser page are in edits-page.test.ts.
  */
 import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
-import { afterAll, describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import {
   describeValue,
   describeValuePrelude,
@@ -204,9 +204,6 @@ function hostSuite(run: () => Promise<Array<StepOutcome>>) {
 }
 
 describe('vite dev', () => {
-  let dispose: (() => Promise<void>) | undefined
-  afterAll(() => dispose?.())
-
   hostSuite(
     async () => {
       // `log: 'always'`: a violation is logged on each load, so a stale
@@ -216,9 +213,6 @@ describe('vite dev', () => {
         browser: true,
         start: { importProtection: recorder.importProtection },
         files: app,
-        registerCleanup: (cleanup) => {
-          dispose = cleanup
-        },
       })
       const recorded = { root: server.root, ...recorder }
       const outcomes: Array<StepOutcome> = []
@@ -296,9 +290,6 @@ describe('vite dev', () => {
 })
 
 describe('rsbuild dev', () => {
-  let dispose: (() => Promise<void>) | undefined
-  afterAll(() => dispose?.())
-
   hostSuite(async () => {
     // `log: 'always'`: each compile reports what it finds, so a stale
     // violation shows in the compile of the step that removed it.
@@ -310,9 +301,6 @@ describe('rsbuild dev', () => {
       config: ssrNodeOutput,
       files: app,
       start: { importProtection: recorder.importProtection },
-      registerCleanup: (cleanup) => {
-        dispose = cleanup
-      },
     })
     const recorded = { root: server.root, ...recorder }
     const outcomes: Array<StepOutcome> = []

@@ -19,7 +19,7 @@
  * integration/start-vue-sfc-script-ts.test.ts.
  */
 
-import { describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
@@ -28,6 +28,7 @@ import {
   callOnServer,
   callServerFnThroughCallers,
   compileError,
+  createStartHost,
   expectCompileError,
   expectNoClientHandler,
   fromPage,
@@ -38,7 +39,6 @@ import {
   settle,
   settleAsync,
   throwsError,
-  useStartHost,
 } from './regression-helpers'
 import { bindingNames } from './binding-names'
 import {
@@ -53,6 +53,7 @@ import {
   placementModule,
   placements,
 } from './createServerFn/placements'
+import type { StartHost } from './start-host'
 import type { PageSettled, StartCase } from './regression-helpers'
 import type { PlacementHead } from './createServerFn/placements'
 
@@ -69,11 +70,15 @@ const dbFile = `export const db = {
 }
 `
 
-const host = useStartHost()
+let host: StartHost
+beforeAll(async () => {
+  host = await createStartHost()
+  return () => host.close()
+})
 
 /** A case of `files` with the server-only module. */
 async function newCase(files: Record<string, string>) {
-  return (await host()).case({ 'db.server.ts': dbFile, ...files })
+  return host.case({ 'db.server.ts': dbFile, ...files })
 }
 
 /**
@@ -83,7 +88,7 @@ async function newCase(files: Record<string, string>) {
  * and the results of the calls.
  */
 async function callServerFns(files: Record<string, string>) {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'db.server.ts': dbFile,
     ...files,
   })
@@ -159,7 +164,7 @@ function readOf(
 describe('server code in the client bundle', () => {
   test('a server fn in a plain .ts module compiles by its id', async () => {
     const served = await serveCase(
-      await host(),
+      host,
       {
         'db.server.ts': dbFile,
         'fns.ts': `${head}import { db } from './db.server'
@@ -633,11 +638,9 @@ export let read: () => unknown
     test.each(rows)(
       'a createServerFn in $name does not ship its handler to the client',
       async ({ code, read }) => {
-        await expectNoClientHandler(
-          await host(),
-          placementModule(importHead, code),
-          { read: readOf(read) },
-        )
+        await expectNoClientHandler(host, placementModule(importHead, code), {
+          read: readOf(read),
+        })
       },
     )
   })
@@ -651,7 +654,7 @@ export let read: () => unknown
     'with another Start factory imported, a server fn in $name works or is rejected at the call',
     async ({ code, read }) => {
       await expectNoClientHandler(
-        await host(),
+        host,
         placementModule('another Start factory', code),
         { read: readOf(read) },
       )
@@ -849,7 +852,7 @@ export const fn = createServerFn().handler(async () => 'from the server')`,
    * naming.
    */
   async function introducedNames() {
-    const started = await host()
+    const started = host
     const source = `${head}export const fn = createServerFn().handler(async () => 'from the server')`
     const control = `${head}export const fn = createServerFn\nexport const value = 'from the server'`
     const probe = await serveCase(started, { 'module.tsx': source })
@@ -1007,9 +1010,7 @@ export const TaggedError = (tag: string) => () =>
     code: string,
     check: { expression: string; expected: unknown },
   ) {
-    const startCase = await (
-      await host()
-    ).case({
+    const startCase = await host.case({
       'module.tsx': code,
       'db.server.ts': throwingServerModule,
     })
@@ -1194,9 +1195,7 @@ export const read = createServerOnlyFn(() => get())`,
    * specifiers are dropped).
    */
   async function verbatimLoads(code: string) {
-    const startCase = await (
-      await host()
-    ).case({
+    const startCase = await host.case({
       'tsconfig.json': tsconfig(true),
       'module.tsx': code,
       'auth.ts': authFile,
@@ -1247,7 +1246,7 @@ export const setTheme = createServerFn({ method: 'POST' })
    * client-only chart module.
    */
   async function erasedCase(code: string) {
-    return (await host()).case({
+    return host.case({
       'tsconfig.json': tsconfig(false),
       'module.tsx': code,
       'chart.client.ts': `export const createChart = () => ({ draw: () => 'drawn' })\n`,

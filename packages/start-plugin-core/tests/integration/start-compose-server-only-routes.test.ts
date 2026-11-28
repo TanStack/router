@@ -18,23 +18,17 @@
  */
 import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import {
-  afterAll,
-  beforeAll,
-  describe,
-  expect,
-  onTestFinished,
-  test,
-} from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
+import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
-import { buildStart, startBundlers } from '../build-harness'
+import { buildStartShared, startBundlers } from '../build-harness'
 import { probeRoutePath } from '../request-probe'
 import {
   openAppPage,
   pageEntries,
   rootDocument,
   routerFile,
-  serveStartBuild,
+  serveStartBuildShared,
   startPageEntries,
   typeCheck,
 } from './start-compose-app'
@@ -143,31 +137,31 @@ export type Checks = [
 describe.each(startBundlers)('%s build, served', (bundler) => {
   let build: StartBuild
   let served: ServedStartBuild
-  const cleanups: Array<() => Promise<void>> = []
   /** Ids of the routes of the client build's route tree. */
   let clientRoutes: Array<string>
 
   beforeAll(async () => {
-    build = await buildStart({
+    build = await buildStartShared({
       bundler,
       files,
       entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-      registerCleanup: (cleanup) => cleanups.push(cleanup),
     })
-    served = await serveStartBuild(build, {
-      registerCleanup: (cleanup) => cleanups.push(cleanup),
-    })
-    const page = await openAppPage(served, '/', {
-      registerCleanup: (cleanup) => cleanups.push(cleanup),
-    })
-    clientRoutes = await page.page.evaluate<Array<string>>(
-      `(() => { ${routeIds}; return ids(globalThis.__app.getRouter().routeTree) })()`,
-    )
+    served = await serveStartBuildShared(build)
+    // (a page of the hook's own: `openAppPage` closes its page with a test)
+    const page = await openPage(new URL('/', served.url).href)
+    try {
+      await page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
+      clientRoutes = await page.page.evaluate<Array<string>>(
+        `(() => { ${routeIds}; return ids(globalThis.__app.getRouter().routeTree) })()`,
+      )
+    } finally {
+      await page.close()
+    }
+    return async () => {
+      await served.close()
+      await build.close()
+    }
   }, timeout)
-
-  afterAll(async () => {
-    await Promise.all(cleanups.map((cleanup) => cleanup()))
-  })
 
   test('the server route tree has every route', async () => {
     const { result } = await build.ssr.run(
@@ -255,9 +249,7 @@ describe.each(startBundlers)('%s build, served', (bundler) => {
   test(
     'client-side navigation reaches the page in a lazy file of a route with server handlers',
     async () => {
-      const page = await openAppPage(served, '/', {
-        registerCleanup: onTestFinished,
-      })
+      const page = await openAppPage(served, '/')
       await page.waitForText('MARK_HOME', { selector: '#app' })
       await page.follow('pair')
       expect(await settledOutlet(page, /\/pair$/)).toContain('MARK_PAIR_PAGE')
@@ -269,9 +261,7 @@ describe.each(startBundlers)('%s build, served', (bundler) => {
   test(
     'client-side navigation reaches the page under the server-only ancestor',
     async () => {
-      const page = await openAppPage(served, '/', {
-        registerCleanup: onTestFinished,
-      })
+      const page = await openAppPage(served, '/')
       await page.waitForText('MARK_HOME', { selector: '#app' })
       await page.follow('adminusers')
       await page.waitForText('MARK_ADMIN_PAGE', { selector: '#app' })
@@ -290,9 +280,7 @@ describe.each(startBundlers)('%s build, served', (bundler) => {
   test(
     'client-side navigation to a server-only route finds nothing',
     async () => {
-      const page = await openAppPage(served, '/', {
-        registerCleanup: onTestFinished,
-      })
+      const page = await openAppPage(served, '/')
       await page.waitForText('MARK_HOME', { selector: '#app' })
       await page.follow('apiusers')
       expect(await settledOutlet(page, /\/api\/users$/)).toContain(
@@ -307,9 +295,7 @@ describe.each(startBundlers)('%s build, served', (bundler) => {
   test(
     'client-side navigation reaches the page whose component is spread in',
     async () => {
-      const page = await openAppPage(served, '/', {
-        registerCleanup: onTestFinished,
-      })
+      const page = await openAppPage(served, '/')
       await page.waitForText('MARK_HOME', { selector: '#app' })
       await page.follow('spread')
       expect(await settledOutlet(page, /\/spread$/)).toContain(

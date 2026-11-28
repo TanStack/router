@@ -13,7 +13,14 @@
  * - the same project at another root builds correctly (relocation is
  *   correctness, not id equality: G4).
  */
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import {
+  afterAll,
+  beforeAll,
+  describe,
+  expect,
+  onTestFinished,
+  test,
+} from 'vitest'
 import { expectRelocatable } from '@tanstack/compiler-test-utils/determinism'
 import {
   callFromClient,
@@ -202,13 +209,6 @@ export const outer = {
 })
 
 describe('relocation', () => {
-  const hosts: Array<StartHost> = []
-  afterAll(async () => {
-    for (const host of hosts) {
-      await host.close()
-    }
-  })
-
   // Two apps at two roots, the same project: each builds a working app (its
   // client calls reach their handlers); only the results must agree, not
   // the opaque ids.
@@ -217,7 +217,7 @@ describe('relocation', () => {
       ['first root', 'second root'],
       async () => {
         const host = await createStartHost({ ...hostDefaults, serve: false })
-        hosts.push(host)
+        onTestFinished(() => host.close())
         const startCase = await host.case({
           'fns.ts': serverFnModule('fn', 'from the server'),
         })

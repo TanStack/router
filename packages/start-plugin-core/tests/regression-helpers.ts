@@ -28,7 +28,7 @@ import { expect } from 'vitest'
 import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import type { ClientRun, StartCase, StartHost } from './start-host'
 
-export { createStartHost, useStartHost, useStartHosts } from './start-host'
+export { createStartHost } from './start-host'
 export type {
   StartCase,
   StartFramework as Framework,

@@ -13,7 +13,7 @@
  */
 import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterAll, afterEach, describe, expect, test } from 'vitest'
-import { buildStart, startBundlers } from '../../build-harness'
+import { buildStartShared, startBundlers } from '../../build-harness'
 import {
   describeValue,
   describeValuePrelude,
@@ -22,10 +22,14 @@ import { violationRecorder } from '../../importProtection/start-apps'
 import {
   runInClient,
   runViteClient,
+  startBrowserStartDevServerShared as startDevServerShared,
+  startBrowserRsbuildStartDevServerShared as startRsbuildStartDevServerShared,
+} from './client-pages'
+import { importersIn, runRsbuildSsr, ssrNodeOutput } from './hosts'
+import type {
   startBrowserStartDevServer as startDevServer,
   startBrowserRsbuildStartDevServer as startRsbuildStartDevServer,
 } from './client-pages'
-import { importersIn, runRsbuildSsr, ssrNodeOutput } from './hosts'
 import type { Recorded } from '../../importProtection/start-apps'
 import type { StartBuild } from '../../build-harness'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'
@@ -198,10 +202,14 @@ const expected = {
 
 describe.each(startBundlers)('%s build (mock mode)', (bundler) => {
   let built: Promise<StartBuild> | undefined
-  let dispose: (() => Promise<void>) | undefined
-  afterAll(() => dispose?.())
+  afterAll(() =>
+    built?.then(
+      (opened) => opened.close(),
+      () => {},
+    ),
+  )
   const build = () =>
-    (built ??= buildStart({
+    (built ??= buildStartShared({
       bundler,
       files: {
         ...app,
@@ -214,9 +222,6 @@ export const getRouter = () => createRouter({ routeTree })
       },
       entry: 'src/entry.ts',
       start: { importProtection: { ...importProtection, behavior: 'mock' } },
-      registerCleanup: (cleanup) => {
-        dispose = cleanup
-      },
     }))
 
   test(
@@ -248,19 +253,20 @@ describe('vite dev', () => {
 
   // One dev server for both environments.
   let started: ReturnType<typeof startDevServer> | undefined
-  let dispose: (() => Promise<void>) | undefined
-  afterAll(() => dispose?.())
+  afterAll(() =>
+    started?.then(
+      (opened) => opened.close(),
+      () => {},
+    ),
+  )
   const recorder = violationRecorder(importProtection)
 
   /** Runs the app from Start's router entry in `environment`. */
   async function run(environment: 'client' | 'server') {
-    const server = await (started ??= startDevServer({
+    const server = await (started ??= startDevServerShared({
       browser: true,
       start: { importProtection: recorder.importProtection },
       files: app,
-      registerCleanup: (cleanup) => {
-        dispose = cleanup
-      },
     }))
     const { result } =
       environment === 'client'
@@ -312,20 +318,21 @@ describe('vite dev', () => {
 describe('rsbuild dev', () => {
   // One dev server for both environments.
   let started: ReturnType<typeof startRsbuildStartDevServer> | undefined
-  let dispose: (() => Promise<void>) | undefined
-  afterAll(() => dispose?.())
+  afterAll(() =>
+    started?.then(
+      (opened) => opened.close(),
+      () => {},
+    ),
+  )
   const recorder = violationRecorder(importProtection)
   const start = () =>
-    (started ??= startRsbuildStartDevServer({
+    (started ??= startRsbuildStartDevServerShared({
       compileTimeout,
       browser: true,
       hmr: false,
       config: ssrNodeOutput,
       files: app,
       start: { importProtection: recorder.importProtection },
-      registerCleanup: (cleanup) => {
-        dispose = cleanup
-      },
     }))
 
   test(

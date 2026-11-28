@@ -22,11 +22,10 @@
  * twins of the mock pins"); `export *` and `export * as ns` of a denied
  * module are pinned there and in `start-dev-edits.test.ts`.
  */
-import { afterAll, describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../../build-harness'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import { runViteClient, startBrowserProtectedDevServer } from './client-pages'
-import type { StartBuild } from '../../build-harness'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'
 
 const timeout = 60_000
@@ -396,11 +395,6 @@ const channels: Array<Channel> = [
   ...startBundlers.map((bundler) => `${bundler} build` as Channel),
 ]
 
-const builds: Array<StartBuild> = []
-afterAll(async () => {
-  await Promise.all(builds.map((build) => build.client.dispose()))
-})
-
 const outcomes = new Map<Channel, Promise<Record<string, Array<string>>>>()
 /** What each case gives on `channel`, run once per channel. */
 function outcomeOf(channel: Channel) {
@@ -412,21 +406,15 @@ function outcomeOf(channel: Channel) {
           files,
           importProtection,
         )
-        try {
-          return (await runViteClient(server, '/src/entry.ts', script))
-            .result as Record<string, Array<string>>
-        } finally {
-          await server.close()
-        }
+        return (await runViteClient(server, '/src/entry.ts', script))
+          .result as Record<string, Array<string>>
       }
       const build = await buildStart({
         bundler: channel === 'vite build' ? 'vite' : 'rsbuild',
         files,
         entry: 'src/entry.ts',
         start: { importProtection: { ...importProtection, behavior: 'mock' } },
-        registerCleanup: () => {},
       })
-      builds.push(build)
       return (await build.client.run(script)).result as Record<
         string,
         Array<string>

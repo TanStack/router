@@ -21,7 +21,7 @@ import { pluginVue } from '@rsbuild/plugin-vue'
 import { afterAll, describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { diagnosticPosition } from '@tanstack/compiler-test-utils/diagnostics'
-import { buildStart, startBundlers } from '../../build-harness'
+import { buildStartShared, startBundlers } from '../../build-harness'
 import { createStartHost } from '../../start-host'
 import {
   expectViolationsAt,
@@ -134,11 +134,13 @@ ${declaration}
 <template><main><ClientOnly><${name} /></ClientOnly></main></template>
 `
 
-/** Builds `files` (with the fixes) for production; the URL its preview serves. */
+/**
+ * Builds `files` (with the fixes) for production: the URL its preview
+ * serves, until `close()`.
+ */
 async function previewFixedApp(
   bundler: StartBundler,
   files: Record<string, string>,
-  registerCleanup: (cleanup: () => Promise<void>) => void,
 ) {
   if (bundler === 'vite') {
     const host = await createStartHost({
@@ -147,34 +149,38 @@ async function previewFixedApp(
       files: { ...app, ...files },
       start: { importProtection: { enabled: true } },
     })
-    registerCleanup(() => host.close())
-    return (await host.preview()).url
+    return { url: (await host.preview()).url, close: host.close }
   }
-  const build = await buildStart({
+  const build = await buildStartShared({
     bundler,
     framework: 'vue',
     files: { ...rsbuildEntries, ...app, ...files },
-    registerCleanup,
     ...bundlerConfig(bundler),
   })
   expect(build.violations).toEqual([])
-  return (await build.preview(registerCleanup)).url
+  return { url: (await build.preview()).url, close: build.close }
 }
 
 describe.each(startBundlers)('%s build', (bundler) => {
-  const cleanups: Array<() => Promise<void>> = []
-  afterAll(async () => {
-    for (const cleanup of cleanups.reverse()) {
-      await cleanup()
-    }
-  })
   // both cases in one app: the failed build, then the build with both
-  // printed fixes applied (shared by the two rows, removed after the file)
-  let built: Promise<{ error: StartBuildError; url: string }> | undefined
+  // printed fixes applied (shared by the two rows, closed after the file)
+  let built:
+    | Promise<{
+        error: StartBuildError
+        url: string
+        close: () => Promise<void>
+      }>
+    | undefined
+  afterAll(() =>
+    built?.then(
+      (opened) => opened.close(),
+      () => {},
+    ),
+  )
   const both = () =>
     (built ??= (async () => {
       const error = await rejection(
-        buildStart({
+        buildStartShared({
           bundler,
           framework: 'vue',
           files: {
@@ -188,19 +194,13 @@ describe.each(startBundlers)('%s build', (bundler) => {
           ...bundlerConfig(bundler),
         }),
       )
-      const url = await previewFixedApp(
-        bundler,
-        {
-          'src/ui.client.ts': ui,
-          'src/Named.vue': fixedPage(printedFix(error, './ui.client')),
-          'src/Chart.vue': chart,
-          'src/Marked.vue': fixedPage(printedFix(error, './Chart.vue')),
-        },
-        (cleanup) => {
-          cleanups.push(cleanup)
-        },
-      )
-      return { error, url }
+      const fixed = await previewFixedApp(bundler, {
+        'src/ui.client.ts': ui,
+        'src/Named.vue': fixedPage(printedFix(error, './ui.client')),
+        'src/Chart.vue': chart,
+        'src/Marked.vue': fixedPage(printedFix(error, './Chart.vue')),
+      })
+      return { error, ...fixed }
     })())
   /**
    * The violations of the failed build whose importer is `file`

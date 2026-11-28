@@ -5,8 +5,9 @@
  * gives the component a binding React Refresh registers; that binding holds
  * the compiled value, not the source text).
  */
-import { expect, test } from 'vitest'
-import { useStartHost } from './regression-helpers'
+import { beforeAll, expect, test } from 'vitest'
+import { createStartHost } from './regression-helpers'
+import type { StartHost } from './start-host'
 
 const SECRET = 'MARK_SECRET'
 
@@ -23,28 +24,32 @@ const rows = [
   },
 ]
 
-const host = useStartHost({
-  files: Object.fromEntries(
-    rows.map(({ file, path, component }) => [
-      file,
-      `import { createFileRoute } from '@tanstack/react-router'
+let host: StartHost
+beforeAll(async () => {
+  host = await createStartHost({
+    files: Object.fromEntries(
+      rows.map(({ file, path, component }) => [
+        file,
+        `import { createFileRoute } from '@tanstack/react-router'
 import { createIsomorphicFn, createServerOnlyFn } from '@tanstack/react-start'
 export const Route = createFileRoute('${path}')({
   loader: () => 'loader data',
   component: ${component},
 })
 `,
-    ]),
-  ),
-  start: {
-    router: { codeSplittingOptions: { defaultBehavior: [['loader']] } },
-  },
+      ]),
+    ),
+    start: {
+      router: { codeSplittingOptions: { defaultBehavior: [['loader']] } },
+    },
+  })
+  return () => host.close()
 })
 
 test.each(rows)(
   'in development, a component kept in the route module, `$component`, serves the client nothing of its server implementation',
   async ({ file }) => {
-    const { host: dev } = await host()
+    const { host: dev } = host
     expect(await dev.transform(`/${file}`, 'client')).not.toContain(SECRET)
     expect(await dev.transform(`/${file}`, 'ssr')).toContain(SECRET)
   },

@@ -17,11 +17,12 @@
 import { beforeAll, describe, expect, test } from 'vitest'
 import {
   callOnServer,
+  createStartHost,
   inPage,
   serveCase,
-  useStartHost,
 } from './regression-helpers'
 import { untilInDom } from './page-values'
+import type { StartHost } from './start-host'
 
 /** A JSX runtime package: React's, marking the elements it creates. */
 const runtime = (
@@ -40,29 +41,33 @@ ${
     : ''
 }`
 
-const host = useStartHost({
-  files: {
-    'node_modules/pragma-jsx/package.json': JSON.stringify({
-      name: 'pragma-jsx',
-      type: 'module',
-      exports: {
-        './jsx-runtime': './jsx-runtime.js',
-        './jsx-dev-runtime': './jsx-dev-runtime.js',
-      },
-    }),
-    'node_modules/pragma-jsx/jsx-runtime.js': runtime(
-      'react/jsx-runtime',
-      'jsx',
-    ),
-    'node_modules/pragma-jsx/jsx-dev-runtime.js': runtime(
-      'react/jsx-dev-runtime',
-      'jsxDEV',
-    ),
-  },
-  config: { optimizeDeps: { exclude: ['pragma-jsx'] } },
+let host: StartHost
+beforeAll(async () => {
+  host = await createStartHost({
+    files: {
+      'node_modules/pragma-jsx/package.json': JSON.stringify({
+        name: 'pragma-jsx',
+        type: 'module',
+        exports: {
+          './jsx-runtime': './jsx-runtime.js',
+          './jsx-dev-runtime': './jsx-dev-runtime.js',
+        },
+      }),
+      'node_modules/pragma-jsx/jsx-runtime.js': runtime(
+        'react/jsx-runtime',
+        'jsx',
+      ),
+      'node_modules/pragma-jsx/jsx-dev-runtime.js': runtime(
+        'react/jsx-dev-runtime',
+        'jsxDEV',
+      ),
+    },
+    config: { optimizeDeps: { exclude: ['pragma-jsx'] } },
+  })
+  return () => host.close()
 })
 beforeAll(async () => {
-  await (await host()).page()
+  await host.page()
 }, 60_000)
 
 /** The runtime marker of the element an export returns, in the page. */
@@ -129,7 +134,7 @@ export function Panel() {
 ] as const)(
   '$output: a @jsxImportSource pragma in $name survives the removal of the import it sits on',
   async ({ output, component, code }) => {
-    const served = await serveCase(await host(), { 'module.tsx': code })
+    const served = await serveCase(host, { 'module.tsx': code })
     expect(
       output === 'client'
         ? await clientPragma(served, component)
@@ -139,7 +144,7 @@ export function Panel() {
 )
 
 test('client: classic @jsx and @jsxFrag pragmas survive the removal of the import they sit on', async () => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `/** @jsxRuntime classic */
 // @jsx h
 // @jsxFrag Fragment
@@ -184,7 +189,7 @@ export function Card() {
   // The module on the client, the module on the server, and the server fn's
   // handler (the element it returns, called from server code in a request).
   test.each(['client', 'ssr', 'handler'] as const)('%s', async (where) => {
-    const served = await serveCase(await host(), { 'module.tsx': code })
+    const served = await serveCase(host, { 'module.tsx': code })
     const pragma =
       where === 'client'
         ? await clientPragma(served, 'Card')
@@ -204,7 +209,7 @@ export function Card() {
 // compiler removes that import: the module keeps the project's runtime.
 // Source: whole-PR review C5-03 (Astra C5 #2)
 test('client: a @jsxImportSource below a removed import stays as ineffective as in the untouched file', async () => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `import { createClientOnlyFn } from '@tanstack/react-start'
 /** @jsxImportSource pragma-jsx */
 export const Card = createClientOnlyFn(() => <div css={{ color: 'hotpink' }} />)`,
@@ -213,7 +218,7 @@ export const Card = createClientOnlyFn(() => <div css={{ color: 'hotpink' }} />)
 })
 
 test('client: a pragma after a directive stays ahead of inserted server function imports', async () => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `'use client'
 /** @jsxImportSource pragma-jsx */
 import { createServerFn } from '@tanstack/react-start'
@@ -254,7 +259,7 @@ export async function mount(text: string) {
 `
 
 test('client: a Hydrate chunk keeps the file-level @jsxImportSource pragma', async () => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `/** @jsxImportSource pragma-jsx */
 import { Hydrate } from '@tanstack/react-start'
 import { load } from '@tanstack/react-start/hydration'
@@ -306,7 +311,7 @@ import { Widget } from './widget'`,
 test.each(hydrateParentImports)(
   'client: the parent keeps selecting the pragma JSX runtime when the import it sits on $name',
   async ({ imports }) => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': hydrateParent(imports),
       'widget.tsx': `export const Widget = () => <span>widget</span>\n`,
     })

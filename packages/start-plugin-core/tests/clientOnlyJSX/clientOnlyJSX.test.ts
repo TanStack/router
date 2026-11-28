@@ -1,7 +1,12 @@
-import { describe, expect, test } from 'vitest'
-import { renderServer, renderSource, useHydrateHost } from '../render'
+import { beforeAll, describe, expect, test } from 'vitest'
+import { createHydrateHost, renderServer, renderSource } from '../render'
+import type { HydrateHost } from '../render'
 
-const hosts = useHydrateHost()
+let hosts: HydrateHost
+beforeAll(async () => {
+  hosts = await createHydrateHost()
+  return () => hosts.close()
+})
 
 // On the server, `<ClientOnly>` (of a TanStack router package) renders its
 // fallback: the server output drops its children and the imports only they
@@ -188,7 +193,7 @@ export function MyComponent() {
   ])(
     'a boundary with $name renders its fallback on the server without loading its children',
     async ({ code, childModules, ssr }) => {
-      const started = await hosts()
+      const started = hosts
       const source = await renderSource(started, code, {
         render,
         files: libraryFiles(),
@@ -234,7 +239,7 @@ export function MyComponent() {
       html: '<div>Go to About</div>',
     },
   ])('the server renders the children of $name', async ({ code, html }) => {
-    const started = await hosts()
+    const started = hosts
     const source = await renderSource(started, code, {
       render,
       files: libraryFiles(),

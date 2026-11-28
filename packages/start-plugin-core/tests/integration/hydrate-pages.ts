@@ -21,7 +21,11 @@
 import solid from 'vite-plugin-solid'
 import { pluginBabel } from '@rsbuild/plugin-babel'
 import { pluginSolid } from '@rsbuild/plugin-solid'
-import { buildStart, callByIdExports, callByIdPrelude } from '../build-harness'
+import {
+  buildStartShared,
+  callByIdExports,
+  callByIdPrelude,
+} from '../build-harness'
 import { settledSource } from '../settled-source'
 import type { StartBuild, StartBundler } from '../build-harness'
 import type { RsbuildConfig } from '@rsbuild/core'
@@ -147,6 +151,8 @@ export interface HydrationApp {
    * apps).
    */
   callServerFn: (url: string, data?: unknown) => Promise<unknown>
+  /** Closes the build (the `beforeAll` that built it returns this). */
+  close: () => Promise<void>
 }
 
 /**
@@ -399,7 +405,7 @@ ${callByIdExports}`,
 }
 
 /**
- * Builds one app holding every fixture (`src/fixtures/<name>.tsx`, with the
+ * Builds one app for a file's tests (closed with `close()`) holding every fixture (`src/fixtures/<name>.tsx`, with the
  * other `files` of the app next to them) with Start's plugin of `bundler`
  * (default `vite`) and the Start package of `framework` (default `react`).
  */
@@ -407,7 +413,6 @@ export async function buildHydrationApp(options: {
   fixtures: Record<string, string>
   /** Other app files by path relative to the app root. */
   files?: Record<string, string>
-  registerCleanup?: (cleanup: () => Promise<void>) => void
   framework?: PageFramework
   bundler?: StartBundler
 }): Promise<HydrationApp> {
@@ -418,11 +423,10 @@ export async function buildHydrationApp(options: {
       (name) => `export * as ${exportName(name)} from './src/fixtures/${name}'`,
     )
     .join('\n')
-  const build = await buildStart({
+  const build = await buildStartShared({
     bundler,
     framework,
     mode: 'development',
-    registerCleanup: options.registerCleanup,
     ...(framework === 'solid' && solidAppConfig),
     files: {
       ...options.files,
@@ -543,5 +547,5 @@ try {
 }`)
     return result
   }
-  return { build, hydrate, callServerFn }
+  return { build, hydrate, callServerFn, close: build.close }
 }

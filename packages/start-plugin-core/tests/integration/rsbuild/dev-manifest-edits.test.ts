@@ -12,7 +12,7 @@
  */
 import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 import { reactApp } from '../hydrate-dev-edits'
 import { rsbuildEntries } from '../route-css-cases'
@@ -93,7 +93,6 @@ const start = (app: Record<string, string>, extraConfig = {}) =>
   startRsbuildStartDevServer({
     browser: true,
     hmr: true,
-    registerCleanup: onTestFinished,
     config: { ...config, ...extraConfig },
     files: app,
   })

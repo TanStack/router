@@ -299,12 +299,6 @@ export interface StartBuildOptions {
   /** Start's plugin options (`tanstackStart(options)`). */
   start?: TanStackStartInputConfig
   /**
-   * Registers the removal of the app (default: when the current test
-   * finishes). A build shared by several tests keeps the cleanup and runs
-   * it in `afterAll`.
-   */
-  registerCleanup?: (cleanup: () => Promise<void>) => void
-  /**
    * Builds the app this many times in a row, in the same directory and with
    * a new plugin instance each time (default 1). The results (or the
    * rejection) describe the last build, e.g. one Rsbuild restores from its
@@ -473,13 +467,15 @@ export interface StartBuild {
   /**
    * Rsbuild builds: serves the build as `rsbuild preview` does in the app's
    * directory (the same plugins; Start's own middleware runs the built
-   * server entry). `registerCleanup` receives the server's `close` (default:
-   * when the current test finishes). Vite builds: `createStartHost({ serve:
-   * false })` and its `preview()`.
+   * server entry), until the build closes. Vite builds:
+   * `createStartHost({ serve: false })` and its `preview()`.
    */
-  preview: (
-    registerCleanup?: (cleanup: () => Promise<void>) => void,
-  ) => Promise<{ url: string }>
+  preview: () => Promise<{ url: string }>
+  /**
+   * Closes what the build keeps open (its previews, the compiler of
+   * `rsbuildCompiler` with `samePlugins`) and removes the app.
+   */
+  close: () => Promise<void>
 }
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
@@ -597,11 +593,46 @@ const harnessEntries = (root: string) => ({
 /**
  * Builds the app with Start's plugin of `bundler` (client, then SSR) and
  * describes the output of each environment. Both results share the build's
- * console messages; warnings are per environment.
+ * console messages; warnings are per environment. The app is closed when
+ * the current test finishes (`StartBuild.close`).
  */
 export async function buildStart(
   options: StartBuildOptions,
 ): Promise<StartBuild> {
+  const app = await createBuildApp(options)
+  onTestFinished(app.close)
+  return buildAt(
+    app,
+    options.bundler ?? 'vite',
+    app.target,
+    options.builds ?? 1,
+  )
+}
+
+/**
+ * `buildStart` for a build several tests share: the caller closes it
+ * (`StartBuild.close`: `afterAll`, or the close a `beforeAll` returns). A
+ * build that fails is closed before the call rejects.
+ */
+export async function buildStartShared(
+  options: StartBuildOptions,
+): Promise<StartBuild> {
+  const app = await createBuildApp(options)
+  try {
+    return await buildAt(
+      app,
+      options.bundler ?? 'vite',
+      app.target,
+      options.builds ?? 1,
+    )
+  } catch (error) {
+    await app.close()
+    throw error
+  }
+}
+
+/** The app of a build, and how to close what its builds open. */
+async function createBuildApp(options: StartBuildOptions) {
   const { bundler = 'vite', entry = 'entry.ts', files } = options
   const entries =
     typeof entry === 'object' ? entry : { client: entry, ssr: entry }
@@ -623,7 +654,6 @@ export async function buildStart(
   const created = await createApp({
     dir: harnessDir,
     prefix: options.prefix ?? `.start-build-harness-${bundler}-`,
-    registerCleanup: options.registerCleanup ?? onTestFinished,
     // (a workspace's package.json is one of its files)
     packageJson: workspace ? null : options.packageJson,
     sideEffects: options.sideEffects,
@@ -690,13 +720,27 @@ export async function buildStart(
     watchEdits: options.watchEdits,
     samePlugins: options.samePlugins ?? false,
     rsbuildCompiler: options.rsbuildCompiler ?? false,
-    registerCleanup: options.registerCleanup ?? onTestFinished,
+    closes: [],
     viteConfigFile: options.viteConfigFile ?? false,
     cwd: options.cwd,
     configuredRoot: options.root?.(app.root),
   }
-  return buildAt(app, bundler, target, options.builds ?? 1)
+  return {
+    ...app,
+    target,
+    close: async () => {
+      try {
+        for (const close of target.closes.splice(0).reverse()) {
+          await close()
+        }
+      } finally {
+        await created.dispose()
+      }
+    },
+  }
 }
+
+type BuildApp = Awaited<ReturnType<typeof createBuildApp>>
 
 /**
  * Builds the app at `app.root` `builds` times in a row (a new plugin
@@ -704,7 +748,7 @@ export async function buildStart(
  * edits into the same directory and builds again.
  */
 async function buildAt(
-  app: Awaited<ReturnType<typeof createApp>>,
+  app: BuildApp,
   bundler: StartBundler,
   target: BuildTarget,
   builds: number,
@@ -829,14 +873,15 @@ async function buildAt(
       }
       return buildAt(app, bundler, target, 1)
     },
-    preview: (registerCleanup = onTestFinished) => {
+    preview: () => {
       if (bundler !== 'rsbuild') {
         throw new Error(
           'preview() serves Rsbuild builds: use createStartHost({ serve: false }) for Vite',
         )
       }
-      return previewWithRsbuild(target, registerCleanup)
+      return previewWithRsbuild(target)
     },
+    close: app.close,
   }
 }
 
@@ -920,8 +965,8 @@ interface BuildTarget {
   watchEdits?: Record<string, string | null> | ReadonlyArray<WatchStep>
   samePlugins: boolean
   rsbuildCompiler: boolean
-  /** Registers what the app's removal also undoes (`StartBuildOptions.registerCleanup`). */
-  registerCleanup: (cleanup: () => Promise<void>) => void
+  /** What the builds keep open, in the order they opened it (`StartBuild.close`). */
+  closes: Array<() => Promise<void>>
   viteConfigFile: boolean
   /** Start's Vite plugins of every build (`samePlugins`), once created. */
   startPlugins?: ReturnType<typeof startPlugins>
@@ -1657,7 +1702,7 @@ async function buildWithRsbuild(
         compiler = created
         if (target.rsbuild) {
           target.rsbuild.compiler = created
-          target.registerCleanup(() => close(created))
+          target.closes.push(() => close(created))
         }
       }
       const running = compiler
@@ -1725,7 +1770,6 @@ function rsbuildAppPlugins(target: BuildTarget) {
  */
 async function previewWithRsbuild(
   target: BuildTarget,
-  registerCleanup: (cleanup: () => Promise<void>) => void,
 ): Promise<{ url: string }> {
   const { createRsbuild, mergeRsbuildConfig } = await import('@rsbuild/core')
   const rsbuild = await createRsbuild({
@@ -1746,8 +1790,14 @@ async function previewWithRsbuild(
       target.rsbuildConfig ?? {},
     ),
   })
-  const { server, urls } = await rsbuild.preview({ getPortSilently: true })
-  registerCleanup(() => server.close())
+  const previewing = rsbuild.preview({ getPortSilently: true })
+  target.closes.push(() =>
+    previewing.then(
+      ({ server }) => server.close(),
+      () => {},
+    ),
+  )
+  const { urls } = await previewing
   const url = urls[0]
   if (!url) {
     throw new Error('the preview server does not listen')
@@ -1783,4 +1833,22 @@ function checkOutputs(outputs: Partial<Outputs>): Outputs {
     )
   }
   return outputs as Outputs
+}
+
+/**
+ * What `open` opens, closed when opening fails (a shared resource: no test
+ * closes it), with the close `open` registers.
+ */
+export async function closedOnFailure<T>(
+  open: (register: (close: () => Promise<void>) => void) => Promise<T>,
+): Promise<T> {
+  let close: (() => Promise<void>) | undefined
+  try {
+    return await open((registered) => {
+      close = registered
+    })
+  } catch (error) {
+    await close?.()
+    throw error
+  }
 }

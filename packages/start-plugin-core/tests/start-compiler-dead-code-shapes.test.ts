@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   deadCodeShapes,
@@ -8,13 +8,14 @@ import {
 } from '@tanstack/compiler-test-utils/dead-code-shapes'
 import {
   callServerFnThroughCallers,
+  createStartHost,
   fromPage,
   inPage,
   serveCase,
   settle,
   throwsError,
-  useStartHost,
 } from './regression-helpers'
+import type { StartHost } from './start-host'
 import type { PageSettled, ServedCase } from './regression-helpers'
 
 // Every removal of the Start compiler takes with it, in that module, what
@@ -27,7 +28,11 @@ import type { PageSettled, ServedCase } from './regression-helpers'
 // in a real page, the server in the SSR environment and in real requests.
 // "Not loaded" is what the environment's module graph reaches.
 
-const host = useStartHost()
+let host: StartHost
+beforeAll(async () => {
+  host = await createStartHost()
+  return () => host.close()
+})
 
 type Environment = 'client' | 'ssr'
 
@@ -137,7 +142,7 @@ describe.each(removals)('$name', (removal) => {
         ? `\nexport const kept = () => ${shape.kept.expression}
 export { ${shape.kept.binding} as aliased }`
         : ''
-      const served = await serveCase(await host(), {
+      const served = await serveCase(host, {
         'module.tsx': `${shapeSetup(shape, `./${dep}`)}
 ${removal.code(shape.root)}${kept}`,
         [`${dep}.ts`]: depSource,
@@ -235,7 +240,7 @@ describe('function-local declarations only the removed code read', () => {
       expected: '4',
     },
   ])('$name', async ({ body, expected }) => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `import { createServerOnlyFn } from '@tanstack/react-start'
 export function fn() {
   ${body}
@@ -256,7 +261,7 @@ export function fn() {
       { length: 10 },
       (_, i) => `const step${i} = ${i === 0 ? 'dep.value' : `step${i - 1}`}`,
     ).join('\n  ')
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `import { createServerOnlyFn } from '@tanstack/react-start'
 import { dep } from './dep.server'
 export function fn() {
@@ -283,7 +288,7 @@ export function fn() {
 // iterator is still stepped as often as the source steps it (G3).
 describe('destructured bindings only the removed code read', () => {
   test('an object pattern with a rest element', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `import { createServerOnlyFn } from '@tanstack/react-start'
 import { dep } from './dep.server'
 const source: Record<string, string | undefined> = { kept: 'kept', extra: 'extra' }
@@ -302,7 +307,7 @@ export const fn = createServerOnlyFn(() => [picked, others.extra])
   })
 
   test('a function-level pattern whose every binding the removed code read', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `import { createServerOnlyFn } from '@tanstack/react-start'
 import { dep } from './dep.server'
 export function fn() {
@@ -321,7 +326,7 @@ export function fn() {
   })
 
   test('an array pattern reading an iterator', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `import { createServerOnlyFn } from '@tanstack/react-start'
 export const steps: Array<number> = []
 function* sequence() {

@@ -12,20 +12,29 @@
  * (decision 12). Through the public Start plugin on a dev server
  * (`render.ts`); errors and warnings by severity and position.
  */
-import { describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import {
   compileError,
   expectCompileError,
   expectNotSplit,
 } from '../../regression-helpers'
 import {
+  createHydrateHost,
+  createSolidHost,
   expectRendersLikeSource,
-  useHydrateHost,
-  useSolidHost,
 } from '../../render'
+import type { HydrateHost, SolidHost } from '../../render'
 
-const hosts = useHydrateHost()
-const solidHost = useSolidHost()
+let hosts: HydrateHost
+beforeAll(async () => {
+  hosts = await createHydrateHost()
+  return () => hosts.close()
+})
+let solidHost: SolidHost
+beforeAll(async () => {
+  solidHost = await createSolidHost()
+  return () => solidHost.close()
+})
 
 const head = `import { Hydrate } from '@tanstack/react-start'
 import { load } from '@tanstack/react-start/hydration'
@@ -78,7 +87,7 @@ async function expectRejected(
     environments?: ReadonlyArray<'client' | 'ssr'>
   } = {},
 ) {
-  const host = framework === 'solid' ? await solidHost() : await hosts()
+  const host = framework === 'solid' ? solidHost : hosts
   const startCase = await host.start.case({ 'module.tsx': code })
   for (const environment of environments) {
     const failure = await compileError(startCase, environment)
@@ -346,7 +355,7 @@ describe('what the children own splits and renders like the source', () => {
       rendered: '<p>x</p>',
     },
   ])('$name', async ({ code, props, rendered }) => {
-    const { client } = await expectRendersLikeSource(await hosts(), code, {
+    const { client } = await expectRendersLikeSource(hosts, code, {
       props,
     })
     expect(client.html).toContain(rendered)
@@ -354,7 +363,7 @@ describe('what the children own splits and renders like the source', () => {
 
   test('`arguments` with split={false} stays in place in both environments', async () => {
     const { client } = await expectRendersLikeSource(
-      await hosts(),
+      hosts,
       `${head}export function Page(..._args: Array<unknown>) {
   return <Hydrate when={load()} split={false}><p>{(arguments[0] as { tag: string }).tag}</p></Hydrate>
 }`,
@@ -486,9 +495,9 @@ describe('React: children the split would give a copy of a local', () => {
       result: [2],
     },
   ])('$name: in place, warned at $at', async ({ code, at, props, result }) => {
-    const startCase = await (await hosts()).start.case({ 'module.tsx': code })
+    const startCase = await hosts.start.case({ 'module.tsx': code })
     await expectNotSplit(startCase, code, at)
-    const { client } = await expectRendersLikeSource(await hosts(), code, {
+    const { client } = await expectRendersLikeSource(hosts, code, {
       props,
       split: false,
       ...read,
@@ -506,9 +515,7 @@ describe('React: children the split would give a copy of a local', () => {
   }
   return view
 }`
-    const startCase = await (
-      await solidHost()
-    ).start.case({ 'module.tsx': code })
+    const startCase = await solidHost.start.case({ 'module.tsx': code })
     await expectNotSplit(startCase, code, 'tip>hi')
   })
 
@@ -517,9 +524,7 @@ describe('React: children the split would give a copy of a local', () => {
   let n = 0
   return <Hydrate when={load()}><ul>{['a'].map(() => { n++; return <li>{n}</li> })}</ul></Hydrate>
 }`
-    const startCase = await (
-      await solidHost()
-    ).start.case({ 'module.tsx': code })
+    const startCase = await solidHost.start.case({ 'module.tsx': code })
     await expectNotSplit(startCase, code, 'n++')
   })
 })

@@ -18,7 +18,7 @@
  * (in a function or a block) keeps its own refusal; one in code an
  * environment erases is not reported there.
  */
-import { describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import {
   diagnosticPosition,
   diagnosticsOf,
@@ -29,11 +29,11 @@ import {
   CompileFailure,
   callServerFnThroughCallers,
   compileError,
+  createStartHost,
   expectCompileError,
   serveCase,
-  useStartHost,
 } from './regression-helpers'
-import type { StartCase } from './start-host'
+import type { StartCase, StartHost } from './start-host'
 
 const head = `import { createIsomorphicFn, createMiddleware, createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 import { db } from './db'
@@ -356,21 +356,21 @@ async function expectCompiles(
 }
 
 describe('Vite: every compile refuses server code passed by a name the module assigns', () => {
-  const host = useStartHost()
+  let host: StartHost
+  beforeAll(async () => {
+    host = await createStartHost()
+    return () => host.close()
+  })
 
   test.each(writes)('a handler: %s', async (_, body) => {
     const source = head + body
-    const startCase = await (
-      await host()
-    ).case({ ...dbFile, 'module.tsx': source })
+    const startCase = await host.case({ ...dbFile, 'module.tsx': source })
     await expectRefused(startCase, source, ['client', 'ssr'])
   })
 
   test.each(positions)('$name', async ({ refused, at }) => {
     const source = head + refused
-    const startCase = await (
-      await host()
-    ).case({ ...dbFile, 'module.tsx': source })
+    const startCase = await host.case({ ...dbFile, 'module.tsx': source })
     await expectRefused(startCase, source, ['client', 'ssr'], at)
   })
 
@@ -378,9 +378,7 @@ describe('Vite: every compile refuses server code passed by a name the module as
     '$name is refused',
     async ({ source: body, at }) => {
       const source = head + body
-      const startCase = await (
-        await host()
-      ).case({ ...dbFile, 'module.tsx': source })
+      const startCase = await host.case({ ...dbFile, 'module.tsx': source })
       await expectRefused(startCase, source, ['client', 'ssr'], at)
     },
   )
@@ -388,9 +386,7 @@ describe('Vite: every compile refuses server code passed by a name the module as
   // the provider keeps handlers in place in a module awaiting at its top level
   test('a module awaiting at its top level', async () => {
     const source = `${head}${writes[0]![1]}export const ready = await Promise.resolve(true)\n`
-    const startCase = await (
-      await host()
-    ).case({ ...dbFile, 'module.tsx': source })
+    const startCase = await host.case({ ...dbFile, 'module.tsx': source })
     await expectRefused(startCase, source, ['client', 'ssr'])
   })
 
@@ -423,9 +419,7 @@ describe('Vite: every compile refuses server code passed by a name the module as
   ])(
     'the error at $inPlace names the binding, its write, the API and the rewrites that work',
     async ({ at, source, name, write, inPlace, value }) => {
-      const startCase = await (
-        await host()
-      ).case({ ...dbFile, 'module.tsx': source })
+      const startCase = await host.case({ ...dbFile, 'module.tsx': source })
       const text = errorAt(await compileError(startCase), source, at)
       expect(text).toContain(
         `\`${name}\` is assigned elsewhere in this module (at ${writeAt(source, write)})`,
@@ -462,9 +456,7 @@ describe('Vite: every compile refuses server code passed by a name the module as
     'a server fn %s on a reassigned local is refused for where it is created',
     async (_, body) => {
       const source = head + body
-      const startCase = await (
-        await host()
-      ).case({ ...dbFile, 'module.tsx': source })
+      const startCase = await host.case({ ...dbFile, 'module.tsx': source })
       for (const environment of ['client', 'ssr'] as const) {
         const text = errorAt(
           await compileError(startCase, environment),
@@ -485,9 +477,7 @@ describe('Vite: every compile refuses server code passed by a name the module as
   return createServerOnlyFn(impl)
 }
 `
-    const startCase = await (
-      await host()
-    ).case({ ...dbFile, 'module.tsx': source })
+    const startCase = await host.case({ ...dbFile, 'module.tsx': source })
     await expectRefused(
       startCase,
       source,
@@ -504,9 +494,7 @@ describe('Vite: every compile refuses server code passed by a name the module as
   return createServerOnlyFn(impl)
 }
 `
-    const startCase = await (
-      await host()
-    ).case({ ...dbFile, 'module.tsx': source })
+    const startCase = await host.case({ ...dbFile, 'module.tsx': source })
     await expectRefused(
       startCase,
       source,
@@ -524,9 +512,7 @@ describe('Vite: every compile refuses server code passed by a name the module as
   return inner()
 })
 `
-    const startCase = await (
-      await host()
-    ).case({ ...dbFile, 'module.tsx': source })
+    const startCase = await host.case({ ...dbFile, 'module.tsx': source })
     expect(await compileError(startCase, 'client')).toBeUndefined()
     const text = errorAt(
       await compileError(startCase, 'ssr'),
@@ -538,7 +524,7 @@ describe('Vite: every compile refuses server code passed by a name the module as
 
   // the client erases the assignment with the code around it
   test('a binding only server code assigns compiles, and stays off the client', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...dbFile,
       'module.tsx': `${head}let h = async () => db.x()
 export const reset = createServerFn().handler(async () => {
@@ -552,7 +538,7 @@ export const fn = createServerFn().handler(h)
   })
 
   test('a `let` nothing assigns again compiles and stays off the client', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...dbFile,
       'module.tsx': `${head}let h = async () => db.x()
 export const fn = createServerFn().handler(h)
@@ -566,7 +552,7 @@ export const fn = createServerFn().handler(h)
 
   // the rewrite the error suggests
   test('one `const` choosing the handler compiles and stays off the client', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       ...dbFile,
       'module.tsx': `${head}const h = import.meta.env.DEV ? async () => db.x() : async () => db.y()
 export const fn = createServerFn().handler(h)
@@ -581,7 +567,7 @@ export const fn = createServerFn().handler(h)
   test.each(positions)(
     '$name: one `const` compiles and stays off the client',
     async ({ rewritten }) => {
-      const served = await serveCase(await host(), {
+      const served = await serveCase(host, {
         ...dbFile,
         'module.tsx': head + rewritten,
       })
@@ -591,22 +577,22 @@ export const fn = createServerFn().handler(h)
 })
 
 describe('Vite with RSC: every compile refuses server code passed by a name the module assigns', () => {
-  const host = useStartHost({ rsc: true })
+  let host: StartHost
+  beforeAll(async () => {
+    host = await createStartHost({ rsc: true })
+    return () => host.close()
+  })
 
   // the client, the SSR caller and the provider the rsc environment derives
   test('a handler: a second function', async () => {
     const source = head + writes[0]![1]
-    const startCase = await (
-      await host()
-    ).case({ ...dbFile, 'module.tsx': source })
+    const startCase = await host.case({ ...dbFile, 'module.tsx': source })
     await expectRefused(startCase, source, ['client', 'ssr', 'rsc'])
   })
 
   test.each(positions)('$name', async ({ refused, at }) => {
     const source = head + refused
-    const startCase = await (
-      await host()
-    ).case({ ...dbFile, 'module.tsx': source })
+    const startCase = await host.case({ ...dbFile, 'module.tsx': source })
     await expectRefused(startCase, source, ['client', 'ssr', 'rsc'], at)
   })
 })
@@ -786,22 +772,26 @@ export const Route = createFileRoute('/reassigned-read-by-route-handler')({
 }
 
 describe("Vite: a route's server options by a name the module assigns", () => {
-  const host = useStartHost({
-    files: {
-      ...routeDb,
-      ...Object.fromEntries(
-        Object.entries(refusedRoutes).map(([file, { source }]) => [
-          file,
-          source,
-        ]),
-      ),
-    },
+  let host: StartHost
+  beforeAll(async () => {
+    host = await createStartHost({
+      files: {
+        ...routeDb,
+        ...Object.fromEntries(
+          Object.entries(refusedRoutes).map(([file, { source }]) => [
+            file,
+            source,
+          ]),
+        ),
+      },
+    })
+    return () => host.close()
   })
 
   // what the user reads in a `createHandlers(…)` object: the argument, with
   // the callback and its middleware kept
   test('the error in a createHandlers object keeps the factory', async () => {
-    const { host: dev } = await host()
+    const { host: dev } = host
     const error = await dev
       .transform('/src/routes/reassigned-create-handlers.tsx', 'client')
       .then(
@@ -828,7 +818,7 @@ describe("Vite: a route's server options by a name the module assigns", () => {
   ])(
     'the error at %s, an argument without a key, names no key',
     async (file) => {
-      const { host: dev } = await host()
+      const { host: dev } = host
       const error = await dev.transform(`/${file}`, 'client').then(
         () => undefined,
         (e: unknown) => e,
@@ -846,7 +836,7 @@ describe("Vite: a route's server options by a name the module assigns", () => {
     '%s is refused in every compile',
     async (file) => {
       const { source, at } = refusedRoutes[file]!
-      const { host: dev } = await host()
+      const { host: dev } = host
       for (const environment of ['client', 'ssr'] as const) {
         const error = await dev.transform(`/${file}`, environment).then(
           () => undefined,
@@ -862,10 +852,12 @@ describe("Vite: a route's server options by a name the module assigns", () => {
 })
 
 describe("Vite: a route's server options by one `const`", () => {
-  const host = useStartHost({
-    files: {
-      ...routeDb,
-      'src/routes/const-get.tsx': `${routeHead}const get = import.meta.env.DEV
+  let host: StartHost
+  beforeAll(async () => {
+    host = await createStartHost({
+      files: {
+        ...routeDb,
+        'src/routes/const-get.tsx': `${routeHead}const get = import.meta.env.DEV
   ? async () => new Response(db.x())
   : async () => new Response(db.y())
 const pickHeaders = () => ({ 'x-db': db.x() })
@@ -875,7 +867,7 @@ export const Route = createFileRoute('/const-get')({
   component: () => <p>page</p>,
 })
 `,
-      'src/routes/written-by-handler.tsx': `${routeHead}import { createServerOnlyFn } from '@tanstack/react-start'
+        'src/routes/written-by-handler.tsx': `${routeHead}import { createServerOnlyFn } from '@tanstack/react-start'
 let format = (v: string) => v
 export const read = createServerOnlyFn(format)
 export const Route = createFileRoute('/written-by-handler')({
@@ -890,7 +882,7 @@ export const Route = createFileRoute('/written-by-handler')({
   component: () => <p>page</p>,
 })
 `,
-      'src/routes/const-create-handlers.tsx': `${routeHead}const get = import.meta.env.DEV
+        'src/routes/const-create-handlers.tsx': `${routeHead}const get = import.meta.env.DEV
   ? async () => new Response(db.x())
   : async () => new Response(db.y())
 export const Route = createFileRoute('/const-create-handlers')({
@@ -901,7 +893,9 @@ export const Route = createFileRoute('/const-create-handlers')({
   component: () => <p>page</p>,
 })
 `,
-    },
+      },
+    })
+    return () => host.close()
   })
 
   // only server code assigns it, or it holds no server code
@@ -909,16 +903,14 @@ export const Route = createFileRoute('/const-create-handlers')({
     'src/routes/written-by-handler.tsx',
     'src/routes/const-create-handlers.tsx',
   ])('%s compiles in every environment', async (file) => {
-    const { host: dev } = await host()
+    const { host: dev } = host
     for (const environment of ['client', 'ssr'] as const) {
       await dev.transform(`/${file}`, environment)
     }
   })
 
   test('compiles, and the client loads no server code', async () => {
-    const run = await (
-      await host()
-    ).run<string>(
+    const run = await host.run<string>(
       `(async () => {
   const route = await import('/src/routes/const-get.tsx')
   return typeof route.Route.options.component
@@ -940,7 +932,11 @@ export const Route = createFileRoute('/const-create-handlers')({
  * write with no other read is refused.
  */
 describe('Solid: a callback ref is no reassignment', () => {
-  const host = useStartHost({ framework: 'solid' })
+  let host: StartHost
+  beforeAll(async () => {
+    host = await createStartHost({ framework: 'solid' })
+    return () => host.close()
+  })
   const solidHead = `import { createServerFn } from '@tanstack/solid-start'
 import { db } from './db'
 `
@@ -966,9 +962,7 @@ let apply = import.meta.env.DEV ? a : b
   ])(
     'a `let` initialised with %s, used as a ref and as the handler, compiles',
     async (_, decl) => {
-      const startCase = await (
-        await host()
-      ).case({
+      const startCase = await host.case({
         ...dbFile,
         'module.tsx': `${solidHead}${decl}export const fn = createServerFn().handler(apply)
 ${page}`,
@@ -982,9 +976,7 @@ ${page}`,
 apply = async () => db.x()
 export const fn = createServerFn().handler(apply)
 `
-    const startCase = await (
-      await host()
-    ).case({ ...dbFile, 'module.tsx': source })
+    const startCase = await host.case({ ...dbFile, 'module.tsx': source })
     await expectRefused(startCase, source, ['client', 'ssr'])
   })
 })

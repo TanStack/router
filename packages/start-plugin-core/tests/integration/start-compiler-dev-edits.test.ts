@@ -14,10 +14,10 @@
 import { beforeAll, describe, expect, test } from 'vitest'
 import { factoryEdits } from '../compiler-inputs'
 import {
+  createStartHost,
   fromPage,
   settle,
   throwsError,
-  useStartHost,
 } from '../regression-helpers'
 import type { PageSettled, StartHost } from '../regression-helpers'
 
@@ -61,12 +61,16 @@ export const Route = createFileRoute('/edit-probe')({
  * A host of the row's own, with `files` on disk before it starts, and its
  * page open before the row edits anything.
  */
-function useEditHost(files: Record<string, string>) {
-  const host = useStartHost({ files })
+function describeHost(files: Record<string, string>) {
+  let host: StartHost
   beforeAll(async () => {
-    await (await host()).page()
+    host = await createStartHost({ files })
+    return () => host.close()
   }, 60_000)
-  return host
+  beforeAll(async () => {
+    await host.page()
+  }, 60_000)
+  return () => host
 }
 
 describe('dev edits', () => {
@@ -93,11 +97,11 @@ describe('dev edits', () => {
   // edit. Unbundled client edits of a server fn factory are covered by
   // start-compiler-dev-server.test.ts.
   describe('a re-export chain', () => {
-    const editHost = useEditHost(
+    const editHost = describeHost(
       inDir(editDirs.reexportChain, factoryEdits.reexportChain.files),
     )
     test('a dev edit of a module a re-export chain ends in recompiles its importers', async () => {
-      const started = await editHost()
+      const started = editHost()
       const dir = editDirs.reexportChain
       const before = await started.host.importServer(`/${dir}/module.tsx`)
       expect(settle(before.myFn)).toBe('server-only-value')
@@ -118,9 +122,9 @@ describe('dev edits', () => {
   // env-only factory the factory module renames; after the factory module
   // is edited into another kind, the server fn runs the new code.
   describe('an aliased env-only factory', () => {
-    const editHost = useEditHost(aliasedEnvOnlyFiles)
+    const editHost = describeHost(aliasedEnvOnlyFiles)
     test('a dev edit of an aliased env-only factory recompiles the server fn that calls it', async () => {
-      const started = await editHost()
+      const started = editHost()
       const dir = editDirs.aliasedEnvOnly
       // The server route of the app calls the server fn from server code.
       const callServerFn = async () =>
@@ -162,9 +166,9 @@ describe('dev edits', () => {
   // Reproduced through a Vite dev server and the public Start plugin; served
   // code read for the diagnosis only.
   describe('a factory module', () => {
-    const editHost = useEditHost({ 'src/edits/factory/.keep': '' })
+    const editHost = describeHost({ 'src/edits/factory/.keep': '' })
     test('dev: editing a factory module recompiles its importers against the new code', async () => {
-      const started = await editHost()
+      const started = editHost()
       const dir = 'src/edits/factory'
       await started.edit({
         [`${dir}/b.ts`]: `import { createServerFn } from '@tanstack/react-start'
@@ -206,9 +210,9 @@ export const fn = base.handler(async () => db.x())`,
   })
 
   describe('an export * of the Start package', () => {
-    const editHost = useEditHost({ 'src/edits/export-star/.keep': '' })
+    const editHost = describeHost({ 'src/edits/export-star/.keep': '' })
     test('dev: a server fn imported through an export * of the Start package compiles after an unrelated edit', async () => {
-      const started = await editHost()
+      const started = editHost()
       const dir = 'src/edits/export-star'
       const code = `import { createServerFn } from './start'
 export const fn = createServerFn().handler(async () => 'secret-body')`

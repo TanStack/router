@@ -1,6 +1,7 @@
-import { describe, test } from 'vitest'
-import { useStartHost } from './regression-helpers'
+import { beforeAll, describe, test } from 'vitest'
+import { createStartHost } from './regression-helpers'
 import { SO, checkRow } from './removal-cases'
+import type { StartHost } from './start-host'
 import type { Row } from './removal-cases'
 
 // What a type the client erases names: along erased text a type declaration
@@ -8,8 +9,12 @@ import type { Row } from './removal-cases'
 // and an ambient declaration is its value's own text.
 // The rows and how they are checked: `./removal-cases`.
 
-const host = useStartHost()
-const check = async (row: Row) => checkRow(await host(), row)
+let host: StartHost
+beforeAll(async () => {
+  host = await createStartHost()
+  return () => host.close()
+})
+const check = async (row: Row) => checkRow(host, row)
 
 // A reference names the declarations of its space (D1 A): a read or `typeof`
 // names the value, a type position the type declarations, and a type the

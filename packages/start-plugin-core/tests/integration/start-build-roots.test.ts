@@ -8,7 +8,7 @@
  * the app's page and serves its server fn by id.
  */
 import path from 'node:path'
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { buildStart, callByIdExports, callByIdPrelude } from '../build-harness'
 import {
   rootDocument,
@@ -120,9 +120,7 @@ async function servedApp(options: Partial<StartBuildOptions>) {
     ...pageApp,
     ...options,
   })
-  const served = await serveStartBuild(build, {
-    registerCleanup: onTestFinished,
-  })
+  const served = await serveStartBuild(build)
   const response = await served.fetch('/')
   return {
     status: response.status,

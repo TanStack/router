@@ -11,16 +11,9 @@
  * Built with Start's Vite and Rsbuild plugins and served like a deployed app
  * (start-compose-app.ts).
  */
-import {
-  afterAll,
-  beforeAll,
-  describe,
-  expect,
-  onTestFinished,
-  test,
-} from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
-import { buildStart, startBundlers } from '../build-harness'
+import { buildStartShared, startBundlers } from '../build-harness'
 import { reportedViolations } from '../importProtection/start-apps'
 import {
   openAppPage,
@@ -66,15 +59,13 @@ describe.each(startBundlers)(
   (bundler) => {
     let build: StartBuild | undefined
     let failure: BuildError | undefined
-    const cleanups: Array<() => Promise<void>> = []
 
     beforeAll(async () => {
       try {
-        build = await buildStart({
+        build = await buildStartShared({
           bundler,
           files,
           entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-          registerCleanup: (cleanup) => cleanups.push(cleanup),
         })
       } catch (error) {
         if (!(error instanceof BuildError)) {
@@ -82,11 +73,8 @@ describe.each(startBundlers)(
         }
         failure = error
       }
+      return () => build?.close()
     }, timeout)
-
-    afterAll(async () => {
-      await Promise.all(cleanups.map((cleanup) => cleanup()))
-    })
 
     const built = () => {
       if (!build) {
@@ -110,9 +98,7 @@ describe.each(startBundlers)(
     test(
       'the server renders the fallback, and the page renders the children once hydrated',
       async () => {
-        const served = await serveStartBuild(built(), {
-          registerCleanup: onTestFinished,
-        })
+        const served = await serveStartBuild(built())
         const response = await served.fetch('/')
         const html = await response.text()
         expect({ status: response.status, html }).toEqual({
@@ -120,9 +106,7 @@ describe.each(startBundlers)(
           html: expect.stringContaining('MARK_LOADING'),
         })
         expect(html).not.toContain('MARK_CHART')
-        const page = await openAppPage(served, '/', {
-          registerCleanup: onTestFinished,
-        })
+        const page = await openAppPage(served, '/')
         await page.waitForText('MARK_CHART wide', {
           selector: '[data-testid=chart]',
         })

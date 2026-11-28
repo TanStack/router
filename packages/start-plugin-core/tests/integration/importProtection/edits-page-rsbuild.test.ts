@@ -11,7 +11,7 @@
  * violations and only those.
  */
 import { pluginReact } from '@rsbuild/plugin-react'
-import { afterAll, describe, expect, test } from 'vitest'
+import { describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
@@ -42,17 +42,6 @@ interface StepOutcome {
   reported: Array<string>
 }
 
-/** The server and page close after the last test. */
-const cleanups: Array<() => Promise<void>> = []
-afterAll(async () => {
-  for (const cleanup of cleanups.reverse()) {
-    await cleanup()
-  }
-})
-const registerCleanup = (cleanup: () => Promise<void>) => {
-  cleanups.push(cleanup)
-}
-
 /** Runs every step once, shared by the tests. */
 let outcomes: Promise<Array<StepOutcome>> | undefined
 const run = () =>
@@ -68,9 +57,10 @@ const run = () =>
       // violation shows in the compile of the step that removed it.
       start: { importProtection: recorder.importProtection },
       files: pageApp,
-      registerCleanup,
     })
-    const browser = await openPage(server.url!, { registerCleanup })
+    const browser = await openPage(server.url!, {
+      registerCleanup: onTestFinished,
+    })
     const result: Array<StepOutcome> = []
     for (const { step, live } of pageSteps) {
       let since = 0

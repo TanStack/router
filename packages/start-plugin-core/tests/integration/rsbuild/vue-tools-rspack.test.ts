@@ -10,8 +10,8 @@
  * it, and with the app's own subclass of `VueLoaderPlugin`.
  */
 import { createRequire } from 'node:module'
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import { buildStart, callByIdPrelude } from '../../build-harness'
+import { beforeAll, describe, expect, test } from 'vitest'
+import { buildStartShared, callByIdPrelude } from '../../build-harness'
 import type { StartBuild } from '../../build-harness'
 
 const timeout = 120_000
@@ -83,9 +83,8 @@ describe.each([
   },
 ])('rsbuild build, $name', ({ inlineMatchResource, Plugin }) => {
   let build: StartBuild
-  let dispose: (() => Promise<void>) | undefined
   beforeAll(async () => {
-    build = await buildStart({
+    build = await buildStartShared({
       bundler: 'rsbuild',
       framework: 'vue',
       files,
@@ -106,12 +105,9 @@ describe.each([
           },
         },
       },
-      registerCleanup: (cleanup) => {
-        dispose = cleanup
-      },
     })
+    return () => build.close()
   }, timeout)
-  afterAll(() => dispose?.())
 
   test('a server fn of a plain <script> keeps its handler on the server, and the client calls it by id', async () => {
     expect(build.client.where('MARK_PLAIN')).toBe('nowhere')

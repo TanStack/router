@@ -5,7 +5,7 @@
  * with everything it reads, at module load, and the other side's build holds
  * none of it. SPEC J4.9, G8.
  */
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../build-harness'
 import {
   openAppPage,
@@ -376,15 +376,6 @@ export const readGeneric = () => createServerOnlyFn(new Generic<string>).label
   test(
     'a route file with one: the page renders, and its server code stays out of the client',
     async () => {
-      const cleanups: Array<() => Promise<void>> = []
-      onTestFinished(async () => {
-        for (const cleanup of cleanups.reverse()) {
-          await cleanup()
-        }
-      })
-      const registerCleanup = (cleanup: () => Promise<void>) => {
-        cleanups.push(cleanup)
-      }
       const build = await buildStart({
         bundler,
         files: {
@@ -399,10 +390,9 @@ createIsomorphicFn().server(() => { (globalThis as Record<string, unknown>).rout
 export const Route = createFileRoute('/')({ component: () => <p data-testid="shown">shown</p> })
 `,
         },
-        registerCleanup,
       })
-      const served = await serveStartBuild(build, { registerCleanup })
-      const page = await openAppPage(served, '/', { registerCleanup })
+      const served = await serveStartBuild(build)
+      const page = await openAppPage(served, '/')
       await page.waitForText('shown', { selector: '[data-testid=shown]' })
       expect(page.errors).toEqual([])
       expect(build.client.where('MARK_ROUTE_LABEL')).toBe('nowhere')

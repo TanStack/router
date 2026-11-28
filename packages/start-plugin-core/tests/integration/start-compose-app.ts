@@ -19,6 +19,7 @@ import { pathToFileURL } from 'node:url'
 import { serve } from 'srvx/node'
 import { staticMiddleware } from 'srvx/static'
 import ts from 'typescript'
+import { onTestFinished } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { callByIdExports } from '../build-harness'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
@@ -140,13 +141,21 @@ async function serverFetch(build: StartBuild) {
 }
 
 /**
- * Serves `build` on a free local port: a file of the client output
- * directory for a request whose path names one, the server entry for every
- * other request.
+ * Serves `build` on a free local port until the current test finishes: a
+ * file of the client output directory for a request whose path names one,
+ * the server entry for every other request.
  */
 export async function serveStartBuild(
   build: StartBuild,
-  options: { registerCleanup?: (cleanup: () => Promise<void>) => void } = {},
+): Promise<ServedStartBuild> {
+  const served = await serveStartBuildShared(build)
+  onTestFinished(served.close)
+  return served
+}
+
+/** `serveStartBuild` for a server several tests share: the caller closes it. */
+export async function serveStartBuildShared(
+  build: StartBuild,
 ): Promise<ServedStartBuild> {
   const handle = await serverFetch(build)
   const clientDir = path.resolve(build.client.outDir)
@@ -160,7 +169,6 @@ export async function serveStartBuild(
   await server.ready()
   const url = server.url!
   const close = () => server.close(true)
-  options.registerCleanup?.(close)
   return {
     url,
     fetch: (target, init) => fetch(new URL(target, url), init),
@@ -184,17 +192,19 @@ export interface AppPage extends BrowserPage {
 }
 
 /**
- * Opens `pathname` of a served app in a page and waits until it hydrated
- * (`rootDocument`'s marker), recording the requests it sends from then on.
+ * Opens `pathname` of a served app in a page (closed when the current test
+ * finishes) and waits until it hydrated (`rootDocument`'s marker),
+ * recording the requests it sends from then on.
  */
 export async function openAppPage(
   served: Pick<ServedStartBuild, 'url'>,
   pathname: string,
-  options: { registerCleanup?: (cleanup: () => Promise<void>) => void } = {},
 ): Promise<AppPage> {
   const serverFnRequests: Array<string> = []
   const scriptRequests: Array<string> = []
-  const page = await openPage(new URL(pathname, served.url).href, options)
+  const page = await openPage(new URL(pathname, served.url).href, {
+    registerCleanup: onTestFinished,
+  })
   page.page.on('request', (request) => {
     const url = new URL(request.url())
     if (url.pathname.startsWith('/_serverFn/')) {

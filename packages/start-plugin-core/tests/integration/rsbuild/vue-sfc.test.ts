@@ -23,11 +23,11 @@
 import { pluginVue } from '@rsbuild/plugin-vue'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
-import { buildStart, callByIdPrelude } from '../../build-harness'
+import { buildStartShared, callByIdPrelude } from '../../build-harness'
 import {
   clientPage,
   runInClient,
-  startRsbuildStartDevServer,
+  startRsbuildStartDevServerShared,
 } from '../../rsbuild-dev-server'
 import type { StartBuild } from '../../build-harness'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
@@ -107,9 +107,8 @@ const vuePlugin = (inlineMatchResource: boolean) =>
 
 describe.each(vueOptions)('rsbuild build, $name', ({ inlineMatchResource }) => {
   let build: StartBuild
-  let dispose: (() => Promise<void>) | undefined
   beforeAll(async () => {
-    build = await buildStart({
+    build = await buildStartShared({
       bundler: 'rsbuild',
       framework: 'vue',
       files: {
@@ -125,12 +124,9 @@ export { createClientRpc } from '@tanstack/vue-start/client-rpc'
       },
       entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
       rsbuildConfig: { plugins: [vuePlugin(inlineMatchResource)] },
-      registerCleanup: (cleanup) => {
-        dispose = cleanup
-      },
     })
+    return () => build.close()
   }, timeout)
-  afterAll(() => dispose?.())
 
   test('a server fn a plain <script> exports keeps its handler on the server, and the client calls it by id', async () => {
     expect(build.client.where('MARK_PLAIN')).toBe('nowhere')
@@ -168,12 +164,9 @@ describe.each(vueOptions)('rsbuild dev, $name', ({ inlineMatchResource }) => {
   let close: (() => Promise<void>) | undefined
   afterAll(() => close?.())
   beforeAll(async () => {
-    server = await startRsbuildStartDevServer({
+    server = await startRsbuildStartDevServerShared({
       ...clientPage,
       framework: 'vue',
-      registerCleanup: (cleanup) => {
-        close = cleanup
-      },
       config: { plugins: [vuePlugin(inlineMatchResource)] },
       files: {
         ...files,
@@ -193,6 +186,7 @@ globalThis.__vueRows = {
 `,
       },
     })
+    return () => server.close()
   }, timeout)
 
   const outputsWith = async (env: 'client' | 'ssr', mark: string) =>

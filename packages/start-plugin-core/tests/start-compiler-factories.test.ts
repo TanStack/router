@@ -4,6 +4,7 @@ import {
   callFromClient,
   callServerFnThroughCallers,
   compileError,
+  createStartHost,
   expectCompileError,
   fromPage,
   inPage,
@@ -11,7 +12,6 @@ import {
   serverFnUrls,
   settle,
   throwsError,
-  useStartHost,
 } from './regression-helpers'
 import { clientMiddleware, clientMiddlewareOf } from './page-values'
 import {
@@ -21,6 +21,7 @@ import {
   factoryDb,
   factoryRows,
 } from './compiler-inputs'
+import type { StartHost } from './start-host'
 import type { PageSettled, StartCase } from './regression-helpers'
 
 // Each environment keeps the implementation of its own environment (and only
@@ -32,9 +33,13 @@ import type { PageSettled, StartCase } from './regression-helpers'
 // public Start host (`./start-host`): the client in a real page, the server
 // in the SSR environment and in real requests, on Start's real runtime.
 
-const host = useStartHost()
+let host: StartHost
 beforeAll(async () => {
-  await (await host()).page()
+  host = await createStartHost()
+  return () => host.close()
+})
+beforeAll(async () => {
+  await host.page()
 }, 60_000)
 
 /** The client loads none of `forbidden` (default: `./db.server`). */
@@ -86,7 +91,7 @@ async function serve(
   files: Record<string, string> = {},
   file = 'module.tsx',
 ) {
-  return serveCase(await host(), { [file]: code, ...files }, { file })
+  return serveCase(host, { [file]: code, ...files }, { file })
 }
 
 const head = `import { createClientOnlyFn, createIsomorphicFn, createServerOnlyFn } from '@tanstack/react-start'\n`
@@ -915,7 +920,7 @@ export const value = createServerOnlyFn(() => 'mine')`,
     'a missing implementation is rejected where it runs: $code',
     async ({ code, runsOn }) => {
       const source = `${head}${code}`
-      const startCase = await (await host()).case({ 'module.tsx': source })
+      const startCase = await host.case({ 'module.tsx': source })
       const error = await compileError(startCase, runsOn)
       expectCompileError(error, { source, at: undefined })
     },

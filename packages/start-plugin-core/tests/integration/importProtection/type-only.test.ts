@@ -14,7 +14,11 @@ import {
   expectNoDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { afterAll, describe, expect, test } from 'vitest'
-import { buildStart, startBundlers } from '../../build-harness'
+import {
+  buildStart,
+  buildStartShared,
+  startBundlers,
+} from '../../build-harness'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import {
   problemsNaming,
@@ -107,20 +111,21 @@ return {
 
 describe.each(startBundlers)('%s build (mock mode)', (bundler) => {
   let built: Promise<StartBuild> | undefined
-  let dispose: (() => Promise<void>) | undefined
-  afterAll(() => dispose?.())
+  afterAll(() =>
+    built?.then(
+      (opened) => opened.close(),
+      () => {},
+    ),
+  )
 
   test(
     'type-only forms are neither reported nor loaded; the mixed import is reported and mocked',
     async () => {
-      built ??= buildStart({
+      built ??= buildStartShared({
         bundler,
         files: app,
         entry: 'src/entry.ts',
         start: { importProtection: { behavior: 'mock', mockAccess: 'off' } },
-        registerCleanup: (cleanup) => {
-          dispose = cleanup
-        },
       })
       const build = await built
       const { result } = await build.client.run(

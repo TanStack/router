@@ -9,9 +9,9 @@
  * diamond and a cycle of helpers: the server build neither bundles nor
  * imports it, and reports nothing about it (G16).
  */
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
-import { buildStart, startBundlers } from '../build-harness'
+import { buildStartShared, startBundlers } from '../build-harness'
 import { reportedViolations } from '../importProtection/start-apps'
 import type { StartBuild } from '../build-harness'
 
@@ -65,20 +65,15 @@ return [settle(entry.render), settle(entry.repaint), settle(entry.size), settle(
 
 describe.each(startBundlers)('%s build', (bundler) => {
   let build: StartBuild
-  const cleanups: Array<() => Promise<void>> = []
 
   beforeAll(async () => {
-    build = await buildStart({
+    build = await buildStartShared({
       bundler,
       files,
       entry: 'src/entry.ts',
-      registerCleanup: (cleanup) => cleanups.push(cleanup),
     })
+    return () => build.close()
   }, timeout)
-
-  afterAll(async () => {
-    await Promise.all(cleanups.map((cleanup) => cleanup()))
-  })
 
   test('reports no import-protection violation', () => {
     expect(

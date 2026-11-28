@@ -4,7 +4,7 @@
  * the client output keeps (the server half, with the children's libraries
  * throwing on the server, is clientOnlyJSX/clientOnlyJSX.test.ts).
  */
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import { buildHydrationApp } from './hydrate-pages'
 import type { HydrationApp } from './hydrate-pages'
 
@@ -167,7 +167,6 @@ export function Page() {
 }
 
 let app: HydrationApp
-const cleanups: Array<() => Promise<void>> = []
 
 beforeAll(async () => {
   app = await buildHydrationApp({
@@ -198,13 +197,9 @@ export function useClientViewport() {
 }
 `,
     },
-    registerCleanup: (cleanup) => cleanups.push(cleanup),
   })
+  return () => app.close()
 }, 60_000)
-
-afterAll(async () => {
-  await Promise.all(cleanups.map((cleanup) => cleanup()))
-})
 
 describe('<ClientOnly> in a hydrated page', () => {
   // Source: snapshot fixtures clientOnlyBasic/Multiple/Nested/NoFallback/Renamed.tsx

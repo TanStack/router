@@ -4,7 +4,7 @@
  * added or renamed shows on the route's page (SPEC J5.2, G10). Its own file
  * so that each bundler's dev servers run in a worker of their own.
  */
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { pluginReact } from '@rsbuild/plugin-react'
 import {
   reportedErrors,
@@ -29,15 +29,12 @@ describe('Rsbuild dev: route edits after a route tree rebuild', () => {
         files: treeRebuildApp,
       })
       expect(reportedErrors(server)).toEqual([])
-      await editLoaderAroundTreeRebuilds(
-        {
-          url: server.url,
-          edit: (files) => server.edit(files),
-          rename: (from, to) => server.rename(from, to),
-          settled: () => server.settle(),
-        },
-        onTestFinished,
-      )
+      await editLoaderAroundTreeRebuilds({
+        url: server.url,
+        edit: (files) => server.edit(files),
+        rename: (from, to) => server.rename(from, to),
+        settled: () => server.settle(),
+      })
       expect(reportedErrors(server)).toEqual([])
     },
     timeout,

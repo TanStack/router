@@ -7,17 +7,17 @@
  * `invalidateModule`, throwing host hooks, a synthetic `compilerTransforms`
  * hook) are not kept: the outcomes they stood for are decided here.
  */
-import { describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import {
   callFromClient,
   callServerFnThroughCallers,
+  createStartHost,
   fromPage,
   inPage,
   serveCase,
   serverFnUrls,
   settle,
   throwsError,
-  useStartHost,
 } from './regression-helpers'
 import { shapeOf } from './page-values'
 import {
@@ -28,15 +28,20 @@ import {
   libraryPackages,
   reexportCycles,
 } from './compiler-inputs'
+import type { StartHost } from './start-host'
 import type { PageSettled } from './regression-helpers'
 
-const host = useStartHost({
-  links: ['@tanstack/start-client-core'],
-  files: libraryPackages,
-  config: {
-    optimizeDeps: { exclude: compiledLibraries },
-    ssr: { noExternal: compiledLibraries },
-  },
+let host: StartHost
+beforeAll(async () => {
+  host = await createStartHost({
+    links: ['@tanstack/start-client-core'],
+    files: libraryPackages,
+    config: {
+      optimizeDeps: { exclude: compiledLibraries },
+      ssr: { noExternal: compiledLibraries },
+    },
+  })
+  return () => host.close()
 })
 
 /**
@@ -52,7 +57,7 @@ async function settledInPage(
 
 describe('several modules of one app, of different kinds, compile correctly', () => {
   test('modules with different kinds in one app', async () => {
-    const started = await host()
+    const started = host
     // File 1: ServerFn only
     const file1 = await serveCase(
       started,
@@ -136,7 +141,7 @@ export const isoFn = createIsomorphicFn().client(() => 'client-iso')`,
   })
 
   test('two modules of the same kind in one app', async () => {
-    const started = await host()
+    const started = host
     const first = await serveCase(
       started,
       {
@@ -167,9 +172,7 @@ test('a server fn module importing an empty module compiles', async () => {
   // left). Resolving `base` (a builder in the shape of a server fn) loads
   // it. (The module no longer links: `./empty` exports nothing. What is
   // checked is the compiler's output for it.)
-  const startCase = await (
-    await host()
-  ).case({
+  const startCase = await host.case({
     'empty.ts': '   \n\t  ',
     'module.tsx': `import { createServerFn } from '@tanstack/react-start'
 import { base } from './empty'
@@ -193,7 +196,7 @@ describe('calling result of createServerOnlyFn/createClientOnlyFn', () => {
   test('invocation of createServerOnlyFn result is not treated as a candidate', async () => {
     // Compiling must not throw "createServerOnlyFn() must be called with a
     // function!", and the handler reads the value the call returned.
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 
 const createRandomNumber = createServerOnlyFn(() => Math.floor(Math.random() * 100))
@@ -210,7 +213,7 @@ export const personServerFn = createServerFn({ method: 'GET' })
   })
 
   test('invocation of createClientOnlyFn result is not treated as a candidate', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `import { createClientOnlyFn, createServerFn } from '@tanstack/react-start'
 
 const getWindowWidth = createClientOnlyFn(() => window.innerWidth)
@@ -236,7 +239,7 @@ export const personServerFn = createServerFn({ method: 'GET' })
   test('re-exported createServerOnlyFn still resolves correctly', async () => {
     // Ensure the fix doesn't break re-export chain resolution (issue #6583):
     // the factory imported from `@tanstack/start-client-core`.
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `import { createServerOnlyFn } from '@tanstack/start-client-core'
 export const myFn = createServerOnlyFn(() => 'server-only-value')`,
     })
@@ -247,7 +250,7 @@ export const myFn = createServerOnlyFn(() => 'server-only-value')`,
   test('aliased factory is still detected as a candidate', async () => {
     // `const createSO = createServerOnlyFn` is an alias, not an invocation.
     // `createSO(() => ...)` should still be treated as ServerOnlyFn.
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `import { createServerOnlyFn } from '@tanstack/react-start'
 
 const createSO = createServerOnlyFn
@@ -268,7 +271,7 @@ describe('re-export chain resolution', () => {
   test.each(libraryChainRows)(
     'resolves $fn via re-export chain on $env',
     async ({ env, fn, value, absent }) => {
-      const started = await host()
+      const started = host
       const served = await serveCase(started, {
         'module.tsx': `export { getThemeData, initClientFeature } from '@third-party/lib'\n`,
       })
@@ -292,7 +295,7 @@ describe('re-export chain resolution', () => {
 
   test('handles deeper re-export chains', async () => {
     // Another intermediate package between the importer and Start's package.
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': deeperChainModule,
     })
     expect(served.code.client).not.toContain('deep-server')
@@ -326,9 +329,7 @@ describe('re-export chain resolution', () => {
       // The cycle never reaches a Start factory (it cannot even link as ES
       // modules): serving the module settles, with a result or an error,
       // instead of looping.
-      const startCase = await (
-        await host()
-      ).case({
+      const startCase = await host.case({
         ...files,
         'module.tsx': cycleModule,
       })
@@ -349,14 +350,14 @@ describe('re-export chain resolution', () => {
 export const fn: any = fn.handler(async () => 'x')
 export const real = createServerFn().handler(async () => 'y')`,
   ])('compiling a self-referencing binding settles: %#', async (code) => {
-    const startCase = await (await host()).case({ 'module.tsx': code })
+    const startCase = await host.case({ 'module.tsx': code })
     expect(await settlesWithin(startCase.served())).toBe('settled')
   })
 })
 
 test('leaves unrelated SSR middleware chains as written when a server function factory is present', async () => {
   const served = await serveCase(
-    await host(),
+    host,
     {
       'auth-wrapper.ts': `import { createMiddleware, createServerFn } from '@tanstack/react-start';
 const middleware = createMiddleware({ type: 'function' }).server(({ next }) => next({ context: { role: 'admin' } }));
@@ -386,7 +387,7 @@ test.each([
   'compiles transparent parentheses around native call chains: %s',
   async (expression) => {
     const served = await serveCase(
-      await host(),
+      host,
       {
         'parenthesized.ts': `import { createServerOnlyFn, createIsomorphicFn } from '@tanstack/react-start'; export const fn = ${expression}`,
       },
@@ -399,7 +400,7 @@ test.each([
 
 test('compiles a server function through a parenthesized namespace receiver', async () => {
   const served = await serveCase(
-    await host(),
+    host,
     {
       'namespace-parenthesized.ts': `import * as Start from '@tanstack/react-start'; export const fn = (Start).createServerFn().handler(() => 'private-server-body')`,
     },
@@ -421,7 +422,7 @@ test('compiles a server function through a parenthesized namespace receiver', as
 // Source: #8504 compiler.test.ts "preserves a shadowed parenthesized
 // namespace receiver"
 test('leaves a server fn of a parameter shadowing the namespace receiver alone', async () => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `import * as Start from '@tanstack/react-start'
 export function make(Start) {
   return (Start).createServerFn().handler(() => 'local-runtime-body')
@@ -469,7 +470,7 @@ test.each<{
   'removes server-only code through a parenthesized namespace: $expression',
   async ({ expression, script, expected }) => {
     const served = await serveCase(
-      await host(),
+      host,
       {
         'namespace-builtins.ts': `import * as Start from '@tanstack/react-start'; export const fn = ${expression}`,
       },

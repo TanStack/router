@@ -8,16 +8,8 @@
  * compiler in ../start-compiler-cases.test.ts, moved here once
  * `@vitejs/plugin-vue` became a test-only devDependency.
  */
-import { afterAll, expect, test } from 'vitest'
+import { expect, onTestFinished, test } from 'vitest'
 import { createStartHost } from '../regression-helpers'
-import type { StartHost } from '../regression-helpers'
-
-const hosts: Array<StartHost> = []
-afterAll(async () => {
-  for (const host of hosts) {
-    await host.close()
-  }
-})
 
 /**
  * Builds a Vue Start app whose case has an SFC `Page.vue` with `script` as
@@ -28,7 +20,7 @@ afterAll(async () => {
  */
 async function expectSfcServerFnBuilds(script: string) {
   const host = await createStartHost({ framework: 'vue', serve: false })
-  hosts.push(host)
+  onTestFinished(() => host.close())
   const startCase = await host.case({
     'Page.vue': `<script lang="ts">
 ${script}

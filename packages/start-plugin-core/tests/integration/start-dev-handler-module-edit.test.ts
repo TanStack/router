@@ -18,20 +18,15 @@
  */
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import {
-  afterAll,
-  beforeAll,
-  describe,
-  expect,
-  onTestFinished,
-  test,
-} from 'vitest'
+import { beforeAll, describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import { pluginReact } from '@rsbuild/plugin-react'
-import { startDevServer } from '../dev-server'
-import { startRsbuildStartDevServer } from '../rsbuild-dev-server'
+import { startDevServerShared } from '../dev-server'
+import { startRsbuildStartDevServerShared } from '../rsbuild-dev-server'
 import { rootDocument, routerFile } from './start-compose-app'
+import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
+import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
 const timeout = 90_000
 
@@ -195,6 +190,7 @@ interface Served {
   url: string
   root: string
   edit: (files: Record<string, string>) => Promise<unknown>
+  close: () => Promise<void>
 }
 
 /**
@@ -214,39 +210,35 @@ async function restore(server: Served, names: Array<keyof typeof files>) {
   }
 }
 
-type Cleanup = (cleanup: () => Promise<void>) => void
+/** The app's dev server, as the rows use it. */
+const served = (server: DevServer | RsbuildDevServer): Served => ({
+  url: server.url!,
+  root: server.root,
+  edit: (f) => server.edit(f),
+  close: server.close,
+})
 
-const servers: Record<string, (registerCleanup: Cleanup) => Promise<Served>> = {
-  vite: async (registerCleanup) => {
-    const server = await startDevServer({
-      browser: true,
-      files,
-      registerCleanup,
-    })
-    return { url: server.url!, root: server.root, edit: (f) => server.edit(f) }
-  },
-  rsbuild: async (registerCleanup) => {
-    const server = await startRsbuildStartDevServer({
-      browser: true,
-      config: { plugins: [pluginReact()] },
-      files,
-      registerCleanup,
-    })
-    return { url: server.url!, root: server.root, edit: (f) => server.edit(f) }
-  },
+const servers: Record<string, () => Promise<Served>> = {
+  vite: async () =>
+    served(await startDevServerShared({ browser: true, files })),
+  rsbuild: async () =>
+    served(
+      await startRsbuildStartDevServerShared({
+        browser: true,
+        config: { plugins: [pluginReact()] },
+        files,
+      }),
+    ),
 }
 
 describe.each(Object.keys(servers))('%s dev', (bundler) => {
   // One dev server for the bundler's rows: each row serves its own route
   // and edits files no other row reads, from the app's text (`restore`).
   let server!: Served
-  let stop: (() => Promise<void>) | undefined
   beforeAll(async () => {
-    server = await servers[bundler]!((cleanup) => {
-      stop = cleanup
-    })
+    server = await servers[bundler]!()
+    return () => server.close()
   }, timeout)
-  afterAll(() => stop?.())
 
   test(
     'edits of a pinned declaration, of the handler and of a handler kept in place reach server code and HTTP calls',

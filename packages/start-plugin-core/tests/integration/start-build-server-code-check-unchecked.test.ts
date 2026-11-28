@@ -11,7 +11,7 @@
  * loads: this file runs in a process of its own (project
  * `integration-alone`) and turns it off before anything loads.
  */
-import { afterAll, describe, expect, test, vi } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { buildStart, sharedBuildFailure, startBundlers } from '../build-harness'
 import type { StartBuild } from '../build-harness'
 
@@ -141,13 +141,9 @@ const markersOf = (index: number) => ({
 
 describe.each(startBundlers)('%s build', (bundler) => {
   /** An app of `routes` (by path, `/` included or not), each a route module of `src/routes/`. */
-  const build = (
-    routes: Record<string, string>,
-    registerCleanup?: (cleanup: () => Promise<void>) => void,
-  ) =>
+  const build = (routes: Record<string, string>) =>
     buildStart({
       bundler,
-      registerCleanup,
       files: {
         'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute()
@@ -182,7 +178,6 @@ export const getRouter = () => createRouter({ routeTree })
    * own (`markersOf`); its failure fails each row, naming the rows it names.
    */
   let together: Promise<StartBuild> | undefined
-  let dispose: (() => Promise<void>) | undefined
   const sharedBuild = () =>
     (together ??= build(
       Object.fromEntries(
@@ -197,9 +192,6 @@ export const getRouter = () => createRouter({ routeTree })
           ]
         }),
       ),
-      (cleanup) => {
-        dispose = cleanup
-      },
     ).catch((error: unknown) => {
       throw sharedBuildFailure(
         error,
@@ -209,7 +201,6 @@ export const getRouter = () => createRouter({ routeTree })
         })),
       )
     }))
-  afterAll(() => dispose?.())
 
   /** The row's build and markers in the shared build. */
   const builtRow = async (index: number) => ({

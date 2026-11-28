@@ -22,7 +22,7 @@
  * compiles them in parallel and the outcome below depended on their timing:
  * the "export * diamonds" row failed in about 1 of 10 runs.)
  */
-import { describe, expect, test } from 'vitest'
+import { describe, expect, onTestFinished, test } from 'vitest'
 import { callFromClient, createStartHost } from '../regression-helpers'
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
@@ -42,45 +42,42 @@ async function expectImportersThroughRpc(reExports: Record<string, string>) {
     file.replace(/\.ts$/, ''),
   )
   const host = await createStartHost({ serve: false })
-  try {
-    const startCase = await host.case({
-      'd.ts': `${head}export const base = createServerFn()`,
-      'db.server.ts': `export const db = { x: () => 'from the server' }\n`,
-      ...reExports,
-      'via-a.tsx': `import { base } from './${first}'
+  onTestFinished(() => host.close())
+  const startCase = await host.case({
+    'd.ts': `${head}export const base = createServerFn()`,
+    'db.server.ts': `export const db = { x: () => 'from the server' }\n`,
+    ...reExports,
+    'via-a.tsx': `import { base } from './${first}'
 import { db } from './db.server'
 export const viaA = base.handler(async () => db.x())
 ${others.map((name) => `export { via as via_${name} } from './later/via-${name}'`).join('\n')}
 `,
-      ...Object.fromEntries(
-        others.map((name) => [
-          `later/via-${name}.tsx`,
-          `import { base } from '../${name}'
+    ...Object.fromEntries(
+      others.map((name) => [
+        `later/via-${name}.tsx`,
+        `import { base } from '../${name}'
 import { db } from '../db.server'
 export const via = base.handler(async () => db.x())
 `,
-        ]),
-      ),
-    })
-    const { build } = await host.preview()
-    const serverOnlyFile = startCase.file('db.server.ts')
-    const clientModules = build.environments.client!.chunks.flatMap(
-      (chunk) => chunk.moduleIds,
-    )
+      ]),
+    ),
+  })
+  const { build } = await host.preview()
+  const serverOnlyFile = startCase.file('db.server.ts')
+  const clientModules = build.environments.client!.chunks.flatMap(
+    (chunk) => chunk.moduleIds,
+  )
+  expect(
+    clientModules.filter((id) => id.split('?')[0] === serverOnlyFile),
+    'the server-only module in the client build',
+  ).toEqual([])
+  for (const name of ['viaA', ...others.map((other) => `via_${other}`)]) {
     expect(
-      clientModules.filter((id) => id.split('?')[0] === serverOnlyFile),
-      'the server-only module in the client build',
-    ).toEqual([])
-    for (const name of ['viaA', ...others.map((other) => `via_${other}`)]) {
-      expect(
-        await callFromClient(startCase, `module.${name}`, undefined, {
-          file: 'via-a.tsx',
-        }),
-        name,
-      ).toBe('from the server')
-    }
-  } finally {
-    await host.close()
+      await callFromClient(startCase, `module.${name}`, undefined, {
+        file: 'via-a.tsx',
+      }),
+      name,
+    ).toBe('from the server')
   }
 }
 

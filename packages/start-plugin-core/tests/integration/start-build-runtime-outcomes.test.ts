@@ -1,21 +1,15 @@
 /** Observable Start runtime contracts that mutation testing found unchecked. */
-import {
-  afterAll,
-  beforeAll,
-  describe,
-  expect,
-  onTestFinished,
-  test,
-} from 'vitest'
-import { buildStart, startBundlers } from '../build-harness'
+import { beforeAll, describe, expect, test } from 'vitest'
+import { buildStartShared, startBundlers } from '../build-harness'
 import {
   openAppPage,
   pageEntries,
   rootDocument,
   routerFile,
-  serveStartBuild,
+  serveStartBuildShared,
   startPageEntries,
 } from './start-compose-app'
+import type { serveStartBuild } from './start-compose-app'
 
 const files = {
   ...startPageEntries,
@@ -69,32 +63,21 @@ function PostForm() {
 }
 
 describe.each(startBundlers)('%s build runtime outcomes', (bundler) => {
-  const cleanups: Array<() => Promise<void>> = []
   let served: Awaited<ReturnType<typeof serveStartBuild>>
   beforeAll(async () => {
-    const build = await buildStart({
+    const build = await buildStartShared({
       bundler,
       files,
-      registerCleanup: (cleanup) => {
-        cleanups.push(cleanup)
-      },
     })
-    served = await serveStartBuild(build, {
-      registerCleanup: (cleanup) => {
-        cleanups.push(cleanup)
-      },
-    })
-  }, 60_000)
-  afterAll(async () => {
-    for (const cleanup of cleanups.reverse()) {
-      await cleanup()
+    served = await serveStartBuildShared(build)
+    return async () => {
+      await served.close()
+      await build.close()
     }
-  })
+  }, 60_000)
 
   test('a provider keeps the effect of a default-export expression over HTTP', async () => {
-    const page = await openAppPage(served, '/', {
-      registerCleanup: onTestFinished,
-    })
+    const page = await openAppPage(served, '/')
     expect(
       await page.page.evaluate(() => (globalThis as any).__app.readReady()),
     ).toBe(true)
@@ -102,9 +85,7 @@ describe.each(startBundlers)('%s build runtime outcomes', (bundler) => {
   })
 
   test('a validator schema also used by a component works after hydration', async () => {
-    const page = await openAppPage(served, '/', {
-      registerCleanup: onTestFinished,
-    })
+    const page = await openAppPage(served, '/')
     await page.page.locator('[data-testid=submit]').click()
     await page.waitForText('browser title', {
       selector: '[data-testid=result]',
@@ -114,9 +95,7 @@ describe.each(startBundlers)('%s build runtime outcomes', (bundler) => {
   })
 
   test('aborting a browser RPC cancels the in-flight HTTP request', async () => {
-    const page = await openAppPage(served, '/', {
-      registerCleanup: onTestFinished,
-    })
+    const page = await openAppPage(served, '/')
     // SPEC J4.1. Abort an actual in-flight
     // browser HTTP call, after the request has left the page. No fake fetch.
     const request = page.page.waitForRequest((req) =>

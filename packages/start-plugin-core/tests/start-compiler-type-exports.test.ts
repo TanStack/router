@@ -19,18 +19,22 @@ import typescript from '@babel/preset-typescript'
 import {
   callFromClient,
   callOnServer,
+  createStartHost,
   inPage,
-  useStartHost,
 } from './regression-helpers'
 import type { StartHost } from './regression-helpers'
 
-const host = useStartHost({
-  plugins: [
-    babel({ presets: [[typescript, { allExtensions: true, isTSX: true }]] }),
-  ],
+let host: StartHost
+beforeAll(async () => {
+  host = await createStartHost({
+    plugins: [
+      babel({ presets: [[typescript, { allExtensions: true, isTSX: true }]] }),
+    ],
+  })
+  return () => host.close()
 })
 beforeAll(async () => {
-  await (await host()).page()
+  await host.page()
 }, 60_000)
 
 /** The module the cases import: server-only code, types, a label. */
@@ -95,7 +99,7 @@ describe.each(cases)(
     // (one case for both tests: each environment compiles it once)
     let written: ReturnType<StartHost['case']> | undefined
     const caseOf = async () =>
-      (written ??= (await host()).case({ 'module.tsx': code, 'rows.ts': rows }))
+      (written ??= host.case({ 'module.tsx': code, 'rows.ts': rows }))
 
     test('works on the client', async () => {
       const startCase = await caseOf()

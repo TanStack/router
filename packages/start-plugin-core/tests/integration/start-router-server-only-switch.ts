@@ -6,7 +6,7 @@
  * that turns a route into a page or into a server-only route, seen from a
  * real browser page served by Start's own dev middleware.
  */
-import { expect } from 'vitest'
+import { expect, onTestFinished } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { trackRequests } from '@tanstack/compiler-test-utils/hmr-sync'
 import { startServerEntryFiles } from '../dev-server'
@@ -109,10 +109,9 @@ async function apiAnswers(server: ServerOnlySwitchServer, expected: string) {
  */
 export async function switchBetweenServerOnlyAndPage(
   server: ServerOnlySwitchServer,
-  registerCleanup: (fn: () => Promise<void> | void) => void,
 ): Promise<void> {
   const browser = await openPage(new URL('/page', server.url).href, {
-    registerCleanup,
+    registerCleanup: onTestFinished,
   })
   const inFlight = trackRequests(browser)
   await browser.waitForText('MARK_PAGE', { selector: '#app' })
@@ -173,14 +172,13 @@ export async function switchBetweenServerOnlyAndPage(
  */
 export async function pageBeforeTheClientLoadedTheTree(
   server: ServerOnlySwitchServer,
-  registerCleanup: (fn: () => Promise<void> | void) => void,
 ): Promise<void> {
   await server.edit({
     'src/routes/api.tsx': api(`${handlers('x')}, ${component}`),
   })
   await server.settled()
   const browser = await openPage(new URL('/page', server.url).href, {
-    registerCleanup,
+    registerCleanup: onTestFinished,
   })
   await browser.waitForText('hydrated', {
     selector: '[data-testid=hydrated]',

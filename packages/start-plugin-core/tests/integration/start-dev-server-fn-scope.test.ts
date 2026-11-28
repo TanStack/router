@@ -16,10 +16,10 @@
  * when its top-level code runs (the SSR environment runs in this process).
  */
 import path from 'node:path'
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import { pluginReact } from '@rsbuild/plugin-react'
-import { startDevServer, startRequestFiles } from '../dev-server'
-import { startRsbuildStartDevServer } from '../rsbuild-dev-server'
+import { startDevServerShared, startRequestFiles } from '../dev-server'
+import { startRsbuildStartDevServerShared } from '../rsbuild-dev-server'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
@@ -135,7 +135,6 @@ const ran = () =>
 
 describe('vite dev: by-id requests', () => {
   let server: DevServer
-  let dispose: (() => Promise<void>) | undefined
   /** The id of `src/fns.ts`'s `internal`, as the client code holds it. */
   let appId: string
 
@@ -155,19 +154,15 @@ describe('vite dev: by-id requests', () => {
     callAt(server.url!, id, 'Server function info not found for')
 
   beforeAll(async () => {
-    server = await startDevServer({
+    server = await startDevServerShared({
       listen: true,
       files,
       symlinks,
-      registerCleanup: (cleanup) => {
-        dispose = cleanup
-      },
     })
     appId = await clientId('/src/fns.ts')
     expect(decode(appId).f).toBe('src/fns.ts')
+    return () => server.close()
   }, timeout)
-
-  afterAll(() => dispose?.())
 
   test(
     'the app fn the client compiled answers (control)',
@@ -231,25 +226,20 @@ describe('vite dev: by-id requests', () => {
  */
 describe('rsbuild dev: by-id requests', () => {
   let server: RsbuildDevServer
-  let dispose: (() => Promise<void>) | undefined
   const naming = (file: string) => encode({ f: file, k: 'internal' })
   const call = (id: string) =>
     callAt(server.url!, id, 'Server function info not found')
 
   beforeAll(async () => {
     const { 'harness/server-entry.ts': _, ...appFiles } = files
-    server = await startRsbuildStartDevServer({
+    server = await startRsbuildStartDevServerShared({
       browser: true,
       config: { plugins: [pluginReact()] },
       files: { ...appFiles, 'src/entry.ts': `import './fns'\n` },
       symlinks,
-      registerCleanup: (cleanup) => {
-        dispose = cleanup
-      },
     })
+    return () => server.close()
   }, timeout)
-
-  afterAll(() => dispose?.())
 
   test(
     'the app fn the client compiled answers (control)',

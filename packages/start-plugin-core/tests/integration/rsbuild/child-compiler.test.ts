@@ -11,11 +11,12 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   StartBuildError,
   buildStart,
+  buildStartShared,
   callByIdExports,
   callByIdPrelude,
 } from '../../build-harness'
@@ -43,9 +44,8 @@ self.onmessage = () => {
 
 describe('Rsbuild build: modules of a child compiler of the client', () => {
   let build: StartBuild
-  let dispose: (() => Promise<void>) | undefined
   beforeAll(async () => {
-    build = await buildStart({
+    build = await buildStartShared({
       bundler: 'rsbuild',
       files,
       entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
@@ -54,12 +54,9 @@ describe('Rsbuild build: modules of a child compiler of the client', () => {
           client: { tools: { rspack: { plugins: [workerPlugin] } } },
         },
       },
-      registerCleanup: (cleanup) => {
-        dispose = cleanup
-      },
     })
+    return () => build.close()
   }, timeout)
-  afterAll(() => dispose?.())
 
   const workerCode = () =>
     fs.readFileSync(path.join(build.client.outDir, 'worker.js'), 'utf8')

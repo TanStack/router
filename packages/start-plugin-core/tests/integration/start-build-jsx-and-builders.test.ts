@@ -8,9 +8,9 @@
  *   `createServerFn().middleware([auth])` passed in another server fn's
  *   `.middleware([...])`.
  */
-import { afterAll, beforeAll, expect, test } from 'vitest'
+import { beforeAll, expect, test } from 'vitest'
 import {
-  buildStart,
+  buildStartShared,
   callByIdExports,
   callByIdPrelude,
   requestsOfPrelude,
@@ -64,17 +64,13 @@ ${callByIdExports}`,
 
 // One build for both rows.
 let build: StartBuild
-let dispose: (() => Promise<void>) | undefined
 beforeAll(async () => {
-  build = await buildStart({
+  build = await buildStartShared({
     files,
     entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-    registerCleanup: (cleanup) => {
-      dispose = cleanup
-    },
   })
+  return () => build.close()
 }, timeout)
-afterAll(() => dispose?.())
 
 test(
   'vite build: a .jsx server fn module and a .jsx route file: the client calls by id without the handler, the route component is lazy and renders',

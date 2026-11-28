@@ -21,7 +21,7 @@ import { pluginNames } from '@tanstack/compiler-test-utils/build-harness'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { pluginReact } from '@rsbuild/plugin-react'
 import { onTestFinished } from 'vitest'
-import { startRuntimeLinks } from './build-harness'
+import { closedOnFailure, startRuntimeLinks } from './build-harness'
 import { startRsbuildPluginFactory, withHarnessEntries } from './start-plugins'
 import type { StartFramework } from './start-plugins'
 import type { TanStackStartInputConfig } from '../src'
@@ -42,7 +42,10 @@ const harnessDir = path.dirname(fileURLToPath(import.meta.url))
  * import-protection tests' shorthand of `start`.
  */
 export function startRsbuildDevServer(
-  options: Omit<RsbuildDevServerOptions, 'dir' | 'plugins'> & {
+  options: Omit<
+    RsbuildDevServerOptions,
+    'dir' | 'plugins' | 'registerCleanup'
+  > & {
     importProtection?: TanStackStartInputConfig['importProtection']
   },
 ): Promise<RsbuildDevServer> {
@@ -147,19 +150,40 @@ function recordClientEntry(entry: ClientEntry): RsbuildPlugin {
  * `config`); `vue` the same with Vue's packages and `vue` (`@rsbuild/plugin-vue`
  * from `config`, and the app's own root route over `@tanstack/vue-router`).
  */
-export async function startRsbuildStartDevServer(
-  options: Omit<RsbuildDevServerOptions, 'dir' | 'plugins'> & {
-    /** The app's Start options (`tanStackStart(options)`). */
-    start?: TanStackStartRsbuildInputConfig
-    /** The Start framework package of the app (default `react`). */
-    framework?: StartFramework
-    /**
-     * Lists Start's plugin after the plugins of `config` (e.g. Solid's), as
-     * an app whose `rsbuild.config.ts` lists `tanstackStart()` last.
-     * Default: first.
-     */
-    startLast?: boolean
-  },
+export function startRsbuildStartDevServer(
+  options: RsbuildStartDevServerOptions,
+): Promise<RsbuildDevServer> {
+  return openRsbuildStartDevServer(options, onTestFinished)
+}
+
+/** `startRsbuildStartDevServer` for a server several tests share: the caller closes it. */
+export function startRsbuildStartDevServerShared(
+  options: RsbuildStartDevServerOptions,
+): Promise<RsbuildDevServer> {
+  return closedOnFailure((register) =>
+    openRsbuildStartDevServer(options, register),
+  )
+}
+
+type RsbuildStartDevServerOptions = Omit<
+  RsbuildDevServerOptions,
+  'dir' | 'plugins' | 'registerCleanup'
+> & {
+  /** The app's Start options (`tanStackStart(options)`). */
+  start?: TanStackStartRsbuildInputConfig
+  /** The Start framework package of the app (default `react`). */
+  framework?: StartFramework
+  /**
+   * Lists Start's plugin after the plugins of `config` (e.g. Solid's), as
+   * an app whose `rsbuild.config.ts` lists `tanstackStart()` last.
+   * Default: first.
+   */
+  startLast?: boolean
+}
+
+async function openRsbuildStartDevServer(
+  options: RsbuildStartDevServerOptions,
+  registerCleanup?: RsbuildDevServerOptions['registerCleanup'],
 ): Promise<RsbuildDevServer> {
   const {
     files,
@@ -178,7 +202,7 @@ export async function startRsbuildStartDevServer(
   return createRsbuildDevServer({
     dir: harnessDir,
     prefix: '.start-rsbuild-start-dev-server-',
-    registerCleanup: onTestFinished,
+    registerCleanup,
     ...devServerOptions,
     config,
     symlinks: {

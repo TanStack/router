@@ -16,10 +16,10 @@
  * compiler and read its imports. Where a surviving use is reported:
  * `reported-location.test.ts`.
  */
-import { afterAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import {
   inDevRequest,
-  startDevServer,
+  startDevServerShared,
   startRequestFiles,
 } from '../../dev-server'
 import { startRsbuildDevServer } from '../../rsbuild-dev-server'
@@ -133,41 +133,35 @@ const importProtection = {
 const recording = () => violationRecorder(importProtection)
 
 describe('vite dev', () => {
-  const cleanups: Array<() => Promise<void>> = []
-  afterAll(async () => {
-    await Promise.all(cleanups.map((cleanup) => cleanup()))
-  })
   const recorded = recording()
-  let started: Promise<DevServer> | undefined
   /**
    * The dev server (router entry `src/entry.ts`), started once for the
    * file, with the client and the server having loaded the app. The router
    * entry also exports the app's router (`startRequestFiles`), which serves
    * the request a handler runs in (`inDevRequest`).
    */
-  const loaded = () =>
-    (started ??= (async () => {
-      const server = await startDevServer({
-        files: {
-          ...startRequestFiles,
-          ...files,
-          'src/entry.ts': `${files['src/entry.ts']}\nexport { getRouter } from './router'\n`,
-        },
-        registerCleanup: (cleanup) => cleanups.push(cleanup),
-        start: {
-          router: { entry: 'entry.ts' },
-          importProtection: recorded.importProtection,
-        },
-      })
-      await server.load('/src/entry.ts')
-      await server.import('/src/entry.ts', 'ssr')
-      return server
-    })())
+  let server: DevServer
+  beforeAll(async () => {
+    server = await startDevServerShared({
+      files: {
+        ...startRequestFiles,
+        ...files,
+        'src/entry.ts': `${files['src/entry.ts']}\nexport { getRouter } from './router'\n`,
+      },
+      start: {
+        router: { entry: 'entry.ts' },
+        importProtection: recorded.importProtection,
+      },
+    })
+    await server.load('/src/entry.ts')
+    await server.import('/src/entry.ts', 'ssr')
+    return () => server.close()
+  }, timeout)
 
   test(
     'the client reports only the use it keeps, not the uses inside the boundaries it drops',
-    async () => {
-      const { root } = await loaded()
+    () => {
+      const { root } = server
       const reported = distinct(reportedImporters({ root, ...recorded }))
       expect(reported.filter((entry) => entry.startsWith('client '))).toEqual([
         'client src/cases/leaky.ts',
@@ -178,8 +172,8 @@ describe('vite dev', () => {
 
   test(
     'the server reports only the use it keeps, not the uses inside the boundaries it drops',
-    async () => {
-      const { root } = await loaded()
+    () => {
+      const { root } = server
       const reported = distinct(reportedImporters({ root, ...recorded }))
       expect(reported.filter((entry) => entry.startsWith('server '))).toEqual([
         'server src/cases/server-leaky.ts',
@@ -191,7 +185,6 @@ describe('vite dev', () => {
   test(
     "the server keeps a handler's use: the handler runs with the real module",
     async () => {
-      const server = await loaded()
       const { fn } = await server.import(
         `/src/cases/client-${slug('createServerFn().handler')}.ts`,
         'ssr',

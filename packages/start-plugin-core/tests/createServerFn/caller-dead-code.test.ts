@@ -1,13 +1,14 @@
-import { describe, expect, test, vi } from 'vitest'
+import { beforeAll, describe, expect, test, vi } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   callFromClient,
   callOnServer,
   callServerFnThroughCallers,
+  createStartHost,
   inPage,
   serveCase,
-  useStartHost,
 } from '../regression-helpers'
+import type { StartHost } from '../start-host'
 
 // The client replaces a server fn handler with an RPC, then drops the module
 // code only the handler read, so server-only imports never reach it. Code the
@@ -19,7 +20,11 @@ import {
 // declarations. Every module the fixtures import is a real
 // file of the case.
 
-const host = useStartHost()
+let host: StartHost
+beforeAll(async () => {
+  host = await createStartHost()
+  return () => host.close()
+})
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 const dbServer = `export const db = { x: () => 'x' }\n`
@@ -72,7 +77,7 @@ export const clientDb = db`,
       expected: 'param',
     },
   ])('when $name', async ({ code, files, forbidden, check, expected }) => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head}${code}`,
       'db.server.ts': dbServer,
       ...files,
@@ -309,7 +314,7 @@ export class View {
   ])(
     'when client code uses its name in $name',
     async ({ code, files = {}, check }) => {
-      const served = await serveCase(await host(), {
+      const served = await serveCase(host, {
         'module.tsx': `${head}import { db } from './db.server'
 export const fn = createServerFn().handler(async () => db.x())
 ${code}`,
@@ -368,7 +373,7 @@ export function call(value: string) {
       },
     },
   ])('when client code uses its name in $name', async ({ code, check }) => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head}import { db } from './db.server'
 export const fn = createServerFn().handler(async () => db.x())
 ${code}`,
@@ -407,7 +412,7 @@ export const value = clientDefault`,
     async ({ code, client, value }) => {
       // `verify` is the default export where the module imports it as such.
       const verify = `() => 'verified'`
-      const served = await serveCase(await host(), {
+      const served = await serveCase(host, {
         'module.tsx': `${head}${code}
 export const fn = createServerFn().handler(async (): Promise<Session | null> => verify())`,
         'server-module.ts': `export type Session = { id: string }
@@ -437,7 +442,7 @@ export default ${code.startsWith('import verify') ? verify : `'default'`}
     // server's SSR environment runs here).
     const calls = ((globalThis as Record<string, unknown>).__b2DeadCodeCalls =
       []) as Array<string>
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `import { createMiddleware, createServerFn } from '@tanstack/react-start'
 import { db } from './db.server'
 import { schema } from './schema.server'
@@ -477,7 +482,7 @@ export const fn = createServerFn({ method: 'POST' })
   ])(
     'when the validator link is wrapped in a $name expression',
     async ({ wrap }) => {
-      const served = await serveCase(await host(), {
+      const served = await serveCase(host, {
         'module.tsx': `${head}import { schema } from './schema'
 export const fn = ${wrap(`createServerFn().validator(schema)`)}.handler(async ({ data }) => data)`,
         'schema.ts': 'export const schema = (data: string) => `${data}!`\n',
@@ -504,7 +509,7 @@ export const other = withPost.handler(async ({ data }) => data)`,
   ])(
     'when the validator link is on a builder stored in a variable ($name)',
     async ({ handlers }) => {
-      const served = await serveCase(await host(), {
+      const served = await serveCase(host, {
         'module.tsx': `${head}import { schema } from './schema'
 const withPost = createServerFn({ method: 'POST' }).validator(schema)
 ${handlers}`,
@@ -557,7 +562,7 @@ test.each([
 }`,
   },
 ])('client code that reads an import $name keeps it', async ({ code }) => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `${head}import { store } from './store'
 import { db } from './db.server'
 export const fn = createServerFn().handler(async () => db.x())
@@ -604,7 +609,7 @@ export const fn = createServerFn().handler(async () => secretKey)`,
   ])(
     'keep their values in every output for $name',
     async ({ code, files, clientValue, handlerValue }) => {
-      const served = await serveCase(await host(), {
+      const served = await serveCase(host, {
         'module.tsx': `${head}${code}`,
         ...files,
       })
@@ -643,7 +648,7 @@ const { db: { apiKey = readSecret() } = {}, theme } = config`,
   ])(
     'drop a server import read by $name of a handler-only binding',
     async ({ code }) => {
-      const served = await serveCase(await host(), {
+      const served = await serveCase(host, {
         'module.tsx': `${head}import { config } from './config'
 ${code}
 export const fn = createServerFn().handler(async () => apiKey)
@@ -664,7 +669,7 @@ describe('namespace members only erased code reads', () => {
   // erased code reads keeps its value on the client, whatever its statement
   // declares (several names, a pattern; in a nested namespace too).
   test('keep their exported values on the client', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `import { createServerOnlyFn } from '@tanstack/react-start'
 export namespace Config {
   export const a = 1, b = Number('2')
@@ -691,7 +696,7 @@ describe('declarations only the handler needs', () => {
   // Source: React Compiler fixture context-variable-as-jsx-element-tag.js;
   // #8504 caller-dead-code.test.ts (red on main)
   test('callers drop a handler-only function that declares a local of its own name', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head}import { readSecret } from './server-only'
 function session() {
   const session = readSecret()
@@ -711,7 +716,7 @@ export const getReport = createServerFn().handler(async () => session())`,
   // Source: babel-dead-code-elimination "SCC dead code elimination" (mutual
   // recursion, self-recursive functions, unexported circular references)
   test('the client drops handler-only cycles and default parameters', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head}import { secret, defaultId } from './secret.server'
 function walk(n: number): number { return n > 0 ? walkBack(n - 1) : secret.length }
 function walkBack(n: number): number { return n > 0 ? walk(n - 1) : 0 }
@@ -734,7 +739,7 @@ export const fn = createServerFn().handler(async () => [walk(3), loop(2), load()
   test('callers keep handler-read bindings that top-level statements assign', async () => {
     // An assignment left without its declaration throws in a module:
     // `serveCase` evaluates the module on the client and the server.
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head}let x: string
 x = 'x-assigned'
 y = 'y-assigned'
@@ -749,7 +754,7 @@ export const fn = createServerFn().handler(async () => [x, y])`,
 
   // Source: babel-dead-code-elimination "repeated elimination"
   test('a binding only the handler writes and a declarator a kept sibling reads keep working', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head}import { serverValue } from './db.server'
 let hits = 0
 let a = serverValue(), clientCopy = a
@@ -787,7 +792,7 @@ export const clientB = clientCopy`,
     const calls = ['openFlag', 'connect', 'readMode']
     // The page has no `process`: the module reads the server's environment
     // through `globalThis`.
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head}import { ${calls.join(', ')} } from './db.server'
 if (typeof window === 'undefined') {
   var flag = openFlag()
@@ -825,7 +830,7 @@ describe('a server-only initialiser only the handler writes', () => {
   // initialiser with the handler (SPEC J4.11: a server-only initialiser
   // never runs on the client), as it does when the handler reads it.
   test('leaves the client with the handler', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head}import { connect } from './socket.server'
 let socket = connect()
 export const fn = createServerFn().handler(async () => {

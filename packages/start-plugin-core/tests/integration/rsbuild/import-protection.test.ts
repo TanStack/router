@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import {
   diagnosticsOf,
   expectNoDiagnostic,
@@ -7,6 +7,7 @@ import {
 } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   runRsbuildClient,
+  startBrowserRsbuildStartDevServerShared,
   startBrowserRsbuildDevServer as startRsbuildDevServer,
 } from '../importProtection/client-pages'
 import { runRsbuildSsr, ssrNodeOutput } from '../importProtection/hosts'
@@ -72,18 +73,15 @@ exports.page = () => secret
 
   let violations: Array<ViolationInfo>
   let server: RsbuildDevServer
-  let dispose: (() => Promise<void>) | undefined
-  afterAll(() => dispose?.())
   beforeAll(async () => {
     violations = []
-    server = await startRsbuildDevServer({
-      registerCleanup: (cleanup) => {
-        dispose = cleanup
-      },
+    server = await startBrowserRsbuildStartDevServerShared({
       compileTimeout,
-      importProtection: {
-        onViolation: (info) => {
-          violations.push(info as ViolationInfo)
+      start: {
+        importProtection: {
+          onViolation: (info) => {
+            violations.push(info as ViolationInfo)
+          },
         },
       },
       files: {
@@ -102,6 +100,7 @@ exports.page = () => secret
           .join(''),
       },
     })
+    return () => server.close()
   }, timeout)
 
   test('the compile succeeds, without the real module', async () => {

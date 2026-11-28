@@ -8,9 +8,9 @@ import {
 import {
   callFromClient,
   callServerFnThroughCallers,
+  createStartHost,
   inPage,
   serveCase,
-  useStartHost,
 } from './regression-helpers'
 import type { StartCase, StartHost } from './regression-helpers'
 
@@ -34,9 +34,13 @@ const hostTsconfig = {
 // Observed through the public Start host (`./start-host`): the client in a
 // real page, the server in the SSR environment and in real requests.
 
-const host = useStartHost()
+let host: StartHost
 beforeAll(async () => {
-  await (await host()).page()
+  host = await createStartHost()
+  return () => host.close()
+})
+beforeAll(async () => {
+  await host.page()
 }, 60_000)
 
 /** Where the recording modules below record, in the realm they run in. */
@@ -211,7 +215,7 @@ export const fn = createServerFn().handler(async () => label)`,
     calls: ['side', 'side-too'],
   },
 ])('keeps $name', async ({ code, run, calls }) => {
-  const startCase = await effectCase(await host(), code)
+  const startCase = await effectCase(host, code)
   // The client serves a module that imports and runs
   await startCase.served()
   expect(await recordClientSideEffects(startCase, run)).toEqual(calls)
@@ -222,7 +226,7 @@ export const fn = createServerFn().handler(async () => label)`,
 // the client, where the handler is erased, runs none of them.
 test('effectful declarations only a handler reads run once on the server, in source order', async () => {
   const startCase = await effectCase(
-    await host(),
+    host,
     `import { createServerFn } from '@tanstack/react-start'
 import { register } from './registry'
 const first = register('first')
@@ -259,7 +263,7 @@ export const fn = createServerFn().handler(async () => [first, second, third])`,
 // object, runs them in source order too.
 test('effectful declarations and augmentations a handler reads run once each, the object with its writes in order', async () => {
   const startCase = await effectCase(
-    await host(),
+    host,
     `import { createServerFn } from '@tanstack/react-start'
 import { register } from './registry'
 export const kept = register('kept')
@@ -496,7 +500,7 @@ export const fn = createServerFn().handler(async () => [a, b])`,
       result: ['pair'],
     },
   ])('client: $name', async ({ files, run, result }) => {
-    const startCase = await (await host()).case(files)
+    const startCase = await host.case(files)
     const page = await startCase.client(run, { fresh: true })
     expect(page.errors).toEqual([])
     expect(page.result).toEqual(result)
@@ -505,9 +509,7 @@ export const fn = createServerFn().handler(async () => [a, b])`,
   // The same on the server, where a createClientOnlyFn's body is erased
   // (row 35)
   test('server: a push into a global array only a client-only function reads', async () => {
-    const startCase = await (
-      await host()
-    ).case({
+    const startCase = await host.case({
       'queue.ts': `;(globalThis as any).caseQueue = []`,
       'module.tsx': `import { createClientOnlyFn } from '@tanstack/react-start'
 import './queue'
@@ -559,7 +561,7 @@ export const getKind = createIsomorphicFn()
 
   // (an ambient declaration nobody names is read when it is named: T7)
   test('client: a global augmentation', async () => {
-    const startCase = await effectCase(await host(), globalAugmentation.code)
+    const startCase = await effectCase(host, globalAugmentation.code)
     expect(await recordClientSideEffects(startCase)).toEqual([
       globalAugmentation.call,
     ])
@@ -569,7 +571,7 @@ export const getKind = createIsomorphicFn()
   // code that runs names what it names, here through a local alias; the
   // declaration leaves with its evaluation, client and server (it stayed)
   test(`client: ${typeQuery.name} names what it names`, async () => {
-    const startCase = await effectCase(await host(), typeQuery.code)
+    const startCase = await effectCase(host, typeQuery.code)
     expect(await recordClientSideEffects(startCase)).toEqual([])
   })
 
@@ -577,7 +579,7 @@ export const getKind = createIsomorphicFn()
   // server records while it handles a client's call (the module is first
   // evaluated by that request).
   test(`server: ${typeQuery.name} names what it names`, async () => {
-    const startCase = await effectCase(await host(), typeQuery.code)
+    const startCase = await effectCase(host, typeQuery.code)
     const global = globalThis as Record<string, unknown>
     global[effectsKey] = []
     try {
@@ -590,7 +592,7 @@ export const getKind = createIsomorphicFn()
 })
 
 test('accepts type-only namespace imports and exports, and a type and a value exported under the same name', async () => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `import { createServerFn } from '@tanstack/react-start'
 import type * as Start from '@tanstack/react-start'
 export type * as start from '@tanstack/react-start'
@@ -611,7 +613,7 @@ export const getUser = createServerFn().handler(async () => User('Ada'))`,
 // stays type-only (`import { Label }` would be a runtime import of a type
 // the module does not export, with the host's `verbatimModuleSyntax`).
 test('keeps a type-only import type-only when the client erases a value of the same name', async () => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'labels.ts': `export type Badge = { name: string }
 export type Label = string`,
     'module.tsx': `import { createServerFn } from '@tanstack/react-start'
@@ -633,10 +635,14 @@ export const getBadge = createServerFn().handler(async () => Badge('Ada'))`,
 // module of an app whose React plugin uses the classic runtime
 // (`react({ jsxRuntime: 'classic' })`), with the real React.
 describe('keeps working with the classic JSX runtime downstream', () => {
-  const classic = useStartHost({ react: { jsxRuntime: 'classic' } })
+  let classic: StartHost
+  beforeAll(async () => {
+    classic = await createStartHost({ react: { jsxRuntime: 'classic' } })
+    return () => classic.close()
+  })
 
   test('the client and the server render it', async () => {
-    const served = await serveCase(await classic(), {
+    const served = await serveCase(classic, {
       'module.tsx': `import * as React from 'react'
 import { createServerFn } from '@tanstack/react-start'
 export const getGreeting = createServerFn().handler(async () => 'hi')
@@ -662,7 +668,7 @@ return { type: element.type, children: element.props.children }`,
 
 test('keeps a namespace only read through a TypeScript import alias', async () => {
   // `import red = Labels.red` compiles to `var red = Labels.red`.
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `import { createServerFn } from '@tanstack/react-start'
 namespace Labels {
   export const red = 'red'
@@ -678,7 +684,7 @@ export const fn = createServerFn().handler(async () => red)`,
 // the bundlers only read `with`) keeps working in every output (SPEC J2.17:
 // `assert` stays supported; dropping it once nobody writes it is fine).
 test('an import attribute written with assert keeps working in every output', async () => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `import { createServerFn } from '@tanstack/react-start'
 import config from './config.json' assert { type: 'json' }
 import secrets from './secrets.json' assert { type: 'json' }
@@ -696,7 +702,7 @@ export const fn = createServerFn().handler(async () => secrets.key)`,
 // decorators included, is checked through real builds too:
 // integration/start-build-user-code.test.ts).
 test('decorated classes next to a server fn compile to valid modules', async () => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'tsconfig.json': JSON.stringify({
       compilerOptions: {
         ...hostTsconfig.compilerOptions,
@@ -735,7 +741,7 @@ test.each([
 ])(
   'decorator metadata records the imported class a decorated member names in its type when $name',
   async ({ exported }) => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `import { createServerFn } from '@tanstack/react-start'
 import { Model } from './model'
 ;(Reflect as any).metadata = (key: string, value: any) => (target: any) => {
@@ -769,7 +775,7 @@ export const fn = createServerFn().handler(async () => (Entity as any).recorded)
 // type-assertion/increment/non-null-increment.js, type-assertion/satisfies.js;
 // #8504 start-compiler-preserves-user-code.test.ts (red on main)
 test('keeps the parentheses of asserted update operands', async () => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `import { createServerFn } from '@tanstack/react-start'
 export const fn = createServerFn().handler(async () => 1)
 let count = 0
@@ -787,7 +793,7 @@ export function bump() {
 // On main, the module fails to parse, so the build fails.
 // Source: fuzzing.
 test('keeps the parentheses of an asserted conditional test', async () => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `import { createServerFn } from '@tanstack/react-start'
 export const fn = createServerFn().handler(async () => 1)
 export function pick(flag: unknown, x: number, y: number) {
@@ -803,7 +809,7 @@ export function pick(flag: unknown, x: number, y: number) {
 // syntax error in a function with a rest parameter).
 // Source: whole-PR review C5-02 (Astra C5 #1)
 test('client: a string statement after an erased declaration stays an expression', async () => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `import { createServerOnlyFn } from '@tanstack/react-start'
 export function choose(...args: Array<string>) {
   const label = args.join('-')
@@ -820,7 +826,7 @@ export function choose(...args: Array<string>) {
 // `eval` sees local bindings, `typeof` of an undeclared name does not
 // throw). Source: emit prototype review (Gemini 1)
 test('client: a member kept through nested client-only fns is a value where it is called, deleted, evaluated or under typeof', async () => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `import { createClientOnlyFn } from '@tanstack/react-start'
 const obj = {
   m(this: unknown) {
@@ -862,7 +868,7 @@ export function typed() {
 // enable, `TSR_COMPILER_VERIFY=1`, the compile must not fail on it).
 // Source: emit review re-check (Fable R2, Gemini 2)
 test('client: a string statement after a removed import and a generated import stays an expression', async () => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `import { createServerOnlyFn } from '@tanstack/react-start'
 'str'
 import { createServerFn } from '@tanstack/react-start'
@@ -874,7 +880,7 @@ export const sf = createServerFn().handler(async () => secret())`,
 
 // Parenthesized JSX keeps working.
 test('client: keeps parenthesized JSX working', async () => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `import { createServerFn } from '@tanstack/react-start'
 export const fn = createServerFn().handler(async () => 1)
 export function Page() {
@@ -919,7 +925,7 @@ test.each([
   'client: maps code after a removed import that followed %s to its source line',
   async (_, end) => {
     const code = `export const a = 1${end}import { createClientOnlyFn } from '@tanstack/react-start'\n\nexport const marker = createClientOnlyFn(() => 23)\n`
-    const started = await host()
+    const started = host
     const startCase = await started.case({ 'module.tsx': code })
     const result =
       await started.host.dev.vite.environments.client.transformRequest(
@@ -945,7 +951,7 @@ test.each(['client', 'ssr'] as const)(
 export const fn = createServerFn().handler(async () => 1)
 export const Box = () => <div className="box" />
 `
-    const started = await host()
+    const started = host
     const startCase = await started.case({ 'module.tsx': code })
     const result = await started.host.dev.vite.environments[
       environment

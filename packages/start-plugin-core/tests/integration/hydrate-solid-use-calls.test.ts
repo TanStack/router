@@ -9,19 +9,11 @@
  * route's param, count a click, and follow a client-side navigation to
  * another param.
  */
-import {
-  afterAll,
-  beforeAll,
-  describe,
-  expect,
-  onTestFinished,
-  test,
-} from 'vitest'
+import { beforeAll, describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
-import { buildStart } from '../build-harness'
+import { buildStartShared } from '../build-harness'
 import { createStartHost } from '../start-host'
 import { solidAppConfig } from './hydrate-pages'
-import type { StartBundler } from '../build-harness'
 
 const timeout = 90_000
 
@@ -89,19 +81,23 @@ export const Route = createRootRoute({
 }
 
 describe.each(['vite', 'rsbuild'] as const)('%s build', (bundler) => {
-  const cleanups: Array<() => Promise<void>> = []
-  const registerCleanup = (cleanup: () => Promise<void>) => {
-    cleanups.push(cleanup)
-  }
   let url: string
   beforeAll(async () => {
-    url = await serve(bundler, registerCleanup)
+    const built = await (bundler === 'vite'
+      ? createStartHost({
+          framework: 'solid',
+          serve: false,
+          files: routeFiles,
+        })
+      : buildStartShared({
+          bundler,
+          framework: 'solid',
+          rsbuildConfig: solidAppConfig.rsbuildConfig,
+          files: rsbuildFiles,
+        }))
+    url = (await built.preview()).url
+    return () => built.close()
   }, timeout)
-  afterAll(async () => {
-    for (const cleanup of cleanups.reverse()) {
-      await cleanup()
-    }
-  })
 
   test(
     'split children calling use* primitives keep their owner, context and route match',
@@ -124,26 +120,3 @@ describe.each(['vite', 'rsbuild'] as const)('%s build', (bundler) => {
     timeout,
   )
 })
-
-async function serve(
-  bundler: StartBundler,
-  registerCleanup: (cleanup: () => Promise<void>) => void,
-): Promise<string> {
-  if (bundler === 'vite') {
-    const host = await createStartHost({
-      framework: 'solid',
-      serve: false,
-      files: routeFiles,
-    })
-    registerCleanup(() => host.close())
-    return (await host.preview()).url
-  }
-  const build = await buildStart({
-    bundler,
-    framework: 'solid',
-    registerCleanup,
-    rsbuildConfig: solidAppConfig.rsbuildConfig,
-    files: rsbuildFiles,
-  })
-  return (await build.preview(registerCleanup)).url
-}

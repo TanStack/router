@@ -94,10 +94,9 @@ describe.each(['one level', 'nested'] as const)('%s', (fixture) => {
     async () => {
       const build = await buildStart({
         bundler: 'rsbuild',
-        registerCleanup: onTestFinished,
         files: { ...rsbuildEntries, ...appFiles(fixture) },
       })
-      const { url } = await build.preview(onTestFinished)
+      const { url } = await build.preview()
       await homeIsTheIndex(
         await openPage(new URL('/', url).href, {
           registerCleanup: onTestFinished,

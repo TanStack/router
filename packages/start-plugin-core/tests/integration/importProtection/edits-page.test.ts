@@ -10,7 +10,7 @@
  * violations and only those.
  */
 import react from '@vitejs/plugin-react'
-import { afterAll, describe, expect, test } from 'vitest'
+import { describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import {
   hmrSyncModule,
@@ -62,17 +62,6 @@ interface StepOutcome {
   reported: Array<string>
 }
 
-/** The server and page close after the last test. */
-const cleanups: Array<() => Promise<void>> = []
-afterAll(async () => {
-  for (const cleanup of cleanups.reverse()) {
-    await cleanup()
-  }
-})
-const registerCleanup = (cleanup: () => Promise<void>) => {
-  cleanups.push(cleanup)
-}
-
 /** Runs every step once, shared by the tests. */
 let outcomes: Promise<Array<StepOutcome>> | undefined
 const run = () =>
@@ -89,10 +78,9 @@ const run = () =>
         'src/router.ts': `${pageApp['src/router.ts']}import './hmr-sync'\n`,
         'src/hmr-sync.ts': hmrSyncModule,
       },
-      registerCleanup,
     })
     const browser = await openPage(new URL('/', server.url).href, {
-      registerCleanup,
+      registerCleanup: onTestFinished,
     })
     const inFlight = trackRequests(browser)
     const result: Array<StepOutcome> = []

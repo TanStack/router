@@ -12,15 +12,24 @@ import { beforeAll, describe, expect, test } from 'vitest'
 import {
   callFromClient,
   callOnServer,
+  createStartHost,
   inPage,
   serveCase,
-  useStartHost,
 } from './regression-helpers'
+import type { StartHost } from './start-host'
 
-const host = useStartHost()
-const solidHost = useStartHost({ framework: 'solid' })
+let host: StartHost
 beforeAll(async () => {
-  await (await host()).page()
+  host = await createStartHost()
+  return () => host.close()
+})
+let solidHost: StartHost
+beforeAll(async () => {
+  solidHost = await createStartHost({ framework: 'solid' })
+  return () => solidHost.close()
+})
+beforeAll(async () => {
+  await host.page()
 }, 60_000)
 
 describe('a module with a server fn, a function middleware and an isomorphic fn', () => {
@@ -46,7 +55,7 @@ export const env = () => where()`
   }
 
   test('runs on Start’s runtime from the client and from server code', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': code,
       ...files,
     })
@@ -77,7 +86,7 @@ export const env = () => where()`
 
   // The factories of `@tanstack/solid-start` (SPEC J4.5), in a Solid app.
   test('runs on Start’s runtime in a Solid app', async () => {
-    const served = await serveCase(await solidHost(), {
+    const served = await serveCase(solidHost, {
       'module.tsx': code.replace(
         "from '@tanstack/react-start'",
         "from '@tanstack/solid-start'",
@@ -108,7 +117,7 @@ export const env = () => where()`
   // from the client, the SSR caller and an HTTP call by id" (that leg called
   // the provider's export directly, so it was dropped).
   test('an HTTP call by id without client context runs the server middleware and the handler', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `import { createIsomorphicFn, createMiddleware, createServerFn } from '@tanstack/react-start'
 import { db } from './db.server'
 const where = createIsomorphicFn().server(() => 'server').client(() => 'client')
@@ -154,7 +163,7 @@ return { status: response.status, body: await response.json() }`,
   // Start’s handler rethrows" (the error reaching the callers is the
   // concept; the `{ error }` answer of a provider export is internal).
   test('a failing handler’s error reaches the client and the server caller', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `import { createServerFn } from '@tanstack/react-start'
 export const fail = createServerFn().handler(async () => {
   throw new Error('handler failed')

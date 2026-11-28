@@ -1,6 +1,7 @@
-import { describe, test } from 'vitest'
-import { useStartHost } from './regression-helpers'
+import { beforeAll, describe, test } from 'vitest'
+import { createStartHost } from './regression-helpers'
 import { SF, SO, checkRow } from './removal-cases'
+import type { StartHost } from './start-host'
 import type { Row } from './removal-cases'
 
 // What the dead-code removal takes from the definitions below the top level:
@@ -9,8 +10,12 @@ import type { Row } from './removal-cases'
 // itself while it is initialised is a statement and stays.
 // The rows and how they are checked: `./removal-cases`.
 
-const host = useStartHost()
-const check = async (row: Row) => checkRow(await host(), row)
+let host: StartHost
+beforeAll(async () => {
+  host = await createStartHost()
+  return () => host.close()
+})
+const check = async (row: Row) => checkRow(host, row)
 
 // A parameter that is a name with a default keeps its place: when every read of it
 // is removed, a default that reads or calls anything becomes `void 0` and a

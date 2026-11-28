@@ -14,9 +14,10 @@
  * `#` read as a URL fragment would leave every module of the app
  * untransformed, silently: the client would ship the handlers.
  */
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import {
   buildStart,
+  buildStartShared,
   callByIdExports,
   callByIdPrelude,
   startBundlers,
@@ -45,9 +46,8 @@ const clientRouteIds = `return Object.values(entry.getRouter().routeTree.childre
 describe.each(startBundlers)('%s build', (bundler) => {
   describe('of an app whose path has characters a regular expression reads', () => {
     let build: StartBuild
-    let dispose: (() => Promise<void>) | undefined
     beforeAll(async () => {
-      build = await buildStart({
+      build = await buildStartShared({
         bundler,
         prefix: `.start-build-harness-${bundler} my app (2)+-`,
         files: {
@@ -57,12 +57,9 @@ export { renderPath } from '../harness/render'
 `,
         },
         entry: 'src/entry.ts',
-        registerCleanup: (cleanup) => {
-          dispose = cleanup
-        },
       })
+      return () => build.close()
     }, timeout)
-    afterAll(() => dispose?.())
 
     test('builds, and the page renders', async () => {
       expect(build.client.root).toMatch(/my app \(2\)\+/)
@@ -89,10 +86,9 @@ return { ids, page: await entry.renderPath(entry.getRouter().routeTree, '/') }`,
   describe('of an app with a file named one character away from the generated route tree', () => {
     let build: StartBuild | undefined
     let failure: unknown
-    let dispose: (() => Promise<void>) | undefined
     beforeAll(async () => {
       try {
-        build = await buildStart({
+        build = await buildStartShared({
           bundler,
           files: {
             ...routes,
@@ -102,15 +98,12 @@ export { sibling } from './routeTree-gen'
 `,
           },
           entry: 'src/entry.ts',
-          registerCleanup: (cleanup) => {
-            dispose = cleanup
-          },
         })
       } catch (error) {
         failure = error
       }
+      return () => build?.close()
     }, timeout)
-    afterAll(() => dispose?.())
 
     // On main, the build fails (the file's exports are gone) or the app reads
     // the wrong module.
@@ -128,9 +121,8 @@ export { sibling } from './routeTree-gen'
 describe.each(startBundlers)('%s build', (bundler) => {
   describe('of an app whose path has a #', () => {
     let build: StartBuild
-    let dispose: (() => Promise<void>) | undefined
     beforeAll(async () => {
-      build = await buildStart({
+      build = await buildStartShared({
         bundler,
         prefix: `.start-build-harness-${bundler} C# project #2-`,
         files: {
@@ -157,12 +149,9 @@ export { renderPath } from '../harness/render'
 `,
         },
         entry: 'src/entry.ts',
-        registerCleanup: (cleanup) => {
-          dispose = cleanup
-        },
       })
+      return () => build.close()
     }, timeout)
-    afterAll(() => dispose?.())
 
     test('builds under the directory, and the page renders', async () => {
       expect(build.client.root).toMatch(/C# project #2/)

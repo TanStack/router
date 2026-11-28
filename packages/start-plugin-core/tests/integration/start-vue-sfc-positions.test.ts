@@ -353,18 +353,15 @@ const shown = ref(secret)
 )
 
 describe('vite dev', () => {
-  const hosts: Array<StartHost> = []
-  afterAll(async () => {
-    for (const host of hosts) {
-      await host.close()
-    }
-  })
   let devHost: Promise<StartHost> | undefined
+  afterAll(() =>
+    devHost?.then(
+      (host) => host.close(),
+      () => {},
+    ),
+  )
   const sfcCase = async (text: string) => {
-    devHost ??= createStartHost({ framework: 'vue' }).then((host) => {
-      hosts.push(host)
-      return host
-    })
+    devHost ??= createStartHost({ framework: 'vue' })
     return (await devHost).case({
       'Page.vue': text,
       'builders.ts': builders,
@@ -394,10 +391,7 @@ describe('vite dev', () => {
   test(
     "a refusal in an installed package's SFC is at its position in the SFC",
     async () => {
-      devHost ??= createStartHost({ framework: 'vue' }).then((host) => {
-        hosts.push(host)
-        return host
-      })
+      devHost ??= createStartHost({ framework: 'vue' })
       const row = refusedInDev[0]!
       const file = 'node_modules/kit/Page.vue'
       const startCase = await (

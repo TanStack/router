@@ -33,11 +33,9 @@
  * Cases that need dev edits write their files with `edit`, which goes
  * through the watcher and the dev server's bounded settle.
  *
- * Use `useStartHost(options)` in a test file: one host per file (taken in
- * `beforeAll`, given back in `afterAll`: a later file of the same test
- * process with the same plain options reuses it, see `freeHosts`), and
- * `host().case(files)` per test. Page runs of concurrent tests each hold
- * one of the host's pages (`hostPageLimit`).
+ * A test file starts its host in `beforeAll` (`createStartHost`, closed
+ * by the hook's returned function), and each test writes its cases
+ * (`host.case(files)`); a test that edits the app has a host of its own.
  */
 import { realpathSync } from 'node:fs'
 import { mkdir, writeFile } from 'node:fs/promises'
@@ -48,10 +46,8 @@ import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import solid from 'vite-plugin-solid'
 import { mergeConfig, normalizePath, preview as vitePreview } from 'vite'
-import { afterAll, beforeAll } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { globalTrapSource } from '@tanstack/compiler-test-utils/global-trap'
-import { runAsDevCommand } from '@tanstack/compiler-test-utils/dev-command'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import {
   workspacePackage,
@@ -209,9 +205,6 @@ const appTsconfig = (framework: StartFramework) =>
 
 /** How long one page run may take before the page is replaced. */
 const pageRunTimeout = 10_000
-
-/** Pages of one host at most: runs of concurrent tests beyond take turns. */
-const hostPageLimit = 4
 
 /** Where a case lives: `src/cases/c<n>`. */
 export const casesDir = 'src/cases'
@@ -546,16 +539,8 @@ export interface StartHost {
      */
     rebuild?: boolean
   }) => Promise<StartPreview>
-  /**
-   * The host's first page (concurrent runs of `StartCase.client` run on up
-   * to `hostPageLimit` pages, one each).
-   */
+  /** The host's page (`StartCase.client` runs on it). */
   page: () => Promise<BrowserPage>
-  /**
-   * Whether a later test file may use the host (`useStartHost`): nothing
-   * changed the app its options give (no edit, build or preview).
-   */
-  reusable: () => boolean
   /**
    * Production mode (`preview()`): every read or write of a development-only
    * global (React Refresh's `$RefreshReg$`/`$RefreshSig$`, the router
@@ -777,123 +762,41 @@ export async function createStartHost(
     return { opened, requests, failed }
   }
 
-  // The host's pages: concurrent runs (concurrent tests) each hold one
-  // (`runInHostPage`), at most `hostPageLimit`; a page keeps its document
-  // from one run to the next (cases have their own URLs). `page()` gives
-  // the first one.
-  /** Pages open or opening. */
-  let pageCount = 0
-  /** Every open page. */
-  let allPages = new Set<HostPage>()
-  let idlePages: Array<HostPage> = []
-  let waitingForPage: Array<(page: Promise<HostPage>) => void> = []
-  const openCounted = async (): Promise<HostPage> => {
-    pageCount++
-    try {
-      const opened = await openHostPage()
-      allPages.add(opened)
-      return opened
-    } catch (error) {
-      pageCount--
+  /** The host's page, opened on first use. */
+  let current: Promise<HostPage> | undefined
+  const page = () =>
+    (current ??= openHostPage().catch((error: unknown) => {
+      current = undefined
       throw error
-    }
-  }
-
-  /** The first page of the host (opened on first use). */
-  const firstPage = async () => {
-    const [first] = allPages
-    if (first) {
-      return first.opened
-    }
-    const opened = await openCounted()
-    idlePages.push(opened)
-    return opened.opened
-  }
-
-  /** A page no run holds (a new one while fewer than `hostPageLimit`). */
-  const takePage = (): Promise<HostPage> => {
-    const idle = idlePages.shift()
-    if (idle) {
-      return Promise.resolve(idle)
-    }
-    if (pageCount < hostPageLimit) {
-      return openCounted()
-    }
-    return new Promise<Promise<HostPage>>((resolve) =>
-      waitingForPage.push(resolve),
-    ).then((page) => page)
-  }
-  const givePage = (page: HostPage) => {
-    const next = waitingForPage.shift()
-    if (next) {
-      next(Promise.resolve(page))
-    } else {
-      idlePages.push(page)
-    }
-  }
-  /** Closes a page; a run waiting for a page gets a new one. */
-  const dropPage = (page: HostPage) => {
-    allPages.delete(page)
-    pageCount--
-    void page.opened.close()
-    const next = waitingForPage.shift()
-    if (next) {
-      next(openCounted())
-    }
-  }
-  /** Closes a page and opens a new one in its place, for the same run. */
-  const renewPage = async (page: HostPage): Promise<HostPage> => {
-    allPages.delete(page)
-    void page.opened.close()
-    try {
-      const opened = await openHostPage()
-      allPages.add(opened)
-      return opened
-    } catch (error) {
-      pageCount--
-      const next = waitingForPage.shift()
-      if (next) {
-        next(openCounted())
-      }
-      throw error
-    }
-  }
-  /** Closes every page of the host. */
-  const closePages = async () => {
-    const all = [...allPages]
-    allPages = new Set()
-    idlePages = []
-    waitingForPage = []
-    pageCount = 0
-    for (const page of all) {
-      await page.opened.close()
-    }
+    }))
+  /** Closes the host's page; the next run opens a new one. */
+  const closePage = async () => {
+    const closing = current
+    current = undefined
+    await (await closing?.catch(() => undefined))?.opened.close()
   }
 
   /**
-   * Runs page code on a page of the host the run holds alone (concurrent
-   * runs run on different pages), again on a fresh document if the page
-   * reloaded. `fresh`: on a new page (a new document, no module instance
-   * kept).
+   * Runs page code on the host's page, again on a fresh document if the
+   * page reloaded. `fresh`: on a new page (a new document, no module
+   * instance kept).
    */
   const runInHostPage = async <T>(
     source: string,
     runOptions: { fresh?: boolean } = {},
   ): Promise<ClientRun<T>> => {
-    let held = await takePage()
+    if (runOptions.fresh) {
+      // A new page, not a reload of this one: after an edit, the dev
+      // server may have sent this page a full reload, which Vite's HMR
+      // client applies a moment later (debounced). A reload of ours
+      // racing it was aborted, detached, or left a document whose import
+      // never settled (Alpine under load)
+      await closePage()
+    }
+    let held = await page()
     /** Whether the run's page was closed (a script that never settled). */
     const run = { dropped: false }
-    try {
-      if (runOptions.fresh) {
-        // A new page, not a reload of this one: after an edit, the dev
-        // server may have sent this page a full reload, which Vite's HMR
-        // client applies a moment later (debounced). A reload of ours
-        // racing it was aborted, detached, or left a document whose import
-        // never settled (Alpine under load)
-        run.dropped = true
-        held = await renewPage(held)
-        run.dropped = false
-      }
+    {
       let lastError: unknown
       for (let attempt = 0; attempt < 3; attempt++) {
         const { opened, requests } = held
@@ -910,7 +813,7 @@ export async function createStartHost(
                 // A script that never settles keeps the page busy: the next
                 // run gets a new page
                 run.dropped = true
-                dropPage(held)
+                void closePage()
                 reject(
                   new Error(
                     `the page run did not settle within ${pageRunTimeout} ms (the page is replaced)`,
@@ -933,9 +836,8 @@ export async function createStartHost(
           // the failed module fetch (see `HostPage.failed`), so the run
           // goes again on a new page
           if (!run.dropped && held.failed.length > 0 && attempt < 2) {
-            run.dropped = true
-            held = await renewPage(held)
-            run.dropped = false
+            await closePage()
+            held = await page()
             continue
           }
           // A navigation destroys the run's context before the new document
@@ -963,10 +865,6 @@ export async function createStartHost(
         }
       }
       throw lastError
-    } finally {
-      if (!run.dropped) {
-        givePage(held)
-      }
     }
   }
 
@@ -985,8 +883,6 @@ export async function createStartHost(
   }
 
   let cases = 0
-  /** Whether the app changed from what its options give (edits, builds). */
-  let changed = false
   const createCase = async (
     files: Record<string, string>,
   ): Promise<StartCase> => {
@@ -1158,10 +1054,8 @@ try {
       return host.diagnostics
     },
     case: createCase,
-    reusable: () => !changed,
     run: (source, runOptions) => runInHostPage(source, runOptions),
     edit: async (files) => {
-      changed = true
       if (cases > 0) {
         // The dev server's settle owes an event to every app file the
         // watcher has not reported, and it never reports the (ignored)
@@ -1172,19 +1066,15 @@ try {
       }
       await host.edit(files)
     },
-    build: (buildOptions) => {
-      changed = true
-      return host.build(buildOptions)
-    },
+    build: (buildOptions) => host.build(buildOptions),
     preview: async (previewOptions = {}) => {
-      changed = true
       if (serve) {
         throw new Error('preview() needs a host created with `serve: false`')
       }
       if (previewState && previewOptions.rebuild) {
         const previous = previewState
         previewState = undefined
-        await closePages()
+        await closePage()
         await previous.server.close()
         outDirName = `dist-${++builds}`
       }
@@ -1214,32 +1104,23 @@ try {
       previewState = { server, url, build }
       return { build, url }
     },
-    page: firstPage,
+    page: async () => (await page()).opened,
     devSupportTouches: async () => {
       if (!previewState) {
         throw new Error(
           'devSupportTouches() reads the production page: call preview() first',
         )
       }
-      await firstPage()
-      const touches: Array<string> = []
-      for (const { opened } of allPages) {
-        touches.push(
-          ...(await opened.page.evaluate(
-            () =>
-              (
-                window as unknown as {
-                  __harnessDevSupportTouches: Array<string>
-                }
-              ).__harnessDevSupportTouches,
-          )),
-        )
-      }
-      return touches
+      const { opened } = await page()
+      return opened.page.evaluate(
+        () =>
+          (window as unknown as { __harnessDevSupportTouches: Array<string> })
+            .__harnessDevSupportTouches,
+      )
     },
     close: async () => {
       try {
-        await closePages()
+        await closePage()
       } finally {
         try {
           await previewState?.server.close()
@@ -1248,134 +1129,5 @@ try {
         }
       }
     },
-  }
-}
-
-/**
- * Free hosts of this test process, by their options (`hostKey`), for later
- * test files: a project that keeps its modules across test files
- * (`isolate: false`) starts a host once per worker and options, not once per
- * file. Each case of a host has its own directory and URLs, so module
- * instances never carry over from one file's cases to another's; a host
- * whose app changed (an edit, a build) is closed instead. What a host
- * reported before a file is that file's to mark (`diagnostics.length`).
- */
-const freeHosts = new Map<string, Array<StartHost>>()
-
-/** Free hosts a test process keeps, at most. */
-const freeHostLimit = 4
-
-/**
- * The options of a host as a key, when they are plain data (no plugins, no
- * functions): only those hosts are shared between files.
- */
-export function hostKey(value: unknown): string | undefined {
-  const found = { function: false }
-  const key = JSON.stringify(value, (_, item: unknown) => {
-    if (typeof item === 'function') {
-      found.function = true
-    }
-    return item
-  })
-  return found.function ? undefined : key
-}
-
-/** A free host of these options, or a new one (`start`). */
-export async function takeHost<T extends { close: () => Promise<void> }>(
-  key: string | undefined,
-  start: () => Promise<T>,
-): Promise<T> {
-  const free = key === undefined ? undefined : freeHosts.get(key)?.pop()
-  if (free) {
-    // A dev server an earlier file started: this file's environment is
-    // Vitest's again (`test-scope-setup`)
-    runAsDevCommand()
-  }
-  return (free as T | undefined) ?? start()
-}
-
-/** Gives a host back for later files (or closes it, see `freeHosts`). */
-export async function giveBackHost(
-  key: string | undefined,
-  host: { close: () => Promise<void>; reusable?: () => boolean },
-) {
-  if (key === undefined || host.reusable?.() === false) {
-    await host.close()
-    return
-  }
-  const list = freeHosts.get(key) ?? []
-  list.push(host as StartHost)
-  freeHosts.set(key, list)
-  freeOrder.push({ key, host })
-  while (freeOrder.length > freeHostLimit) {
-    const oldest = freeOrder.shift()!
-    const left = freeHosts.get(oldest.key)
-    const index = left?.indexOf(oldest.host as StartHost) ?? -1
-    if (index !== -1) {
-      left!.splice(index, 1)
-      await oldest.host.close()
-    }
-  }
-}
-const freeOrder: Array<{
-  key: string
-  host: { close: () => Promise<void> }
-}> = []
-
-/**
- * One Start host per test file and options (`createStartHost`), taken before
- * the file's tests (a free one an earlier file of the process gave back, or
- * a new one) and given back after them. Returns the host getter.
- */
-export function useStartHost(
-  options: StartHostOptions = {},
-): () => Promise<StartHost> {
-  const key = hostKey(options)
-  let started: Promise<StartHost> | undefined
-  beforeAll(() => {
-    started = takeHost(key, () => createStartHost(options))
-    return started.then(() => {})
-  }, 60_000)
-  afterAll(async () => {
-    const host = await started?.catch(() => undefined)
-    if (host) {
-      await giveBackHost(key, host)
-    }
-  })
-  return () => {
-    if (!started) {
-      throw new Error('useStartHost: no host before beforeAll ran')
-    }
-    return started
-  }
-}
-
-/**
- * The hosts of a test file by framework, taken on first use and given back
- * after the file's tests (a file whose cases run under several frameworks).
- */
-export function useStartHosts(
-  options: Omit<StartHostOptions, 'framework'> = {},
-): (framework?: StartFramework) => Promise<StartHost> {
-  const started = new Map<StartFramework, Promise<StartHost>>()
-  const keyOf = (framework: StartFramework) =>
-    hostKey({ ...options, framework })
-  afterAll(async () => {
-    for (const [framework, host] of started) {
-      const resolved = await host.catch(() => undefined)
-      if (resolved) {
-        await giveBackHost(keyOf(framework), resolved)
-      }
-    }
-  })
-  return (framework = 'react') => {
-    let host = started.get(framework)
-    if (!host) {
-      host = takeHost(keyOf(framework), () =>
-        createStartHost({ ...options, framework }),
-      )
-      started.set(framework, host)
-    }
-    return host
   }
 }

@@ -18,19 +18,13 @@ test('rsbuild dev: a denied asset fails at the denied file', async () => {
     importProtection: { behavior: 'error' },
     files: app(webpackContext('/secrets.*\\.ts$/'), byFileRule),
   })
-  try {
-    expect(server.errors.length).toBeGreaterThan(0)
-    // (Rspack's own wrapper of an error a loader threw, which a located
-    // record replaces)
-    expect(server.errors.filter((e) => /Module build failed/.test(e))).toEqual(
-      [],
-    )
-    expectDiagnostic(server.diagnostics, {
-      severity: 'error',
-      file: 'src/secrets.server.ts',
-      root: server.root,
-    })
-  } finally {
-    await server.close()
-  }
+  expect(server.errors.length).toBeGreaterThan(0)
+  // (Rspack's own wrapper of an error a loader threw, which a located
+  // record replaces)
+  expect(server.errors.filter((e) => /Module build failed/.test(e))).toEqual([])
+  expectDiagnostic(server.diagnostics, {
+    severity: 'error',
+    file: 'src/secrets.server.ts',
+    root: server.root,
+  })
 }, 120_000)

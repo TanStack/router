@@ -169,9 +169,10 @@ const config = defineConfig({
         extends: true,
         test: {
           name: 'unit',
-          // A test process keeps its browser and the hosts a file gives
-          // back for later files (`useStartHost`; see `start-host.ts`)
+          // A test process keeps its browser for later files
           isolate: false,
+          // A file's host starts in a `beforeAll` (see `start-host.ts`)
+          hookTimeout: 60_000,
           exclude: [
             ...configDefaults.exclude,
             'integration/**',
@@ -186,6 +187,7 @@ const config = defineConfig({
         test: {
           name: 'unit-alone',
           include: unitAloneTests,
+          hookTimeout: 60_000,
         },
       },
       integrationProject,

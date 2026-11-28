@@ -13,15 +13,12 @@
  * whole plugin serves the same app to a page.
  */
 import react from '@vitejs/plugin-react'
+import { beforeAll, describe, expect, test } from 'vitest'
 import {
-  afterAll,
-  beforeAll,
-  describe,
-  expect,
-  onTestFinished,
-  test,
-} from 'vitest'
-import { buildStart, callByIdPrelude, startBundlers } from '../build-harness'
+  buildStartShared,
+  callByIdPrelude,
+  startBundlers,
+} from '../build-harness'
 import { startDevServer, startServerEntryFiles } from '../dev-server'
 import {
   reportedViolations,
@@ -32,10 +29,10 @@ import {
   pageEntries,
   rootDocument,
   routerFile,
-  serveStartBuild,
+  serveStartBuildShared,
   startPageEntries,
 } from './start-compose-app'
-import type { AppPage } from './start-compose-app'
+import type { AppPage, serveStartBuild } from './start-compose-app'
 import type { StartBuild } from '../build-harness'
 
 const timeout = 60_000
@@ -128,24 +125,20 @@ const visited = {
 
 describe.each(startBundlers)('%s production build, served', (bundler) => {
   let build: StartBuild
-  const cleanups: Array<() => Promise<void>> = []
   let served: Awaited<ReturnType<typeof serveStartBuild>>
 
   beforeAll(async () => {
-    build = await buildStart({
+    build = await buildStartShared({
       bundler,
       files: { ...startPageEntries, ...files },
       entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-      registerCleanup: (cleanup) => cleanups.push(cleanup),
     })
-    served = await serveStartBuild(build, {
-      registerCleanup: (cleanup) => cleanups.push(cleanup),
-    })
+    served = await serveStartBuildShared(build)
+    return async () => {
+      await served.close()
+      await build.close()
+    }
   }, timeout)
-
-  afterAll(async () => {
-    await Promise.all(cleanups.map((cleanup) => cleanup()))
-  })
 
   test('nothing of the server-only module is in the client build, and import protection reports nothing', () => {
     expect({
@@ -192,9 +185,7 @@ return globalThis.__postsInits`,
   test(
     'the page navigates to the route, loads its chunk, and the loader and a click call the same server fn the server answers',
     async () => {
-      const page = await openAppPage(served, '/', {
-        registerCleanup: onTestFinished,
-      })
+      const page = await openAppPage(served, '/')
       await page.waitForText('MARK_HOME', { selector: '#app' })
       const result = await visitPosts(page)
       const chunks = build.client.locate('MARK_POSTS_COMPONENT').lazy
@@ -248,9 +239,7 @@ describe('Vite dev server with Start', () => {
           ...files,
         },
       })
-      const page = await openAppPage({ url: server.url! }, '/', {
-        registerCleanup: onTestFinished,
-      })
+      const page = await openAppPage({ url: server.url! }, '/')
       await page.waitForText('MARK_HOME', { selector: '#app' })
       const result = await visitPosts(page)
       expect(result).toEqual({

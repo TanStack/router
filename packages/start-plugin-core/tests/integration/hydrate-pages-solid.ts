@@ -14,7 +14,7 @@
  * (J5.2) and the children under parent updates (J5.8: a Solid read must
  * not be frozen).
  */
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import {
   barrelRows,
   buildHydrationApp,
@@ -428,7 +428,6 @@ return root.querySelector('output').textContent`
 /** The Solid page tests, on an app built with `bundler`. */
 export function solidPageSuite(bundler: StartBundler) {
   let app: HydrationApp
-  const cleanups: Array<() => Promise<void>> = []
 
   beforeAll(async () => {
     app = await buildHydrationApp({
@@ -440,13 +439,9 @@ export function solidPageSuite(bundler: StartBundler) {
         'src/theme.tsx': themeFile,
         ...hydrateBarrelFiles('solid'),
       },
-      registerCleanup: (cleanup) => cleanups.push(cleanup),
     })
+    return () => app.close()
   }, 60_000)
-
-  afterAll(async () => {
-    await Promise.all(cleanups.map((cleanup) => cleanup()))
-  })
 
   /** Hydrates fixture `name`; every child counts one click; no error. */
   async function expectChildrenHydrate(

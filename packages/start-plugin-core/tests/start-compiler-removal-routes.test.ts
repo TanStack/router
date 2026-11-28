@@ -1,5 +1,6 @@
-import { describe, expect, test } from 'vitest'
-import { useStartHost } from './regression-helpers'
+import { beforeAll, describe, expect, test } from 'vitest'
+import { createStartHost } from './regression-helpers'
+import type { StartHost } from './start-host'
 
 // The dead-code removal rule in route files (R163, SPEC G16): what only the
 // route's erased `server` option or the component's erased code names leaves
@@ -87,27 +88,29 @@ export const getServerDb = () => ({ query: () => 'db' })
 export const getServerDefault = () => ({ s1: 's' })
 `
 
-const host = useStartHost({
-  files: {
-    ...Object.fromEntries(
-      Object.entries(routes).flatMap(([name, route]) => [
-        [`src/removal-${name}-db.server.ts`, serverModule],
-        [
-          `src/routes/removal-${name}.tsx`,
-          route(`../removal-${name}-db.server`),
-        ],
-      ]),
-    ),
-  },
+let host: StartHost
+beforeAll(async () => {
+  host = await createStartHost({
+    files: {
+      ...Object.fromEntries(
+        Object.entries(routes).flatMap(([name, route]) => [
+          [`src/removal-${name}-db.server.ts`, serverModule],
+          [
+            `src/routes/removal-${name}.tsx`,
+            route(`../removal-${name}-db.server`),
+          ],
+        ]),
+      ),
+    },
+  })
+  return () => host.close()
 })
 
 describe('route files', () => {
   test.each(Object.keys(routes))(
     'removal-%s: the client loads no server module',
     async (name) => {
-      const run = await (
-        await host()
-      ).run<string>(
+      const run = await host.run<string>(
         `(async () => {
   const route = await import('/src/routes/removal-${name}.tsx')
   await route.Route.options.component.preload?.()

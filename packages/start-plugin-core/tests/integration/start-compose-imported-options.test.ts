@@ -8,14 +8,14 @@
  * helper are absent from the client bundle, or the build reports or fails
  * naming the route file. Built with Start's Vite and Rsbuild plugins.
  */
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import {
   expectDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   StartBuildError,
-  buildStart,
+  buildStartShared,
   callByIdExports,
   startBundlers,
 } from '../build-harness'
@@ -52,17 +52,13 @@ ${callByIdExports}`,
 describe.each(startBundlers)('%s build', (bundler) => {
   let build: StartBuild | undefined
   let failure: StartBuildError | undefined
-  let dispose: (() => Promise<void>) | undefined
 
   beforeAll(async () => {
     try {
-      build = await buildStart({
+      build = await buildStartShared({
         bundler,
         files,
         entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-        registerCleanup: (cleanup) => {
-          dispose = cleanup
-        },
       })
     } catch (error) {
       if (!(error instanceof StartBuildError)) {
@@ -70,8 +66,8 @@ describe.each(startBundlers)('%s build', (bundler) => {
       }
       failure = error
     }
+    return () => build?.close()
   }, timeout)
-  afterAll(() => dispose?.())
 
   test('the route renders and its handler answers on the server', async () => {
     if (failure) {

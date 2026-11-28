@@ -8,13 +8,14 @@
  * correctness, not equality). Builds go through Start's Vite and Rsbuild
  * plugins (build-harness.ts).
  */
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import {
   expectDeterministic,
   expectRelocatable,
 } from '@tanstack/compiler-test-utils/determinism'
 import {
   buildStart,
+  buildStartShared,
   callByIdExports,
   callByIdPrelude,
   startBundlers,
@@ -187,9 +188,8 @@ describe.each(startBundlers)('%s build', (bundler) => {
     let oppositeEnvironments: Awaited<ReturnType<typeof observe>>
     let first: Awaited<ReturnType<typeof observe>>
     let reordered: Awaited<ReturnType<typeof observe>>
-    let cleanup: (() => Promise<void>) | undefined
     beforeAll(async () => {
-      const build = await buildStart({
+      const build = await buildStartShared({
         bundler,
         files: {
           'src/a.ts': appFiles['src/a.ts']!,
@@ -200,17 +200,14 @@ describe.each(startBundlers)('%s build', (bundler) => {
         },
         entry,
         start: { serverFns: { generateFunctionId: () => 'same-id' } },
-        registerCleanup: (dispose) => {
-          cleanup = dispose
-        },
       })
       oppositeEnvironments = await observe(build)
       first = await observe(await build.rebuild(collisionEntries(['a', 'b'])))
       reordered = await observe(
         await build.rebuild(collisionEntries(['b', 'a'])),
       )
+      return () => build.close()
     }, timeout)
-    afterAll(() => cleanup?.())
 
     test('each client id runs its own handler in the SSR build in either discovery order', () => {
       for (const observation of [oppositeEnvironments, first, reordered]) {

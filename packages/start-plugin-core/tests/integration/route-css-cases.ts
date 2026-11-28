@@ -11,18 +11,11 @@
  * route, and, for two routes that share a module, after a reload there (the
  * page the server renders at the route).
  */
-import {
-  afterAll,
-  beforeAll,
-  describe,
-  expect,
-  onTestFinished,
-  test,
-} from 'vitest'
+import { beforeAll, describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
-import { buildStart } from '../build-harness'
-import { startDevServer } from '../dev-server'
-import { startRsbuildStartDevServer } from '../rsbuild-dev-server'
+import { buildStartShared } from '../build-harness'
+import { startDevServerShared } from '../dev-server'
+import { startRsbuildStartDevServerShared } from '../rsbuild-dev-server'
 import { createStartHost } from '../start-host'
 import { reactApp } from './hydrate-dev-edits'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
@@ -204,52 +197,33 @@ export function routeCssSuite(
   describe.each(['dev', 'build'] as const)(
     `${bundlerName[bundler]} %s`,
     (mode) => {
-      const cleanups: Array<() => Promise<void>> = []
-      const registerCleanup = (cleanup: () => Promise<void>) => {
-        cleanups.push(cleanup)
-      }
       let url: string
       beforeAll(async () => {
-        if (bundler === 'vite') {
-          if (mode === 'dev') {
-            const server = await startDevServer({
-              browser: true,
-              registerCleanup,
-              files: { ...reactApp, ...files },
-            })
-            url = server.url!
-          } else {
-            const host = await createStartHost({ serve: false, files })
-            registerCleanup(() => host.close())
-            url = (await host.preview()).url
-          }
-        } else if (mode === 'dev') {
-          const server = await startRsbuildStartDevServer({
-            browser: true,
-            registerCleanup,
-            config: {
-              ...rsbuildConfig,
-              // Start serves the pages, not an HTML template
-              tools: { htmlPlugin: false },
-            },
-            files: { ...rsbuildEntries, ...files },
-          })
-          url = server.url!
-        } else {
-          const build = await buildStart({
-            bundler,
-            registerCleanup,
-            rsbuildConfig,
-            files: { ...rsbuildEntries, ...files },
-          })
-          url = (await build.preview(registerCleanup)).url
-        }
+        const opened = await (bundler === 'vite'
+          ? mode === 'dev'
+            ? startDevServerShared({
+                browser: true,
+                files: { ...reactApp, ...files },
+              })
+            : createStartHost({ serve: false, files })
+          : mode === 'dev'
+            ? startRsbuildStartDevServerShared({
+                browser: true,
+                config: {
+                  ...rsbuildConfig,
+                  // Start serves the pages, not an HTML template
+                  tools: { htmlPlugin: false },
+                },
+                files: { ...rsbuildEntries, ...files },
+              })
+            : buildStartShared({
+                bundler,
+                rsbuildConfig,
+                files: { ...rsbuildEntries, ...files },
+              }))
+        url = 'preview' in opened ? (await opened.preview()).url : opened.url!
+        return () => opened.close()
       }, timeout)
-      afterAll(async () => {
-        for (const cleanup of cleanups.reverse()) {
-          await cleanup()
-        }
-      })
 
       /** A page of the app at `/`, hydrated, everything it loads loaded. */
       const openHome = async () => {

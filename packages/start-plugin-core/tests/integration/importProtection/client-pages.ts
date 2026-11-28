@@ -9,13 +9,14 @@
  * dependencies and initial/async chunks.
  */
 import { diagnosticsOf } from '@tanstack/compiler-test-utils/diagnostics'
-import { startDevServer } from '../../dev-server'
+import { startDevServer, startDevServerShared } from '../../dev-server'
 import { startProtectedDevServer } from '../../importProtection/start-apps'
 import {
   clientPage,
   runInClient,
   startRsbuildDevServer,
   startRsbuildStartDevServer,
+  startRsbuildStartDevServerShared,
   throwUncaught,
   withRecordedPage,
 } from '../../rsbuild-dev-server'
@@ -71,17 +72,29 @@ import(/* @vite-ignore */ new URLSearchParams(location.search).get('entry'))
 export function startBrowserStartDevServer(
   options: Parameters<typeof startDevServer>[0],
 ) {
-  return startDevServer({
-    ...options,
-    browser: true,
-    plugins: (app) => [
-      clientFixturePlugin,
-      ...(typeof options.plugins === 'function'
-        ? options.plugins(app)
-        : (options.plugins ?? [])),
-    ],
-  })
+  return startDevServer(browserOptions(options))
 }
+
+/** `startBrowserStartDevServer` for a server several tests share: the caller closes it. */
+export function startBrowserStartDevServerShared(
+  options: Parameters<typeof startDevServer>[0],
+) {
+  return startDevServerShared(browserOptions(options))
+}
+
+/** A Vite dev server's options with the fixture page (`clientFixturePlugin`). */
+const browserOptions = (
+  options: Parameters<typeof startDevServer>[0],
+): Parameters<typeof startDevServer>[0] => ({
+  ...options,
+  browser: true,
+  plugins: (app) => [
+    clientFixturePlugin,
+    ...(typeof options.plugins === 'function'
+      ? options.plugins(app)
+      : (options.plugins ?? [])),
+  ],
+})
 
 /**
  * Loads `entry` in the fixture page of a Vite dev server started with
@@ -193,4 +206,11 @@ export function startBrowserRsbuildStartDevServer(
   options: Parameters<typeof startRsbuildStartDevServer>[0],
 ) {
   return startRsbuildStartDevServer({ ...options, ...clientPage })
+}
+
+/** `startBrowserRsbuildStartDevServer` for a server several tests share: the caller closes it. */
+export function startBrowserRsbuildStartDevServerShared(
+  options: Parameters<typeof startRsbuildStartDevServer>[0],
+) {
+  return startRsbuildStartDevServerShared({ ...options, ...clientPage })
 }

@@ -5,7 +5,7 @@
  * counterpart: rsbuild/route-edits-after-tree-rebuild.test.ts.
  */
 import react from '@vitejs/plugin-react'
-import { describe, onTestFinished, test } from 'vitest'
+import { describe, test } from 'vitest'
 import { settlePage } from '@tanstack/compiler-test-utils/hmr-sync'
 import { startDevServer } from '../dev-server'
 import {
@@ -39,17 +39,14 @@ describe('Vite dev: route edits after a route tree rebuild', () => {
         plugins: [react()],
         files: treeRebuildApp,
       })
-      await editLoaderAroundTreeRebuilds(
-        {
-          url: server.url,
-          edit: (files) => server.edit(files),
-          rename: (from, to) => server.rename(from, to),
-          settled: () => server.idle(),
-          // Vite reloads the pages of a changed route tree
-          settlePage: (page, inFlight) => settlePage(server, page, inFlight),
-        },
-        onTestFinished,
-      )
+      await editLoaderAroundTreeRebuilds({
+        url: server.url,
+        edit: (files) => server.edit(files),
+        rename: (from, to) => server.rename(from, to),
+        settled: () => server.idle(),
+        // Vite reloads the pages of a changed route tree
+        settlePage: (page, inFlight) => settlePage(server, page, inFlight),
+      })
     },
     timeout,
   )

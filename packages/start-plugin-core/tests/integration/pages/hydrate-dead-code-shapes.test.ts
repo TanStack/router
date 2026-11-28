@@ -1,11 +1,12 @@
-import { expect, test } from 'vitest'
+import { beforeAll, expect, test } from 'vitest'
 import {
   deadCodeShapes,
   depSource,
   recordFile,
   shapeSetup,
 } from '@tanstack/compiler-test-utils/dead-code-shapes'
-import { expectRendersLikeSource, useHydrateHost } from '../../render'
+import { createHydrateHost, expectRendersLikeSource } from '../../render'
+import type { HydrateHost } from '../../render'
 
 // On the client `<Hydrate>` children move out of the parent module into
 // split code the page loads on demand (SPEC J5.2). The move takes with it,
@@ -17,7 +18,11 @@ import { expectRendersLikeSource, useHydrateHost } from '../../render'
 // in a real page (`render.ts`). The same shapes run through every removal
 // of the Start compiler in start-compiler-dead-code-shapes.test.ts.
 
-const hosts = useHydrateHost()
+let hosts: HydrateHost
+beforeAll(async () => {
+  hosts = await createHydrateHost()
+  return () => hosts.close()
+})
 
 for (const shape of deadCodeShapes) {
   test(`client: the parent drops what only the children use through ${shape.name}`, async () => {
@@ -29,7 +34,7 @@ export { ${shape.kept.binding} as aliased }`
       ? `\nexport { calls as recorded } from './record'`
       : ''
     const { client } = await expectRendersLikeSource(
-      await hosts(),
+      hosts,
       `import { Hydrate } from '@tanstack/react-start'
 import { load } from '@tanstack/react-start/hydration'
 ${shapeSetup(shape, './dep')}

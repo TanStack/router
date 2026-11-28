@@ -10,7 +10,7 @@
  */
 import { createRequire } from 'node:module'
 import mdx from '@mdx-js/rollup'
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import {
   diagnosticPosition,
   expectDiagnostic,
@@ -19,6 +19,7 @@ import {
 import {
   StartBuildError,
   buildStart,
+  buildStartShared,
   callByIdExports,
   callByIdPrelude,
   startBundlers,
@@ -77,19 +78,15 @@ const mdxConfig = {
 
 describe.each(startBundlers)('%s build', (bundler) => {
   let build: StartBuild
-  let dispose: (() => Promise<void>) | undefined
   beforeAll(async () => {
-    build = await buildStart({
+    build = await buildStartShared({
       bundler,
       files,
       entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
       ...mdxConfig,
-      registerCleanup: (cleanup) => {
-        dispose = cleanup
-      },
     })
+    return () => build.close()
   }, timeout)
-  afterAll(() => dispose?.())
 
   test('the client calls an MDX module’s server fn by its id, without its handler', async () => {
     expect(build.client.where('MARK_MDX_HANDLER')).toBe('nowhere')

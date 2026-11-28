@@ -23,6 +23,7 @@ import { afterAll, describe, expect, test } from 'vitest'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
 import {
   buildStart,
+  buildStartShared,
   callByIdExports,
   callByIdPrelude,
   requestsOfPrelude,
@@ -354,9 +355,8 @@ interface BuiltRows {
 async function buildRows(
   bundler: StartBundler,
   list: Array<Row>,
-  registerCleanup?: (cleanup: () => Promise<void>) => void,
 ): Promise<BuiltRows> {
-  const build = await buildStart({
+  const build = await buildStartShared({
     bundler,
     files: appFiles(list),
     entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
@@ -375,7 +375,6 @@ async function buildRows(
     },
     symlinks: workspacePackageLinks(['@tanstack/start-client-core']),
     viteConfig: { plugins: [virtualFactories()] },
-    registerCleanup,
   })
   const client = (await build.client.run(clientScript(list))).result as Record<
     string,
@@ -430,15 +429,15 @@ describe.each(startBundlers)('%s build', (bundler) => {
   const list = rows.filter((row) =>
     (row.bundlers ?? startBundlers).includes(bundler),
   )
-  const cleanups: Array<() => Promise<void>> = []
-  afterAll(async () => {
-    await Promise.all(cleanups.map((cleanup) => cleanup()))
-  })
-
   let built: Promise<BuiltRows> | undefined
   /** The app of every row, built and run once. */
-  const shared = () =>
-    (built ??= buildRows(bundler, list, (cleanup) => cleanups.push(cleanup)))
+  const shared = () => (built ??= buildRows(bundler, list))
+  afterAll(() =>
+    built?.then(
+      ({ build }) => build.close(),
+      () => {},
+    ),
+  )
 
   test.each(list)(
     '$name',
@@ -498,15 +497,16 @@ describe('rsbuild build --watch', () => {
     Object.fromEntries(
       Object.entries(files).map(([file, code]) => [`${dir}/${file}`, code]),
     )
-  const cleanups: Array<() => Promise<void>> = []
-  afterAll(async () => {
-    await Promise.all(cleanups.map((cleanup) => cleanup()))
-  })
-
   let rebuilt: Promise<StartBuild> | undefined
   /** The rebuild both edits cause (one watch build). */
+  afterAll(() =>
+    rebuilt?.then(
+      (build) => build.close(),
+      () => {},
+    ),
+  )
   const rebuild = () =>
-    (rebuilt ??= buildStart({
+    (rebuilt ??= buildStartShared({
       bundler: 'rsbuild',
       files: {
         ...inDir(dirs.reexportChain, factoryEdits.reexportChain.files),
@@ -522,7 +522,6 @@ export * as aliased from './edits/aliased/module'
         ...inDir(dirs.reexportChain, factoryEdits.reexportChain.edit),
         ...inDir(dirs.aliasedEnvOnly, factoryEdits.aliasedEnvOnly.edit),
       },
-      registerCleanup: (cleanup) => cleanups.push(cleanup),
     }))
 
   // (The dev server's twin: ../start-compiler-cases.test.ts

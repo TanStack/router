@@ -7,17 +7,10 @@
  * dev servers (the server renders the page first, so it compiles the file
  * before the client) and in their builds, served like a deployed app.
  */
-import {
-  afterAll,
-  beforeAll,
-  describe,
-  expect,
-  onTestFinished,
-  test,
-} from 'vitest'
+import { beforeAll, describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { pluginReact } from '@rsbuild/plugin-react'
-import { buildStart } from '../build-harness'
+import { buildStartShared } from '../build-harness'
 import { startDevServer } from '../dev-server'
 import { startRsbuildStartDevServer } from '../rsbuild-dev-server'
 import {
@@ -25,7 +18,7 @@ import {
   pageEntries,
   rootDocument,
   routerFile,
-  serveStartBuild,
+  serveStartBuildShared,
   startPageEntries,
 } from './start-compose-app'
 
@@ -102,33 +95,22 @@ describe.each(Object.keys(devServers))('%s dev', (bundler) => {
 })
 
 describe.each(['vite', 'rsbuild'] as const)('%s build', (bundler) => {
-  const cleanups: Array<() => Promise<void>> = []
   let url: string
 
   beforeAll(async () => {
-    const build = await buildStart({
+    const build = await buildStartShared({
       bundler,
       files: { ...startPageEntries, ...pageEntries, ...app },
       entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-      registerCleanup: (cleanup) => cleanups.push(cleanup),
     })
-    url = (
-      await serveStartBuild(build, {
-        registerCleanup: (cleanup) => cleanups.push(cleanup),
-      })
-    ).url
+    url = (await serveStartBuildShared(build)).url
+    return () => build.close()
   }, timeout)
-
-  afterAll(async () => {
-    await Promise.all(cleanups.map((cleanup) => cleanup()))
-  })
 
   test(
     'the client calls the top-level server fn, not the hoisted one the provider named alike',
     async () => {
-      const page = await openAppPage({ url }, '/', {
-        registerCleanup: onTestFinished,
-      })
+      const page = await openAppPage({ url }, '/')
       expect(await probe(page)).toBe('fn_1=MARK_TOP listed=2')
     },
     timeout,

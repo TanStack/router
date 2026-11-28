@@ -18,7 +18,7 @@
  */
 import { afterAll, describe, expect, test } from 'vitest'
 import { mentionsFile } from '@tanstack/compiler-test-utils/diagnostics'
-import { startDevServer } from '../../dev-server'
+import { startDevServerShared } from '../../dev-server'
 import {
   expectMockAccess,
   probeMockPrelude,
@@ -72,10 +72,16 @@ const uses: Record<string, string> = {
 }
 
 const servers = new Map<string, Promise<DevServer>>()
-const cleanups: Array<() => Promise<void>> = []
-afterAll(async () => {
-  await Promise.all(cleanups.map((cleanup) => cleanup()))
-})
+afterAll(() =>
+  Promise.all(
+    [...servers.values()].map((server) =>
+      server.then(
+        (opened) => opened.close(),
+        () => {},
+      ),
+    ),
+  ),
+)
 
 /**
  * The dev server of `mockAccess`, started once for the file: Start's whole
@@ -85,10 +91,9 @@ function serverOf(mockAccess: ImportProtectionOptions['mockAccess']) {
   const key = String(mockAccess)
   let server = servers.get(key)
   if (!server) {
-    server = startDevServer({
+    server = startDevServerShared({
       files,
       browser: true,
-      registerCleanup: (cleanup) => cleanups.push(cleanup),
       plugins: [clientFixturePlugin],
       start: {
         router: { entry: 'entry.ts' },

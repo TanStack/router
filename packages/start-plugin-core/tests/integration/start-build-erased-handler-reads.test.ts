@@ -7,9 +7,9 @@
  * server-functions e2e apps: the shared module and the entry held the inner
  * server fn, +65 B and +84 B eager against main).
  */
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import {
-  buildStart,
+  buildStartShared,
   callByIdExports,
   callByIdPrelude,
   startBundlers,
@@ -58,21 +58,16 @@ const outerId = 'id-outerFn_createServerFn_handler'
 
 describe.each(startBundlers)('%s build', (bundler) => {
   let build: StartBuild
-  const cleanups: Array<() => Promise<void>> = []
 
   beforeAll(async () => {
-    build = await buildStart({
+    build = await buildStartShared({
       bundler,
       files,
       entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
       start: { serverFns: { generateFunctionId: idOf } },
-      registerCleanup: (cleanup) => cleanups.push(cleanup),
     })
+    return () => build.close()
   }, timeout)
-
-  afterAll(async () => {
-    await Promise.all(cleanups.map((cleanup) => cleanup()))
-  })
 
   test(
     'a server fn only an erased handler and the split component call is in the lazy chunk; both calls give one payload',

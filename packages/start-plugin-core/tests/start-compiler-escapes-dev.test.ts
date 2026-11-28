@@ -4,21 +4,26 @@
  * real Vite dev server: a use the client analysis cannot follow fails the
  * module at the use.
  */
-import { expect, test } from 'vitest'
+import { beforeAll, expect, test } from 'vitest'
 import {
   diagnosticPosition,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { compileError, useStartHost } from './regression-helpers'
+import { compileError, createStartHost } from './regression-helpers'
 import { expectCompileError } from './diagnostics'
+import type { StartHost } from './start-host'
 
-const host = useStartHost()
+let host: StartHost
+beforeAll(async () => {
+  host = await createStartHost()
+  return () => host.close()
+})
 
 test('a builder passed to unknown code fails the client module at the use', async () => {
   const source = `import { createServerFn } from '@tanstack/react-start'
 const wrap = (b: any) => Object.assign(b, {})
 export const fn = wrap(createServerFn()).handler(async () => 'secret')`
-  const startCase = await (await host()).case({ 'module.tsx': source })
+  const startCase = await host.case({ 'module.tsx': source })
   expectCompileError(await compileError(startCase), {
     source,
     at: 'createServerFn())',
@@ -37,7 +42,7 @@ export const requireRole = (role: string) =>
     return next()
   })
 `
-  const startCase = await (await host()).case({ 'module.tsx': code })
+  const startCase = await host.case({ 'module.tsx': code })
   expect(await compileError(startCase)).toBeUndefined()
   expect(await compileError(startCase, 'ssr')).toBeUndefined()
   expect(await compileError(startCase)).toBeUndefined()
@@ -63,7 +68,7 @@ const pick = flag
   ? createIsomorphicFn().client(() => createServerFn({ method: 'POST' }))
   : createIsomorphicFn().client(() => undefined)
 export const leak = pick().handler(async () => 'secret')`
-  const startCase = await (await host()).case({ 'module.tsx': source })
+  const startCase = await host.case({ 'module.tsx': source })
   expectCompileError(await compileError(startCase), {
     source,
     at: 'createIsomorphicFn().client(() => createServerFn',
@@ -100,7 +105,7 @@ test.each([
   'a builder in a var redeclaring $redeclares fails the client module',
   async ({ head, at }) => {
     const source = redeclared(head)
-    const startCase = await (await host()).case({ 'module.js': source })
+    const startCase = await host.case({ 'module.js': source })
     expectCompileError(await compileError(startCase, 'client', 'module.js'), {
       source,
       at,

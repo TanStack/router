@@ -18,13 +18,6 @@ import {
 } from '../regression-helpers'
 import type { StartHost } from '../regression-helpers'
 
-const hosts: Array<StartHost> = []
-afterAll(async () => {
-  for (const host of hosts) {
-    await host.close()
-  }
-})
-
 const builder = `import { createServerFn } from '@tanstack/vue-start'
 export const base = createServerFn()
 export const label = 'x'
@@ -44,12 +37,15 @@ ${script}
 
 /** One dev host for the cases of this file (each case is its own module). */
 let devHost: Promise<StartHost> | undefined
+afterAll(() =>
+  devHost?.then(
+    (host) => host.close(),
+    () => {},
+  ),
+)
 
 async function refusalOf(source: string) {
-  devHost ??= createStartHost({ framework: 'vue' }).then((host) => {
-    hosts.push(host)
-    return host
-  })
+  devHost ??= createStartHost({ framework: 'vue' })
   const startCase = await (
     await devHost
   ).case({

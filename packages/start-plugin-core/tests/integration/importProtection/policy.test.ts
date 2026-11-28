@@ -15,10 +15,14 @@ import { violationRecorder } from '../../importProtection/start-apps'
 import {
   runInClient,
   runViteClient,
+  startBrowserStartDevServerShared as startDevServerShared,
+  startBrowserRsbuildStartDevServerShared as startRsbuildStartDevServerShared,
+} from './client-pages'
+import { importersIn, runRsbuildSsr, ssrNodeOutput } from './hosts'
+import type {
   startBrowserStartDevServer as startDevServer,
   startBrowserRsbuildStartDevServer as startRsbuildStartDevServer,
 } from './client-pages'
-import { importersIn, runRsbuildSsr, ssrNodeOutput } from './hosts'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'
 
 const timeout = 60_000
@@ -93,20 +97,21 @@ const mocked = { value: 'a safe mock', reported: true }
 describe('rsbuild dev', () => {
   // One dev server for every row.
   let started: ReturnType<typeof startRsbuildStartDevServer> | undefined
-  let dispose: (() => Promise<void>) | undefined
-  afterAll(() => dispose?.())
+  afterAll(() =>
+    started?.then(
+      (opened) => opened.close(),
+      () => {},
+    ),
+  )
   const recorder = violationRecorder(importProtection)
   const start = () =>
-    (started ??= startRsbuildStartDevServer({
+    (started ??= startRsbuildStartDevServerShared({
       compileTimeout,
       browser: true,
       hmr: false,
       config: ssrNodeOutput,
       files: app,
       start: { importProtection: recorder.importProtection },
-      registerCleanup: (cleanup) => {
-        dispose = cleanup
-      },
     }))
 
   /** What a use of the client returns, and whether its importer is reported. */
@@ -197,19 +202,20 @@ export const getRouter = () => undefined
   }
 
   let started: ReturnType<typeof startDevServer> | undefined
-  let dispose: (() => Promise<void>) | undefined
-  afterAll(() => dispose?.())
+  afterAll(() =>
+    started?.then(
+      (opened) => opened.close(),
+      () => {},
+    ),
+  )
   const recorder = violationRecorder(importProtection)
 
   /** What the client gets, and the importers reported for the client. */
   async function outcome() {
-    const server = await (started ??= startDevServer({
+    const server = await (started ??= startDevServerShared({
       browser: true,
       start: { importProtection: recorder.importProtection },
       files: viteApp,
-      registerCleanup: (cleanup) => {
-        dispose = cleanup
-      },
     }))
     const { result: value } = await runViteClient(
       server,

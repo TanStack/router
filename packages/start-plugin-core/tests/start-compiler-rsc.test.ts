@@ -1,5 +1,5 @@
 /**
- * The compile-level RSC tier on Vite (`useStartHost({ rsc: true })`: Start's
+ * The compile-level RSC tier on Vite (`createStartHost({ rsc: true })`: Start's
  * `rsc: { enabled: true }` and `@vitejs/plugin-rsc`, a dev server whose
  * `rsc` environment renders server components and is Start's server-fn
  * provider). A case module is compiled and evaluated in each environment,
@@ -24,19 +24,22 @@
  * Source: RSC investigation (11-19: no compile-level row compiled an `rsc`
  * environment).
  */
-import { describe, expect, test } from 'vitest'
-import { useStartHost } from './start-host'
+import { beforeAll, describe, expect, test } from 'vitest'
+import { createStartHost } from './start-host'
+import type { StartHost } from './start-host'
 
 describe('Vite with RSC: client references', () => {
-  const host = useStartHost({ rsc: true })
+  let host: StartHost
+  beforeAll(async () => {
+    host = await createStartHost({ rsc: true })
+    return () => host.close()
+  })
 
   // SPEC J4.17: the compiler keeps the directive, so the RSC plugin makes
   // the module's exports client references in the provider; SSR and the
   // client get the component.
   test("a 'use client' module is a client reference in the rsc environment and a component in SSR and the client", async () => {
-    const c = await (
-      await host()
-    ).case({
+    const c = await host.case({
       'module.tsx': `'use client'
 export function Box() {
   return <span>MARK_BOX_BODY</span>
@@ -55,7 +58,11 @@ export function Box() {
 })
 
 describe('Vite with RSC: the server-fn provider', () => {
-  const host = useStartHost({ rsc: true })
+  let host: StartHost
+  beforeAll(async () => {
+    host = await createStartHost({ rsc: true })
+    return () => host.close()
+  })
 
   const serverFnModule = {
     'module.ts': `import { createServerFn } from '@tanstack/react-start'
@@ -65,7 +72,7 @@ export const greet = createServerFn().handler(() => 'MARK_GREET_HANDLER')
 
   // SPEC J4.12: SSR and the client get callers, never the handler.
   test('SSR and the client serve no handler', async () => {
-    const c = await (await host()).case(serverFnModule)
+    const c = await host.case(serverFnModule)
     expect(await c.served('module.ts', 'ssr')).not.toContain(
       'MARK_GREET_HANDLER',
     )
@@ -80,7 +87,7 @@ export const greet = createServerFn().handler(() => 'MARK_GREET_HANDLER')
     'a server fn called from SSR and from the browser runs the handler of the provider',
     { timeout: 15_000 },
     async () => {
-      const c = await (await host()).case(serverFnModule)
+      const c = await host.case(serverFnModule)
       expect(
         await c.inRequest(async () => (await c.ssr('module.ts')).greet()),
       ).toBe('MARK_GREET_HANDLER')
@@ -99,7 +106,11 @@ export const greet = createServerFn().handler(() => 'MARK_GREET_HANDLER')
 // P4; Astra As6). (The dead-code removal rule's other rows:
 // start-compiler-removal-definitions.test.ts.)
 describe('RSC: the caller and the provider', () => {
-  const host = useStartHost({ rsc: true })
+  let host: StartHost
+  beforeAll(async () => {
+    host = await createStartHost({ rsc: true })
+    return () => host.close()
+  })
   const record = `export const calls: Array<string> = []
 export const record = (name: string) => {
   calls.push(name)
@@ -129,9 +140,7 @@ export const k = kept
 `,
     },
   ])('$name', { timeout: 15_000 }, async ({ code }) => {
-    const c = await (
-      await host()
-    ).case({
+    const c = await host.case({
       'module.tsx': code,
       'record.ts': record,
     })
@@ -147,7 +156,11 @@ return [...(await load('record.ts')).calls]`)
 })
 
 describe('Vite with RSC: RSC CSS', () => {
-  const host = useStartHost({ rsc: true })
+  let host: StartHost
+  beforeAll(async () => {
+    host = await createStartHost({ rsc: true })
+    return () => host.close()
+  })
 
   /**
    * A module that imports its own stylesheet (no component of its own, so
@@ -183,7 +196,7 @@ export const ternary = (flag: boolean) =>
   ])(
     'renderToReadableStream of $name carries the stylesheet of its module',
     async ({ render }) => {
-      const c = await (await host()).case(streamModule)
+      const c = await host.case(streamModule)
       const payload = await text(render(await c.rsc()))
       expect(payload).toContain('MARK_')
       expect(payload).toContain(c.url('page.css'))

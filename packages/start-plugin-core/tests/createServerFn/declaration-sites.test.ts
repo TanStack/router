@@ -7,23 +7,28 @@
  * calls of the server fns from the client (by id, through Start's server
  * entry) and from server code.
  */
-import { describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   callFromClient,
   callOnServer,
   callServerFnThroughCallers,
   compileError,
+  createStartHost,
   expectCompileError,
   inPage,
   serveCase,
   serverFnUrls,
-  useStartHost,
 } from '../regression-helpers'
 import { placementModule } from './placements'
+import type { StartHost } from '../start-host'
 import type { PlacementHead } from './placements'
 
-const host = useStartHost()
+let host: StartHost
+beforeAll(async () => {
+  host = await createStartHost()
+  return () => host.close()
+})
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 const top = `export const top = createServerFn().handler(async () => 'top')\n`
@@ -78,7 +83,7 @@ test.each(literalPlacements)(
   'a server fn declared in $name compiles to valid modules or is rejected',
   async ({ code, hasTop }) => {
     const source = `${head}${code}`
-    const startCase = await (await host()).case({ 'module.tsx': source })
+    const startCase = await host.case({ 'module.tsx': source })
     for (const environment of ['client', 'ssr'] as const) {
       const failure = await compileError(startCase, environment)
       if (failure !== undefined) {
@@ -117,7 +122,7 @@ export const fn = wrap(wrap(createServerFn().handler(async () => db.inner() ?? '
 test.each<PlacementHead>(['createServerFn alone', 'another Start factory'])(
   'with %s imported, a server fn wrapped in two calls works like an unwrapped one',
   async (importHead) => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': placementModule(importHead, wrappedTwice),
       ...dbFiles,
     })
@@ -175,9 +180,7 @@ describe('a nested server fn capturing a binding of its function', () => {
     'is a compile error at the capture in every environment: $name',
     async ({ code, at }) => {
       const source = `${head}import { useState } from 'react'\nimport { db } from './db.server'\n${code}`
-      const startCase = await (
-        await host()
-      ).case({ 'module.tsx': source, ...dbFiles })
+      const startCase = await host.case({ 'module.tsx': source, ...dbFiles })
       for (const environment of ['client', 'ssr'] as const) {
         const failure = await compileError(startCase, environment)
         expect(failure, `${environment} serves the module`).toBeDefined()
@@ -194,7 +197,7 @@ describe('a nested server fn capturing a binding of its function', () => {
 test('rejects a validator call without a validator', async () => {
   const source = `import { createServerFn, createServerOnlyFn } from '@tanstack/react-start'
 export const fn = createServerFn().validator().handler(async () => 1)`
-  const startCase = await (await host()).case({ 'module.tsx': source })
+  const startCase = await host.case({ 'module.tsx': source })
   for (const environment of ['client', 'ssr'] as const) {
     expectCompileError(await compileError(startCase, environment), {
       source,
@@ -215,7 +218,7 @@ test.each([
     handler: `.handler<Promise<{ secret: string }>>(async () => ({ secret: 'SERVER_SECRET' }))`,
   },
 ])('extracts a server fn whose handler has $name', async ({ handler }) => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `import { createServerFn } from '@tanstack/react-start'
 export const fn = createServerFn({ method: 'GET' })${handler}`,
   })
@@ -235,9 +238,7 @@ export const fn = createServerFn({ method: 'GET' })${handler}`,
 test('a server fn created through an optional call chain compiles like a plain chain or is rejected', async () => {
   const code = `${head}import { db } from './db.server'
 export const fn = createServerFn()?.handler(async () => db.inner() ?? 'MARK_INNER_HANDLER')`
-  const startCase = await (
-    await host()
-  ).case({
+  const startCase = await host.case({
     'module.tsx': code,
     ...dbFiles,
   })
@@ -249,7 +250,7 @@ export const fn = createServerFn()?.handler(async () => db.inner() ?? 'MARK_INNE
     })
     return
   }
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': code,
     ...dbFiles,
   })
@@ -335,7 +336,7 @@ function check(value: unknown) {
     'works or is a compile error at it in every environment: $name',
     async ({ code, at, read, result }) => {
       const source = `${head}${code}`
-      const startCase = await (await host()).case({ 'module.tsx': source })
+      const startCase = await host.case({ 'module.tsx': source })
       const failures = {
         client: await compileError(startCase, 'client'),
         ssr: await compileError(startCase, 'ssr'),
@@ -346,7 +347,7 @@ function check(value: unknown) {
         }
       }
       if (failures.client === undefined && failures.ssr === undefined) {
-        const served = await serveCase(await host(), { 'module.tsx': source })
+        const served = await serveCase(host, { 'module.tsx': source })
         expect(await callServerFnThroughCallers(served, read)).toEqual(result)
       } else if (failures.client === undefined) {
         // The server refuses the module, so no call reaches a handler: the
@@ -400,7 +401,7 @@ export const quoted = { 'get-it': createServerFn().handler(async () => 'SITE_quo
     'module.b.get': 'SITE_b',
     "module.quoted['get-it']": 'SITE_quoted',
   }
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `${head}${Object.values(sites).join('\n')}\n`,
   })
   expect(served.code.client).not.toContain('SITE_')
@@ -415,7 +416,7 @@ export const quoted = { 'get-it': createServerFn().handler(async () => 'SITE_quo
 // server fns: each call runs its own handler, also where their dev ids are
 // built from the module and a per-module key.
 test("a property named 'x#1' beside two server fns named x: each runs its own handler", async () => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `${head}export const one = { x: createServerFn().handler(async () => 'one.x') }
 export const two = {
   x: createServerFn().handler(async () => 'two.x'),

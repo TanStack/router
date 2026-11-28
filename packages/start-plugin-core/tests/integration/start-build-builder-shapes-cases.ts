@@ -9,6 +9,7 @@ import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   StartBuildError,
   buildStart,
+  buildStartShared,
   callByIdExports,
   callByIdPrelude,
   sharedBuildFailure,
@@ -1226,22 +1227,23 @@ export const fn = base.handler(async () => 'MARK_SERVER_SECRET')
     const shared = rows.filter(sharesBuild)
     /** The rows of `shared` in one build (its failure fails each of them, naming the rows it names). */
     let together: Promise<StartBuild> | undefined
-    let dispose: (() => Promise<void>) | undefined
     const sharedBuild = () =>
-      (together ??= buildStart({
+      (together ??= buildStartShared({
         bundler,
         files: sharedApp(shared),
         entry: 'src/entry.ts',
-        registerCleanup: (cleanup) => {
-          dispose = cleanup
-        },
       }).catch((error: unknown) => {
         throw sharedBuildFailure(
           error,
           shared.map(({ name }, index) => ({ path: `src/c${index}/`, name })),
         )
       }))
-    afterAll(() => dispose?.())
+    afterAll(() =>
+      together?.then(
+        (opened) => opened.close(),
+        () => {},
+      ),
+    )
 
     test.each(rows)(
       '$name compiles',

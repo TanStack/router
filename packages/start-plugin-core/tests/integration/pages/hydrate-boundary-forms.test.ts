@@ -13,7 +13,7 @@
  * observes (the client receiving the fallback, `prefetch`, `onHydrated`)
  * is checked by real pages (integration/hydrate-pages*.test.ts).
  */
-import { describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import {
   diagnosticPosition,
   findDiagnostics,
@@ -25,6 +25,8 @@ import {
   expectNotSplit,
 } from '../../regression-helpers'
 import {
+  createHydrateHost,
+  createSolidHost,
   editableFiles,
   expectClientRendersLikeServer,
   expectHydratedCleanly,
@@ -32,16 +34,21 @@ import {
   renderClient,
   renderServer,
   renderSource,
-  useEditHost,
-  useHydrateHost,
-  useSolidHost,
+  startEditHost,
   withoutHydrationIds,
 } from '../../render'
-import type { HydrateHost, RenderOptions } from '../../render'
+import type { HydrateHost, RenderOptions, SolidHost } from '../../render'
 
-const hosts = useHydrateHost()
-const solidHost = useSolidHost()
-const editHost = useEditHost()
+let hosts: HydrateHost
+beforeAll(async () => {
+  hosts = await createHydrateHost()
+  return () => hosts.close()
+})
+let solidHost: SolidHost
+beforeAll(async () => {
+  solidHost = await createSolidHost()
+  return () => solidHost.close()
+})
 
 const head = `import { Hydrate } from '@tanstack/react-start'
 import { load } from '@tanstack/react-start/hydration'
@@ -56,7 +63,7 @@ async function expectServerRendersLikeSource(
   code: string,
   options: RenderOptions = {},
 ) {
-  const started = await hosts()
+  const started = hosts
   const source = await renderSource(started, code, options)
   const server = await renderServer(started, code, options)
   expect(withoutHydrationIds(server.html)).toBe(source.html)
@@ -204,7 +211,7 @@ export function Page() {
     'client: a boundary with $name renders like the server',
     async ({ code }) => {
       const { client } = await expectClientRendersLikeServer(
-        await hosts(),
+        hosts,
         `${formsHead}${code}`,
         { split: !code.includes('split={false}') },
       )
@@ -325,18 +332,14 @@ export function Page() {
 export function Page(props) {
   ${setup}return <Hydrate when={${when}} fallback={<p>fallback-marker</p>}><p>child</p></Hydrate>
 }`
-      const { server, client } = await expectRendersLikeSource(
-        await hosts(),
-        code,
-        {
-          // A strategy of the app's own hydration package, in each realm.
-          setup: `import { media } from '@tanstack/react-start/hydration'
+      const { server, client } = await expectRendersLikeSource(hosts, code, {
+        // A strategy of the app's own hydration package, in each realm.
+        setup: `import { media } from '@tanstack/react-start/hydration'
 globalThis.__propsWhen = media('(max-width: 2px)')
 export const cleanup = ['__propsWhen']`,
-          render: 'h(m.Page, { when: globalThis.__propsWhen, eager: false })',
-          split: !closed,
-        },
-      )
+        render: 'h(m.Page, { when: globalThis.__propsWhen, eager: false })',
+        split: !closed,
+      })
       if (closed) {
         expect(client.lazy).toEqual([])
       }
@@ -470,7 +473,7 @@ describe('children that cannot be split', () => {
   test.each(unsafeChildren)(
     'client: $name is rejected at the boundary',
     async ({ code }) => {
-      await expectExtractionRejected(await hosts(), code())
+      await expectExtractionRejected(hosts, code())
     },
   )
 
@@ -479,7 +482,7 @@ describe('children that cannot be split', () => {
   test.each(unsafeChildren)(
     'client: $name with a dynamic split={flag} is rejected at the boundary',
     async ({ code }) => {
-      await expectExtractionRejected(await hosts(), code(' split={flag}'))
+      await expectExtractionRejected(hosts, code(' split={flag}'))
     },
   )
 
@@ -513,7 +516,7 @@ describe('children that cannot be split', () => {
   ])(
     '$name with split={false} stays in place in both environments',
     async ({ code, render }) => {
-      const { client } = await expectRendersLikeSource(await hosts(), code, {
+      const { client } = await expectRendersLikeSource(hosts, code, {
         files: hooks,
         render,
         split: false,
@@ -526,7 +529,7 @@ describe('children that cannot be split', () => {
   // the parent on both sides, so a hook call there does not stop the split.
   test('a hook call in the props of the boundary runs in the parent render, and the children still split', async () => {
     const { client } = await expectRendersLikeSource(
-      await hosts(),
+      hosts,
       `${head}import { useThing } from './hooks'
 export function Page() {
   return <Hydrate when={useThing()}><p>child</p></Hydrate>
@@ -549,7 +552,7 @@ export const useThing = () => (useId(), idle())`,
     'a dynamic split={flag} (%s) still splits the children',
     async (flag) => {
       const { client } = await expectRendersLikeSource(
-        await hosts(),
+        hosts,
         `${head}export function Page({ flag }) {
   return <Hydrate when={load()} split={flag}><p>child</p></Hydrate>
 }`,
@@ -565,7 +568,7 @@ export const useThing = () => (useId(), idle())`,
   // and still moves `React.useId()` into the chunk.
   test('client: a hook called through a namespace is rejected at the boundary', async () => {
     await expectExtractionRejected(
-      await hosts(),
+      hosts,
       `import * as React from 'react'
 ${childrenPage('<p id={React.useId()}>x</p>')}`,
     )
@@ -629,9 +632,10 @@ export function Page(${props}) {
   ])(
     'client: $name in the children is rejected at the call',
     async ({ code, at }) => {
-      const startCase = await (
-        await hosts()
-      ).start.case({ 'module.tsx': code, 'theme.tsx': theme })
+      const startCase = await hosts.start.case({
+        'module.tsx': code,
+        'theme.tsx': theme,
+      })
       expectCompileError(await compileError(startCase, 'client'), {
         source: code,
         at,
@@ -669,7 +673,7 @@ export function Page() {
   ])(
     'use(Context) $name reads the same context on both sides',
     async ({ code, split, reads }) => {
-      const { client } = await expectRendersLikeSource(await hosts(), code, {
+      const { client } = await expectRendersLikeSource(hosts, code, {
         files: { './theme': theme },
         split,
       })
@@ -680,7 +684,7 @@ export function Page() {
   // A function of the module named `use` is no hook: the children split.
   test('a local function named use in the children is no hook', async () => {
     const { client } = await expectRendersLikeSource(
-      await hosts(),
+      hosts,
       useCall(`const use = (value: unknown) => String(value)`, 'use(1)'),
       { files: { './theme': theme } },
     )
@@ -692,7 +696,7 @@ export function Page() {
     { name: 'this', code: classPage('this'), at: 'this.title2' },
     { name: 'super', code: classPage('super'), at: 'super.title' },
   ])('client: children reading $name are rejected', async ({ code, at }) => {
-    const startCase = await (await hosts()).start.case({ 'module.tsx': code })
+    const startCase = await hosts.start.case({ 'module.tsx': code })
     expectCompileError(await compileError(startCase, 'client'), {
       source: code,
       at,
@@ -816,10 +820,7 @@ export function Page() {
     'client: children $name stay in place with one warning',
     async (row) => {
       const { framework, code } = row
-      const start =
-        framework === 'solid'
-          ? (await solidHost()).start
-          : (await hosts()).start
+      const start = framework === 'solid' ? solidHost.start : hosts.start
       const startCase = await start.case({ 'module.tsx': code })
       await expectNotSplit(
         startCase,
@@ -834,7 +835,7 @@ export function Page() {
     const code = `${head}export function Page() {
   return <Hydrate when={load()}><p>{String(new.target)}</p></Hydrate>
 }`
-    const startCase = await (await hosts()).start.case({ 'module.tsx': code })
+    const startCase = await hosts.start.case({ 'module.tsx': code })
     expectCompileError(await compileError(startCase, 'client'), {
       source: code,
       at: 'new.target)',
@@ -864,7 +865,7 @@ export function Page() {
     </div>
   )
 }`
-    const solid = await solidHost()
+    const solid = solidHost
     const startCase = await solid.start.case({ 'module.tsx': code })
     const failure = await compileError(startCase, 'client')
     if (failure !== undefined) {
@@ -960,7 +961,7 @@ export function Page() {
   ])(
     'Solid: split children with $name build and bind it',
     async ({ code, shows }) => {
-      const mounted = await (await solidHost()).mount(code)
+      const mounted = await solidHost.mount(code)
       expect(mounted.errors).toEqual([])
       for (const text of shows) {
         expect(mounted.html).toContain(text)
@@ -998,7 +999,7 @@ export function Page() {
   }, [])
   return <Hydrate when={load()}><Reveal>{() => ${read}}</Reveal></Hydrate>
 }`
-      const startCase = await (await hosts()).start.case({ 'module.tsx': code })
+      const startCase = await hosts.start.case({ 'module.tsx': code })
       // (a nested boundary splits: it reads `label` in its render)
       await expectNotSplit(startCase, code, 'label}</b>', chunks)
     },
@@ -1014,7 +1015,7 @@ describe('nested boundaries', () => {
   // virtual modules and keep nested ids stable" and the Nested fixture.
   test('a nested boundary and a later sibling hydrate with the ids the server renders', async () => {
     const { client } = await expectRendersLikeSource(
-      await hosts(),
+      hosts,
       `${head}import { idle, interaction } from '@tanstack/react-start/hydration'
 import { NestedButton, Outer, Sibling } from './widgets'
 export function Page() {
@@ -1050,7 +1051,7 @@ describe('which elements are boundaries', () => {
   // Source: hydrateWhen Renamed fixture.
   test('a renamed import of Hydrate is a boundary', async () => {
     const { client } = await expectRendersLikeSource(
-      await hosts(),
+      hosts,
       `import { Hydrate as HW } from '@tanstack/react-start'
 import { interaction } from '@tanstack/react-start/hydration'
 import { SearchBox } from './search'
@@ -1095,7 +1096,7 @@ export function Page() {
     'a Hydrate the app re-exports ($name) is a boundary',
     async ({ imports, tag, ui }) => {
       const { client } = await expectRendersLikeSource(
-        await hosts(),
+        hosts,
         `${imports}
 import { interaction } from '@tanstack/react-start/hydration'
 import { SearchBox } from './search'
@@ -1125,7 +1126,7 @@ export function Page() {
   // environments leave the boundary in place, and it hydrates like the source.
   test('a Hydrate a package re-exports hydrates like the source', async () => {
     const { client } = await expectRendersLikeSource(
-      await hosts(),
+      hosts,
       `import { Hydrate } from 'ui-kit'
 import { interaction } from '@tanstack/react-start/hydration'
 import { SearchBox } from './search'
@@ -1258,7 +1259,7 @@ export const cleanup = ['__foreign']`,
         render: 'h(m.Page, { Start: globalThis.__foreign })',
       },
     ])('$name is left alone', async ({ code, files, setup, render }) => {
-      const started = await hosts()
+      const started = hosts
       const options = { files, setup, render }
       const source = await renderSource(started, code, options)
       expect(source.html).toContain('<p>fallback-marker</p><p>No transform</p>')
@@ -1283,7 +1284,7 @@ export const cleanup = ['__foreign']`,
   // Source: hydrate-when-transform.test.ts "uses the Solid Router import
   // source for Solid Hydrate boundaries".
   test('Solid: a Hydrate of @tanstack/solid-start splits with the Solid packages', async () => {
-    const solid = await solidHost()
+    const solid = solidHost
     const mounted =
       await solid.mount(`import { Hydrate } from '@tanstack/solid-start'
 import { visible } from '@tanstack/solid-start/hydration'
@@ -1312,7 +1313,7 @@ function Widget(props: { title: string }) {
   // A directive (`use:name`) of the component, used by the children: the
   // split children get it, and it runs on their element.
   test('Solid: a directive of the component the children use runs in the split children', async () => {
-    const solid = await solidHost()
+    const solid = solidHost
     const mounted =
       await solid.mount(`import { Hydrate } from '@tanstack/solid-start'
 import { visible } from '@tanstack/solid-start/hydration'
@@ -1332,7 +1333,7 @@ export function Page() {
   })
 
   test('Solid: a Hydrate the app re-exports splits', async () => {
-    const solid = await solidHost()
+    const solid = solidHost
     const mounted = await solid.mount(
       `import { Hydrate } from './ui'
 import { visible } from '@tanstack/solid-start/hydration'
@@ -1362,7 +1363,7 @@ test('client: a chunk loaded with the edited source before the parent is compile
   const source = (text: string) => `${head}export function Page() {
   return <Hydrate when={load()}><p>${text}</p></Hydrate>
 }`
-  const started = await editHost()
+  const started = await startEditHost()
   const files = await editableFiles(started, source('Old'))
   const render = async () => {
     const rendered = await renderClient(started, '', {
@@ -1381,7 +1382,7 @@ test('client: a chunk loaded with the edited source before the parent is compile
 // the boundary: removing its fallback must not mutate that other consumer.
 test('a fallback spread shared with an aside keeps the aside on server and client', async () => {
   const { server, client } = await expectRendersLikeSource(
-    await hosts(),
+    hosts,
     `${head}
 const opts = { when: load(), fallback: <b>wait</b> }
 export function Page() {

@@ -1,15 +1,16 @@
-import { describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   callFromClient,
   callOnServer,
   compileError,
+  createStartHost,
   expectCompileError,
   inPage,
   serveCase,
-  useStartHost,
 } from '../regression-helpers'
 import { clientMiddleware, clientMiddlewareOf } from '../page-values'
+import type { StartHost } from '../start-host'
 
 /** A third-party library a middleware below imports (a real package of its case). */
 const someLib = {
@@ -21,7 +22,11 @@ const someLib = {
   'node_modules/@some/lib/index.js': `export const foo = () => 'foo'\n`,
 }
 
-const host = useStartHost()
+let host: StartHost
+beforeAll(async () => {
+  host = await createStartHost()
+  return () => host.close()
+})
 
 describe('createMiddleware compiles correctly', () => {
   // Malformed-input diagnostic control (SPEC §8, G5): `.validator()`
@@ -32,7 +37,7 @@ describe('createMiddleware compiles correctly', () => {
 const myMiddleware = createMiddleware({ type: 'function' })
   .validator()
   .server(async ({ next }) => next())`
-    const startCase = await (await host()).case({ 'module.tsx': source })
+    const startCase = await host.case({ 'module.tsx': source })
     const error = await compileError(startCase)
     expectCompileError(error, { source, at: undefined })
   })
@@ -42,7 +47,7 @@ const myMiddleware = createMiddleware({ type: 'function' })
 export const logger = createMiddleware({ type: 'function' }).client(
   async ({ next }) => next(),
 )`
-    const served = await serveCase(await host(), { 'module.tsx': code })
+    const served = await serveCase(host, { 'module.tsx': code })
     expect(
       await inPage(served, 'return typeof module.logger.options.client'),
     ).toBe('function')
@@ -60,7 +65,7 @@ describe('the client keeps the browser part of a middleware', () => {
     code: string,
     files: Record<string, string> = {},
   ) {
-    return serveCase(await host(), { 'module.tsx': code, ...files })
+    return serveCase(host, { 'module.tsx': code, ...files })
   }
 
   // Source: snapshot fixture create-function-middleware.ts
@@ -238,7 +243,7 @@ export const requestMw = startInstance
 // Start's built package): an app's client gets the no-op of an isomorphic
 // fn without a client implementation, its server a request middleware.
 test("Start's createCsrfMiddleware is a no-op in the client and a request middleware on the server", async () => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `import { createCsrfMiddleware } from '@tanstack/react-start'
 export const csrf = createCsrfMiddleware()`,
   })
@@ -257,7 +262,7 @@ export const csrf = createCsrfMiddleware()`,
 // the validator, `.server()` and the handler, with the context `.server()`
 // adds.
 test('a full middleware chain runs its client part on the client and its server part on the server', async () => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `import { createMiddleware, createServerFn } from '@tanstack/react-start'
 import { db } from './db.server'
 import { check } from './check.server'

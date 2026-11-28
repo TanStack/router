@@ -8,8 +8,12 @@
  * never of a dead one. An import `allowImport` allows gets the real module;
  * in error mode, a surviving edge fails the build and a dead one does not.
  */
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import { buildStart, startBundlers } from '../../build-harness'
+import { beforeAll, describe, expect, test } from 'vitest'
+import {
+  buildStart,
+  buildStartShared,
+  startBundlers,
+} from '../../build-harness'
 import { distinct, rejection } from '../../importProtection/start-apps'
 import { cases } from './survival-cases'
 import type { StartBuild } from '../../build-harness'
@@ -91,20 +95,16 @@ const indexed = cases.map((c, index) => [c, index] as [SurvivalCase, number])
 
 describe.each(startBundlers)('%s build', (bundler) => {
   let build: StartBuild
-  let dispose: (() => Promise<void>) | undefined
   beforeAll(async () => {
     const app = appOf(indexed)
-    build = await buildStart({
+    build = await buildStartShared({
       bundler,
       files: app.files,
       entry: 'src/entry.ts',
       start: { importProtection: app.importProtection },
-      registerCleanup: (cleanup) => {
-        dispose = cleanup
-      },
     })
+    return () => build.close()
   }, timeout)
-  afterAll(() => dispose?.())
 
   test.each(indexed.map(([c, index]) => ({ name: c.name, c, index })))(
     'reported iff the edge survives: $name',

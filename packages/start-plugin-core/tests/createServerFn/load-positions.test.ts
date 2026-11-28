@@ -11,19 +11,24 @@
  * the server fns from the client (by id, through Start's server entry) and
  * from server code.
  */
-import { describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   callFromClient,
   callServerFnThroughCallers,
   compileError,
+  createStartHost,
   inPage,
   serveCase,
-  useStartHost,
 } from '../regression-helpers'
 import { expectCompileError } from '../diagnostics'
+import type { StartHost } from '../start-host'
 
-const host = useStartHost()
+let host: StartHost
+beforeAll(async () => {
+  host = await createStartHost()
+  return () => host.close()
+})
 
 const head = `import { createServerFn } from '@tanstack/react-start'
 import { db } from './db.server'
@@ -220,7 +225,7 @@ describe('a server fn created once when its module loads', () => {
   }>(positions)(
     'works in $name: the client gets an RPC, the server runs the handler',
     async ({ code, read, files: own }) => {
-      const served = await serveCase(await host(), {
+      const served = await serveCase(host, {
         'module.tsx': `${head}${code}`,
         ...files,
         ...own,
@@ -269,7 +274,7 @@ describe('a server fn created once when its module loads', () => {
   test.each(valued)(
     'builds in $name, with the value of the source',
     async ({ code, expected }) => {
-      const served = await serveCase(await host(), {
+      const served = await serveCase(host, {
         'module.tsx': `${head}${code}`,
         ...files,
       })
@@ -288,9 +293,10 @@ describe('a server fn created once when its module loads', () => {
     },
     { name: "a tagged template's tag", code: `export const p = ${fn}\`x\`` },
   ])('compiles in $name, the client without the handler', async ({ code }) => {
-    const startCase = await (
-      await host()
-    ).case({ 'module.tsx': `${head}${code}`, ...files })
+    const startCase = await host.case({
+      'module.tsx': `${head}${code}`,
+      ...files,
+    })
     for (const environment of ['client', 'ssr'] as const) {
       expect(
         await compileError(startCase, environment),
@@ -314,7 +320,7 @@ describe('a server fn created once when its module loads', () => {
       code: `const other = () => 1\n${fn}, other()\nexport const value = other()`,
     },
   ])('compiles as $name, the client without the handler', async ({ code }) => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head}${code}`,
       ...files,
     })
@@ -327,7 +333,7 @@ describe('a server fn created once when its module loads', () => {
   // statement runs, after the statements before it, so a middleware list
   // they fill is complete when `.middleware()` copies it
   test('is created after the statements before its own', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head}import { seen } from './mw'
 const list: Array<typeof seen> = []
 const fill = (l: Array<unknown>) => {
@@ -384,7 +390,7 @@ export const getMws = () => [...list]
   ])(
     'is created after the statements before its own when it reads $name',
     async ({ code, read }) => {
-      const served = await serveCase(await host(), {
+      const served = await serveCase(host, {
         'module.tsx': `${head}${code}`,
         'mws.ts': middlewares,
         ...files,
@@ -394,7 +400,7 @@ export const getMws = () => [...list]
   )
 
   test('is created after the statement setting a global its options read', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head};(globalThis as any).fnOptions = { method: 'POST' }
 export const api = {
   foo: createServerFn((globalThis as any).fnOptions).handler(async () => db.inner()),
@@ -412,7 +418,7 @@ export const api = {
   // declaration is initialised before any statement runs, a `var` is
   // `undefined` until its declarator runs
   test('reads a function declared below when the module loads, with the value of the source', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head}export const api = {
   foo: createServerFn()
     .validator(check)
@@ -429,7 +435,7 @@ function check(value: unknown) {
   })
 
   test('reads a var declared below when the module loads, undefined as in the source', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head}export const api = {
   foo: createServerFn({ method: later ?? 'POST' }).handler(async () => db.inner()),
 }
@@ -445,7 +451,7 @@ var later: 'GET' | undefined = 'GET'`,
   // b13: a bare statement creates a server fn nothing names; the module
   // still builds and loads in every environment
   test('builds as a bare statement', async () => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head}${fn}\nexport const other = ${fn}`,
       ...files,
     })
@@ -460,7 +466,7 @@ var later: 'GET' | undefined = 'GET'`,
 // runs (`<ClientOnly>` children at the module top level) still answers the
 // client.
 test('a server fn in <ClientOnly> children at the module top level answers the client', async () => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `${head}import { ClientOnly } from '@tanstack/react-router'
 export const el = <ClientOnly fallback={null}><b data-fn={${fn}} /></ClientOnly>`,
     ...files,
@@ -548,9 +554,7 @@ const reg = { add: <T,>(f: T) => f }
     'is a compile error at the server fn in every environment: $name',
     async ({ code }) => {
       const source = `${head}${declarations}${code}`
-      const startCase = await (
-        await host()
-      ).case({ 'module.tsx': source, ...files })
+      const startCase = await host.case({ 'module.tsx': source, ...files })
       for (const environment of ['client', 'ssr'] as const) {
         const failure = await compileError(startCase, environment)
         expect(failure, `${environment} serves the module`).toBeDefined()
@@ -666,9 +670,7 @@ const reg = { add: <T,>(f: T) => f }
     },
   ])('is a compile error when it reads $name', async ({ code, at }) => {
     const source = `${head}${code}`
-    const startCase = await (
-      await host()
-    ).case({ 'module.tsx': source, ...files })
+    const startCase = await host.case({ 'module.tsx': source, ...files })
     for (const environment of ['client', 'ssr'] as const) {
       const failure = await compileError(startCase, environment)
       expect(failure, `${environment} serves the module`).toBeDefined()
@@ -700,9 +702,7 @@ const reg = { add: <T,>(f: T) => f }
     'is a compile error when it reads a private name of its class: $name',
     async ({ code, at }) => {
       const source = `${head}${code}`
-      const startCase = await (
-        await host()
-      ).case({ 'module.tsx': source, ...files })
+      const startCase = await host.case({ 'module.tsx': source, ...files })
       for (const environment of ['client', 'ssr'] as const) {
         const failure = await compileError(startCase, environment)
         expect(failure, `${environment} serves the module`).toBeDefined()
@@ -715,9 +715,7 @@ const reg = { add: <T,>(f: T) => f }
   // the general refusal, at the server fn (S5 of the hotspot 5 design)
   test('is a compile error at the server fn in a function when its handler returns a key named arguments', async () => {
     const source = `${head}export function make() {\n  return createServerFn().handler(async () => ({ arguments: 1 }))\n}`
-    const startCase = await (
-      await host()
-    ).case({ 'module.tsx': source, ...files })
+    const startCase = await host.case({ 'module.tsx': source, ...files })
     for (const environment of ['client', 'ssr'] as const) {
       const failure = await compileError(startCase, environment)
       expect(failure, `${environment} serves the module`).toBeDefined()

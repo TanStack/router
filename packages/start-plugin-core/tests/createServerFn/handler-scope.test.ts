@@ -1,14 +1,14 @@
-import { expect, test } from 'vitest'
+import { beforeAll, expect, test } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   callFromClient,
   callServerFnThroughCallers,
   compileError,
+  createStartHost,
   expectCompileError,
   inPage,
   serveCase,
-  useStartHost,
 } from '../regression-helpers'
 import {
   handlerFiles,
@@ -16,6 +16,7 @@ import {
   handlerModules,
   handlerRows,
 } from '../compiler-inputs'
+import type { StartHost } from '../start-host'
 
 // The server must run the handler with every module binding it closes over,
 // however the handler is written and however its scopes shadow module
@@ -23,13 +24,17 @@ import {
 // call from server code runs it (`callServerFnThroughCallers`). Where the
 // handler lives on the server is free (SPEC J4.2, §5.4).
 
-const host = useStartHost()
+let host: StartHost
+beforeAll(async () => {
+  host = await createStartHost()
+  return () => host.close()
+})
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 
 // Source: Next.js server-actions fixtures server-graph/5, /6, /16
 test('the provider keeps every kind of module binding the handler reads', async () => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `${head}import * as ns from './ns'
 var counter = 4
 class Repo {
@@ -63,7 +68,7 @@ const dbServer = handlerFiles['db.server.ts']
  * async iterable, read on each side.
  */
 async function callHandler(code: string, iterate = false) {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': handlerModule(code),
     ...handlerFiles,
   })
@@ -116,9 +121,7 @@ export const fn = createServerFn().handler(
     .server(async () => db.x())
     .client(() => 'client'),
 )`
-  const startCase = await (
-    await host()
-  ).case({ 'module.tsx': code, ...handlerFiles })
+  const startCase = await host.case({ 'module.tsx': code, ...handlerFiles })
   const mark = startCase.diagnostics().length
   for (const environment of ['client', 'ssr'] as const) {
     const failure = await compileError(startCase, environment)
@@ -142,7 +145,7 @@ export const fn = createServerFn().handler(
 test('a handler in a .ts module can use angle-bracket type assertions', async () => {
   const file = 'module.ts'
   const served = await serveCase(
-    await host(),
+    host,
     {
       [file]: `${head}import { db } from './db.server'
 const identity = <T>(value: T) => value
@@ -334,7 +337,7 @@ export const fn = createServerFn().handler(async () => ({ value }))`,
 ])(
   'the provider keeps a module binding the handler reads $name',
   async ({ code, data, expected }) => {
-    const served = await serveCase(await host(), {
+    const served = await serveCase(host, {
       'module.tsx': `${head}${code}`,
     })
     expect(await callServerFnThroughCallers(served, 'module.fn', data)).toEqual(
@@ -346,7 +349,7 @@ export const fn = createServerFn().handler(async () => ({ value }))`,
 // Source: @vitejs/plugin-rsc hoist/self-ref-nested-function.js,
 // hoist/direct-recursion-self-binding.js
 test('a handler can call its own server fn', async () => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `${head}export const fn = createServerFn().handler(async ({ data }) =>
   data > 0 ? fn({ data: data - 1 }) : 'done')`,
   })
@@ -356,7 +359,7 @@ test('a handler can call its own server fn', async () => {
 // Source: @vitejs/plugin-rsc hoist/captured-local-assignment.js,
 // wrap-export.test.ts "preserve reference"
 test('a handler and client code can both update an exported let', async () => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `${head}export let count = 0
 export function changeCount() {
   count += 1
@@ -376,7 +379,7 @@ export const bump = createServerFn().handler(async () => ++count)`,
 
 // Source: Next.js server-actions fixtures server-graph/27
 test('exported helpers the handler uses are callable from the handler', async () => {
-  const served = await serveCase(await host(), {
+  const served = await serveCase(host, {
     'module.tsx': `${head}import { db } from './db.server'
 export async function load() {
   return db.x()

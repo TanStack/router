@@ -10,8 +10,8 @@
  * Resolving every option key is best effort, but a missed key must never
  * prune a route or leave server code in the client bundle.
  */
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import { buildStart, startBundlers } from '../build-harness'
+import { beforeAll, describe, expect, test } from 'vitest'
+import { buildStartShared, startBundlers } from '../build-harness'
 import type { StartBuild } from '../build-harness'
 
 const timeout = 60_000
@@ -98,25 +98,21 @@ export const Route = createFileRoute('/cast-${slug(name)}')(${wrap(
   }
 
   let build: StartBuild
-  let dispose: (() => Promise<void>) | undefined
   /** Ids of the routes of the client build's route tree. */
   let clientRoutes: Array<string>
   beforeAll(async () => {
-    build = await buildStart({
+    build = await buildStartShared({
       bundler,
       files,
       entry: 'src/entry.ts',
-      registerCleanup: (cleanup) => {
-        dispose = cleanup
-      },
     })
     clientRoutes = (
       await build.client.run(
         `return Object.values(entry.getRouter().routeTree.children ?? {}).map((route) => route.options.id)`,
       )
     ).result as Array<string>
+    return () => build.close()
   }, timeout)
-  afterAll(() => dispose?.())
 
   // Option keys written as strings and a Route exported under an alias are
   // read like plain ones (start-compose-server-only-routes.test.ts).

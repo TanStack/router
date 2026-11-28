@@ -13,8 +13,8 @@
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
-import { afterAll, describe, expect, test } from 'vitest'
-import { buildStart } from '../../build-harness'
+import { beforeAll, describe, expect, test } from 'vitest'
+import { buildStart, buildStartShared } from '../../build-harness'
 import {
   rejection,
   startProtectedDevServer,
@@ -24,7 +24,8 @@ import {
   clientResult,
   runViteClient,
   startBrowserStartDevServer as startDevServer,
-  startBrowserRsbuildStartDevServer as startRsbuildStartDevServer,
+  startBrowserStartDevServerShared as startDevServerShared,
+  startBrowserRsbuildStartDevServerShared as startRsbuildStartDevServerShared,
 } from './client-pages'
 import { importersIn } from './hosts'
 import {
@@ -50,6 +51,8 @@ import {
 } from './asset-query-app'
 import type { Files } from './asset-query-app'
 import type { StartBundler } from '../../build-harness'
+import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
+import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
 const bothHosts: Array<[string, string, Files]> = [
   ['a marked file, static ?raw', staticImport('./marked.ts?raw'), byMarker],
@@ -167,12 +170,6 @@ const rsbuildOnly: Array<[string, string, Files]> = [
   ],
 ]
 
-/** The result of `make`, made by the first call (rows of one shared app). */
-const once = <T>(make: () => Promise<T>) => {
-  let made: Promise<T> | undefined
-  return () => (made ??= make())
-}
-
 /** `forms` with each form's index (its canary and reader in `formsApp`). */
 const indexed = (forms: Array<[string, string, Files]>) =>
   forms.map(([name, entry, files], i) => [name, entry, files, i] as const)
@@ -193,44 +190,31 @@ const devReported = (name: string, entry: string, files: Files) =>
         file.replace(/^src\//, `${formDir(name)}/`),
       )
 
-/** Where the shared servers and builds of a describe register their removal (after its last row). */
-const sharedCleanups = () => {
-  const cleanups: Array<() => Promise<void>> = []
-  afterAll(async () => {
-    for (const cleanup of cleanups.reverse()) {
-      await cleanup()
-    }
-  })
-  return (cleanup: () => Promise<void>) => {
-    cleanups.push(cleanup)
-  }
-}
-
 describe.each<[StartBundler, Array<[string, string, Files]>]>([
   ['vite', [...bothHosts, ...viteOnly, ...viteBuildOnly]],
   ['rsbuild', [...bothHosts, ...rsbuildOnly]],
 ])('%s build', (bundler, forms) => {
   // every form in one app: what each emitted file holds of each form's
   // canary (all output, `data:` URLs decoded), and the importers reported
-  const built = once(async () => {
-    const result = await buildStart({
+  let emitted: Array<Awaited<ReturnType<typeof emittedCanaries>>>
+  let importers: ReturnType<typeof importersIn>
+  beforeAll(async () => {
+    const result = await buildStartShared({
       bundler,
       files: formsApp(forms),
       entry: 'src/entry.ts',
       start: { importProtection },
     })
-    return {
-      emitted: await Promise.all(
-        forms.map((_, i) => emittedCanaries(result.client.outDir, canaryOf(i))),
-      ),
-      importers: importersIn(result, 'client'),
-    }
-  })
+    emitted = await Promise.all(
+      forms.map((_, i) => emittedCanaries(result.client.outDir, canaryOf(i))),
+    )
+    importers = importersIn(result, 'client')
+    return () => result.close()
+  }, timeout)
 
   test.each(indexed(forms))(
     '%s is mocked and reported',
-    async (name, _entry, _files, i) => {
-      const { emitted, importers } = await built()
+    (name, _entry, _files, i) => {
       expect(emitted[i]).toEqual([])
       expect(importers.filter(inForm(name))).toEqual([
         `${formDir(name)}/entry.ts`,
@@ -241,8 +225,8 @@ describe.each<[StartBundler, Array<[string, string, Files]>]>([
 
   test(
     'every form is reported, and nothing else',
-    async () => {
-      expect((await built()).importers).toEqual(
+    () => {
+      expect(importers).toEqual(
         forms.map(([name]) => `${formDir(name)}/entry.ts`).sort(),
       )
     },
@@ -344,17 +328,16 @@ describe.each<[StartBundler, Array<[string, string, Files]>]>([
 
 describe('vite dev', () => {
   const forms = [...bothHosts, ...viteOnly]
-  const registerCleanup = sharedCleanups()
   // every form in one app: the importers reported once a page ran every
   // reader (lazy imports included), before any row reads them; each row
   // then reads its own form in a page of its own
-  const served = once(async () => {
+  let served: { server: DevServer; importers: Array<string> }
+  beforeAll(async () => {
     const recorder = violationRecorder(importProtection)
-    const server = await startDevServer({
+    const server = await startDevServerShared({
       browser: true,
       start: { importProtection: recorder.importProtection },
       files: formsApp(forms),
-      registerCleanup,
     })
     await runViteClient(
       server,
@@ -362,16 +345,17 @@ describe('vite dev', () => {
       readFormTexts({ count: forms.length }),
     )
     await server.idle()
-    return {
+    served = {
       server,
       importers: importersIn({ root: server.root, ...recorder }, 'client'),
     }
-  })
+    return () => server.close()
+  }, timeout)
 
   test.each(indexed(forms))(
     '%s is mocked and reported',
     async (name, entry, files, i) => {
-      const { server, importers } = await served()
+      const { server, importers } = served
       const { result } = await runViteClient(
         server,
         '/src/router.ts',
@@ -389,8 +373,8 @@ describe('vite dev', () => {
 
   test(
     'every form is reported, and nothing else',
-    async () => {
-      expect((await served()).importers).toEqual(
+    () => {
+      expect(served.importers).toEqual(
         forms
           .flatMap(([name, entry, files]) => devReported(name, entry, files))
           .sort(),
@@ -463,32 +447,32 @@ test(
 
 describe('rsbuild dev', () => {
   const forms = [...bothHosts, ...rsbuildOnly]
-  const registerCleanup = sharedCleanups()
   // every form in one app (as on Vite): the reports once a page ran every
   // reader, then a page of its own per row
-  const served = once(async () => {
+  let served: { server: RsbuildDevServer; importers: Array<string> }
+  beforeAll(async () => {
     const recorder = violationRecorder(importProtection)
-    const server = await startRsbuildStartDevServer({
+    const server = await startRsbuildStartDevServerShared({
       compileTimeout: timeout,
       browser: true,
       hmr: false,
       files: formsApp(forms),
       start: { importProtection: recorder.importProtection },
-      registerCleanup,
     })
     await captureConsole(() =>
       clientResult(server, readFormTexts({ count: forms.length })),
     )
-    return {
+    served = {
       server,
       importers: importersIn({ root: server.root, ...recorder }, 'client'),
     }
-  })
+    return () => server.close()
+  }, timeout)
 
   test.each(indexed(forms))(
     '%s is mocked and reported',
     async (name, entry, files, i) => {
-      const { server, importers } = await served()
+      const { server, importers } = served
       const { result } = await captureConsole(() =>
         clientResult(server, readFormTexts({ index: i })),
       )
@@ -504,8 +488,8 @@ describe('rsbuild dev', () => {
 
   test(
     'every form is reported, and nothing else',
-    async () => {
-      expect((await served()).importers).toEqual(
+    () => {
+      expect(served.importers).toEqual(
         forms
           .flatMap(([name, entry, files]) => devReported(name, entry, files))
           .sort(),

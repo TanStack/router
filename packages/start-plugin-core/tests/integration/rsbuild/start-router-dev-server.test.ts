@@ -7,7 +7,7 @@
  * start-router-dev-server.test.ts). Its own file so that each bundler's dev
  * servers run in a worker of their own.
  */
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import {
   reportedErrors,
@@ -105,7 +105,7 @@ describe('Rsbuild dev: a route switching between page and server-only', () => {
     'the page follows a route that becomes a page, loses its handlers and becomes server-only again',
     async () => {
       const { server, scenario } = await startPageServer()
-      await switchBetweenServerOnlyAndPage(scenario, onTestFinished)
+      await switchBetweenServerOnlyAndPage(scenario)
       expect(reportedErrors(server)).toEqual([])
     },
     timeout,
@@ -115,7 +115,7 @@ describe('Rsbuild dev: a route switching between page and server-only', () => {
     'a route that becomes a page before the client loaded the route tree is in the client route tree',
     async () => {
       const { server, scenario } = await startPageServer()
-      await pageBeforeTheClientLoadedTheTree(scenario, onTestFinished)
+      await pageBeforeTheClientLoadedTheTree(scenario)
       expect(reportedErrors(server)).toEqual([])
     },
     timeout,

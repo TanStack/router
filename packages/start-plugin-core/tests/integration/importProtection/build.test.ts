@@ -8,7 +8,11 @@
 import { afterAll, describe, expect, test } from 'vitest'
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
-import { buildStart, startBundlers } from '../../build-harness'
+import {
+  buildStart,
+  buildStartShared,
+  startBundlers,
+} from '../../build-harness'
 import {
   expectMarkerViolation,
   expectPrinted,
@@ -442,20 +446,21 @@ import { d } from './c'
 export const read = () => secret() + '|' + d()
 `,
   })
+  // (shared by both rows: closed after the file)
   let several: Promise<StartBuild> | undefined
-  const cleanups: Array<() => Promise<void>> = []
-  afterAll(async () => {
-    for (const cleanup of cleanups.reverse()) {
-      await cleanup()
-    }
-  })
+  afterAll(() =>
+    several?.then(
+      (opened) => opened.close(),
+      () => {},
+    ),
+  )
   test.each([
     { env: 'ssr', marker: 'server-only', build: 'server' },
     { env: 'client', marker: 'client-only', build: 'client' },
   ] as const)(
     'the $build build may import a $marker-marked module from several modules, without any import-protection output',
     async ({ env }) => {
-      const built = await (several ??= buildStart({
+      const built = await (several ??= buildStartShared({
         bundler,
         files: {
           ...severalImporters('server-only'),
@@ -464,10 +469,6 @@ export const read = () => secret() + '|' + d()
         entry: {
           client: 'src/client-only/user.ts',
           ssr: 'src/server-only/user.ts',
-        },
-        // (shared by both rows: removed after the file)
-        registerCleanup: (cleanup) => {
-          cleanups.push(cleanup)
         },
       }))
       expect((await built[env].run(`return entry.read()`)).result).toBe(

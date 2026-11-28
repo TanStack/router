@@ -5,14 +5,19 @@
  * at the offending line. Prose, frame layout and
  * context length are free (SPEC §5.7).
  */
-import { test } from 'vitest'
+import { beforeAll, test } from 'vitest'
 import {
   compileError,
+  createStartHost,
   expectCompileError,
-  useStartHost,
 } from './regression-helpers'
+import type { StartHost } from './start-host'
 
-const host = useStartHost()
+let host: StartHost
+beforeAll(async () => {
+  host = await createStartHost()
+  return () => host.close()
+})
 
 // Spreading the handler's arguments is a type error (TS2556 against the real
 // declarations: a spread argument must be a tuple or go to a rest
@@ -22,7 +27,7 @@ test('a server fn whose handler arguments are spread is rejected at the call', a
   const source = `import { createServerFn } from '@tanstack/react-start'
 const args: Array<() => unknown> = []
 export const fn = createServerFn().handler(...args)`
-  const startCase = await (await host()).case({ 'module.tsx': source })
+  const startCase = await host.case({ 'module.tsx': source })
   expectCompileError(await compileError(startCase), {
     source,
     at: '...args',

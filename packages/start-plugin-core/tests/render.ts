@@ -34,15 +34,11 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { normalizePath } from 'vite'
-import { afterAll, beforeAll, expect } from 'vitest'
+import { expect, onTestFinished } from 'vitest'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
-import {
-  currentTest,
-  onTestFinished,
-} from '@tanstack/compiler-test-utils/test-scope'
 import { settledSource } from './settled-source'
-import { createStartHost, giveBackHost, hostKey, takeHost } from './start-host'
+import { createStartHost } from './start-host'
 import type { PluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import type { StartCase, StartHost } from './start-host'
 
@@ -159,10 +155,11 @@ export interface HydrateHost {
   reference: () => Promise<ReferenceHost>
   /**
    * Whether the Start host writes cases (`StartHost.case`). An edit host
-   * (`useEditHost`) writes only watched files, through the dev server's
+   * (`startEditHost`) writes only watched files, through the dev server's
    * watcher, and runs page code in its page directly.
    */
   cases: boolean
+  close: () => Promise<void>
 }
 
 /** The result of page code (`runPage`). */
@@ -211,53 +208,40 @@ async function runPage<T>(
   return { result: run.result, errors: run.errors }
 }
 
-/** The options of the hosts of `useHydrateHost`. */
+/** The options of the hosts of `createHydrateHost`. */
 const hydrateHostOptions = {
   start: startOptions,
   files: { ...renderFiles, 'tsconfig.json': reactTsconfig },
 }
-const hydrateHostKey = `hydrate ${hostKey(hydrateHostOptions)}`
-const referenceHostKey = 'hydrate reference'
 
 /**
- * One Start host (React) and, on first use, one reference host per test
- * file, taken before its tests (free ones an earlier file of the test
- * process gave back, or new ones: `takeHost`) and given back after them.
+ * The Start host (React) of a test file, its page and renderers loaded,
+ * and on first use its reference host; `close()` closes both (the file's
+ * `beforeAll` returns it).
  */
-export function useHydrateHost(): () => Promise<HydrateHost> {
-  let started: Promise<HydrateHost> | undefined
+export async function createHydrateHost(): Promise<HydrateHost> {
+  const start = await createStartHost(hydrateHostOptions)
   let reference: Promise<ReferenceHost> | undefined
-  beforeAll(() => {
-    started = takeHost(hydrateHostKey, () =>
-      createStartHost(hydrateHostOptions),
-    ).then((start) => ({
-      start,
-      reference: () =>
-        (reference ??= takeHost(referenceHostKey, createReferenceHost)),
-      cases: true,
-    }))
-    // The page and the renderers, before the first test
-    return started.then((hosts) => warm(hosts))
-  }, 60_000)
-  afterAll(async () => {
-    try {
-      const referenceHost = await reference?.catch(() => undefined)
-      if (referenceHost) {
-        await giveBackHost(referenceHostKey, referenceHost)
+  const hosts: HydrateHost = {
+    start,
+    reference: () => (reference ??= createReferenceHost()),
+    cases: true,
+    close: async () => {
+      try {
+        await (await reference?.catch(() => undefined))?.close()
+      } finally {
+        await start.close()
       }
-    } finally {
-      const hosts = await started?.catch(() => undefined)
-      if (hosts) {
-        await giveBackHost(hydrateHostKey, hosts.start)
-      }
-    }
-  })
-  return () => {
-    if (!started) {
-      throw new Error('useHydrateHost: no host before beforeAll ran')
-    }
-    return started
+    },
   }
+  try {
+    // The page and the renderers, before the first test
+    await warm(hosts)
+  } catch (error) {
+    await hosts.close()
+    throw error
+  }
+  return hosts
 }
 
 /** Loads the page and the renderers. */
@@ -270,42 +254,28 @@ async function warm(hosts: HydrateHost) {
 }
 
 /**
- * A Start host for dev edits (React), one per test (its own dev server and
- * page: an edit's hot updates and reloads reach no other test), created on
- * first use in the test and closed when the test ends: it writes no case,
- * so its dev server's settle after an edit (`StartHost.edit`) sees only
- * watched files. Use `editableFiles` and watched route files with it;
- * `renderClient` with a `target`.
+ * A Start host for dev edits (React) of the current test, closed when it
+ * finishes (its own dev server and page: an edit's hot updates and reloads
+ * reach no other test): it writes no case, so its dev server's settle
+ * after an edit (`StartHost.edit`) sees only watched files. Use
+ * `editableFiles` and watched route files with it; `renderClient` with a
+ * `target`.
  */
-export function useEditHost(): () => Promise<HydrateHost> {
-  const started = new WeakMap<object, Promise<HydrateHost>>()
-  const outsideTests = {}
-  return () => {
-    const test = currentTest()
-    const owner = test ?? outsideTests
-    let hosts = started.get(owner)
-    if (!hosts) {
-      hosts = createStartHost({
-        start: startOptions,
-        files: { ...renderFiles, 'tsconfig.json': reactTsconfig },
-      }).then(async (start) => {
-        // The page loads its runtime before an edit reloads it
-        await start.run('1')
-        return {
-          start,
-          reference: () => {
-            throw new Error('an edit host has no reference host')
-          },
-          cases: false,
-        }
-      })
-      started.set(owner, hosts)
-      const created = hosts
-      onTestFinished(async () => {
-        await (await created.catch(() => undefined))?.start.close()
-      })
-    }
-    return hosts
+export async function startEditHost(): Promise<HydrateHost> {
+  const start = await createStartHost({
+    start: startOptions,
+    files: { ...renderFiles, 'tsconfig.json': reactTsconfig },
+  })
+  onTestFinished(() => start.close())
+  // The page loads its runtime before an edit reloads it
+  await start.run('1')
+  return {
+    start,
+    reference: () => {
+      throw new Error('an edit host has no reference host')
+    },
+    cases: false,
+    close: () => start.close(),
   }
 }
 
@@ -1139,6 +1109,7 @@ export interface SolidMount {
 /** A Solid Start host (`vite-plugin-solid`) whose page mounts a module. */
 export interface SolidHost {
   start: StartHost
+  close: () => Promise<void>
   /**
    * Writes `code` (and `files`) as a case of the Solid app, checks that the
    * client and SSR environments serve it and the SSR environment evaluates
@@ -1148,50 +1119,42 @@ export interface SolidHost {
   mount: (code: string, files?: Record<string, string>) => Promise<SolidMount>
 }
 
-/**
- * One Solid Start host per test file, created on first use and closed after
- * the file's tests.
- */
-export function useSolidHost(): () => Promise<SolidHost> {
-  let started: Promise<StartHost> | undefined
-  afterAll(async () => {
-    await (await started)?.close()
-  })
-  return async () => {
-    started ??= createStartHost({
-      framework: 'solid',
-      start: startOptions,
-      files: {
-        'tsconfig.json': appTsconfig({
-          jsx: 'preserve',
-          jsxImportSource: 'solid-js',
-        }),
-        'src/harness/solid.client.tsx': `export { createComponent, render } from 'solid-js/web'
+/** The Solid Start host of a test file (its `beforeAll` returns `close`). */
+export async function createSolidHost(): Promise<SolidHost> {
+  const start = await createStartHost({
+    framework: 'solid',
+    start: startOptions,
+    files: {
+      'tsconfig.json': appTsconfig({
+        jsx: 'preserve',
+        jsxImportSource: 'solid-js',
+      }),
+      'src/harness/solid.client.tsx': `export { createComponent, render } from 'solid-js/web'
 `,
-      },
-    })
-    const start = await started
-    return {
-      start,
-      mount: async (code, files = {}) => {
-        const startCase = await start.case({
-          'setup.ts': 'export {}\n',
-          ...Object.fromEntries(
-            Object.entries(files).map(([name, source]) => [
-              caseFileName(name),
-              source,
-            ]),
-          ),
-          'module.tsx': code,
-        })
-        await startCase.served('module.tsx', 'client')
-        await startCase.served('module.tsx', 'ssr')
-        await startCase.ssr()
-        const run = await startCase.client<{
-          html: string
-          lazy: Array<string>
-        }>(
-          `performance.setResourceTimingBufferSize(100000)
+    },
+  })
+  return {
+    start,
+    close: () => start.close(),
+    mount: async (code, files = {}) => {
+      const startCase = await start.case({
+        'setup.ts': 'export {}\n',
+        ...Object.fromEntries(
+          Object.entries(files).map(([name, source]) => [
+            caseFileName(name),
+            source,
+          ]),
+        ),
+        'module.tsx': code,
+      })
+      await startCase.served('module.tsx', 'client')
+      await startCase.served('module.tsx', 'ssr')
+      await startCase.ssr()
+      const run = await startCase.client<{
+        html: string
+        lazy: Array<string>
+      }>(
+        `performance.setResourceTimingBufferSize(100000)
 const glue = await import('/src/harness/solid.client.tsx')
 const m = await load('module.tsx')
 const root = document.createElement('div')
@@ -1201,30 +1164,29 @@ ${settleSource}
 const before = performance.getEntriesByType('resource').length
 const dispose = glue.render(() => glue.createComponent(m.Page, {}), root)
 try {
-  await settled()
-  await openGates()
-  return {
-    html: normalize(root.innerHTML),
-    lazy: performance.getEntriesByType('resource').slice(before).map((entry) => {
-      const url = new URL(entry.name)
-      return url.origin === location.origin ? decodeURIComponent(url.pathname) + url.search : entry.name
-    }),
-  }
+await settled()
+await openGates()
+return {
+  html: normalize(root.innerHTML),
+  lazy: performance.getEntriesByType('resource').slice(before).map((entry) => {
+    const url = new URL(entry.name)
+    return url.origin === location.origin ? decodeURIComponent(url.pathname) + url.search : entry.name
+  }),
+}
 } finally {
-  dispose()
-  root.remove()
+dispose()
+root.remove()
 }`,
-          { file: 'setup.ts' },
-        )
-        return {
-          case: startCase,
-          html: run.result.html,
-          errors: run.errors,
-          lazy: run.result.lazy,
-          loads: await startCase.loads(),
-          serverLoads: await startCase.serverLoads(),
-        }
-      },
-    }
+        { file: 'setup.ts' },
+      )
+      return {
+        case: startCase,
+        html: run.result.html,
+        errors: run.errors,
+        lazy: run.result.lazy,
+        loads: await startCase.loads(),
+        serverLoads: await startCase.serverLoads(),
+      }
+    },
   }
 }

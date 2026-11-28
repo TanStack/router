@@ -6,7 +6,7 @@
  * the same route in a plain file (Astra overall #2: the symlinked route's
  * CSS was emitted but not linked, so the first paint had no route styles).
  */
-import { afterAll, describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { buildStart, startBundlers } from '../build-harness'
 import {
   pageEntries,
@@ -41,11 +41,6 @@ export const Page = () => <p className="alpha">MARK_ALPHA</p>
 })
 
 describe.each(startBundlers)('%s build, served', (bundler) => {
-  const cleanups: Array<() => Promise<void>> = []
-  afterAll(async () => {
-    await Promise.all(cleanups.map((cleanup) => cleanup()))
-  })
-
   test.for([false, true])(
     'the document of the route links its stylesheet (route file symlinked: %s)',
     { timeout },
@@ -57,11 +52,8 @@ describe.each(startBundlers)('%s build, served', (bundler) => {
           ? { 'src/routes/alpha.tsx': 'src/linked/alpha.tsx' }
           : {},
         entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-        registerCleanup: (cleanup) => cleanups.push(cleanup),
       })
-      const served = await serveStartBuild(build, {
-        registerCleanup: (cleanup) => cleanups.push(cleanup),
-      })
+      const served = await serveStartBuild(build)
       const html = await (await served.fetch('/alpha')).text()
       expect(html).toContain('MARK_ALPHA')
       const stylesheets = [

@@ -15,7 +15,7 @@
  *   `behavior` is: a violation fails the module holding the import, never
  *   the route tree (main: `resolveId` of that import fails).
  */
-import { afterAll, describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { buildStart } from '../../build-harness'
 import { startServerEntryFiles } from '../../dev-server'
 import {
@@ -146,23 +146,12 @@ async function request(url: string, pathname: string) {
   return { status: response.status, body: await response.text() }
 }
 
-const cleanups: Array<() => Promise<void>> = []
-afterAll(async () => {
-  for (const cleanup of cleanups.reverse()) {
-    await cleanup()
-  }
-})
-const registerCleanup = (cleanup: () => Promise<void>) => {
-  cleanups.push(cleanup)
-}
-
 const hosts = {
   vite: async (importProtection: ImportProtectionOptions) => {
     const server = await startDevServer({
       start: { importProtection },
       files: app,
       config: { resolve: { tsconfigPaths: true } },
-      registerCleanup,
     })
     return { url: server.url!, root: server.root }
   },
@@ -176,7 +165,6 @@ const hosts = {
         'harness/server-entry.ts':
           startServerEntryFiles['harness/server-entry.ts'],
       },
-      registerCleanup,
     })
     return { url: server.url!, root: server.root }
   },
