@@ -11,6 +11,7 @@
  * app would. A package that only uses Start's compile-time APIs links fewer
  * (`createStartApp`'s `dependencies`).
  */
+import { execFile } from 'node:child_process'
 import { realpathSync } from 'node:fs'
 import {
   mkdir,
@@ -258,6 +259,41 @@ export async function startViteTestServer(
     await server.close()
   })
   return { server, warnings }
+}
+
+export interface VitestRun {
+  exitCode: number
+  /** What Vitest printed. */
+  output: string
+}
+
+/**
+ * Runs the app's tests once with the Vitest CLI in a process of its own, as
+ * `vitest run` in the app's directory does. Unlike `startViteTestServer`
+ * this is Vitest itself, with its module cache on disk; a second run starts
+ * a new process that finds the cache of the first.
+ *
+ * The app needs `vitest` among its `dependencies` and a Vitest config.
+ */
+export function runVitest(app: StartApp): Promise<VitestRun> {
+  // (these tests run in a Vitest worker, whose own settings are not passed on)
+  const env = Object.fromEntries(
+    Object.entries(process.env).filter(([name]) => !name.startsWith('VITEST')),
+  )
+  return new Promise((resolve) => {
+    execFile(
+      process.execPath,
+      [path.join(app.root, 'node_modules/vitest/vitest.mjs'), 'run'],
+      { cwd: app.root, env },
+      (error, stdout, stderr) => {
+        resolve({
+          exitCode:
+            typeof error?.code === 'number' ? error.code : error ? 1 : 0,
+          output: stdout + stderr,
+        })
+      },
+    )
+  })
 }
 
 /**

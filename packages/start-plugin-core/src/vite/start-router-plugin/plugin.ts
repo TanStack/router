@@ -18,7 +18,9 @@ import type {
   GeneratorPlugin,
   RouteNode,
 } from '@tanstack/router-generator'
-import type { DevEnvironment, Plugin, PluginOption } from 'vite'
+import type { DevEnvironment, PluginOption } from 'vite'
+// (Vite's `Plugin` with the `configureVitest` hook that Vitest adds to it)
+import type { Plugin } from 'vitest/config'
 import type { TanStackStartInputConfig } from '../../schema'
 
 function isServerOnlyNode(node: RouteNode | undefined) {
@@ -86,6 +88,24 @@ export function tanStackStartRouter(
     applyToEnvironment: (env) => env.name === VITE_ENVIRONMENT_NAMES.client,
     configureServer(server) {
       clientEnvironment = server.environments[VITE_ENVIRONMENT_NAMES.client]
+    },
+    // Vitest stores compiled modules on disk and keys this one by the
+    // generated file. What `load` returns for it also depends on the other
+    // route files: the routes that only the server uses are left out. A
+    // route that got its first client option leaves the generated file as it
+    // is, so the key would still fit the route tree without that route.
+    configureVitest({ defineCacheKeyGenerator }) {
+      defineCacheKeyGenerator(({ environment, id }) => {
+        if (
+          environment.name === VITE_ENVIRONMENT_NAMES.client &&
+          normalizePath(id.replace(/\?.*$/, '')) ===
+            resolvedGeneratedRouteTreePath
+        ) {
+          // Not cached: `load` builds it in every run.
+          return false
+        }
+        return undefined
+      })
     },
     config() {
       type LoadObjectHook = Extract<

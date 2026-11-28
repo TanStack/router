@@ -11,6 +11,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import {
   appFiles,
   createStartApp,
+  runVitest,
   startViteTestServer,
   until,
   watcherReady,
@@ -356,4 +357,65 @@ export const Route = createFileRoute('/api')({
     },
     timeout,
   )
+})
+
+describe('Vitest with its module cache', () => {
+  const healthRoute = (
+    options = '',
+  ) => `${head}export const Route = createFileRoute('/api/health')({
+  server: { handlers: { GET: () => new Response('ok') } },${options}
+})
+`
+
+  // Start serves client code a route tree without the routes that only the
+  // server uses, built from all route files. Vitest keyed the cached module
+  // by the generated file, which lists every route and did not change.
+  test('a client test gets the route tree of the current route files, not the one of an earlier run', async () => {
+    const app = await createStartApp(
+      appFiles({
+        'vitest.config.ts': `import { defineConfig } from 'vitest/config'
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+export default defineConfig({
+  plugins: [tanstackStart()],
+  test: {
+    environment: 'jsdom',
+    include: ['tests/**/*.test.ts'],
+    fsModuleCachePath: 'node_modules/.vitest-cache',
+  },
+})
+`,
+        'src/routes/api/health.ts': healthRoute(),
+        'tests/route-ids.test.ts': `import { writeFileSync } from 'node:fs'
+import { createRouter } from '@tanstack/react-router'
+import { test } from 'vitest'
+import { routeTree } from '../src/routeTree.gen'
+test('records the routes of the client route tree', () => {
+  const router = createRouter({ routeTree })
+  // (the working directory is the app's)
+  writeFileSync(
+    'route-ids.json',
+    JSON.stringify(Object.keys(router.routesById).sort()),
+  )
+})
+`,
+      }),
+      'start-app-',
+      ['@tanstack/react-router', 'react', 'react-dom', 'vitest', 'jsdom'],
+    )
+    const routeIds = async () => {
+      const run = await runVitest(app)
+      expect(run.exitCode, run.output).toBe(0)
+      return JSON.parse(await app.read('route-ids.json')) as Array<string>
+    }
+
+    expect(await routeIds()).toEqual(['__root__'])
+    const routeTree = await app.read('src/routeTree.gen.ts')
+
+    await app.write({
+      'src/routes/api/health.ts': healthRoute('\n  component: () => null,'),
+    })
+
+    expect(await routeIds()).toEqual(['/api/health', '__root__'])
+    expect(await app.read('src/routeTree.gen.ts')).toBe(routeTree)
+  }, 120_000)
 })
