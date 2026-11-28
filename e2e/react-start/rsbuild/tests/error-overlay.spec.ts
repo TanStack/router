@@ -39,11 +39,11 @@ test('shows a module syntax error through the error overlay', async ({
     )
 
     const overlay = page.locator('rsbuild-error-overlay')
-    await expect(overlay.locator('.title')).toHaveText('Build failed', {
-      timeout: 30_000,
-    })
+    const overlayExpect = expect.configure({ timeout: 30_000 })
+    await overlayExpect(overlay.locator('.title')).toBeVisible()
+    await overlayExpect(overlay.locator('.title')).toHaveText('Build failed')
     const routeFile = /^\.\/src\/routes\/index\.tsx:\d+:\d+$/
-    await expect(overlay.locator('.file-link')).toHaveText([
+    await overlayExpect(overlay.locator('.file-link')).toHaveText([
       routeFile,
       routeFile,
     ])
@@ -55,7 +55,11 @@ test('shows a module syntax error through the error overlay', async ({
       const issue = issues.find((text) =>
         new RegExp(String.raw`/default-entry/${entry}\.tsx?\n`).test(text),
       )
-      expect(issue).toMatch(/\b16:\d+/)
+      // the error's position: in the `File:` header, or in the header of
+      // the bundler's code frame when the header gives none (`:1:1`)
+      expect(issue).toMatch(
+        /^File: \.\/src\/routes\/index\.tsx:16:\d+$|╭─\[(?:[^\]\s]+:)?16:\d+\]/m,
+      )
       // the trace's ends: the runtime's entry, then the route tree and the route
       expect(issue).toMatch(
         new RegExp(
