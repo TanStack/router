@@ -15,13 +15,14 @@ import {
 } from 'node:fs/promises'
 import path from 'node:path'
 import { parseSync } from 'vite'
-import { afterEach, describe, expect, onTestFinished, vi } from 'vitest'
+import { afterEach, describe, expect, vi } from 'vitest'
 import {
   expectDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { captureDiagnostics } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import { Generator } from '../src'
 import {
   configOf,
@@ -1015,10 +1016,10 @@ describe('tmpDir', () => {
   test.skipIf(!otherDevice)(
     'with tmpDir on another filesystem, the route file and the route tree are replaced atomically',
     async ({ createApp, routesOf }) => {
-      const tmpDir = await mkdtemp(
-        path.join(otherDevice!, 'tsr-generator-tmp-'),
+      const tmpDir = await closeAtEnd(
+        () => mkdtemp(path.join(otherDevice!, 'tsr-generator-tmp-')),
+        (dir) => rm(dir, { recursive: true, force: true }),
       )
-      onTestFinished(() => rm(tmpDir, { recursive: true, force: true }))
       const postsRoute = (id: string) =>
         `import { createFileRoute } from '@tanstack/react-router'
 

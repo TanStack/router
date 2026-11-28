@@ -431,8 +431,8 @@ test.runIf(process.platform === 'linux' && process.getuid?.() !== 0)(
       path.join(outside, 'b.tsx'),
       path.join(root, 'src/routes/b.tsx'),
     )
-    await chmod(outside, 0o111)
     onTestFinished(() => chmod(outside, 0o755))
+    await chmod(outside, 0o111)
     const session = await watchApp(root, config)
     expect(session.reported).not.toEqual([])
 
