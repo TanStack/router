@@ -45,8 +45,6 @@ type Bundler = 'vite' | 'rsbuild'
 
 interface Row {
   name: string
-  /** A known bug in the cells it names (a `.fails` pin, oracle/KNOWN-BUGS.md). */
-  pinned?: (bundler: Bundler, autoCodeSplitting: boolean) => boolean
   /** The files before the first edit. */
   files: Record<string, string>
   ready: string
@@ -189,24 +187,16 @@ export const Route = createFileRoute('/')({ component: Shell })
   // from the hoist that gives an inline value a family (unsplit).
   // Impact: the component remounted on every save, where `memo(Page)` keeps
   // its state.
-  // Pinned on Vite: plugin-react's React Refresh transform (oxc, as
-  // react-refresh/babel) registers no family for `memo(Page as any)`, where
-  // SWC (Rsbuild) does; the value stays in the route module with code
-  // splitting too (a call holding TypeScript syntax: main's chunk compile
-  // cannot parse it, R153).
-  {
-    ...versions(
-      'memo(Page as any)',
-      (v) =>
-        route(
-          `function Page() ${body(bodyText(v))}`,
-          'component: memo(Page as any)',
-        ),
-      bodyText,
-      1,
-    ),
-    pinned: (bundler) => bundler === 'vite',
-  },
+  versions(
+    'memo(Page as any)',
+    (v) =>
+      route(
+        `function Page() ${body(bodyText(v))}`,
+        'component: memo(Page as any)',
+      ),
+    bodyText,
+    1,
+  ),
   versions(
     'const Page = memo(function …)',
     (v) =>
@@ -331,10 +321,7 @@ export function identitySuite(bundler: Bundler) {
           }
         }
       }
-      const pinned = (row: Row) =>
-        row.pinned?.(bundler, autoCodeSplitting) === true
-      test.for(rows.filter((row) => !pinned(row)))('$name', run)
-      test.for(rows.filter(pinned))('$name', { fails: true }, run)
+      test.for(rows)('$name', run)
     },
   )
 }
