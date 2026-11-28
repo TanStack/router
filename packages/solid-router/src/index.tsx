@@ -284,6 +284,9 @@ export {
   ScrollRestoration,
 } from './ScrollRestoration'
 
+export { RouteAnnouncer } from './RouteAnnouncer'
+export type { RouteAnnouncerProps } from './RouteAnnouncer'
+
 export type { UseBlockerOpts, ShouldBlockFn } from './useBlocker'
 export { useBlocker, Block } from './useBlocker'
 
