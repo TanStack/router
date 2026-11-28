@@ -44,12 +44,10 @@ import type {
 } from '../../importProtection/public-types'
 
 /**
- * Each test's timeout, and the time an Rsbuild dev server may take to
- * compile: only a guard against a compile that never comes, never shorter
- * than the test's own timeout (a slow compile on a loaded machine fails the
- * test by its timeout, not by a shorter deadline of the harness).
+ * The hook's timeout, and how long the Rsbuild dev server may take to
+ * compile: only a guard against a compile that never comes, long enough for
+ * a slow compile on a loaded machine.
  */
-
 const timeout = 60_000
 const compileTimeout = timeout
 

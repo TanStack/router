@@ -24,6 +24,7 @@ const textOf = (html: string) =>
 describe.each(['react', 'solid', 'vue'] as const)(
   'scaffolded %s routes',
   (target) => {
+    // 30 s: three scaffolded routes, each rendered by the real router in a Vite server
     test('empty root, route and lazy route files become routes whose components render', async ({
       createApp,
       withRouteTree,

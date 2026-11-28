@@ -84,6 +84,7 @@ export const greet = createServerFn().handler(() => 'MARK_GREET_HANDLER')
 
   // SPEC J4.1, J4.2: the provider registers the server fn: SSR's caller
   // and the browser's reach the handler by id.
+  // 15 s: a call from SSR and one from a browser page on the RSC host
   test(
     'a server fn called from SSR and from the browser runs the handler of the provider',
     { timeout: 15_000 },
@@ -118,6 +119,7 @@ export const record = (name: string) => {
   return name
 }
 `
+  // 15 s: a case run in SSR, RSC and a browser page on the RSC host
   test.each([
     {
       name: 'a pattern with a leaf for a client-only fn and one for the handler',

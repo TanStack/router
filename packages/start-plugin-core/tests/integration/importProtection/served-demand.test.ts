@@ -32,6 +32,7 @@ import {
 import {
   allowedPlain,
   app,
+  compileTimeout,
   denied,
   deniedModule,
   holdUntilCompiled,
@@ -42,7 +43,6 @@ import {
   plainImporter,
   readScript,
   realForBoth,
-  timeout,
   uses,
 } from './served-verdict-app'
 import { settledAcrossTurn } from './hosts'
@@ -115,7 +115,7 @@ describe('an exempt importer the app no longer imports', () => {
 
   test('rsbuild dev: the pattern importer gets the mock', async () => {
     const server = await startRsbuildStartDevServer({
-      compileTimeout: timeout,
+      compileTimeout,
       browser: true,
       hmr: false,
       files: orphanApp('rsbuild', true),

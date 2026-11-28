@@ -302,6 +302,7 @@ describe('layouts and groups', () => {
   // generation for the whole app.
   // The same for a route group's layout without child routes yet
   // (`(group)/_layout.tsx`, `(marketing)/route.tsx`).
+  // 60 s: a generated tree loaded and rendered by the real router in a Vite server
   test.for(childlessLayouts)(
     'a pathless layout without child routes yet ($name) next to the index route is added to the route tree',
     { timeout: 60_000 },
@@ -315,6 +316,7 @@ describe('layouts and groups', () => {
   // (`posts.lazy.tsx`, no `posts.tsx`) nests under the lazy-only route's
   // virtual anchor (guide/code-splitting.md:222-224; SPEC J1.14). Control for
   // the pin below.
+  // 60 s: a generated tree loaded and rendered by the real router in a Vite server
   test(
     'a pathless layout under a route with only a lazy route file nests under that route',
     ({ appRoot, routeTreeHost }) =>
@@ -375,6 +377,7 @@ describe('layouts and groups', () => {
   // anchors of lazy-only routes).
   // Impact: the lazy-only route's component (its layout) and its loaders do
   // not wrap the pages under such a layout.
+  // 60 s: a generated tree loaded and rendered by the real router in a Vite server
   test(
     'a pathless layout in a directory under a route with only a lazy route file nests under that route',
     ({ appRoot, routeTreeHost }) =>

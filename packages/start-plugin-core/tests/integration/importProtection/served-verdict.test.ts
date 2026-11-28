@@ -34,6 +34,7 @@ import {
 import {
   allowedPlain,
   app,
+  compileTimeout,
   denied,
   holdUntilCompiled,
   named,
@@ -41,7 +42,6 @@ import {
   outcomeOf,
   readScript,
   realForBoth,
-  timeout,
   uses,
 } from './served-verdict-app'
 import { importersIn, settledAcrossTurn } from './hosts'
@@ -498,7 +498,7 @@ describe('dev: the exempt import removed by an edit', () => {
   test('rsbuild dev: the checked pattern importer gets the mock', async () => {
     const recorder = violationRecorder(options('mock'))
     const server = await startRsbuildStartDevServer({
-      compileTimeout: timeout,
+      compileTimeout,
       browser: true,
       hmr: false,
       files: app({

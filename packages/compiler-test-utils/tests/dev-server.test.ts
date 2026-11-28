@@ -14,6 +14,7 @@ import { saveAppFile } from '../src/save-file'
 import { test } from '../src/test'
 import type { Plugin, ViteDevServer } from 'vite'
 
+/** Each test starts a Vite dev server of its own. */
 const timeout = 30_000
 
 /**
@@ -39,381 +40,353 @@ export const dep = 'dep:' + leaf
 const sleep = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms))
 
-describe('dev server harness', () => {
-  test(
-    'serves an edited module in each environment after settle()',
-    async ({ devServer }) => {
-      const server = await devServer({ files })
-      expect(await server.transform('/leaf.ts')).toContain('v1')
-      expect((await server.import('/dep.ts')).dep).toBe('dep:v1')
+describe('dev server harness', { timeout }, () => {
+  test('serves an edited module in each environment after settle()', async ({
+    devServer,
+  }) => {
+    const server = await devServer({ files })
+    expect(await server.transform('/leaf.ts')).toContain('v1')
+    expect((await server.import('/dep.ts')).dep).toBe('dep:v1')
 
-      await server.edit({ 'leaf.ts': `export const leaf = 'v2'\n` })
+    await server.edit({ 'leaf.ts': `export const leaf = 'v2'\n` })
 
-      expect(server.events).toEqual([{ event: 'change', file: 'leaf.ts' }])
-      expect(await server.transform('/leaf.ts')).toContain('v2')
-      expect(await server.transform('/leaf.ts', 'ssr')).toContain('v2')
-      expect((await server.import('/dep.ts')).dep).toBe('dep:v2')
-    },
-    timeout,
-  )
+    expect(server.events).toEqual([{ event: 'change', file: 'leaf.ts' }])
+    expect(await server.transform('/leaf.ts')).toContain('v2')
+    expect(await server.transform('/leaf.ts', 'ssr')).toContain('v2')
+    expect((await server.import('/dep.ts')).dep).toBe('dep:v2')
+  })
 
-  test(
-    'load() requests every module a module imports transitively, also the ones it imports lazily, in each environment',
-    async ({ devServer }) => {
-      const server = await devServer({ files })
-      expect(Object.keys(await server.load('/main.ts')).sort()).toEqual([
-        '/dep.ts',
-        '/leaf.ts',
-        '/main.ts',
-      ])
-      for (const environment of ['client', 'ssr']) {
-        expect(
-          Object.keys(await server.load('/lazy.ts', { environment })).sort(),
-        ).toEqual(['/chunk.ts', '/lazy.ts'])
-      }
-    },
-    timeout,
-  )
-
-  test(
-    'reports an update to the accepting module, and a full reload when nothing accepts',
-    async ({ devServer }) => {
-      const server = await devServer({ files })
-      await server.load('/main.ts')
-      await server.load('/orphan.ts')
-
+  test('load() requests every module a module imports transitively, also the ones it imports lazily, in each environment', async ({
+    devServer,
+  }) => {
+    const server = await devServer({ files })
+    expect(Object.keys(await server.load('/main.ts')).sort()).toEqual([
+      '/dep.ts',
+      '/leaf.ts',
+      '/main.ts',
+    ])
+    for (const environment of ['client', 'ssr']) {
       expect(
-        describeHmr(
-          await server.edit({ 'leaf.ts': `export const leaf = 'v2'\n` }),
-        ),
-      ).toEqual(['client: update /main.ts'])
-      expect(
-        describeHmr(
-          await server.edit({ 'orphan.ts': `export const orphan = 'v2'\n` }),
-        ),
-      ).toEqual(['client: full-reload *'])
-    },
-    timeout,
-  )
+        Object.keys(await server.load('/lazy.ts', { environment })).sort(),
+      ).toEqual(['/chunk.ts', '/lazy.ts'])
+    }
+  })
 
-  test(
-    'reports created, renamed and deleted files to the plugins, and the files they write meanwhile',
-    async ({ devServer }) => {
-      const seen: Array<string> = []
-      /**
-       * Writes `generated.ts` listing the other `.ts` files when one of them
-       * is created, changed or deleted (and the list changed).
-       */
-      const generator: Plugin = {
-        name: 'generator',
-        async watchChange(id, { event }) {
-          const relative = path.relative(server.root, id)
-          // e.g. the harness's barrier files
-          if (!relative.endsWith('.ts')) {
-            return
-          }
-          seen.push(`${event} ${relative}`)
-          if (relative === 'generated.ts') {
-            return
-          }
-          const names = (await readdir(server.root))
-            .filter((name) => name.endsWith('.ts'))
-            .filter((name) => name !== 'generated.ts')
-            .sort()
-          const code = `export const names = ${JSON.stringify(names)}\n`
-          const generated = server.file('generated.ts')
-          if (
-            !existsSync(generated) ||
-            (await readFile(generated, 'utf8')) !== code
-          ) {
-            // Atomically, as a generator writes (the router generator's
-            // `safeFileWrite`: a temporary file renamed over the target). A
-            // plain `writeFile` is a truncation and a write: under load the
-            // watcher reports them as two events (an `add` and an `update`
-            // of a new file) and can read the empty file in between.
-            await saveAppFile(server.root, generated, code)
-          }
-        },
-      }
-      const server = await devServer({
-        files: { 'a.ts': `export const a = 1\n` },
-        plugins: [generator],
-      })
+  test('reports an update to the accepting module, and a full reload when nothing accepts', async ({
+    devServer,
+  }) => {
+    const server = await devServer({ files })
+    await server.load('/main.ts')
+    await server.load('/orphan.ts')
 
-      await server.edit({ 'b.ts': `export const b = 1\n` })
-      expect(seen).toEqual(['create b.ts', 'create generated.ts'])
-      expect((await server.import('/generated.ts')).names).toEqual([
-        'a.ts',
-        'b.ts',
-      ])
+    expect(
+      describeHmr(
+        await server.edit({ 'leaf.ts': `export const leaf = 'v2'\n` }),
+      ),
+    ).toEqual(['client: update /main.ts'])
+    expect(
+      describeHmr(
+        await server.edit({ 'orphan.ts': `export const orphan = 'v2'\n` }),
+      ),
+    ).toEqual(['client: full-reload *'])
+  })
 
-      seen.length = 0
-      await server.rename('a.ts', 'c.ts')
-      await server.settle()
-      // A watcher reports the two events of a rename in either order
-      expect(seen.sort()).toEqual([
-        'create c.ts',
-        'delete a.ts',
-        'update generated.ts',
-      ])
-      expect((await server.import('/generated.ts')).names).toEqual([
-        'b.ts',
-        'c.ts',
-      ])
+  test('reports created, renamed and deleted files to the plugins, and the files they write meanwhile', async ({
+    devServer,
+  }) => {
+    const seen: Array<string> = []
+    /**
+     * Writes `generated.ts` listing the other `.ts` files when one of them
+     * is created, changed or deleted (and the list changed).
+     */
+    const generator: Plugin = {
+      name: 'generator',
+      async watchChange(id, { event }) {
+        const relative = path.relative(server.root, id)
+        // e.g. the harness's barrier files
+        if (!relative.endsWith('.ts')) {
+          return
+        }
+        seen.push(`${event} ${relative}`)
+        if (relative === 'generated.ts') {
+          return
+        }
+        const names = (await readdir(server.root))
+          .filter((name) => name.endsWith('.ts'))
+          .filter((name) => name !== 'generated.ts')
+          .sort()
+        const code = `export const names = ${JSON.stringify(names)}\n`
+        const generated = server.file('generated.ts')
+        if (
+          !existsSync(generated) ||
+          (await readFile(generated, 'utf8')) !== code
+        ) {
+          // Atomically, as a generator writes (the router generator's
+          // `safeFileWrite`: a temporary file renamed over the target). A
+          // plain `writeFile` is a truncation and a write: under load the
+          // watcher reports them as two events (an `add` and an `update`
+          // of a new file) and can read the empty file in between.
+          await saveAppFile(server.root, generated, code)
+        }
+      },
+    }
+    const server = await devServer({
+      files: { 'a.ts': `export const a = 1\n` },
+      plugins: [generator],
+    })
 
-      seen.length = 0
-      await server.edit({ 'b.ts': null })
-      expect(seen).toEqual(['delete b.ts', 'update generated.ts'])
-      expect((await server.import('/generated.ts')).names).toEqual(['c.ts'])
-    },
-    timeout,
-  )
+    await server.edit({ 'b.ts': `export const b = 1\n` })
+    expect(seen).toEqual(['create b.ts', 'create generated.ts'])
+    expect((await server.import('/generated.ts')).names).toEqual([
+      'a.ts',
+      'b.ts',
+    ])
+
+    seen.length = 0
+    await server.rename('a.ts', 'c.ts')
+    await server.settle()
+    // A watcher reports the two events of a rename in either order
+    expect(seen.sort()).toEqual([
+      'create c.ts',
+      'delete a.ts',
+      'update generated.ts',
+    ])
+    expect((await server.import('/generated.ts')).names).toEqual([
+      'b.ts',
+      'c.ts',
+    ])
+
+    seen.length = 0
+    await server.edit({ 'b.ts': null })
+    expect(seen).toEqual(['delete b.ts', 'update generated.ts'])
+    expect((await server.import('/generated.ts')).names).toEqual(['c.ts'])
+  })
 
   // The watcher reports a write as a change even when the contents stay the
   // same; settle() waits for that event, whatever the clock says.
-  test(
-    'reports a write that leaves the contents as they were as a change',
-    async ({ devServer }) => {
-      const server = await devServer({ files })
-      await server.edit({ 'leaf.ts': files['leaf.ts'] })
-      expect(server.events).toEqual([{ event: 'change', file: 'leaf.ts' }])
-    },
-    timeout,
-  )
+  test('reports a write that leaves the contents as they were as a change', async ({
+    devServer,
+  }) => {
+    const server = await devServer({ files })
+    await server.edit({ 'leaf.ts': files['leaf.ts'] })
+    expect(server.events).toEqual([{ event: 'change', file: 'leaf.ts' }])
+  })
 
   // So a plugin that rewrites a file on every file event, even with the same
   // contents, makes the server handle file events forever (a reload loop).
   // The plugin takes a moment before writing, longer than the moment within
   // which the watcher drops a second change of a file.
-  test(
-    'never settles while a plugin rewrites a file with the same contents on each event',
-    async ({ devServer }) => {
-      const rewriter: Plugin = {
-        name: 'rewriter',
-        async watchChange(id) {
-          // e.g. the harness's barrier files
-          if (!id.endsWith('.ts')) {
-            return
-          }
-          await sleep(60)
-          await writeFile(
-            server.file('generated.ts'),
-            `export const same = 1\n`,
-          )
-        },
-      }
-      // (a short bound: the loop shows after the first round)
-      const server = await devServer({
-        files,
-        plugins: [rewriter],
-        settleTimeout: 1_000,
-      })
-      await expect(
-        server.edit({ 'leaf.ts': `export const leaf = 'v2'\n` }),
-      ).rejects.toMatchObject({
-        name: 'SettleTimeout',
-        message: expect.stringMatching(
-          /keep changing 1000 ms after[\s\S]*generated\.ts/,
-        ),
-      })
-    },
-    timeout,
-  )
+  test('never settles while a plugin rewrites a file with the same contents on each event', async ({
+    devServer,
+  }) => {
+    const rewriter: Plugin = {
+      name: 'rewriter',
+      async watchChange(id) {
+        // e.g. the harness's barrier files
+        if (!id.endsWith('.ts')) {
+          return
+        }
+        await sleep(60)
+        await writeFile(server.file('generated.ts'), `export const same = 1\n`)
+      },
+    }
+    // (a short bound: the loop shows after the first round)
+    const server = await devServer({
+      files,
+      plugins: [rewriter],
+      settleTimeout: 1_000,
+    })
+    await expect(
+      server.edit({ 'leaf.ts': `export const leaf = 'v2'\n` }),
+    ).rejects.toMatchObject({
+      name: 'SettleTimeout',
+      message: expect.stringMatching(
+        /keep changing 1000 ms after[\s\S]*generated\.ts/,
+      ),
+    })
+  })
 
-  test(
-    'settle() waits for the handling of each file of an edit, however long a plugin takes',
-    async ({ devServer }) => {
-      const handling: Array<string> = []
-      const slow: Plugin = {
-        name: 'slow',
-        async watchChange(id) {
-          const relative = path.relative(server.root, id)
-          if (!relative.endsWith('.ts')) {
-            return
-          }
-          handling.push(`start ${relative}`)
-          await sleep(200)
-          handling.push(`end ${relative}`)
-        },
-      }
-      const server = await devServer({ files, plugins: [slow] })
-      await server.load('/main.ts')
-      await server.load('/orphan.ts')
-      const messages = await server.edit({
-        'leaf.ts': `export const leaf = 'v2'\n`,
-        'orphan.ts': `export const orphan = 'v2'\n`,
-      })
-      expect(
-        handling.filter((entry) => entry.startsWith('end')).sort(),
-      ).toEqual(['end leaf.ts', 'end orphan.ts'])
-      expect(describeHmr(messages).sort()).toEqual([
-        'client: full-reload *',
-        'client: update /main.ts',
-      ])
-      expect((await server.import('/dep.ts')).dep).toBe('dep:v2')
-    },
-    timeout,
-  )
-  test(
-    'serves a request over HTTP like the client environment',
-    async ({ devServer }) => {
-      const server = await devServer({ files, listen: true })
-      const response = await server.fetch('/leaf.ts')
-      expect(response.status).toBe(200)
-      // HTTP responses inline the source map
-      expect(response.body.replace(/\n\/\/# sourceMappingURL=.*$/s, '')).toBe(
-        await server.transform('/leaf.ts'),
-      )
+  test('settle() waits for the handling of each file of an edit, however long a plugin takes', async ({
+    devServer,
+  }) => {
+    const handling: Array<string> = []
+    const slow: Plugin = {
+      name: 'slow',
+      async watchChange(id) {
+        const relative = path.relative(server.root, id)
+        if (!relative.endsWith('.ts')) {
+          return
+        }
+        handling.push(`start ${relative}`)
+        await sleep(200)
+        handling.push(`end ${relative}`)
+      },
+    }
+    const server = await devServer({ files, plugins: [slow] })
+    await server.load('/main.ts')
+    await server.load('/orphan.ts')
+    const messages = await server.edit({
+      'leaf.ts': `export const leaf = 'v2'\n`,
+      'orphan.ts': `export const orphan = 'v2'\n`,
+    })
+    expect(handling.filter((entry) => entry.startsWith('end')).sort()).toEqual([
+      'end leaf.ts',
+      'end orphan.ts',
+    ])
+    expect(describeHmr(messages).sort()).toEqual([
+      'client: full-reload *',
+      'client: update /main.ts',
+    ])
+    expect((await server.import('/dep.ts')).dep).toBe('dep:v2')
+  })
+  test('serves a request over HTTP like the client environment', async ({
+    devServer,
+  }) => {
+    const server = await devServer({ files, listen: true })
+    const response = await server.fetch('/leaf.ts')
+    expect(response.status).toBe(200)
+    // HTTP responses inline the source map
+    expect(response.body.replace(/\n\/\/# sourceMappingURL=.*$/s, '')).toBe(
+      await server.transform('/leaf.ts'),
+    )
 
-      await server.edit({ 'leaf.ts': `export const leaf = 'v2'\n` })
-      expect((await server.fetch('/leaf.ts')).body).toContain('v2')
-    },
-    timeout,
-  )
+    await server.edit({ 'leaf.ts': `export const leaf = 'v2'\n` })
+    expect((await server.fetch('/leaf.ts')).body).toContain('v2')
+  })
 
-  test(
-    'settles when a plugin restarts the server while handling a file event, and keeps reporting',
-    async ({ devServer }) => {
-      let restarts = 0
-      let restartable: ViteDevServer | undefined
-      const server = await devServer({
-        files: { ...files, 'restart.json': '{}' },
-        plugins: [
-          {
-            name: 'restarts',
-            configureServer(vite) {
-              restartable = vite
-            },
-            async watchChange(id) {
-              if (id.endsWith('restart.json')) {
-                restarts++
-                await restartable?.restart()
-              }
-            },
+  test('settles when a plugin restarts the server while handling a file event, and keeps reporting', async ({
+    devServer,
+  }) => {
+    let restarts = 0
+    let restartable: ViteDevServer | undefined
+    const server = await devServer({
+      files: { ...files, 'restart.json': '{}' },
+      plugins: [
+        {
+          name: 'restarts',
+          configureServer(vite) {
+            restartable = vite
           },
-        ],
-      })
-      await server.load('/main.ts')
-      await server.edit({ 'restart.json': '{ "a": 1 }' })
-      expect(restarts).toBe(1)
-
-      await server.load('/main.ts')
-      expect(
-        describeHmr(
-          await server.edit({ 'leaf.ts': `export const leaf = 'v2'\n` }),
-        ),
-      ).toEqual(['client: update /main.ts'])
-      expect(await server.transform('/leaf.ts')).toContain('v2')
-    },
-    timeout,
-  )
-
-  test(
-    'rejects settle() with the error a plugin throws while handling a file event',
-    async ({ devServer }) => {
-      const server = await devServer({
-        files,
-        plugins: [
-          {
-            name: 'throws',
-            watchChange() {
-              throw new Error('watchChange failed')
-            },
+          async watchChange(id) {
+            if (id.endsWith('restart.json')) {
+              restarts++
+              await restartable?.restart()
+            }
           },
-        ],
-      })
-      await expect(
-        server.edit({ 'leaf.ts': `export const leaf = 'v2'\n` }),
-      ).rejects.toThrow('watchChange failed')
-    },
-    timeout,
-  )
+        },
+      ],
+    })
+    await server.load('/main.ts')
+    await server.edit({ 'restart.json': '{ "a": 1 }' })
+    expect(restarts).toBe(1)
+
+    await server.load('/main.ts')
+    expect(
+      describeHmr(
+        await server.edit({ 'leaf.ts': `export const leaf = 'v2'\n` }),
+      ),
+    ).toEqual(['client: update /main.ts'])
+    expect(await server.transform('/leaf.ts')).toContain('v2')
+  })
+
+  test('rejects settle() with the error a plugin throws while handling a file event', async ({
+    devServer,
+  }) => {
+    const server = await devServer({
+      files,
+      plugins: [
+        {
+          name: 'throws',
+          watchChange() {
+            throw new Error('watchChange failed')
+          },
+        },
+      ],
+    })
+    await expect(
+      server.edit({ 'leaf.ts': `export const leaf = 'v2'\n` }),
+    ).rejects.toThrow('watchChange failed')
+  })
 
   // Vite's default `server.preTransformRequests`, as in an app: serving a
   // client module starts the transforms of its static imports in the
   // background.
-  test(
-    'idle() waits for the background transforms of the imports of a served module',
-    async ({ devServer }) => {
-      let release!: () => void
-      const released = new Promise<void>((resolve) => {
-        release = resolve
-      })
-      const transformed: Array<string> = []
-      const server = await devServer({
-        files,
-        plugins: [
-          {
-            name: 'slow-leaf',
-            async transform(_code, id) {
-              if (id.endsWith('/leaf.ts')) {
-                await released
-                transformed.push('leaf.ts')
-              }
-              return null
-            },
+  test('idle() waits for the background transforms of the imports of a served module', async ({
+    devServer,
+  }) => {
+    let release!: () => void
+    const released = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const transformed: Array<string> = []
+    const server = await devServer({
+      files,
+      plugins: [
+        {
+          name: 'slow-leaf',
+          async transform(_code, id) {
+            if (id.endsWith('/leaf.ts')) {
+              await released
+              transformed.push('leaf.ts')
+            }
+            return null
           },
-        ],
-      })
-      await server.transform('/dep.ts')
-      const idle = server.idle()
-      let settled = false
-      void idle.then(() => {
-        settled = true
-      })
-      await new Promise((resolve) => setTimeout(resolve, 50))
-      expect(settled).toBe(false)
-      release()
-      await idle
-      expect(transformed).toEqual(['leaf.ts'])
-    },
-    timeout,
-  )
+        },
+      ],
+    })
+    await server.transform('/dep.ts')
+    const idle = server.idle()
+    let settled = false
+    void idle.then(() => {
+      settled = true
+    })
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(settled).toBe(false)
+    release()
+    await idle
+    expect(transformed).toEqual(['leaf.ts'])
+  })
 })
 
-describe('bundledDev', () => {
+describe('bundledDev', { timeout }, () => {
   /** The chunks of a client bundle that contain `marker`. */
   const containing = (bundle: Record<string, string>, marker: string) =>
     Object.keys(bundle).filter((fileName) => bundle[fileName]!.includes(marker))
 
-  test(
-    'clientBundle() bundles the client from the entry, again after an edit the dev engine watched; the other environments are served as usual',
-    async ({ devServer }) => {
-      const server = await devServer({
-        bundledDev: { entry: 'main.ts' },
-        files: {
-          'main.ts': `import { dep } from './dep'\nexport const value = dep\n`,
-          'dep.ts': `export const dep = 'MARK_V1'\n`,
-          'other.ts': `export const other = 'MARK_OTHER'\n`,
-        },
-      })
-      const before = await server.clientBundle()
-      expect(containing(before, 'MARK_V1')).toHaveLength(1)
-      expect(containing(before, 'MARK_OTHER')).toEqual([])
-      expect((await server.import('/dep.ts')).dep).toBe('MARK_V1')
+  test('clientBundle() bundles the client from the entry, again after an edit the dev engine watched; the other environments are served as usual', async ({
+    devServer,
+  }) => {
+    const server = await devServer({
+      bundledDev: { entry: 'main.ts' },
+      files: {
+        'main.ts': `import { dep } from './dep'\nexport const value = dep\n`,
+        'dep.ts': `export const dep = 'MARK_V1'\n`,
+        'other.ts': `export const other = 'MARK_OTHER'\n`,
+      },
+    })
+    const before = await server.clientBundle()
+    expect(containing(before, 'MARK_V1')).toHaveLength(1)
+    expect(containing(before, 'MARK_OTHER')).toEqual([])
+    expect((await server.import('/dep.ts')).dep).toBe('MARK_V1')
 
-      await server.edit({ 'dep.ts': `export const dep = 'MARK_V2'\n` })
+    await server.edit({ 'dep.ts': `export const dep = 'MARK_V2'\n` })
 
-      // Rolldown's watcher reports the atomic save as a creation
-      expect(server.events.map((event) => event.file)).toEqual(['dep.ts'])
-      const after = await server.clientBundle()
-      expect({
-        v1: containing(after, 'MARK_V1'),
-        v2: containing(after, 'MARK_V2').length,
-      }).toEqual({ v1: [], v2: 1 })
-    },
-    timeout,
-  )
+    // Rolldown's watcher reports the atomic save as a creation
+    expect(server.events.map((event) => event.file)).toEqual(['dep.ts'])
+    const after = await server.clientBundle()
+    expect({
+      v1: containing(after, 'MARK_V1'),
+      v2: containing(after, 'MARK_V2').length,
+    }).toEqual({ v1: [], v2: 1 })
+  })
 
-  test(
-    'clientBundle() rejects when the client fails to bundle',
-    async ({ devServer }) => {
-      const server = await devServer({
-        bundledDev: { entry: 'main.ts' },
-        files: { 'main.ts': `export { value } from './missing-module'\n` },
-      })
-      await expect(server.clientBundle()).rejects.toThrow(/missing-module/)
-    },
-    timeout,
-  )
+  test('clientBundle() rejects when the client fails to bundle', async ({
+    devServer,
+  }) => {
+    const server = await devServer({
+      bundledDev: { entry: 'main.ts' },
+      files: { 'main.ts': `export { value } from './missing-module'\n` },
+    })
+    await expect(server.clientBundle()).rejects.toThrow(/missing-module/)
+  })
 })

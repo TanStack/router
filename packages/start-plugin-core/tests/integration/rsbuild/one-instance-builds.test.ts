@@ -12,6 +12,7 @@ import { rsbuildRscLinks } from '../../start-plugins'
 import { rsbuildEntries } from '../route-css-cases'
 import type { StartPluginOptions } from '../../start-plugins'
 
+/** Two or three builds of an app on one Rsbuild instance. */
 const timeout = 180_000
 
 const root = `import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'

@@ -7,6 +7,7 @@ import path from 'node:path'
 import { buildStart } from '../../build-start'
 import type { StartBundler } from '../../build-harness'
 
+/** The build hooks' timeout, and how long a dev server may take to compile. */
 export const timeout = 60_000
 
 export const CANARY = 'CANARY_DENIED_TEXT'

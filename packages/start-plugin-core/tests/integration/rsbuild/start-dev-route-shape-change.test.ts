@@ -13,6 +13,7 @@ import { openTestPage } from '../../test-page'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 import { reactApp } from '../hydrate-dev-edits'
 
+/** Four saves on an Rsbuild dev server, each compiled and loaded in the page. */
 const timeout = 150_000
 
 const index = (n: number, errorComponent: boolean) =>

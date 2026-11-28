@@ -25,8 +25,6 @@ import type { StartBundler } from '../../build-harness'
 import type { RsbuildPlugin, Rspack } from '@rsbuild/core'
 import type { Plugin } from 'vite'
 
-const timeout = 60_000
-
 interface Counts {
   /** Plans of the client build. */
   plans: number
@@ -158,49 +156,45 @@ const transformed = (modules: ParsedModules, file: string) =>
   )
 
 describe.each(startBundlers)('a %s build', (bundler) => {
-  test(
-    'compiles a dependency only when it uses Start, and never reads an asset as code',
-    async () => {
-      const own = await build(bundler, `export const dep = () => 'MARK_OWN'`)
-      const plain = await build(
+  test('compiles a dependency only when it uses Start, and never reads an asset as code', async () => {
+    const own = await build(bundler, `export const dep = () => 'MARK_OWN'`)
+    const plain = await build(
+      bundler,
+      `import { plain } from 'plain-lib'\nexport const dep = plain`,
+    )
+    const start = await build(
+      bundler,
+      `import { note, where } from 'start-lib'\nexport const dep = [note, where]`,
+    )
+    expect(plain.client.where('MARK_PLAIN')).not.toBe('nowhere')
+    // the dependency is no module of the compiler's
+    expect(plain.counts.plans).toBe(own.counts.plans)
+    if (bundler === 'vite') {
+      // (Rsbuild: the runtime of an asset module fails the harness's
+      // dangling-name check; the rule is the compiler core's, both hosts')
+      const asset = await build(
         bundler,
-        `import { plain } from 'plain-lib'\nexport const dep = plain`,
+        `import url from './big.png?url'\nexport const dep = () => url`,
       )
-      const start = await build(
-        bundler,
-        `import { note, where } from 'start-lib'\nexport const dep = [note, where]`,
+      // the asset is bundled, neither compiled nor read
+      expect(asset.client.where(/\/assets\/big-[\w-]+\.png/)).not.toBe(
+        'nowhere',
       )
-      expect(plain.client.where('MARK_PLAIN')).not.toBe('nowhere')
-      // the dependency is no module of the compiler's
-      expect(plain.counts.plans).toBe(own.counts.plans)
-      if (bundler === 'vite') {
-        // (Rsbuild: the runtime of an asset module fails the harness's
-        // dangling-name check; the rule is the compiler core's, both hosts')
-        const asset = await build(
-          bundler,
-          `import url from './big.png?url'\nexport const dep = () => url`,
-        )
-        // the asset is bundled, neither compiled nor read
-        expect(asset.client.where(/\/assets\/big-[\w-]+\.png/)).not.toBe(
-          'nowhere',
-        )
-        expect(asset.counts).toEqual(own.counts)
-      }
-      // the Start library's two modules are compiled: its server code is not in the client
-      expect(start.counts.plans).toBe(own.counts.plans + 2)
-      expect(start.client.where('MARK_LIB_CLIENT')).not.toBe('nowhere')
-      expect(start.client.where('MARK_LIB_SERVER')).toBe('nowhere')
-      // modules the compiler leaves as they are reach the bundler as written
-      expect(
-        transformed(plain.modules, 'node_modules/plain-lib/index.js'),
-      ).toBe(false)
-      expect(transformed(start.modules, 'node_modules/start-lib/note.js')).toBe(
-        false,
-      )
-      expect(
-        transformed(start.modules, 'node_modules/start-lib/index.js'),
-      ).toBe(true)
-    },
-    timeout * 4,
-  )
+      expect(asset.counts).toEqual(own.counts)
+    }
+    // the Start library's two modules are compiled: its server code is not in the client
+    expect(start.counts.plans).toBe(own.counts.plans + 2)
+    expect(start.client.where('MARK_LIB_CLIENT')).not.toBe('nowhere')
+    expect(start.client.where('MARK_LIB_SERVER')).toBe('nowhere')
+    // modules the compiler leaves as they are reach the bundler as written
+    expect(transformed(plain.modules, 'node_modules/plain-lib/index.js')).toBe(
+      false,
+    )
+    expect(transformed(start.modules, 'node_modules/start-lib/note.js')).toBe(
+      false,
+    )
+    expect(transformed(start.modules, 'node_modules/start-lib/index.js')).toBe(
+      true,
+    )
+  }, 240_000) // four builds of the app (a dependency of each kind)
 })

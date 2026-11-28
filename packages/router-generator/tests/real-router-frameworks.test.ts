@@ -11,6 +11,7 @@ import { frameworkCases } from './real-router-cases'
 import { test } from './test'
 
 describe('the real router on the route trees of each framework', () => {
+  // 60 s: each framework's tree loaded and rendered by its real router in a Vite server
   test.for(frameworkCases)(
     '$name',
     { timeout: 60_000 },

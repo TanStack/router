@@ -18,6 +18,7 @@ import { test } from './test'
 
 // (the frameworks' pages: real-router-frameworks.test.ts)
 describe('the real router on a generated route tree', () => {
+  // 60 s: a generated tree loaded and rendered by the real router in a Vite server
   test.for(shapeCases)(
     '$name',
     { timeout: 60_000 },
@@ -25,6 +26,7 @@ describe('the real router on a generated route tree', () => {
       checkApp({ appRoot, routeTreeHost }, testCase, { types: false }),
   )
 
+  // 60 s: a generated tree loaded and rendered by the real router in a Vite server
   test(
     'the layout route of a route group directory adds no path segment and renders around its children',
     ({ appRoot, routeTreeHost }) =>
@@ -45,6 +47,7 @@ describe('the real router on a generated route tree', () => {
   // a layout without a route file is typed `static`).
   // Impact: the pages under such a layout are served at the wrong URL, and
   // typed links to them lead nowhere.
+  // 60 s: a generated tree loaded and rendered by the real router in a Vite server
   test(
     'a pathless layout with only a lazy route file keeps its directory path',
     ({ appRoot, routeTreeHost }) =>

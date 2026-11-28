@@ -31,8 +31,6 @@ import {
   startRscRsbuildPreviewServer,
 } from './rsc-serial'
 
-const timeout = 60_000
-
 /** Rsbuild's `tools.rspack` adding `rule` to the server compiler's module rules. */
 const serverRule = (rule: Record<string, unknown>) => ({
   rspack: (
@@ -56,56 +54,51 @@ const mocked = {
   boxes: 2,
 }
 
-test(
-  "Rsbuild dev with RSC and a user layer, on the persistent cache: the layer's denied import is served its mock on a first start, after a restart with no edit and after a restart after an edit",
-  async () => {
-    const { violations, start } = recorder('mock')
-    let server = await startRscRsbuildDevServer({
-      browser: true,
-      start,
-      config: {
-        performance: { buildCache: true },
-        tools: serverRule({ test: /label\.ts$/, layer: 'reports' }),
-      },
-      files: environmentsFiles,
-    })
-    const checkpoint =
-      "a first start serves the layer's denied import its mock and reports it in ssr"
-    await expectPage(server.url!, mocked, checkpoint)
-    expect
-      .soft(summary(violations), checkpoint)
-      .toEqual(['ssr server file label.ts -> ./secret.client'])
+test("Rsbuild dev with RSC and a user layer, on the persistent cache: the layer's denied import is served its mock on a first start, after a restart with no edit and after a restart after an edit", async () => {
+  const { violations, start } = recorder('mock')
+  let server = await startRscRsbuildDevServer({
+    browser: true,
+    start,
+    config: {
+      performance: { buildCache: true },
+      tools: serverRule({ test: /label\.ts$/, layer: 'reports' }),
+    },
+    files: environmentsFiles,
+  })
+  const checkpoint =
+    "a first start serves the layer's denied import its mock and reports it in ssr"
+  await expectPage(server.url!, mocked, checkpoint)
+  expect
+    .soft(summary(violations), checkpoint)
+    .toEqual(['ssr server file label.ts -> ./secret.client'])
 
-    await server.stop()
-    server = await server.restart()
-    expect(
-      server.rebuiltBy.ssr,
-      'the cache restored the modules',
-    ).not.toContain('src/routes/__root.tsx')
-    await expectPage(
-      server.url!,
-      mocked,
-      'a restart with no edit restores the importer, and its edge module resolves',
-    )
+  await server.stop()
+  server = await server.restart()
+  expect(server.rebuiltBy.ssr, 'the cache restored the modules').not.toContain(
+    'src/routes/__root.tsx',
+  )
+  await expectPage(
+    server.url!,
+    mocked,
+    'a restart with no edit restores the importer, and its edge module resolves',
+  )
 
-    await server.stop()
-    await writeFile(
-      path.join(server.root, 'src/where/plain.ts'),
-      `export const where = () => 'MARK_WHERE_EDITED'\n`,
-    )
-    server = await server.restart()
-    await expectPage(
-      server.url!,
-      {
-        ...mocked,
-        route: '[import-protection mock] MARK_WHERE_EDITED',
-        server: '[import-protection mock] MARK_WHERE_SERVER',
-      },
-      'a restart after an edit of another file the layer reads shows it',
-    )
-  },
-  3 * timeout,
-)
+  await server.stop()
+  await writeFile(
+    path.join(server.root, 'src/where/plain.ts'),
+    `export const where = () => 'MARK_WHERE_EDITED'\n`,
+  )
+  server = await server.restart()
+  await expectPage(
+    server.url!,
+    {
+      ...mocked,
+      route: '[import-protection mock] MARK_WHERE_EDITED',
+      server: '[import-protection mock] MARK_WHERE_SERVER',
+    },
+    'a restart after an edit of another file the layer reads shows it',
+  )
+}, 180_000) // a start and two restarts of an Rsbuild RSC dev server
 
 describe('Rsbuild build with RSC and a user layer whose rule resolves with a condition of its own', () => {
   const files = {

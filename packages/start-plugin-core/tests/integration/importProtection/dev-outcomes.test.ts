@@ -110,10 +110,7 @@ describe('Vite dev, behavior "error"', () => {
 })
 
 describe('Rsbuild dev', () => {
-  /**
-   * Only a guard against a compile that never comes, never shorter than the
-   * test's timeout (rsbuild/import-protection.test.ts).
-   */
+  /** Only a guard against a compile that never comes (rsbuild/import-protection.test.ts). */
   const compileTimeout = 60_000
 
   /**

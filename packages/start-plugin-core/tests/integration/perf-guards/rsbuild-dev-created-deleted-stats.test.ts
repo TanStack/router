@@ -8,6 +8,7 @@ import { describe, expect, test, vi } from 'vitest'
 import { compilerStats } from '@tanstack/router-utils/compiler'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 
+/** 200 files created and deleted on an Rsbuild dev server, each compiled. */
 const timeout = 90_000
 const compileTimeout = 30_000
 

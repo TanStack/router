@@ -20,8 +20,9 @@ export interface RunNodeOptions {
   env?: NodeJS.ProcessEnv
   /**
    * How long the program may run, in milliseconds. Default 25 000: below
-   * the 30 s `testTimeout` of the tiers that run programs, so that a stuck
-   * run fails with what it was waiting for, not with the test's timeout.
+   * the `testTimeout` of the tiers that run programs (30 s or more), so
+   * that a stuck run fails with what it was waiting for, not with the
+   * test's timeout.
    */
   timeout?: number
 }

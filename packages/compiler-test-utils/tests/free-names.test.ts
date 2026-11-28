@@ -80,6 +80,7 @@ test('a read in a function code reaches through a direct eval counts', () => {
 // Functions after a return that call one another, none of them used: the
 // reachability is decided once per module, not per read and path (ten took
 // 2.9 s for one read at fb43990168).
+// 60 s: a regression reads for seconds; the bound below is what fails it
 test('many functions after a return that call one another are read at once', () => {
   const names = Array.from({ length: 10 }, (_, index) => `f${index}`)
   const code = `function g() {
@@ -127,6 +128,7 @@ test.each([
 // Every module with a free read once built its live set (a search of each
 // function's statement list): 20,000 functions took 3.2 s at f5fe192e0a.
 // Linear now (~55 ms for 40,000); the quadratic search took ~5 s.
+// 60 s: a regression reads for seconds; the bound below is what fails it
 test('many functions and no code after an exit are read at once', () => {
   const code = `${Array.from({ length: 40_000 }, (_, index) => `function f${index}() { return ${index} }`).join('\n')}\nx\n`
   const started = performance.now()

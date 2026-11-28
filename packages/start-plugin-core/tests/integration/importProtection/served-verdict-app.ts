@@ -11,7 +11,8 @@ import type { StartBuild } from '../../build-harness'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'
 import type { Plugin } from 'vite'
 
-export const timeout = 120_000
+/** How long an Rsbuild dev server may take to compile an edit. */
+export const compileTimeout = 120_000
 
 export const denied = 'src/lib/db.server.ts'
 

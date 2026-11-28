@@ -888,6 +888,7 @@ export const fn = createServerFn().handler(async () => 'from the server')`,
 
   // On main, a user binding or a server fn named like generated code breaks the
   // module or its server calls.
+  // 30 s: a server fn call for each name the compiler introduces, in each form
   test('no name the compiler introduces collides with a user binding or a server fn of that name', async () => {
     const names = await introducedNames()
     expect(names.length, 'names the compiler introduced').toBeGreaterThan(0)

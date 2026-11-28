@@ -28,8 +28,6 @@ import {
 import { startRscRsbuildDevServer } from './rsc-serial'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
-const timeout = 60_000
-
 async function page(server: RsbuildDevServer) {
   const response = await fetch(new URL('/uc', server.url))
   return { status: response.status, body: await response.text() }
@@ -40,65 +38,61 @@ async function page(server: RsbuildDevServer) {
 // RSC: an exempt importer's denied import was denied after a rebuild"; the
 // RSC layer's compile of `ClientBox.tsx`, a client reference there with no
 // imports, replaced the SSR layer's row of import protection's edge index).
-test(
-  "Rsbuild dev with RSC: an exempt client component in both layers, through a route added while the server was stopped, its server component's use removed and restored, then the same after a fresh start",
-  async () => {
-    let server = await startRscRsbuildDevServer({
-      browser: true,
-      start: dualLayerStart,
-      files: dualLayerBase,
-    })
-    // A pull adds the route: the tree on disk does not list it when the
-    // next server's first compile runs
-    await server.stop()
-    for (const [file, content] of Object.entries(ucRoute)) {
-      await writeFile(path.join(server.root, file), content)
-    }
-    server = await server.restart()
-    // (the generator writes the tree, and the SSR compile runs again)
-    await server.settle()
+test("Rsbuild dev with RSC: an exempt client component in both layers, through a route added while the server was stopped, its server component's use removed and restored, then the same after a fresh start", async () => {
+  let server = await startRscRsbuildDevServer({
+    browser: true,
+    start: dualLayerStart,
+    files: dualLayerBase,
+  })
+  // A pull adds the route: the tree on disk does not list it when the
+  // next server's first compile runs
+  await server.stop()
+  for (const [file, content] of Object.entries(ucRoute)) {
+    await writeFile(path.join(server.root, file), content)
+  }
+  server = await server.restart()
+  // (the generator writes the tree, and the SSR compile runs again)
+  await server.settle()
+  expectRealLabels(
+    await page(server),
+    2,
+    server.diagnostics,
+    'a route added while the server was stopped shows both real labels once the generator rebuilt the tree',
+  )
+  const edit = async (withUse: boolean, checkpoint: string) => {
+    const since = server.diagnostics.length
+    await server.edit({ 'src/utils/ucServer.tsx': ucServer(withUse) })
     expectRealLabels(
       await page(server),
-      2,
-      server.diagnostics,
-      'a route added while the server was stopped shows both real labels once the generator rebuilt the tree',
+      withUse ? 2 : 1,
+      server.diagnostics.slice(since),
+      checkpoint,
     )
-    const edit = async (withUse: boolean, checkpoint: string) => {
-      const since = server.diagnostics.length
-      await server.edit({ 'src/utils/ucServer.tsx': ucServer(withUse) })
-      expectRealLabels(
-        await page(server),
-        withUse ? 2 : 1,
-        server.diagnostics.slice(since),
-        checkpoint,
-      )
-    }
-    await edit(
-      false,
-      "then removing the server component's use keeps the route's real label",
-    )
-    await edit(
-      true,
-      "then restoring the server component's use shows both real labels",
-    )
-    server = await server.restart()
-    expectRealLabels(
-      await page(server),
-      2,
-      server.diagnostics,
-      'a fresh start on the final source shows both real labels',
-    )
-    await edit(
-      false,
-      "after the fresh start, removing the server component's use keeps the route's real label",
-    )
-    await edit(
-      true,
-      "after the fresh start, restoring the server component's use shows both real labels",
-    )
-  },
-  3 * timeout,
-)
+  }
+  await edit(
+    false,
+    "then removing the server component's use keeps the route's real label",
+  )
+  await edit(
+    true,
+    "then restoring the server component's use shows both real labels",
+  )
+  server = await server.restart()
+  expectRealLabels(
+    await page(server),
+    2,
+    server.diagnostics,
+    'a fresh start on the final source shows both real labels',
+  )
+  await edit(
+    false,
+    "after the fresh start, removing the server component's use keeps the route's real label",
+  )
+  await edit(
+    true,
+    "after the fresh start, restoring the server component's use shows both real labels",
+  )
+}, 180_000) // a start and two restarts of an Rsbuild RSC dev server
 
 // SPEC J6.6, J6.7: `allowImport` answers for an import in each environment
 // (both layers' modules of the importer make it, `ssr` and `rsc`): a

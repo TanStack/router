@@ -93,6 +93,7 @@ test.fails('an assertion fails, then a cleanup times out', () => {
 test.fails('nothing fails', () => {})
 `
 
+// 60 s: a child Vitest run, bounded at 60 s
 test('a pin passes only when an assertion of it fails', async ({ appRoot }) => {
   expect(await runPinsFile(appRoot, pins)).toEqual({
     'an assertion fails': 'pass',
@@ -112,6 +113,7 @@ test('a pin passes only when an assertion of it fails', async ({ appRoot }) => {
   })
 }, 60_000)
 
+// 60 s: a child Vitest run, bounded at 60 s
 test('with COMPILER_TESTS_PINS=run, pins are ordinary tests', async ({
   appRoot,
 }) => {

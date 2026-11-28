@@ -13,6 +13,7 @@ import { buildStart } from '../../build-start'
 import { rsbuildEntries } from '../route-css-cases'
 import { workerPlugin } from './worker-plugin'
 
+/** An Rsbuild build with a worker's child compilation. */
 const timeout = 180_000
 
 const root = `import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'
