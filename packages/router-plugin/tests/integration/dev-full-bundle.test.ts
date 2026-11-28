@@ -8,8 +8,9 @@
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import react from '@vitejs/plugin-react'
-import { expect, onTestFinished, test } from 'vitest'
+import { expect, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import { tanstackRouter } from '../../src/vite'
@@ -68,24 +69,27 @@ const loadedScripts = (page: Awaited<ReturnType<typeof openPage>>) =>
   )
 
 test('a split route renders, loads its component on demand and hot-updates in full-bundle dev', async () => {
-  const server = await createDevServer({
-    dir: harnessDir,
-    prefix: '.dev-full-bundle-',
-    registerCleanup: onTestFinished,
-    browser: true,
-    // The client bundle starts from the page, as \`vite dev\` bundles it.
-    bundledDev: { entry: 'index.html' },
-    files,
-    plugins: ({ root }) => [
-      tanstackRouter({
-        target: 'react',
-        routesDirectory: path.join(root, 'routes'),
-        generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
-        autoCodeSplitting: true,
+  const server = await closeAtEnd(
+    () =>
+      createDevServer({
+        dir: harnessDir,
+        prefix: '.dev-full-bundle-',
+        browser: true,
+        // The client bundle starts from the page, as \`vite dev\` bundles it.
+        bundledDev: { entry: 'index.html' },
+        files,
+        plugins: ({ root }) => [
+          tanstackRouter({
+            target: 'react',
+            routesDirectory: path.join(root, 'routes'),
+            generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
+            autoCodeSplitting: true,
+          }),
+          react(),
+        ],
       }),
-      react(),
-    ],
-  })
+    (opened) => opened.close(),
+  )
   // The chunks of the client bundle the about page's code is in.
   const bundle = await server.clientBundle()
   const aboutChunks = Object.keys(bundle).filter((fileName) =>
@@ -93,7 +97,10 @@ test('a split route renders, loads its component on demand and hot-updates in fu
   )
   expect(aboutChunks.length).toBeGreaterThan(0)
 
-  const page = await openPage(server.url!, { registerCleanup: onTestFinished })
+  const page = await closeAtEnd(
+    () => openPage(server.url!),
+    (opened) => opened.close(),
+  )
   await page.waitForText('MARK_HOME', { selector: '#app' })
   const atHome = await loadedScripts(page)
   await page.page.locator('a').first().click()

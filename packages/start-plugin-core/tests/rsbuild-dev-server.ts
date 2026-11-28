@@ -20,8 +20,8 @@ import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { pluginNames } from '@tanstack/compiler-test-utils/build-harness'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { pluginReact } from '@rsbuild/plugin-react'
-import { startRuntimeLinks } from './build-harness'
 import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
+import { startRuntimeLinks } from './build-harness'
 import { startRsbuildPluginFactory, withHarnessEntries } from './start-plugins'
 import type { StartFramework } from './start-plugins'
 import type { TanStackStartInputConfig } from '../src'
@@ -42,10 +42,7 @@ const harnessDir = path.dirname(fileURLToPath(import.meta.url))
  * import-protection tests' shorthand of `start`.
  */
 export function startRsbuildDevServer(
-  options: Omit<
-    RsbuildDevServerOptions,
-    'dir' | 'plugins' | 'registerCleanup'
-  > & {
+  options: Omit<RsbuildDevServerOptions, 'dir' | 'plugins'> & {
     importProtection?: TanStackStartInputConfig['importProtection']
   },
 ): Promise<RsbuildDevServer> {
@@ -198,7 +195,7 @@ export function startRsbuildStartDevServerShared(
 
 type RsbuildStartDevServerOptions = Omit<
   RsbuildDevServerOptions,
-  'dir' | 'plugins' | 'registerCleanup'
+  'dir' | 'plugins'
 > & {
   /** The app's Start options (`tanStackStart(options)`). */
   start?: TanStackStartRsbuildInputConfig

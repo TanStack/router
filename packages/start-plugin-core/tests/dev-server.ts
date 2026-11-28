@@ -19,8 +19,8 @@ import { fileURLToPath } from 'node:url'
 import { pluginNames } from '@tanstack/compiler-test-utils/build-harness'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import react from '@vitejs/plugin-react'
-import { startRuntimeLinks } from './build-harness'
 import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
+import { startRuntimeLinks } from './build-harness'
 import { inProbeRequest, requestFiles } from './request-probe'
 import { startPlugins } from './start-plugins'
 import type { StartFramework } from './start-plugins'
@@ -35,7 +35,7 @@ const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
 export interface StartDevServerOptions extends Omit<
   DevServerOptions,
-  'dir' | 'plugins' | 'registerCleanup'
+  'dir' | 'plugins'
 > {
   /**
    * Other plugins of the app (e.g. a Solid app's JSX plugin), after Start's,

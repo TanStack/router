@@ -11,7 +11,8 @@
 import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
+import { describe, expect, test } from 'vitest'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
 import { buildWithRsbuild, routeApp, routeHead } from '../build-harness'
 import type { BuildResult } from '@tanstack/compiler-test-utils/build-harness'
@@ -114,12 +115,15 @@ describe.each(['rspack', 'webpack'] as const)('%s', (bundler) => {
   test(
     'with a persistent filesystem cache, a cached rebuild and a rebuild after an unrelated edit keep one instance of the shared state',
     async () => {
-      const app = await createApp({
-        dir: appsDir,
-        prefix: `.build-cache-${bundler}-`,
-        registerCleanup: onTestFinished,
-        files: initialFiles(),
-      })
+      const app = await closeAtEnd(
+        () =>
+          createApp({
+            dir: appsDir,
+            prefix: `.build-cache-${bundler}-`,
+            files: initialFiles(),
+          }),
+        (opened) => opened.dispose(),
+      )
       const cacheDirectory = path.join(app.root, '.bundler-cache')
       const bundle = (outDir: string) =>
         bundleWithCache(app, bundler, cacheDirectory, outDir)
@@ -141,12 +145,13 @@ describe.each(['rspack', 'webpack'] as const)('%s', (bundler) => {
   test(
     'with a persistent filesystem cache, a rebuild after a grouping edit splits as a build with a fresh cache does',
     async () => {
-      const app = await createApp({
-        dir: appsDir,
-        prefix: `.build-cache-groups-${bundler}-`,
-        registerCleanup: onTestFinished,
-        files: routeApp(
-          `${routeHead()}function Page() {
+      const app = await closeAtEnd(
+        () =>
+          createApp({
+            dir: appsDir,
+            prefix: `.build-cache-groups-${bundler}-`,
+            files: routeApp(
+              `${routeHead()}function Page() {
   return <p>MARK_COMPONENT</p>
 }
 export const Route = createFileRoute('/')({
@@ -154,9 +159,11 @@ export const Route = createFileRoute('/')({
   component: Page,
 })
 `,
-          { env: 'client' },
-        ),
-      })
+              { env: 'client' },
+            ),
+          }),
+        (opened) => opened.dispose(),
+      )
       const regrouped = { defaultBehavior: [['loader'], ['component']] }
       const outcome = async (build: Promise<BuildResult>) => {
         const app = await build
@@ -201,12 +208,15 @@ export const Route = createFileRoute('/')({
 test(
   'with Rsbuild build cache on, a cached rebuild and a rebuild after an unrelated edit keep one instance of the shared state',
   async () => {
-    const app = await createApp({
-      dir: appsDir,
-      prefix: '.build-cache-rsbuild-',
-      registerCleanup: onTestFinished,
-      files: initialFiles(),
-    })
+    const app = await closeAtEnd(
+      () =>
+        createApp({
+          dir: appsDir,
+          prefix: '.build-cache-rsbuild-',
+          files: initialFiles(),
+        }),
+      (opened) => opened.dispose(),
+    )
     const cacheDirectory = path.join(app.root, '.rsbuild-cache')
     const bundle = (distDir: string) =>
       buildWithRsbuild({

@@ -20,7 +20,8 @@
  * Rsbuild row of route-hmr-browser-plugin.test.ts (with route HMR the edit
  * applies in place).
  */
-import { describe, expect, it, onTestFinished } from 'vitest'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
+import { describe, expect, it } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import {
   hmrSyncInitScript,
@@ -59,12 +60,12 @@ async function editWhileLoaded(
   })
   // (a run page of its own, before the page below loads every option)
   const split = await app.isLazy('component')
-  const page = await openPage(
-    new URL('/__plugin-host__/page.html', app.host.dev.url).href,
-    {
-      registerCleanup: onTestFinished,
-      initScript: hmrSyncInitScript('/hmr-sync.ts'),
-    },
+  const page = await closeAtEnd(
+    () =>
+      openPage(new URL('/__plugin-host__/page.html', app.host.dev.url).href, {
+        initScript: hmrSyncInitScript('/hmr-sync.ts'),
+      }),
+    (opened) => opened.close(),
   )
   const inFlight = trackRequests(page)
   await page.page.evaluate(`(async () => {

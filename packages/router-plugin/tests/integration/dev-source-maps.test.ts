@@ -14,16 +14,10 @@
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import { pluginReact } from '@rsbuild/plugin-react'
 import react from '@vitejs/plugin-react'
-import {
-  afterAll,
-  beforeAll,
-  describe,
-  expect,
-  onTestFinished,
-  test,
-} from 'vitest'
+import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
@@ -317,45 +311,49 @@ describe('rsbuild dev server', () => {
     async () => {
       const { tanstackRouter: tanstackRouterRspack } =
         await import('../../src/rspack')
-      const server = await createRsbuildDevServer({
-        registerCleanup: onTestFinished,
-        dir: appsDir,
-        prefix: '.dev-source-maps-rsbuild-',
-        browser: true,
-        entry: 'main.tsx',
-        files: {
-          'main.tsx': `import { throws } from './probe'
+      const server = await closeAtEnd(
+        () =>
+          createRsbuildDevServer({
+            dir: appsDir,
+            prefix: '.dev-source-maps-rsbuild-',
+            browser: true,
+            entry: 'main.tsx',
+            files: {
+              'main.tsx': `import { throws } from './probe'
 ;(window as any).__throws = throws()
 `,
-          'probe.ts': probe,
-          'page-label.ts': pageLabel,
-          'routes/__root.tsx': rootRoute,
-          'routes/index.tsx': route,
-        },
-        config: { output: { sourceMap: { js: 'source-map' } } },
-        plugins: ({ root }) => [
-          pluginReact({ fastRefresh: false }),
-          {
-            name: 'dev-source-maps',
-            setup(api) {
-              api.modifyRspackConfig((config) => {
-                config.plugins.push(
-                  tanstackRouterRspack({
-                    target: 'react',
-                    autoCodeSplitting: true,
-                    routesDirectory: path.join(root, 'routes'),
-                    generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
-                  }),
-                )
-              })
+              'probe.ts': probe,
+              'page-label.ts': pageLabel,
+              'routes/__root.tsx': rootRoute,
+              'routes/index.tsx': route,
             },
-          },
-        ],
-      })
+            config: { output: { sourceMap: { js: 'source-map' } } },
+            plugins: ({ root }) => [
+              pluginReact({ fastRefresh: false }),
+              {
+                name: 'dev-source-maps',
+                setup(api) {
+                  api.modifyRspackConfig((config) => {
+                    config.plugins.push(
+                      tanstackRouterRspack({
+                        target: 'react',
+                        autoCodeSplitting: true,
+                        routesDirectory: path.join(root, 'routes'),
+                        generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
+                      }),
+                    )
+                  })
+                },
+              },
+            ],
+          }),
+        (opened) => opened.close(),
+      )
       await server.settle()
-      const page = await openPage(server.url!, {
-        registerCleanup: onTestFinished,
-      })
+      const page = await closeAtEnd(
+        () => openPage(server.url!),
+        (opened) => opened.close(),
+      )
       await page.page.waitForFunction(() => (window as any).__throws, null, {
         timeout: 15_000,
       })

@@ -6,7 +6,8 @@
  * on a case that works. The in-process ones:
  * ../known-bugs-dev-server.test.ts.
  */
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
+import { describe, expect, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { routeHead } from '../build-harness'
 import { routerDevServer } from '../dev-server'
@@ -89,9 +90,10 @@ if (!location.search.includes('later')) {
    * link).
    */
   async function renderInPage(server: DevServer) {
-    const opened = await openPage(server.url!, {
-      registerCleanup: onTestFinished,
-    })
+    const opened = await closeAtEnd(
+      () => openPage(server.url!),
+      (opened) => opened.close(),
+    )
     try {
       return await renderedBy(opened)
     } finally {
@@ -160,9 +162,10 @@ if (!location.search.includes('later')) {
       },
       files: { ...page, 'routes/page.tsx': before },
     })
-    const stale = await openPage('about:blank', {
-      registerCleanup: onTestFinished,
-    })
+    const stale = await closeAtEnd(
+      () => openPage('about:blank'),
+      (opened) => opened.close(),
+    )
     await stale.page.context().routeWebSocket(/./, (ws) => ws.close())
     await stale.page.goto(new URL('/?later', server.url).href)
     await stale.page.waitForFunction(() => (window as any).__routeLoaded)

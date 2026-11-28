@@ -10,7 +10,8 @@
  * that the page's `invalidate()` asked the server for, also when what the
  * page sends reaches the server late.
  */
-import { expect, onTestFinished } from 'vitest'
+import { expect } from 'vitest'
+import { closeAtEnd } from '../../src/test-end'
 import { openPage } from '../../src/browser'
 import {
   hmrSyncInitScript,
@@ -67,10 +68,13 @@ test.for([
         },
       ],
     })
-    const page = await openPage(server.url!, {
-      registerCleanup: onTestFinished,
-      ...(sync ? {} : { initScript: hmrSyncInitScript('/hmr-sync.ts') }),
-    })
+    const page = await closeAtEnd(
+      () =>
+        openPage(server.url!, {
+          ...(sync ? {} : { initScript: hmrSyncInitScript('/hmr-sync.ts') }),
+        }),
+      (opened) => opened.close(),
+    )
     const inFlight = trackRequests(page)
     await page.waitForText('text v1 other v1')
     await settlePage(server, page, inFlight)
@@ -113,9 +117,10 @@ import.meta.hot.accept(() => import.meta.hot.invalidate('cannot apply'))
 `,
       },
     })
-    const page = await openPage('about:blank', {
-      registerCleanup: onTestFinished,
-    })
+    const page = await closeAtEnd(
+      () => openPage('about:blank'),
+      (opened) => opened.close(),
+    )
     // What the page sends over its HMR WebSocket reaches the server 400 ms
     // late (a busy server or a slow link); what the server sends is not held
     await page.page.context().routeWebSocket(/./, (ws) => {

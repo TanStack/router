@@ -286,8 +286,7 @@ function outputRecorder(outputs: Record<string, HostBuildEnvironment>): Plugin {
 /**
  * Writes an app (`files`, standing in for `dir`) and hosts `plugins` on it: starts the
  * dev server (unless `serve: false`) and resolves once it watches the app.
- * `close()`, which `registerCleanup` also receives, closes it and removes
- * the app.
+ * `close()` closes it and removes the app.
  */
 export async function createPluginHost(
   options: PluginHostOptions,
@@ -456,6 +455,5 @@ export async function createPluginHost(
     },
     close,
   }
-  options.registerCleanup?.(close)
   return host
 }

@@ -12,7 +12,8 @@
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
+import { describe, expect, test } from 'vitest'
 import { viteVersions } from '@tanstack/compiler-vite-versions'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
 import { runNodeProgram } from '@tanstack/compiler-test-utils/run-node'
@@ -382,13 +383,16 @@ async function rsbuild(c: Case) {
 /** Vite 7 (Rollup): the plugin on the aliased package, a production SSR build run in Node. */
 async function vite7(c: Case) {
   const vite = await viteVersions.find((v) => v.major === 7)!.load()
-  const app = await createApp({
-    dir: harnessDir,
-    prefix: '.copied-exports-vite7-',
-    files: filesOf(c),
-    packageJson: { type: 'module' },
-    registerCleanup: onTestFinished,
-  })
+  const app = await closeAtEnd(
+    () =>
+      createApp({
+        dir: harnessDir,
+        prefix: '.copied-exports-vite7-',
+        files: filesOf(c),
+        packageJson: { type: 'module' },
+      }),
+    (opened) => opened.dispose(),
+  )
   const outDir = path.join(app.root, 'dist')
   await vite.build({
     root: app.root,

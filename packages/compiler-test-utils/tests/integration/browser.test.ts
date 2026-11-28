@@ -12,6 +12,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from '@playwright/test'
 import { expect, onTestFinished } from 'vitest'
+import { closeAtEnd } from '../../src/test-end'
 import { createAppDirectory } from '../../src/app-directory'
 import {
   openPage,
@@ -59,9 +60,10 @@ test(
         ...app('import.meta.hot'),
       },
     })
-    const page = await openPage(server.url!, {
-      registerCleanup: onTestFinished,
-    })
+    const page = await closeAtEnd(
+      () => openPage(server.url!),
+      (opened) => opened.close(),
+    )
     await page.waitForText('text v1 other v1')
     expect(page.loads()).toBe(1)
 
@@ -85,9 +87,10 @@ test(
       config: { html: { mountId: 'app' } },
       files: app('import.meta.webpackHot'),
     })
-    const page = await openPage(server.url!, {
-      registerCleanup: onTestFinished,
-    })
+    const page = await closeAtEnd(
+      () => openPage(server.url!),
+      (opened) => opened.close(),
+    )
     await page.waitForText('text v1 other v1')
     expect(page.loads()).toBe(1)
 
@@ -138,9 +141,10 @@ test(
         },
       ],
     })
-    const page = await openPage(server.url!, {
-      registerCleanup: onTestFinished,
-    })
+    const page = await closeAtEnd(
+      () => openPage(server.url!),
+      (opened) => opened.close(),
+    )
     await page.waitForText('text v1 other v1')
     // The client applied an update in place: it was connected, and got the
     // first compile's warnings before
@@ -162,14 +166,17 @@ test(
 test('a page given its document shows it at its URL, and an init script runs before the page’s own code, on every load', async () => {
   // No server listens there: the document is the one given.
   const url = 'http://127.0.0.1:9/page'
-  const page = await openPage(url, {
-    registerCleanup: onTestFinished,
-    initScript: `window.initRan = (window.initRan ?? 0) + 1`,
-    html: `<div id="app"></div><script>
+  const page = await closeAtEnd(
+    () =>
+      openPage(url, {
+        initScript: `window.initRan = (window.initRan ?? 0) + 1`,
+        html: `<div id="app"></div><script>
 window.appSaw = window.initRan
 document.getElementById('app').textContent = 'MARK_DOCUMENT ' + location.href
 </script>`,
-  })
+      }),
+    (opened) => opened.close(),
+  )
   expect(await page.text('#app')).toBe(`MARK_DOCUMENT ${url}`)
   expect(await page.page.evaluate('window.appSaw')).toBe(1)
   await page.page.reload()
@@ -219,10 +226,13 @@ test('a run whose script never settles or whose page never loads carries a Settl
 })
 
 test('waitForText ends at its own bound when the element never appears', async () => {
-  const page = await openPage('http://127.0.0.1:9/page', {
-    html: '<p>ready</p>',
-    registerCleanup: onTestFinished,
-  })
+  const page = await closeAtEnd(
+    () =>
+      openPage('http://127.0.0.1:9/page', {
+        html: '<p>ready</p>',
+      }),
+    (opened) => opened.close(),
+  )
   page.page.setDefaultTimeout(20_000)
   const started = Date.now()
   await expect(
@@ -232,10 +242,13 @@ test('waitForText ends at its own bound when the element never appears', async (
 })
 
 test('waitForText fails when the text shows only after its bound', async () => {
-  const page = await openPage('http://127.0.0.1:9/page', {
-    html: '<p>ready</p>',
-    registerCleanup: onTestFinished,
-  })
+  const page = await closeAtEnd(
+    () =>
+      openPage('http://127.0.0.1:9/page', {
+        html: '<p>ready</p>',
+      }),
+    (opened) => opened.close(),
+  )
   const waited = page.waitForText('ready', { timeout: 100 })
   // (the process is busy past the bound before the page's text comes back)
   const blocked = Date.now()
@@ -256,10 +269,13 @@ test(
     for (let attempt = 0; attempt <= openPageLimit; attempt++) {
       await expect(openPage(`http://127.0.0.1:${port}/`)).rejects.toThrow()
     }
-    const page = await openPage('http://127.0.0.1:9/page', {
-      html: '<p>opened</p>',
-      registerCleanup: onTestFinished,
-    })
+    const page = await closeAtEnd(
+      () =>
+        openPage('http://127.0.0.1:9/page', {
+          html: '<p>opened</p>',
+        }),
+      (opened) => opened.close(),
+    )
     expect(await page.text()).toBe('opened')
   },
   timeout,

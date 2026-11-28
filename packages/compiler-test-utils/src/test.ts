@@ -40,10 +40,7 @@ import type { RsbuildPluginHostOptions } from './rsbuild-plugin-host'
 export type { Page } from '@playwright/test'
 
 /** An opener's options: the harness's, without what the fixture gives. */
-type OpenOptions<T> = Omit<
-  T,
-  'dir' | 'parent' | 'signal' | 'registerCleanup'
-> & {
+type OpenOptions<T> = Omit<T, 'dir' | 'parent' | 'signal'> & {
   /** The directory the app stands in for (default: the test file's). */
   dir?: string
 }

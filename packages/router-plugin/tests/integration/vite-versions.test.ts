@@ -11,6 +11,7 @@
 import { readFile, readdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { viteVersions } from '@tanstack/compiler-vite-versions'
 import { servedDirectories } from '@tanstack/compiler-test-utils/app-directory'
@@ -61,13 +62,16 @@ const pluginOptions = (root: string) => ({
 describe.each(viteVersions)('Vite $major', ({ major, load }) => {
   test('a production build splits the route component and renders it', async () => {
     const vite = await load()
-    const app = await createApp({
-      dir: harnessDir,
-      prefix: `.vite${major}-build-`,
-      files,
-      packageJson: { type: 'module' },
-      registerCleanup: onTestFinished,
-    })
+    const app = await closeAtEnd(
+      () =>
+        createApp({
+          dir: harnessDir,
+          prefix: `.vite${major}-build-`,
+          files,
+          packageJson: { type: 'module' },
+        }),
+      (opened) => opened.dispose(),
+    )
     const outDir = path.join(app.root, 'dist')
     await vite.build({
       root: app.root,
@@ -110,12 +114,14 @@ console.log(await entry.render(entry.Route.options.component))`,
   // Impact: a larger initial bundle than the released plugin's.
   test('a production build gives a route component imported from a module the entry loads a lazy chunk of its own', async () => {
     const vite = await load()
-    const app = await createApp({
-      dir: harnessDir,
-      prefix: `.vite${major}-imported-`,
-      files: {
-        'shared.tsx': `export function Shared() {\n  return <p>MARK_SHARED</p>\n}\n`,
-        'routes/__root.tsx': `import { Outlet, createRootRoute } from '@tanstack/react-router'
+    const app = await closeAtEnd(
+      () =>
+        createApp({
+          dir: harnessDir,
+          prefix: `.vite${major}-imported-`,
+          files: {
+            'shared.tsx': `export function Shared() {\n  return <p>MARK_SHARED</p>\n}\n`,
+            'routes/__root.tsx': `import { Outlet, createRootRoute } from '@tanstack/react-router'
 import { Shared } from '../shared'
 export const Route = createRootRoute({
   component: () => (
@@ -126,19 +132,20 @@ export const Route = createRootRoute({
   ),
 })
 `,
-        'routes/index.tsx': route('MARK_V1'),
-        'routes/outlet.tsx': `${head}import { Outlet } from '@tanstack/react-router'
+            'routes/index.tsx': route('MARK_V1'),
+            'routes/outlet.tsx': `${head}import { Outlet } from '@tanstack/react-router'
 export const Route = createFileRoute('/outlet')({ component: Outlet })
 `,
-        'routes/shared.tsx': `${head}import { Shared } from '../shared'
+            'routes/shared.tsx': `${head}import { Shared } from '../shared'
 export const Route = createFileRoute('/shared')({ component: Shared })
 `,
-        'index.html': files['index.html'],
-        'main.tsx': files['main.tsx'],
-      },
-      packageJson: { type: 'module' },
-      registerCleanup: onTestFinished,
-    })
+            'index.html': files['index.html'],
+            'main.tsx': files['main.tsx'],
+          },
+          packageJson: { type: 'module' },
+        }),
+      (opened) => opened.dispose(),
+    )
     const outDir = path.join(app.root, 'dist')
     await vite.build({
       root: app.root,
@@ -170,12 +177,15 @@ export const Route = createFileRoute('/shared')({ component: Shared })
 
   test('a dev server splits the route component and hot-updates a route option edit in place', async () => {
     const vite = await load()
-    const app = await createApp({
-      dir: harnessDir,
-      prefix: `.vite${major}-dev-`,
-      files,
-      registerCleanup: onTestFinished,
-    })
+    const app = await closeAtEnd(
+      () =>
+        createApp({
+          dir: harnessDir,
+          prefix: `.vite${major}-dev-`,
+          files,
+        }),
+      (opened) => opened.dispose(),
+    )
     const logs: Array<string> = []
     const log = (level: string) => (message: unknown) => {
       logs.push(`${level}: ${String(message)}`)
@@ -219,7 +229,10 @@ export const Route = createFileRoute('/shared')({ component: Shared })
     if (!url) {
       throw new Error('the dev server has no URL')
     }
-    const browser = await openPage(url, { registerCleanup: onTestFinished })
+    const browser = await closeAtEnd(
+      () => openPage(url),
+      (opened) => opened.close(),
+    )
     await browser.waitForText('MARK_COMPONENT', { selector: '#root' })
     // The live route of the page's router, which the route HMR updates
     const label = () =>

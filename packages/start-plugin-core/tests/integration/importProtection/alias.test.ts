@@ -22,9 +22,9 @@ import {
   expectNoDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { describe, expect, test } from 'vitest'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import { startRuntimeLinks } from '../../build-harness'
 import { buildStart } from '../../build-start'
-import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import { startPlugin, startPluginFiles } from '../../dev-server'
 import { probeMockPrelude, safeMock } from '../../importProtection/mock-helpers'
 import {

@@ -15,8 +15,8 @@
  */
 import { beforeAll, describe, expect, test } from 'vitest'
 import { expectRelocatable } from '@tanstack/compiler-test-utils/determinism'
-import { closeAfterAll } from '../file-end'
 import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
+import { closeAfterAll } from '../file-end'
 import {
   callFromClient,
   callOnServer,

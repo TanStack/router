@@ -2,8 +2,8 @@
  * The serial opener of `build-harness.ts` (its own module: a module that
  * registers with the current test is serial as a whole, eslint.config.js).
  */
-import { buildStartShared } from './build-harness'
 import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
+import { buildStartShared } from './build-harness'
 import type { StartBuild, StartBuildOptions } from './build-harness'
 
 /**

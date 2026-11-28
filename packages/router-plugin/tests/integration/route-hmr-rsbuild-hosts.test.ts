@@ -15,8 +15,9 @@
  * through Rsbuild's own `loadBundle`.
  */
 import path from 'node:path'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import { pluginReact } from '@rsbuild/plugin-react'
-import { describe, expect, it, onTestFinished } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { createRsbuildPluginHost } from '@tanstack/compiler-test-utils/rsbuild-plugin-host'
 import { tanstackRouter } from '../../src/rspack'
 import type { RsbuildConfig, RsbuildPlugin } from '@rsbuild/core'
@@ -134,28 +135,31 @@ async function host(options: { route: string; root: boolean; hmr: boolean }) {
       },
     },
   }
-  return createRsbuildPluginHost({
-    dir: path.dirname(import.meta.dirname),
-    prefix: '.route-hmr-rsbuild-',
-    registerCleanup: onTestFinished,
-    entry: 'src/entry.tsx',
-    files: {
-      ...(options.root
-        ? {}
-        : {
-            '__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+  return closeAtEnd(
+    () =>
+      createRsbuildPluginHost({
+        dir: path.dirname(import.meta.dirname),
+        prefix: '.route-hmr-rsbuild-',
+        entry: 'src/entry.tsx',
+        files: {
+          ...(options.root
+            ? {}
+            : {
+                '__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute({})
 `,
-          }),
-      'route.tsx': options.route,
-      'environment.ts': environment,
-      'src/entry.tsx': clientEntry,
-      'src/server.tsx': serverEntry,
-    },
-    plugins: ({ root }) => [pluginReact(), routerPlugin(root)],
-    config,
-    client: true,
-  })
+              }),
+          'route.tsx': options.route,
+          'environment.ts': environment,
+          'src/entry.tsx': clientEntry,
+          'src/server.tsx': serverEntry,
+        },
+        plugins: ({ root }) => [pluginReact(), routerPlugin(root)],
+        config,
+        client: true,
+      }),
+    (opened) => opened.close(),
+  )
 }
 
 const hosts = [

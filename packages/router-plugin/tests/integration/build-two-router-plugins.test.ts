@@ -9,7 +9,8 @@
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
+import { describe, expect, test } from 'vitest'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
 import { build, buildWithRsbuild, head, rootRoute } from '../build-harness'
 import { timeout } from '../production-bundle'
@@ -67,11 +68,14 @@ test(
   'rsbuild: each instance splits its own tree',
   async () => {
     const { tanstackRouter } = await import('../../src/rspack')
-    const { root } = await createApp({
-      dir: harnessDir,
-      registerCleanup: onTestFinished,
-      files,
-    })
+    const { root } = await closeAtEnd(
+      () =>
+        createApp({
+          dir: harnessDir,
+          files,
+        }),
+      (opened) => opened.dispose(),
+    )
     // (the app exists: the second instance's options name its root)
     const app = await buildWithRsbuild({
       root,

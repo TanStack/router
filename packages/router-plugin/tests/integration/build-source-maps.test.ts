@@ -12,8 +12,9 @@
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import react from '@vitejs/plugin-react'
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { originalFrameOf } from '@tanstack/compiler-test-utils/build-harness'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import { positionAt } from '@tanstack/compiler-test-utils/source-maps'
@@ -438,28 +439,31 @@ async function expectModuleThrowMapsToRouteFileVite(
   source: string,
   marker: string,
 ) {
-  const host = await createPluginHost({
-    dir: appsDir,
-    prefix: '.build-source-maps-',
-    registerCleanup: onTestFinished,
-    serve: false,
-    files: routeApp(source, {
-      env: 'client',
-      files: {
-        'lib/label.ts': `export const label = 'MARK_LABEL'\n`,
-        'entry.ts': `export * from './routes/index'\n`,
-      },
-    }),
-    plugins: () => [
-      tanstackRouterVite({
-        target: 'react',
-        autoCodeSplitting: true,
-        routesDirectory: './routes',
-        generatedRouteTree: './routeTree.gen.ts',
+  const host = await closeAtEnd(
+    () =>
+      createPluginHost({
+        dir: appsDir,
+        prefix: '.build-source-maps-',
+        serve: false,
+        files: routeApp(source, {
+          env: 'client',
+          files: {
+            'lib/label.ts': `export const label = 'MARK_LABEL'\n`,
+            'entry.ts': `export * from './routes/index'\n`,
+          },
+        }),
+        plugins: () => [
+          tanstackRouterVite({
+            target: 'react',
+            autoCodeSplitting: true,
+            routesDirectory: './routes',
+            generatedRouteTree: './routeTree.gen.ts',
+          }),
+          react(),
+        ],
       }),
-      react(),
-    ],
-  })
+    (opened) => opened.close(),
+  )
   const built = await host.build({
     config: {
       build: {

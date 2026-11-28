@@ -10,10 +10,10 @@ export function closeAtEnd<T>(
   start: () => Promise<T>,
   close: (opened: T) => unknown,
 ): Promise<T> {
-  let starting: Promise<T> | undefined
+  const opened: { starting?: Promise<T> } = {}
   onTestFinished(async () => {
-    await starting?.then(close, () => {})
+    await opened.starting?.then(close, () => {})
   })
-  starting = start()
-  return starting
+  opened.starting = start()
+  return opened.starting
 }

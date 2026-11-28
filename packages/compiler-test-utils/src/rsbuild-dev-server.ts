@@ -232,8 +232,7 @@ export interface RsbuildDevServer {
 /**
  * Writes an app (`createApp`: it stands in for `options.dir`) and starts
  * an Rsbuild dev server on it, without listening on a port; resolves after the
- * first compile. `close()`, which `registerCleanup` also receives, stops the
- * server and removes the directory.
+ * first compile. `close()` stops the server and removes the directory.
  */
 export function createRsbuildDevServer(
   options: RsbuildDevServerOptions,
@@ -579,17 +578,17 @@ async function startServer(
     return stopped
   }
   let closed: Promise<void> | undefined
+  // (in the channel: what the close prints is the server's)
   const close = () => {
-    closed ??= (async () => {
+    closed ??= channel.run(async () => {
       try {
         await stop()
       } finally {
         await app.dispose()
       }
-    })()
+    })
     return closed
   }
-  options.registerCleanup?.(() => channel.run(close))
 
   const distPathOf = (environment: string | undefined) => {
     const name = environment ?? Object.keys(distPaths)[0]!

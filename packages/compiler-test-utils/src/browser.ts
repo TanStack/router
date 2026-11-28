@@ -13,16 +13,14 @@
  * - `runInPage` runs on a pool of at most `runPageLimit` pages, which runs
  *   of concurrent tests share; a run beyond that waits for a free page. The
  *   pool and its browser context are the test file's: they close when the
- *   file ended (`onFileFinished` of `./test-scope`), so that a later file
+ *   file ended (`closeRunPages`, `./test-scope-setup`), so that a later file
  *   inherits none of their memory (renderers and HTTP cache grew with every
  *   module a page loaded), cache or page state;
  * - `openPage` keeps at most `openPageLimit` pages (each with its own
  *   browser context) open at once; a test asking for more waits until one
  *   closes.
  */
-import { chromium } from '@playwright/test'
 import { SettleTimeout } from './outcome'
-import { onFileFinished } from './test-scope'
 import type {
   Browser,
   BrowserContext,
@@ -73,15 +71,18 @@ const chromiumExecutable = process.env.TANSTACK_COMPILER_TESTS_CHROMIUM
 let browser: Promise<Browser> | undefined
 
 /**
- * The process's browser, launched on first use; a launch that failed is
- * tried again on the next use.
+ * The process's browser, launched on first use (Playwright loads then too:
+ * every file's setup imports this module); a launch that failed is tried
+ * again on the next use.
  */
 function launch() {
   if (!browser) {
-    const launching = chromium.launch({
-      headless: true,
-      ...(chromiumExecutable ? { executablePath: chromiumExecutable } : {}),
-    })
+    const launching = import('@playwright/test').then(({ chromium }) =>
+      chromium.launch({
+        headless: true,
+        ...(chromiumExecutable ? { executablePath: chromiumExecutable } : {}),
+      }),
+    )
     browser = launching
     launching.catch(() => {
       if (browser === launching) {
@@ -158,16 +159,19 @@ async function takeRunPage(): Promise<Page> {
         runContext = undefined
       }
     })
-    onFileFinished(() => closeRunPages(context))
   }
   return (await runContext).newPage()
 }
 
 /**
- * Closes a file's run pages and their context, once no run holds a page
+ * Closes the file's run pages and their context, once no run holds a page
  * (it takes every run slot first); the browser stays for the next file.
  */
-async function closeRunPages(context: Promise<BrowserContext>) {
+export async function closeRunPages() {
+  const context = runContext
+  if (!context) {
+    return
+  }
   const releases = await Promise.all(
     Array.from({ length: runPageLimit }, () => runSlot()),
   )
@@ -349,14 +353,13 @@ async function load(page: Page, url: string, timeout?: number) {
 
 /**
  * Opens `url` in a new page of a headless Chromium and resolves once it
- * loaded (after `initScript`, when given, ran first in the page). `close()`,
- * which `registerCleanup` also receives, closes the page. A page that fails
+ * loaded (after `initScript`, when given, ran first in the page). `close()`
+ * closes the page. A page that fails
  * to open is closed before the call rejects.
  */
 export async function openPage(
   url: string,
   options: {
-    registerCleanup?: (cleanup: () => Promise<void>) => void
     /**
      * Script the page runs before any of its own, on every load (Playwright's
      * `addInitScript`), e.g. to record what the page's code does from its
@@ -389,7 +392,6 @@ export async function openPage(
     closed ??= context.close().finally(release)
     return closed
   }
-  options.registerCleanup?.(close)
   let page: Page
   let loads = 0
   const errors: Array<string> = []

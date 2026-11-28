@@ -6,7 +6,8 @@
  * recorded in a browser, so the code it guards is (it runs, as the
  * accessor makes the probe true).
  */
-import { expect, onTestFinished, test } from 'vitest'
+import { expect, test } from 'vitest'
+import { closeAtEnd } from '../../src/test-end'
 import { openPage } from '../../src/browser'
 import { globalTrapSource } from '../../src/global-trap'
 
@@ -14,13 +15,16 @@ const timeout = 30_000
 
 /** A page whose init script traps `$Trapped$` (`window.touches()`). */
 async function trappedPage() {
-  return openPage('http://trap.invalid/', {
-    registerCleanup: onTestFinished,
-    html: '<!doctype html><div id="app"></div>',
-    initScript: `Object.defineProperty(window, 'touches', {
+  return closeAtEnd(
+    () =>
+      openPage('http://trap.invalid/', {
+        html: '<!doctype html><div id="app"></div>',
+        initScript: `Object.defineProperty(window, 'touches', {
   value: ${globalTrapSource({ names: '["$Trapped$"]' })},
 })`,
-  })
+      }),
+    (opened) => opened.close(),
+  )
 }
 
 test.each([

@@ -13,7 +13,8 @@
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { expect, onTestFinished, test } from 'vitest'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
+import { expect, test } from 'vitest'
 import { viteVersions } from '@tanstack/compiler-vite-versions'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
 import {
@@ -245,13 +246,16 @@ async function viteBuild(
   vite: { build: (config: never) => Promise<unknown> },
   output: Record<string, unknown> = {},
 ) {
-  const app = await createApp({
-    dir: path.dirname(fileURLToPath(import.meta.url)),
-    prefix: '.map-sources-vite-',
-    files,
-    packageJson: { type: 'module' },
-    registerCleanup: onTestFinished,
-  })
+  const app = await closeAtEnd(
+    () =>
+      createApp({
+        dir: path.dirname(fileURLToPath(import.meta.url)),
+        prefix: '.map-sources-vite-',
+        files,
+        packageJson: { type: 'module' },
+      }),
+    (opened) => opened.dispose(),
+  )
   const outDir = path.join(app.root, 'dist')
   await vite.build({
     root: app.root,

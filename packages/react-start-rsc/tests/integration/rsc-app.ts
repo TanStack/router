@@ -134,7 +134,7 @@ function Root() {
 
 export interface RscDevServerOptions extends Omit<
   DevServerOptions,
-  'dir' | 'parent' | 'plugins' | 'registerCleanup'
+  'dir' | 'parent' | 'plugins'
 > {
   /** Start's plugin options (`tanstackStart(options)`), `rsc` enabled. */
   start?: Record<string, unknown>
@@ -607,7 +607,7 @@ export interface RscRsbuildBuildOptions {
 
 export interface RscRsbuildDevServerOptions extends Omit<
   RsbuildDevServerOptions,
-  'dir' | 'parent' | 'plugins' | 'entry' | 'registerCleanup'
+  'dir' | 'parent' | 'plugins' | 'entry'
 > {
   /** Start's plugin options (`tanstackStart(options)`), `rsc` enabled. */
   start?: Record<string, unknown>

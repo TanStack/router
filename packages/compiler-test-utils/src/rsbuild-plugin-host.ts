@@ -306,6 +306,5 @@ export async function createRsbuildPluginHost(
     },
     close,
   }
-  options.registerCleanup?.(close)
   return host
 }

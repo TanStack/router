@@ -3,9 +3,6 @@
  * once per test file, also when the worker keeps its modules across files
  * (`isolate: false`), so every file gets both:
  *
- * - every test runs inside its own scope (`./test-scope`), so that helpers
- *   find the test their work belongs to when the tests of a file run
- *   concurrently;
  * - the process environment (and working directory) is the one the file
  *   started with again once
  *   the file's tests ended: tools change it as they run (`vite build` sets
@@ -13,10 +10,10 @@
  *   same process would then serve production code without React Refresh's
  *   page preamble), so with modules kept across files a file would see what
  *   an earlier file's tools left there;
- * - what the file's tests shared (`onFileFinished` of `./test-scope`, e.g.
- *   the run pages of `./browser`) is released once its tests ended, after
- *   the file's own `afterAll` hooks (they ran first: hooks after the tests
- *   run in reverse order, and this file registers its hooks first);
+ * - the run pages of `./browser`, which the file's tests shared, are closed
+ *   once its tests ended, after the file's own `afterAll` hooks (they ran
+ *   first: hooks after the tests run in reverse order, and this file
+ *   registers its hooks first);
  * - a file fails when the compilers it ran used a plan against facts an
  *   invalidation should have dropped (`staleHits`: a dependency the file
  *   events' invalidation missed), or left paths in a stale set that no
@@ -25,15 +22,9 @@
  *   keeps the compilers of earlier files alive (Vite 8 keeps every finished
  *   build's plugins): what the file found at its start is not its own.
  */
-import { afterAll, aroundEach, beforeAll } from 'vitest'
+import { afterAll, beforeAll } from 'vitest'
+import { closeRunPages } from './browser'
 import { setCommandNodeEnv } from './node-env'
-import { runFileCleanups, runInTestScope } from './test-scope'
-
-// (destructured: Vitest reads what a hook uses of a test's context, its
-// fixtures, from its parameter's pattern)
-aroundEach(async (runTest, { onTestFinished }) => {
-  await runInTestScope({ onTestFinished }, runTest)
-})
 
 /** What the live compilers of this process count of stale plans and paths. */
 async function staleCounts(): Promise<
@@ -80,7 +71,7 @@ const environment = { ...process.env }
 const cwd = process.cwd()
 afterAll(async () => {
   try {
-    await runFileCleanups()
+    await closeRunPages()
     const grown = Object.entries(await staleCounts()).flatMap(
       ([label, { staleHits, stalePaths }]) => {
         const before = atStart[label] ?? { staleHits: 0, stalePaths: 0 }

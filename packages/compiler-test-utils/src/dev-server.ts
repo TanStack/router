@@ -284,10 +284,10 @@ interface ReportedEvent {
 /**
  * Writes an app (`createApp`: it stands in for `options.dir`) and starts a Vite
  * dev server on it with its file watcher, and resolves once the watcher
- * watches the app. `close()`, which `registerCleanup` also receives, closes
- * the server and removes the directory. The server starts under
- * `NODE_ENV=development` (`./node-env`: not while a build of the process
- * runs under another value), and its client code keeps that value.
+ * watches the app. `close()` closes the server and removes the directory.
+ * The server starts under `NODE_ENV=development` (`./node-env`: not while a
+ * build of the process runs under another value), and its client code keeps
+ * that value.
  */
 export async function createDevServer(
   options: DevServerOptions,
@@ -814,17 +814,17 @@ async function startServer(
     return stopped
   }
   let closed: Promise<void> | undefined
+  // (in the channel: what the close prints is the server's)
   const close = () => {
-    closed ??= (async () => {
+    closed ??= channel.run(async () => {
       try {
         await stop()
       } finally {
         await app.dispose()
       }
-    })()
+    })
     return closed
   }
-  options.registerCleanup?.(() => channel.run(close))
 
   /**
    * Waits until `check` holds, checking again whenever something happened

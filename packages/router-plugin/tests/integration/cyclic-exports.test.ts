@@ -7,7 +7,8 @@
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
+import { describe, expect, test } from 'vitest'
 import { viteVersions } from '@tanstack/compiler-vite-versions'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
 import { runNodeProgram } from '@tanstack/compiler-test-utils/run-node'
@@ -155,17 +156,20 @@ describe('on vite 7', () => {
     async (name) => {
       const shape = shapes[name]
       const vite = await viteVersions.find((v) => v.major === 7)!.load()
-      const app = await createApp({
-        dir: path.dirname(fileURLToPath(import.meta.url)),
-        prefix: '.cyclic-exports-vite7-',
-        files: {
-          'routes/__root.tsx': rootRoute,
-          'routes/index.tsx': route(shape),
-          'entry.ts': entries(shape)['both exports'],
-        },
-        packageJson: { type: 'module' },
-        registerCleanup: onTestFinished,
-      })
+      const app = await closeAtEnd(
+        () =>
+          createApp({
+            dir: path.dirname(fileURLToPath(import.meta.url)),
+            prefix: '.cyclic-exports-vite7-',
+            files: {
+              'routes/__root.tsx': rootRoute,
+              'routes/index.tsx': route(shape),
+              'entry.ts': entries(shape)['both exports'],
+            },
+            packageJson: { type: 'module' },
+          }),
+        (opened) => opened.dispose(),
+      )
       const outDir = path.join(app.root, 'dist')
       await vite.build({
         root: app.root,

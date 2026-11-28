@@ -9,7 +9,8 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { expect, onTestFinished, test } from 'vitest'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
+import { expect, test } from 'vitest'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
 import { runNodeProgram } from '@tanstack/compiler-test-utils/run-node'
 import { startRuntimeLinks } from '../../build-harness'
@@ -27,14 +28,15 @@ await result.close()
 test(
   'a build started from module-mode input prerenders the page',
   async () => {
-    const app = await createApp({
-      dir: path.dirname(fileURLToPath(import.meta.url)),
-      prefix: '.prerender-module-input-',
-      registerCleanup: onTestFinished,
-      packageJson: { name: 'app', private: true, type: 'module' },
-      symlinks: startRuntimeLinks(),
-      files: {
-        'rsbuild.config.mjs': `import { defineConfig } from '@rsbuild/core'
+    const app = await closeAtEnd(
+      () =>
+        createApp({
+          dir: path.dirname(fileURLToPath(import.meta.url)),
+          prefix: '.prerender-module-input-',
+          packageJson: { name: 'app', private: true, type: 'module' },
+          symlinks: startRuntimeLinks(),
+          files: {
+            'rsbuild.config.mjs': `import { defineConfig } from '@rsbuild/core'
 import { pluginReact } from '@rsbuild/plugin-react'
 import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
 export default defineConfig({
@@ -47,13 +49,13 @@ export default defineConfig({
   ],
 })
 `,
-        'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+            'src/router.ts': `import { createRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
 export function getRouter() {
   return createRouter({ routeTree })
 }
 `,
-        'src/routes/__root.tsx': `import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'
+            'src/routes/__root.tsx': `import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute({ component: Root })
 function Root() {
   return (
@@ -69,17 +71,19 @@ function Root() {
   )
 }
 `,
-        'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+            'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({ component: Home })
 function Home() {
   return <main>PRERENDERED_PAGE</main>
 }
 `,
-        'tsconfig.json': JSON.stringify({
-          compilerOptions: { jsx: 'react-jsx' },
+            'tsconfig.json': JSON.stringify({
+              compilerOptions: { jsx: 'react-jsx' },
+            }),
+          },
         }),
-      },
-    })
+      (opened) => opened.dispose(),
+    )
     // (`runNodeProgram`: `node --input-type=module --eval`)
     await runNodeProgram(program, {
       cwd: app.root,

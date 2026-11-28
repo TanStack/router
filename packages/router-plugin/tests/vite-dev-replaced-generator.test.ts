@@ -11,6 +11,7 @@ import { existsSync } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import { expect, onTestFinished, test, vi } from 'vitest'
 import { createServer } from 'vite'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
@@ -36,15 +37,16 @@ test.each([{ oldRun: 'ends' as const }, { oldRun: 'fails' as const }])(
   async ({ oldRun }) => {
     const reported = vi.spyOn(console, 'error').mockImplementation(() => {})
     onTestFinished(() => reported.mockRestore())
-    const { root } = await createApp({
-      dir: harnessDir,
-      registerCleanup: onTestFinished,
-      files: {
-        'tsr.config.json': config('./src/old'),
-        'src/old/__root.tsx': rootRoute,
-        'src/old/slow/old.tsx': route('/slow/old'),
-        // (a virtual route config that waits for `release` once `armed` exists)
-        'src/old/slow/__virtual.ts': `import { existsSync, writeFileSync } from 'node:fs'
+    const { root } = await closeAtEnd(
+      () =>
+        createApp({
+          dir: harnessDir,
+          files: {
+            'tsr.config.json': config('./src/old'),
+            'src/old/__root.tsx': rootRoute,
+            'src/old/slow/old.tsx': route('/slow/old'),
+            // (a virtual route config that waits for `release` once `armed` exists)
+            'src/old/slow/__virtual.ts': `import { existsSync, writeFileSync } from 'node:fs'
 import { setTimeout as sleep } from 'node:timers/promises'
 export default async function () {
   if (existsSync(${JSON.stringify('ARMED')})) {
@@ -59,10 +61,12 @@ export default async function () {
   return [{ type: 'route', path: '/old', file: 'old.tsx' }]
 }
 `,
-        'src/new/__root.tsx': rootRoute,
-        'src/new/fresh.tsx': route('/fresh'),
-      },
-    })
+            'src/new/__root.tsx': rootRoute,
+            'src/new/fresh.tsx': route('/fresh'),
+          },
+        }),
+      (opened) => opened.dispose(),
+    )
     const file = (relative: string) => path.join(root, relative)
     // (the virtual config's markers, absolute)
     const virtualConfig = file('src/old/slow/__virtual.ts')

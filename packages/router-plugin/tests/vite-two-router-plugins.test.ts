@@ -9,6 +9,7 @@
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import { expect, onTestFinished, test } from 'vitest'
 import { createServer } from 'vite'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
@@ -33,21 +34,24 @@ const trees = [
 ] as const
 
 async function twoTreeApp(extra: Record<string, string> = {}) {
-  const { root } = await createApp({
-    dir: harnessDir,
-    registerCleanup: onTestFinished,
-    files: {
-      'index.html': '<script type="module" src="/src/main.ts"></script>\n',
-      'src/main.ts': `import { routeTree } from './routeTree.gen'\nimport { routeTree as widgetTree } from './widgetTree.gen'\nconsole.log(routeTree, widgetTree)\n`,
-      ...Object.fromEntries(
-        trees.flatMap((t) => [
-          [`${t.dir}/__root.tsx`, rootRoute],
-          [`${t.dir}/index.tsx`, page(t.mark)],
-        ]),
-      ),
-      ...extra,
-    },
-  })
+  const { root } = await closeAtEnd(
+    () =>
+      createApp({
+        dir: harnessDir,
+        files: {
+          'index.html': '<script type="module" src="/src/main.ts"></script>\n',
+          'src/main.ts': `import { routeTree } from './routeTree.gen'\nimport { routeTree as widgetTree } from './widgetTree.gen'\nconsole.log(routeTree, widgetTree)\n`,
+          ...Object.fromEntries(
+            trees.flatMap((t) => [
+              [`${t.dir}/__root.tsx`, rootRoute],
+              [`${t.dir}/index.tsx`, page(t.mark)],
+            ]),
+          ),
+          ...extra,
+        },
+      }),
+    (opened) => opened.dispose(),
+  )
   const options = trees.map((t) => ({
     target: 'react' as const,
     autoCodeSplitting: true,

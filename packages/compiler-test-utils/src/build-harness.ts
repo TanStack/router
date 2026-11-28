@@ -122,13 +122,6 @@ export interface AppOptions {
   symlinks?: Record<string, string>
   /** Directory name prefix of the temporary app. */
   prefix?: string
-  /**
-   * Registers a function to run when the current test finishes, e.g. the
-   * test runner's `onTestFinished`. The harness disposes of what it created
-   * (servers, temporary app directories) through it; without it, the caller
-   * disposes.
-   */
-  registerCleanup?: (cleanup: () => Promise<void>) => void
 }
 
 export interface AppInfo {
@@ -335,8 +328,7 @@ if (process.env[runDirectoryVariable] === undefined) {
 /**
  * Writes an app to a temporary directory that stands in for `options.dir`
  * (`./app-directory`), so that its imports resolve as from there. The
- * directory is removed by `dispose()`, which `registerCleanup` also
- * receives.
+ * directory is removed by `dispose()`.
  */
 export async function createApp(options: AppOptions): Promise<App> {
   const root = await createAppDirectory(
@@ -353,7 +345,6 @@ export async function createApp(options: AppOptions): Promise<App> {
     // What the dev-server harnesses saved the app's files through
     await rm(savingDirectory(root), { recursive: true, force: true })
   }
-  options.registerCleanup?.(dispose)
   try {
     const packageJson =
       options.packageJson === null
@@ -404,7 +395,6 @@ export async function bundleApp(
     sideEffects,
     symlinks,
     prefix,
-    registerCleanup,
     plugins,
     ...target
   } = options
@@ -417,7 +407,6 @@ export async function bundleApp(
     sideEffects,
     symlinks,
     prefix: prefix ?? `.build-harness-${target.bundler}-`,
-    registerCleanup,
   })
   try {
     return await app.bundle({ ...target, plugin: plugins?.[target.bundler] })

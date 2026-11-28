@@ -16,6 +16,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { setFlagsFromString } from 'node:v8'
 import { runInNewContext } from 'node:vm'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import { expect, onTestFinished, test } from 'vitest'
 import { build, createServer } from 'vite'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
@@ -31,15 +32,18 @@ const route = (id: string) =>
 
 /** An app with a root and an index route (and `files`), removed when the test ends. */
 async function routeApp(files: Record<string, string> = {}) {
-  const { root } = await createApp({
-    dir: harnessDir,
-    registerCleanup: onTestFinished,
-    files: {
-      'src/routes/__root.tsx': rootRoute,
-      'src/routes/index.tsx': route('/'),
-      ...files,
-    },
-  })
+  const { root } = await closeAtEnd(
+    () =>
+      createApp({
+        dir: harnessDir,
+        files: {
+          'src/routes/__root.tsx': rootRoute,
+          'src/routes/index.tsx': route('/'),
+          ...files,
+        },
+      }),
+    (opened) => opened.dispose(),
+  )
   return root
 }
 

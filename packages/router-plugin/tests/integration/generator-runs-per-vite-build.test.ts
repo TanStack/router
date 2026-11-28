@@ -15,6 +15,7 @@
 import { readFile, readdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
 import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import { viteVersions } from '@tanstack/compiler-vite-versions'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
@@ -129,18 +130,21 @@ const configFactories = new Map<string, () => ViteModule.InlineConfig>()
  * generations that built the route tree (`onRouteTreeChanged`).
  */
 async function routerApp(major: number) {
-  const app = await createApp({
-    dir: harnessDir,
-    prefix: `.generator-runs-vite${major}-`,
-    packageJson: { type: 'module' },
-    registerCleanup: onTestFinished,
-    files: {
-      'routes/__root.tsx': rootRoute,
-      'routes/index.tsx': route('/'),
-      'entry.ts': `export { routeTree } from './routeTree.gen'\n`,
-      'vite.config.mjs': '',
-    },
-  })
+  const app = await closeAtEnd(
+    () =>
+      createApp({
+        dir: harnessDir,
+        prefix: `.generator-runs-vite${major}-`,
+        packageJson: { type: 'module' },
+        files: {
+          'routes/__root.tsx': rootRoute,
+          'routes/index.tsx': route('/'),
+          'entry.ts': `export { routeTree } from './routeTree.gen'\n`,
+          'vite.config.mjs': '',
+        },
+      }),
+    (opened) => opened.dispose(),
+  )
   const configFile = path.join(app.root, 'vite.config.mjs')
   await writeFile(
     configFile,
