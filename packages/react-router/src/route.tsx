@@ -53,7 +53,7 @@ declare module '@tanstack/router-core' {
     component?: RouteComponent
     errorComponent?: false | null | undefined | ErrorRouteComponent
     notFoundComponent?: NotFoundRouteComponent
-    pendingComponent?: RouteComponent
+    pendingComponent?: false | null | undefined | RouteComponent
   }
 
   export interface RootRouteOptionsExtensions {
