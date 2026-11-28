@@ -1,9 +1,8 @@
 /** Host-delivery outcomes: real route edits reach matching, context,
  * search parsing and the document head through the public router APIs.
  */
-import { describe, test } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
-import type { TestContext } from 'vitest'
+import { describe } from 'vitest'
+import { test } from '../test'
 
 const inPlace = { reloaded: false, errors: [] }
 
@@ -43,10 +42,9 @@ describe.each(['vite', 'rsbuild'] as const)(
     test.for([false, true])(
       'delivers matching, search, context, head and scripts edits (removal: %s)',
       { timeout: 60_000 },
-      async (removed: boolean, { expect, onTestFinished }: TestContext) => {
+      async (removed: boolean, { expect, openRouteHmrPage }) => {
         const app = await openRouteHmrPage({
           bundler,
-          onTestFinished,
           pluginOptions: { autoCodeSplitting: false },
           files: {
             'routes/__root.tsx': root,
@@ -115,7 +113,7 @@ export const Route = createFileRoute('/')({ component: () => <p>home</p> })`,
     test(
       'an edited index export keeps its public navigation target',
       { timeout: 60_000 },
-      async ({ expect, onTestFinished }: TestContext) => {
+      async ({ expect, openRouteHmrPage }) => {
         const posts = (
           version: string,
         ) => `import { createFileRoute, Link } from '@tanstack/react-router'
@@ -129,7 +127,6 @@ function Posts() {
 }`
         const app = await openRouteHmrPage({
           bundler,
-          onTestFinished,
           files: {
             'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({ component: () => <p>home</p> })`,

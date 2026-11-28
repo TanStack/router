@@ -7,11 +7,10 @@
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, onTestFinished, test } from 'vitest'
 import { viteVersions } from '@tanstack/compiler-vite-versions'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
 import { runNodeProgram } from '@tanstack/compiler-test-utils/run-node'
-import { onTestFinished } from '@tanstack/compiler-test-utils/test-scope'
 import { tanstackRouter } from '../../src/vite'
 import { build, buildWithRsbuild, head, rootRoute } from '../build-harness'
 import type { BuildResult } from '@tanstack/compiler-test-utils/build-harness'
@@ -116,7 +115,7 @@ const builds: Record<
     build({ bundler: 'rspack', env: 'client', minify: false, files }),
   webpack: (files) =>
     build({ bundler: 'webpack', env: 'client', minify: false, files }),
-  rsbuild: (files) => buildWithRsbuild({ files, registerCleanup: () => {} }),
+  rsbuild: (files) => buildWithRsbuild({ files }),
 }
 
 describe.each(Object.keys(builds))('on %s', (bundler) => {

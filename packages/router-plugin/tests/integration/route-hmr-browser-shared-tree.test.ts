@@ -12,8 +12,8 @@
  *
  * Each in the document the page loaded.
  */
-import { describe, it } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
+import { describe } from 'vitest'
+import { it } from '../test'
 import {
   emptyRoute,
   lazyFile,
@@ -21,7 +21,6 @@ import {
   twoTrees,
   widgetTree,
 } from './route-hmr-two-routers-cases'
-import type { TestContext } from 'vitest'
 
 const timeout = 90_000
 
@@ -65,11 +64,10 @@ describe.each(['vite', 'rsbuild'] as const)(
     it.for(Object.keys(sharedMains) as Array<keyof typeof sharedMains>)(
       'a loader edit shows in every router of the tree (%s)',
       { timeout },
-      async (name, { expect, onTestFinished }: TestContext) => {
+      async (name, { expect, openRouteHmrPage }) => {
         const mounted = name === 'a second router created last, mounted'
         const app = await openRouteHmrPage({
           bundler,
-          onTestFinished,
           files: {
             'main.tsx': sharedMains[name],
             'routes/index.tsx': loaderRoute('react', 'shared data v1'),
@@ -128,11 +126,10 @@ describe.each([
     it(
       "an edit of each tree's route `/` shows in its own router, whose loader runs once; the other tree's `/` keeps its code",
       { timeout },
-      async ({ expect, onTestFinished }: TestContext) => {
+      async ({ expect, openRouteHmrPage }) => {
         const app = await openRouteHmrPage({
           bundler,
           target,
-          onTestFinished,
           moreRouteTrees: [widgetTree],
           explicitContext: plugins === 'generator and splitter',
           files: {
@@ -211,11 +208,10 @@ describe.each([
     it(
       "an edit of the app tree's lazy route file shows in the app's router; the other tree's keeps its code",
       { timeout },
-      async ({ expect, onTestFinished }: TestContext) => {
+      async ({ expect, openRouteHmrPage }) => {
         const app = await openRouteHmrPage({
           bundler,
           target,
-          onTestFinished,
           moreRouteTrees: [widgetTree],
           explicitContext: plugins === 'generator and splitter',
           files: {

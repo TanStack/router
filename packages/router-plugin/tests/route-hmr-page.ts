@@ -33,8 +33,7 @@ import react from '@vitejs/plugin-react'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import solid from 'vite-plugin-solid'
-import { expect } from 'vitest'
-import { onTestFinished } from '@tanstack/compiler-test-utils/test-scope'
+import { expect, onTestFinished } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import { openDiagnosticChannel } from '@tanstack/compiler-test-utils/diagnostic-channel'
@@ -61,6 +60,7 @@ import type { PluginOption } from 'vite'
 import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import type { Config } from '../src/vite'
 import type { EmittedModules, TargetFramework } from './route-app'
+import type { At } from './test'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
@@ -202,12 +202,6 @@ export interface RouteHmrPageOptions {
    * `tanstackRouter()`. Default `false`.
    */
   explicitContext?: boolean
-  /**
-   * Registers the cleanup (closing the page and the dev server) to run when
-   * the test ends. Default: vitest's `onTestFinished`; a concurrent test
-   * passes the one of its test context.
-   */
-  onTestFinished?: (cleanup: () => Promise<void>) => void
 }
 
 export interface EditResult {
@@ -276,6 +270,8 @@ export interface RouteHmrPage {
    * one once the page rendered it; none when nothing is split.
    */
   splitOutputs: () => number
+  /** Closes the page, then the dev server. */
+  close: () => Promise<void>
 }
 
 /**
@@ -297,12 +293,9 @@ const openApps = new Set<string>()
  * project-relative) and wording it has. Output outside any app's context
  * counts when it names the app's root (`root()`, once known), or, whatever
  * path form it has, when it was printed while no other app was open.
+ * `close()` stops reading.
  */
-function processOutput(
-  id: string,
-  root: () => string | undefined,
-  registerCleanup: (cleanup: () => Promise<void>) => void,
-) {
+function processOutput(id: string, root: () => string | undefined) {
   const channel = openDiagnosticChannel()
   const scoped: Array<ChannelDiagnostic> = []
   const unscoped: Array<{ diagnostic: ChannelDiagnostic; alone: boolean }> = []
@@ -315,12 +308,11 @@ function processOutput(
       unscoped.push({ diagnostic, alone: openApps.size === 1 })
     }
   })
-  registerCleanup(() => {
+  const close = () => {
     openApps.delete(id)
     channel.close()
-    return Promise.resolve()
-  })
-  return () => {
+  }
+  const read = () => {
     const appRoot = root()
     return [
       ...scoped,
@@ -333,6 +325,7 @@ function processOutput(
         .map(({ diagnostic }) => diagnostic),
     ]
   }
+  return { read, close }
 }
 
 /**
@@ -380,6 +373,7 @@ interface AppServer {
   fullReloads: () => number
   /** `RouteHmrPage.splitOutputs` (Vite only). */
   splitOutputs?: () => number
+  close: () => Promise<void>
 }
 
 const defaultEditTimeout = 15_000
@@ -394,9 +388,18 @@ const editQuietFailure = 3_000
 
 /**
  * Starts a dev server on an app of `files` (see `RouteHmrPageOptions`), opens
- * it in a browser page and waits until it shows `ready`.
+ * it in a browser page and waits until it shows `ready`; closed when the
+ * test ends.
  */
-export async function openRouteHmrPage(
+export async function openRouteHmrPage(options: RouteHmrPageOptions) {
+  const app = await openRouteHmrPageAt({}, options)
+  onTestFinished(() => app.close())
+  return app
+}
+
+/** `openRouteHmrPage` in a new directory of `at.parent`, for a fixture (it closes it). */
+export async function openRouteHmrPageAt(
+  at: At,
   options: RouteHmrPageOptions,
 ): Promise<RouteHmrPage> {
   const target = options.target ?? 'react'
@@ -414,25 +417,38 @@ export const Route = createRootRoute({})
   // there
   const id = `route-hmr-page-${++apps}`
   let appRoot: string | undefined
-  const printed = processOutput(
-    id,
-    () => appRoot,
-    options.onTestFinished ?? onTestFinished,
-  )
-  const { server, page } = await (async () => {
-    const started = await appScope.run(id, () =>
+  const output = processOutput(id, () => appRoot)
+  const printed = output.read
+  let serving: AppServer | undefined
+  let opened: BrowserPage | undefined
+  const close = async () => {
+    try {
+      await opened?.close()
+      await serving?.close()
+    } finally {
+      output.close()
+    }
+  }
+  try {
+    serving = await appScope.run(id, () =>
       bundler === 'vite'
-        ? viteServer(target, files, options)
-        : rsbuildServer(target, files, options),
+        ? viteServer(at, target, files, options)
+        : rsbuildServer(at, target, files, options),
     )
-    appRoot = started.root
-    const opened = await openPage(started.url, {
-      registerCleanup: options.onTestFinished ?? onTestFinished,
-    })
+    appRoot = serving.root
+    at.signal?.throwIfAborted()
+    opened = await openPage(serving.url)
+    at.signal?.throwIfAborted()
     await opened.waitForText(options.ready, { selector: '#app' })
-    await started.idle()
-    return { server: started, page: opened }
-  })()
+    at.signal?.throwIfAborted()
+    await serving.idle()
+    at.signal?.throwIfAborted()
+  } catch (error) {
+    await close()
+    throw error
+  }
+  const page = opened
+  const server = serving
 
   const text = async () => {
     try {
@@ -534,6 +550,7 @@ export const Route = createRootRoute({})
         'warning',
       ),
     ],
+    close,
   }
 }
 
@@ -561,6 +578,7 @@ function routerPluginOptions(
 }
 
 async function viteServer(
+  at: At,
   target: TargetFramework,
   files: Record<string, string>,
   options: RouteHmrPageOptions,
@@ -568,8 +586,8 @@ async function viteServer(
   const emitted: EmittedModules = new Map()
   const server = await createDevServer({
     dir: harnessDir,
+    ...at,
     prefix: '.route-hmr-page-',
-    registerCleanup: options.onTestFinished ?? onTestFinished,
     browser: true,
     files: {
       'index.html': `<!doctype html>
@@ -628,6 +646,7 @@ async function viteServer(
     fullReloads,
     root: server.root,
     diagnostics: () => server.diagnostics,
+    close: () => server.close(),
     splitOutputs: () =>
       [...emitted].filter(
         ([key, hooks]) =>
@@ -638,6 +657,7 @@ async function viteServer(
 }
 
 async function rsbuildServer(
+  at: At,
   target: TargetFramework,
   files: Record<string, string>,
   options: RouteHmrPageOptions,
@@ -653,8 +673,8 @@ async function rsbuildServer(
   }
   const server = await createRsbuildDevServer({
     dir: harnessDir,
+    ...at,
     prefix: '.route-hmr-page-rsbuild-',
-    registerCleanup: options.onTestFinished ?? onTestFinished,
     browser: true,
     entry: 'main.tsx',
     files,
@@ -689,6 +709,7 @@ async function rsbuildServer(
     root: server.root,
     // Every compile's (the page's edits settle before they are read)
     diagnostics: () => server.diagnostics,
+    close: () => server.close(),
   }
 }
 

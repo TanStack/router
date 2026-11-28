@@ -10,7 +10,6 @@
  */
 import { describe, test } from 'vitest'
 import { countMounts, mountsOf, openRouteHmrPage } from '../route-hmr-page'
-import type { TestContext } from 'vitest'
 
 const timeout = 90_000
 
@@ -58,9 +57,8 @@ describe('the framework plugin before the router plugin', () => {
   ])(
     'react, autoCodeSplitting off: an edit of $name shows in place, keeping its state, without a warning',
     { timeout },
-    async ({ route, shows }, { expect, onTestFinished }: TestContext) => {
+    async ({ route, shows }, { expect }) => {
       const app = await openRouteHmrPage({
-        onTestFinished,
         frameworkPluginFirst: true,
         pluginOptions: { autoCodeSplitting: false },
         files: { 'routes/index.tsx': route('v1') },
@@ -84,10 +82,9 @@ describe('the framework plugin before the router plugin', () => {
   test(
     'solid, autoCodeSplitting off: an edit shows in place without a warning',
     { timeout },
-    async ({ expect, onTestFinished }: TestContext) => {
+    async ({ expect }) => {
       const app = await openRouteHmrPage({
         target: 'solid',
-        onTestFinished,
         frameworkPluginFirst: true,
         pluginOptions: { autoCodeSplitting: false },
         files: { 'routes/index.tsx': solidRoute('v1') },
@@ -106,11 +103,10 @@ describe('the framework plugin before the router plugin', () => {
   test.for(['react', 'solid'] as const)(
     '%s, autoCodeSplitting on: the dev server refuses to start',
     { timeout },
-    async (target, { expect, onTestFinished }: TestContext) => {
+    async (target, { expect }) => {
       await expect(
         openRouteHmrPage({
           target,
-          onTestFinished,
           frameworkPluginFirst: true,
           pluginOptions: { autoCodeSplitting: true },
           files: {

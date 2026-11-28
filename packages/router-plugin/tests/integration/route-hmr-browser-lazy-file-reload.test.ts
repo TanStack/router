@@ -13,9 +13,8 @@
  * after the app's (a widget with a route of the same id): the edit reaches
  * the app's route and leaves the widget alone (Astra R3).
  */
-import { describe, it } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
-import type { TestContext } from 'vitest'
+import { describe } from 'vitest'
+import { it } from '../test'
 
 const timeout = 90_000
 
@@ -62,10 +61,9 @@ describe.each(['vite', 'rsbuild'] as const)(
     it(
       "shows a lazy route file's edit in the app's route and leaves the other router's route alone",
       { timeout },
-      async ({ expect, onTestFinished }: TestContext) => {
+      async ({ expect, openRouteHmrPage }) => {
         const app = await openRouteHmrPage({
           bundler,
-          onTestFinished,
           files: {
             'main.tsx': twoRouters,
             'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
@@ -113,11 +111,10 @@ describe.each([
   it(
     "shows the route file's component once an edit removes the lazy file's",
     { timeout },
-    async ({ expect, onTestFinished }: TestContext) => {
+    async ({ expect, openRouteHmrPage }) => {
       const app = await openRouteHmrPage({
         bundler,
         target,
-        onTestFinished,
         files: {
           'routes/index.tsx': routeWithComponent(target),
           'routes/index.lazy.tsx': lazyFile(
@@ -150,7 +147,7 @@ describe.each(['vite', 'rsbuild'] as const)(
     it(
       "shows the route file's component once an edit removes the lazy file's, after an edit of the route module",
       { timeout },
-      async ({ expect, onTestFinished }: TestContext) => {
+      async ({ expect, openRouteHmrPage }) => {
         const other = (loader: string) =>
           `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/other')({
@@ -164,7 +161,6 @@ export const Route = createLazyFileRoute('/other')({ ${options} })
 `
         const app = await openRouteHmrPage({
           bundler,
-          onTestFinished,
           files: {
             'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({ component: () => <p>Home</p> })
@@ -206,7 +202,7 @@ describe.each(['vite', 'rsbuild'] as const)(
     it(
       "no longer shows the lazy file's component once an edit removes it, after an edit of the route module",
       { timeout },
-      async ({ expect, onTestFinished }: TestContext) => {
+      async ({ expect, openRouteHmrPage }) => {
         // (review of the implementation, Gemini F3: the route module sets no
         // component, so only the lazy file's ever reached the route)
         const other = (loader: string) =>
@@ -219,7 +215,6 @@ export const Route = createLazyFileRoute('/other')({ ${options} })
 `
         const app = await openRouteHmrPage({
           bundler,
-          onTestFinished,
           files: {
             'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({ component: () => <p>Home</p> })

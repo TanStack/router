@@ -6,9 +6,8 @@
  * version rendering the other's data throws. Shared rows of
  * route-hmr-browser-shape-change.test.ts (Vite) and `-rsbuild.test.ts`.
  */
-import { describe, it } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
-import type { TestContext } from 'vitest'
+import { describe } from 'vitest'
+import { it } from '../test'
 
 const timeout = 90_000
 
@@ -63,13 +62,9 @@ export function shapeChangeSuite(bundler: Bundler) {
     ] as const)(
       'shows each save in place ($loader loader, autoCodeSplitting: $autoCodeSplitting)',
       { timeout },
-      async (
-        { loader, autoCodeSplitting },
-        { expect, onTestFinished }: TestContext,
-      ) => {
+      async ({ loader, autoCodeSplitting }, { expect, openRouteHmrPage }) => {
         const app = await openRouteHmrPage({
           bundler,
-          onTestFinished,
           pluginOptions: { autoCodeSplitting },
           files: { 'routes/index.tsx': reactRoute(1, loader) },
           ready: 'shape v1 count 0',
@@ -104,12 +99,11 @@ export function shapeChangeSuite(bundler: Bundler) {
         { timeout },
         async (
           { autoCodeSplitting, errorComponent },
-          { expect, onTestFinished }: TestContext,
+          { expect, openRouteHmrPage },
         ) => {
           const app = await openRouteHmrPage({
             bundler,
             target,
-            onTestFinished,
             pluginOptions: { autoCodeSplitting },
             files: { 'routes/index.tsx': route(target, 1, errorComponent) },
             ready: 'shape v1',

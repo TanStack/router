@@ -8,6 +8,7 @@ import { expect, test } from 'vitest'
 import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   build,
+  buildShared,
   clientMountEntry,
   head,
   rootRoute,
@@ -35,7 +36,7 @@ function appOf(bundler: BundlerName) {
 }
 
 async function buildApp(bundler: BundlerName) {
-  const app = await build({
+  const app = await buildShared({
     bundler,
     env: 'client',
     // No outcome here depends on webpack's minifier (terser), which takes
@@ -43,7 +44,6 @@ async function buildApp(bundler: BundlerName) {
     // rendering.
     ...(bundler === 'webpack' && { minify: false }),
     // Files outlive the test that built them; the result is all we keep
-    registerCleanup: undefined,
     files: {
       'routes/__root.tsx': rootRoute,
       'routes/café.日本語.tsx': `${head}function Page() {
@@ -277,12 +277,11 @@ second */ export const Route = createFileRoute('/')({
 let unterminatedResults: Promise<Array<string>> | undefined
 
 async function buildUnterminated() {
-  const app = await build({
+  const app = await buildShared({
     bundler: 'vite',
     env: 'ssr',
     minify: false,
     prefix: '.regression-build-',
-    registerCleanup: undefined,
     files: {
       'routes/__root.tsx': rootRoute,
       'text.ts': `export const text = 'MARK'\n`,

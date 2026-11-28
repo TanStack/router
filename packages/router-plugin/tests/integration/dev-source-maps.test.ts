@@ -16,21 +16,14 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { pluginReact } from '@rsbuild/plugin-react'
 import react from '@vitejs/plugin-react'
-import {
-  afterAll,
-  beforeAll,
-  describe,
-  expect,
-  onTestFinished,
-  test,
-} from 'vitest'
+import { beforeAll, describe, expect, onTestFinished, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
+import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import {
   loadMarker,
   loadedModulesExpression,
 } from '@tanstack/compiler-test-utils/importers'
-import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
-import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import {
   emittedSourcePath,
   expectMapsTo,
@@ -41,6 +34,7 @@ import {
 } from '@tanstack/compiler-test-utils/source-maps'
 import { tanstackRouter } from '../../src/vite'
 import { rootRoute, routeHead } from '../build-harness'
+import { pageHtml, runInPage } from '../route-app'
 import { openWebpackHmrPage } from '../webpack-hmr-page'
 import type { AnySourceMap } from '@tanstack/compiler-test-utils/source-maps'
 
@@ -167,7 +161,6 @@ function expectThrowsMapToRouteFile(
 }
 
 describe('vite dev server', () => {
-  const cleanups: Array<() => Promise<void>> = []
   let throws: {
     stacks: Record<string, string | undefined>
     maps: Map<string, AnySourceMap | undefined>
@@ -175,14 +168,13 @@ describe('vite dev server', () => {
     origin: string
     loadedWithRoute: Array<string>
   }
+  // (what the tests read, taken once; the host closes then)
   beforeAll(async () => {
     const host = await createPluginHost({
       dir: appsDir,
       prefix: '.dev-source-maps-',
-      registerCleanup: (cleanup) => {
-        cleanups.push(cleanup)
-      },
       files: {
+        'index.html': pageHtml,
         'routes/__root.tsx': rootRoute,
         'routes/index.tsx': route,
         'page-label.ts': pageLabel,
@@ -212,36 +204,39 @@ describe('vite dev server', () => {
         react(),
       ],
     })
-    const {
-      result: { stacks, loadedWithRoute },
-    } = await host.runClient<{
-      stacks: Record<string, string | undefined>
-      loadedWithRoute: Array<string>
-    }>(
-      '/probe.ts',
-      'return { loadedWithRoute: module.loadedWithRoute, stacks: await module.throws() }',
-    )
-    // The map of every module a frame names, as the dev server serves it
-    // (Vite inlines it)
-    const maps = new Map<string, AnySourceMap | undefined>()
-    const origin = new URL(host.dev.url!).origin
-    for (const location of new Set(
-      Object.values(stacks).flatMap((stack) => frameLocations(stack ?? '')),
-    )) {
-      const url = new URL(location)
-      if (url.origin !== origin) {
-        continue
+    const page = await openPage('about:blank')
+    try {
+      const {
+        result: { stacks, loadedWithRoute },
+      } = await runInPage<{
+        stacks: Record<string, string | undefined>
+        loadedWithRoute: Array<string>
+      }>(
+        page.page,
+        host,
+        '/probe.ts',
+        'return { loadedWithRoute: module.loadedWithRoute, stacks: await module.throws() }',
+      )
+      // The map of every module a frame names, as the dev server serves it
+      // (Vite inlines it)
+      const maps = new Map<string, AnySourceMap | undefined>()
+      const origin = new URL(host.dev.url!).origin
+      for (const location of new Set(
+        Object.values(stacks).flatMap((stack) => frameLocations(stack ?? '')),
+      )) {
+        const url = new URL(location)
+        if (url.origin !== origin) {
+          continue
+        }
+        const { body } = await host.dev.fetch(url.pathname + url.search)
+        maps.set(location, inlineSourceMap(body))
       }
-      const { body } = await host.dev.fetch(url.pathname + url.search)
-      maps.set(location, inlineSourceMap(body))
+      throws = { stacks, maps, root: host.root, origin, loadedWithRoute }
+    } finally {
+      await page.close()
+      await host.close()
     }
-    throws = { stacks, maps, root: host.root, origin, loadedWithRoute }
   }, timeout)
-  afterAll(async () => {
-    for (const cleanup of cleanups.reverse()) {
-      await cleanup()
-    }
-  })
 
   // The module each throw runs in maps it to its line in the route file,
   // and names the route file as its source, as the browser resolves it
@@ -305,9 +300,9 @@ describe('rsbuild dev server', () => {
       const { tanstackRouter: tanstackRouterRspack } =
         await import('../../src/rspack')
       const server = await createRsbuildDevServer({
+        registerCleanup: onTestFinished,
         dir: appsDir,
         prefix: '.dev-source-maps-rsbuild-',
-        registerCleanup: onTestFinished,
         browser: true,
         entry: 'main.tsx',
         files: {

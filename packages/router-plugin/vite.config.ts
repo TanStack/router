@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -6,43 +6,16 @@ import { configDefaults, defineConfig, mergeConfig } from 'vitest/config'
 import type { TestProjectInlineConfiguration } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/vite-config'
 import packageJson from './package.json'
+import {
+  concurrentTests,
+  moreConcurrentTests,
+  serialHmrTests,
+} from './concurrent-tests.js'
 
 const testsDir = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   'tests',
 )
-
-/**
- * The slow-tier files whose tests run concurrently (project
- * `integration-concurrent`): the route HMR files (`route-hmr-browser*`)
- * and `moreConcurrentTests`, whose every test opens its own dev server,
- * page and app directory, starts only dev servers, edits only its own
- * app, and asserts only on its own server's log and its own page. Every
- * other project runs one test at a time. Left out: the files whose
- * warning and error assertions read what the process printed
- * (`RouteHmrPage.warnings`, Rsbuild's `serverErrors`), which concurrent
- * tests share. Paths relative to `tests/`.
- */
-const serialHmrTests = [
-  'integration/route-hmr-browser-plugin.test.ts',
-  'integration/route-hmr-browser-plugin-routes.test.ts',
-  'integration/route-hmr-browser-plugin-order.test.ts',
-  'integration/route-hmr-browser-kept-binding.test.ts',
-  'integration/route-hmr-browser-kept-binding-solid.test.ts',
-]
-const concurrentTests = readdirSync(path.join(testsDir, 'integration'))
-  .filter(
-    (file) => file.startsWith('route-hmr-browser') && file.endsWith('.test.ts'),
-  )
-  .map((file) => `integration/${file}`)
-  .filter((file) => !serialHmrTests.includes(file))
-const moreConcurrentTests = [
-  'integration/code-splitter-refresh-placements.test.ts',
-  'integration/route-hmr-rsbuild-dev-maps.test.ts',
-  'integration/known-bugs-route-hmr-removals.test.ts',
-  'integration/known-bugs-route-hmr-kept-binding.test.ts',
-]
-concurrentTests.push(...moreConcurrentTests)
 
 /**
  * The slow-tier files the other platforms run (`test:integration:smoke`,
@@ -114,12 +87,13 @@ const config = defineConfig({
     setupFiles: [
       '@tanstack/compiler-test-utils/test-scope-setup',
       '@tanstack/compiler-test-utils/pins-setup',
+      './tests/route-hosts-setup.ts',
     ],
     projects: [
       {
         // Fast tier (`test:unit`): compiles in process; client checks run in
         // pages of a real browser (`route-app.ts`). A test process keeps its
-        // browser and its free hosts across test files (`isolate: false`).
+        // browser across test files (`isolate: false`).
         extends: true,
         test: {
           name: 'unit',

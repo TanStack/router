@@ -13,9 +13,9 @@
  *
  * Several edits share one dev server and page.
  */
-import { describe, it } from 'vitest'
-import { isAppError, openRouteHmrPage } from '../route-hmr-page'
-import type { TestContext } from 'vitest'
+import { describe } from 'vitest'
+import { isAppError } from '../route-hmr-page'
+import { it } from '../test'
 import type { EditResult, RouteHmrPage } from '../route-hmr-page'
 
 const timeout = 90_000
@@ -246,7 +246,7 @@ describe.each(['vite', 'rsbuild'] as const)('%s: a React app', (bundler) => {
     (autoCodeSplitting) => {
       it(
         'shows an edited route component in place with its state, the options the edit adds, changes or removes, and remounts a component whose hooks changed',
-        async ({ expect, onTestFinished }) => {
+        async ({ expect, openRouteHmrPage }) => {
           const files: Record<string, string> = {
             'routes/index.tsx': indexRoute('v1'),
           }
@@ -255,7 +255,6 @@ describe.each(['vite', 'rsbuild'] as const)('%s: a React app', (bundler) => {
           }
           const app = await openRouteHmrPage({
             bundler,
-            onTestFinished,
             pluginOptions: { autoCodeSplitting },
             files,
             ready: 'page v1 data v1 / count 0',
@@ -385,7 +384,7 @@ describe.each(['vite', 'rsbuild'] as const)('%s: a React app', (bundler) => {
   // factory call builds (a reload is fine, the edit must show).
   it(
     'shows an edited root route in place, and the shell component the edit adds, changes or removes; an edit of a route whose options a factory call builds shows',
-    async ({ expect, onTestFinished }) => {
+    async ({ expect, openRouteHmrPage }) => {
       const root = (version: string, shell = '') =>
         `import { createRootRoute, Outlet } from '@tanstack/react-router'
 import { useState } from 'react'
@@ -420,7 +419,6 @@ export const Route = createFileRoute('/')(makeOptions('${version}'))
 `
       const app = await openRouteHmrPage({
         bundler,
-        onTestFinished,
         files: {
           'routes/__root.tsx': root('v1'),
           'routes/-options.tsx': `export const makeOptions = (version: string) => ({
@@ -478,10 +476,7 @@ describe('vite: a React route module without a component, and a root route with 
   it.for([true, false])(
     'apply their edits in place (autoCodeSplitting: %s)',
     { timeout },
-    async (
-      autoCodeSplitting: boolean,
-      { expect, onTestFinished }: TestContext,
-    ) => {
+    async (autoCodeSplitting: boolean, { expect, openRouteHmrPage }) => {
       const root = (version: string) =>
         `import { createRootRoute, Outlet, useRouterState } from '@tanstack/react-router'
 import { useState } from 'react'
@@ -508,7 +503,6 @@ export const Route = createFileRoute('/')({
 })
 `
       const app = await openRouteHmrPage({
-        onTestFinished,
         pluginOptions: { autoCodeSplitting },
         files: {
           'routes/__root.tsx': root('v1'),
@@ -589,10 +583,9 @@ export const Route = createFileRoute('/')({
     { timeout },
     async (
       { autoCodeSplitting, route, shows },
-      { expect, onTestFinished }: TestContext,
+      { expect, openRouteHmrPage },
     ) => {
       const app = await openRouteHmrPage({
-        onTestFinished,
         pluginOptions: { autoCodeSplitting },
         files: { 'routes/index.tsx': route('v1') },
         ready: shows('v1'),
@@ -634,10 +627,9 @@ function Page() {
     it.for([`[['loader'], ['component']]`, `[['component', 'loader']]`])(
       'runs the edited loader once (codeSplitGroupings: %s)',
       { timeout },
-      async (groupings: string, { expect, onTestFinished }) => {
+      async (groupings: string, { expect, openRouteHmrPage }) => {
         const app = await openRouteHmrPage({
           bundler,
-          onTestFinished,
           pluginOptions: { autoCodeSplitting: true },
           files: { 'routes/index.tsx': route(groupings, 'v1') },
           ready: 'page data v1',

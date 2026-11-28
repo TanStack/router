@@ -8,8 +8,9 @@
 // Placements that differ, accepted (oracle/KNOWN-BUGS.md, "Accepted limits"):
 // a comment inside syntax TypeScript erases within a value statement, and one
 // trailing or inside an expression statement.
-import { expect, test } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
+import { expect } from 'vitest'
+import { test } from '../test'
+import type { RouterFixtures } from '../test'
 
 const timeout = 120_000
 
@@ -42,6 +43,7 @@ ${inOptions}  component: Page,
 
 /** Opens the app, clicks the counter once, edits the route and returns what the counter shows then. */
 async function counterAfterEdit(
+  openRouteHmrPage: RouterFixtures['openRouteHmrPage'],
   autoCodeSplitting: boolean,
   comments: Comments,
 ) {
@@ -148,15 +150,15 @@ const rows: Array<Comments> = [
   },
 ]
 
-test.each(rows)(
+test.for(rows)(
   'with the comment $name, an edit of the split route shows what it shows unsplit',
-  async (comments) => {
+  { timeout },
+  async (comments, { openRouteHmrPage }) => {
     const [unsplit, split] = await Promise.all([
-      counterAfterEdit(false, comments),
-      counterAfterEdit(true, comments),
+      counterAfterEdit(openRouteHmrPage, false, comments),
+      counterAfterEdit(openRouteHmrPage, true, comments),
     ])
     expect(unsplit).toMatch(/Counter v2 count \d/)
     expect(split).toBe(unsplit)
   },
-  timeout,
 )

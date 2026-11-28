@@ -11,8 +11,8 @@
  * import of the chunk is what fails, then succeeds. A real dev server with
  * React Refresh, a real page (`route-hmr-page.ts`).
  */
-import { describe, expect, test } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
+import { describe, expect } from 'vitest'
+import { test } from '../test'
 
 const timeout = 60_000
 
@@ -50,11 +50,10 @@ describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
   test.for([false, true])(
     'a component chunk the edit breaks keeps the component on the page, the fixing edit patches it in place (error component: %s)',
     { timeout },
-    async (errorComponent, { onTestFinished }) => {
+    async (errorComponent, { openRouteHmrPage }) => {
       const shape = { loader: false, errorComponent }
       const app = await openRouteHmrPage({
         bundler,
-        onTestFinished,
         files: { 'routes/index.tsx': healthy('page v1', shape) },
         ready: 'page v1 0',
       })
@@ -85,11 +84,10 @@ describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
   test.for([true, false])(
     'after an edit that breaks the split chunk holding the loader, the fixing edit shows the component in place (error component: %s)',
     { timeout },
-    async (errorComponent, { onTestFinished }) => {
+    async (errorComponent, { openRouteHmrPage }) => {
       const shape = { loader: true, errorComponent }
       const app = await openRouteHmrPage({
         bundler,
-        onTestFinished,
         files: { 'routes/index.tsx': healthy('page v1', shape) },
         ready: 'page v1 0',
       })
@@ -123,14 +121,13 @@ describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
   test.for([false, true])(
     'a component chunk that failed on the first load and after an edit shows the fixing edit (error component: %s)',
     { timeout },
-    async (errorComponent, { onTestFinished }) => {
+    async (errorComponent, { openRouteHmrPage }) => {
       const shape = { loader: false, errorComponent }
       const failure = errorComponent
         ? 'failed SyntaxError'
         : /Something went wrong/
       const app = await openRouteHmrPage({
         bundler,
-        onTestFinished,
         files: { 'routes/index.tsx': broken(shape) },
         ready: failure,
       })

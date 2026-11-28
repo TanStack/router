@@ -11,10 +11,9 @@
  * Shared rows of route-hmr-browser-lazy-retry.test.ts (Vite) and
  * `-rsbuild.test.ts`.
  */
-import { describe, it } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
+import { describe } from 'vitest'
+import { it } from '../test'
 import type { TargetFramework } from '../route-app'
-import type { TestContext } from 'vitest'
 
 const timeout = 90_000
 
@@ -56,11 +55,10 @@ export function lazyRetrySuite(bundler: 'vite' | 'rsbuild') {
       it.for(['a navigation back', 'router.invalidate()'] as const)(
         'imports again at %s once the service answers',
         { timeout },
-        async (retry, { expect, onTestFinished }: TestContext) => {
+        async (retry, { expect, openRouteHmrPage }) => {
           const app = await openRouteHmrPage({
             bundler,
             target,
-            onTestFinished,
             // (split, the app's wrapper renders inside the compiler's,
             // which the router's load does not import again: oracle
             // KNOWN-BUGS.md, "Accepted limits")
@@ -125,11 +123,10 @@ export function overlappingFailuresSuite(bundler: 'vite' | 'rsbuild') {
       it(
         'shows the component again without its pending component (review of the implementation, Astra re-check P2)',
         { timeout },
-        async ({ expect, onTestFinished }: TestContext) => {
+        async ({ expect, openRouteHmrPage }) => {
           const app = await openRouteHmrPage({
             bundler,
             target,
-            onTestFinished,
             pluginOptions: { autoCodeSplitting: false },
             files: {
               'routes/index.tsx': home(target),

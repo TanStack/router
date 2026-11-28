@@ -23,10 +23,10 @@
  * One test file per bundler (`route-hmr-browser-solid-identity.test.ts`
  * for Vite, `-rsbuild.test.ts`), each with and without `autoCodeSplitting`.
  */
-import { describe, test } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
-import type { TestContext } from 'vitest'
+import { describe } from 'vitest'
+import { test } from '../test'
 import type { Config } from '../../src/vite'
+import type { RouterFixtures } from '../test'
 
 type Bundler = 'vite' | 'rsbuild'
 
@@ -631,12 +631,14 @@ export function solidIdentitySuite(bundler: Bundler) {
       const run = async (
         row: Row,
         edits: Array<Edit>,
-        { expect, onTestFinished }: TestContext,
+        {
+          expect,
+          openRouteHmrPage,
+        }: Pick<RouterFixtures, 'expect' | 'openRouteHmrPage'>,
       ) => {
         const app = await openRouteHmrPage({
           bundler,
           target: 'solid',
-          onTestFinished,
           pluginOptions: { ...row.pluginOptions, autoCodeSplitting: split },
           files: row.files,
           ready: row.ready,
@@ -677,13 +679,20 @@ export function solidIdentitySuite(bundler: Bundler) {
       const pinnedFrom = (row: Row) => row.pinnedFrom?.(cell)
       test.for(rows.filter((row) => pinnedFrom(row) !== 0))(
         '$name',
-        (row, ctx) => run(row, row.edits.slice(0, pinnedFrom(row)), ctx),
+        (row, { expect, openRouteHmrPage }) =>
+          run(row, row.edits.slice(0, pinnedFrom(row)), {
+            expect,
+            openRouteHmrPage,
+          }),
       )
       const pinned = rows.filter((row) => pinnedFrom(row) !== undefined)
       if (pinned.length > 0) {
         // (the bug: the row's comment)
-        test.for(pinned)('$name: every edit', { fails: true }, (row, ctx) =>
-          run(row, row.edits, ctx),
+        test.for(pinned)(
+          '$name: every edit',
+          { fails: true },
+          (row, { expect, openRouteHmrPage }) =>
+            run(row, row.edits, { expect, openRouteHmrPage }),
         )
       }
     },

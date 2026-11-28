@@ -10,9 +10,8 @@
  */
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, onTestFinished, test } from 'vitest'
 import { createAppDirectory } from '@tanstack/compiler-test-utils/app-directory'
-import { onTestFinished } from '@tanstack/compiler-test-utils/test-scope'
 import { build, routeApp, routeHead } from '../build-harness'
 import { until } from '../generator-watch-session'
 

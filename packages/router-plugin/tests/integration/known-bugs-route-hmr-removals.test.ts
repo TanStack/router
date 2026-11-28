@@ -4,11 +4,12 @@
  * test, oracle/KNOWN-BUGS.md). An edit must show its new code without a full
  * reload and without errors in the page (`route-hmr-page.ts`).
  */
-import { describe, test } from 'vitest'
-import { isAppError, openRouteHmrPage } from '../route-hmr-page'
+import { describe } from 'vitest'
+import { isAppError } from '../route-hmr-page'
 import { editRoute, inPlace } from '../route-hmr-edit'
-import type { TestContext } from 'vitest'
+import { test } from '../test'
 import type { RouteHmrPageOptions } from '../route-hmr-page'
+import type { RouterFixtures } from '../test'
 
 describe('route HMR in a real page', { timeout: 60_000 }, () => {
   /** A React route at `/` whose component, `name`, keeps a click count. */
@@ -52,12 +53,11 @@ export const Route = createFileRoute('/')({
    * the page shows the router's default error component.
    */
   async function removeErrorComponent(
+    openRouteHmrPage: RouterFixtures['openRouteHmrPage'],
     options: Pick<RouteHmrPageOptions, 'bundler' | 'pluginOptions'>,
-    onTestFinished: TestContext['onTestFinished'],
   ) {
     const app = await openRouteHmrPage({
       ...options,
-      onTestFinished,
       files: { 'routes/index.tsx': failingRoute('v1', true) },
       ready: 'failed v1',
     })
@@ -87,13 +87,12 @@ export const Route = createFileRoute('/')({
   // Goal (any fix): the edit applies in place, and the page logs no error.
   test('vite: an edit that removes a split option the page loaded applies in place without errors', async ({
     expect,
-    onTestFinished,
-  }: TestContext) => {
+    openRouteHmrPage,
+  }) => {
     expect(
-      await removeErrorComponent(
-        { pluginOptions: { autoCodeSplitting: true } },
-        onTestFinished,
-      ),
+      await removeErrorComponent(openRouteHmrPage, {
+        pluginOptions: { autoCodeSplitting: true },
+      }),
     ).toEqual(inPlace)
   })
 
@@ -106,15 +105,12 @@ export const Route = createFileRoute('/')({
     { bundler: 'rsbuild', autoCodeSplitting: false },
   ] as const)(
     '$bundler: an edit that removes a component option the page loaded applies in place without errors (autoCodeSplitting: $autoCodeSplitting)',
-    async (
-      { bundler, autoCodeSplitting },
-      { expect, onTestFinished }: TestContext,
-    ) => {
+    async ({ bundler, autoCodeSplitting }, { expect, openRouteHmrPage }) => {
       expect(
-        await removeErrorComponent(
-          { bundler, pluginOptions: { autoCodeSplitting } },
-          onTestFinished,
-        ),
+        await removeErrorComponent(openRouteHmrPage, {
+          bundler,
+          pluginOptions: { autoCodeSplitting },
+        }),
       ).toEqual(inPlace)
     },
   )
@@ -133,22 +129,16 @@ export const Route = createFileRoute('/')({
   // refresh runtime), without a full reload.
   test.for([true, false])(
     'rsbuild without React Refresh: an edit of the route component shows in place (autoCodeSplitting: %s)',
-    async (
-      autoCodeSplitting: boolean,
-      { expect, onTestFinished }: TestContext,
-    ) => {
+    async (autoCodeSplitting: boolean, { expect, openRouteHmrPage }) => {
       expect(
-        await editRoute(
-          {
-            bundler: 'rsbuild',
-            reactRefresh: false,
-            pluginOptions: { autoCodeSplitting },
-            file: 'routes/index.tsx',
-            route: (version) => counterRoute(version),
-            shows: (version) => `Page ${version} count`,
-          },
-          onTestFinished,
-        ),
+        await editRoute(openRouteHmrPage, {
+          bundler: 'rsbuild',
+          reactRefresh: false,
+          pluginOptions: { autoCodeSplitting },
+          file: 'routes/index.tsx',
+          route: (version) => counterRoute(version),
+          shows: (version) => `Page ${version} count`,
+        }),
       ).toEqual(inPlace)
     },
   )
@@ -173,11 +163,10 @@ export { MyRoute as Route }
   describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
     test('a route exported under another local name is hot-updated in place', async ({
       expect,
-      onTestFinished,
-    }: TestContext) => {
+      openRouteHmrPage,
+    }) => {
       const app = await openRouteHmrPage({
         bundler,
-        onTestFinished,
         files: { 'routes/index.tsx': aliasedRoute('v1') },
         ready: 'page data v1',
       })
@@ -229,10 +218,9 @@ export const Route = createFileRoute('/')({
   // Fix: rename before hoisting (or insert hoisted declarations immediately),
   // or rename through the analyzer's binding references.
   test('vite: an inline pending component hoisted before a renamed lowercase component renders it', async ({
-    onTestFinished,
-  }: TestContext) => {
+    openRouteHmrPage,
+  }) => {
     await openRouteHmrPage({
-      onTestFinished,
       pluginOptions: { autoCodeSplitting: false },
       files: { 'routes/index.tsx': errorBoundaryRoute(true) },
       ready: 'fallback shown',

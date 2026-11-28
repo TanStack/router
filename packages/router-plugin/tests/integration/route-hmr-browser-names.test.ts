@@ -10,14 +10,9 @@
  * What modules importing the exports get:
  * react-refresh-route-components.test.ts.
  */
-import { describe, test } from 'vitest'
-import {
-  countMounts,
-  isAppError,
-  mountsOf,
-  openRouteHmrPage,
-} from '../route-hmr-page'
-import type { TestContext } from 'vitest'
+import { describe } from 'vitest'
+import { countMounts, isAppError, mountsOf } from '../route-hmr-page'
+import { test } from '../test'
 
 const inPlace = { reloaded: false, errors: [] }
 
@@ -63,10 +58,9 @@ export const Route = createFileRoute('/')({ component: comp })
       },
     ])(
       '$name reads its own property, before and after an edit',
-      async ({ route }, { expect, onTestFinished }: TestContext) => {
+      async ({ route }, { expect, openRouteHmrPage }) => {
         const app = await openRouteHmrPage({
           bundler,
-          onTestFinished,
           pluginOptions: { autoCodeSplitting: false },
           files: { 'routes/index.tsx': route('v1') },
           ready: 'from the object v1',
@@ -146,11 +140,10 @@ function component() {
     },
   ])(
     'declared as lowercase functions, with $name: an edit of the component, the error component and the pending component shows each in place',
-    async ({ options }, { expect, onTestFinished }: TestContext) => {
+    async ({ options }, { expect, openRouteHmrPage }) => {
       const route = lowercaseOptionsRoute(options)
       const file = 'routes/index.tsx'
       const app = await openRouteHmrPage({
-        onTestFinished,
         files: { [file]: route('v1') },
         ready: 'component v1',
       })
@@ -272,12 +265,8 @@ function page(props: any) ${body}`,
     ]),
   ])(
     'declared lowercase as $name: an edit shows in place without mounting it again (autoCodeSplitting: $autoCodeSplitting)',
-    async (
-      { route, autoCodeSplitting },
-      { expect, onTestFinished }: TestContext,
-    ) => {
+    async ({ route, autoCodeSplitting }, { expect, openRouteHmrPage }) => {
       const app = await openRouteHmrPage({
-        onTestFinished,
         pluginOptions: { autoCodeSplitting },
         files: { 'routes/index.tsx': route('v1') },
         ready: 'page v1',
@@ -298,8 +287,8 @@ function page(props: any) ${body}`,
   // if it get reassigned"; the former react-refresh-route-components row.
   test('declared lowercase as a reassigned function declaration: an edit shows in place (autoCodeSplitting: false)', async ({
     expect,
-    onTestFinished,
-  }: TestContext) => {
+    openRouteHmrPage,
+  }) => {
     const route = (version: string) =>
       `import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
@@ -312,7 +301,6 @@ page = connect(page)
 export const Route = createFileRoute('/')({ component: page })
 `
     const app = await openRouteHmrPage({
-      onTestFinished,
       pluginOptions: { autoCodeSplitting: false },
       files: {
         'connect.js': `export const connect = (component) => component\n`,

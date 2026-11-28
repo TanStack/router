@@ -6,9 +6,9 @@
  * the other routes of the app keep working. Each app holds every form, so one
  * broken route fails the whole app as it would a user's.
  */
-import { describe, expect, test } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
+import { describe, expect } from 'vitest'
 import { inPlace } from '../route-hmr-edit'
+import { test } from '../test'
 
 const declarations = {
   plain: 'const comp',
@@ -62,9 +62,8 @@ describe('an annotated lowercase component binding', () => {
     { bundler: 'rsbuild', autoCodeSplitting: true },
     { bundler: 'rsbuild', autoCodeSplitting: false },
   ] as const)('$bundler, splitting $autoCodeSplitting', (host) => {
-    test('renders and updates in place', async ({ onTestFinished }) => {
+    test('renders and updates in place', async ({ openRouteHmrPage }) => {
       const app = await openRouteHmrPage({
-        onTestFinished,
         bundler: host.bundler,
         pluginOptions: { autoCodeSplitting: host.autoCodeSplitting },
         files: {

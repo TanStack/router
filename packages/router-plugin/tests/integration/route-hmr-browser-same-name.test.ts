@@ -8,9 +8,8 @@
  * the held one in place. Keeping a component is tested in
  * route-hmr-browser-names.test.ts and route-hmr-browser.test.ts.
  */
-import { describe, test } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
-import type { TestContext } from 'vitest'
+import { describe } from 'vitest'
+import { test } from '../test'
 
 const inPlace = { reloaded: false, errors: [] }
 
@@ -73,11 +72,10 @@ export const Route = createFileRoute('/')({ component: Shell })
       '$name: switching the import shows the other component',
       async (
         { file, route, autoCodeSplitting },
-        { expect, onTestFinished }: TestContext,
+        { expect, openRouteHmrPage },
       ) => {
         const app = await openRouteHmrPage({
           target,
-          onTestFinished,
           pluginOptions: { autoCodeSplitting },
           files: {
             ...layouts,
@@ -125,9 +123,8 @@ export const Route = createFileRoute('/')({ component: flag ? Wide : Narrow })
   test.for([false, true])(
     'flipping the condition shows the other component (autoCodeSplitting: %s)',
     { timeout: 60_000 },
-    async (autoCodeSplitting, { expect, onTestFinished }: TestContext) => {
+    async (autoCodeSplitting, { expect, openRouteHmrPage }) => {
       const app = await openRouteHmrPage({
-        onTestFinished,
         pluginOptions: { autoCodeSplitting },
         files: { 'routes/index.tsx': route(true) },
         ready: 'wide layout',
@@ -155,9 +152,8 @@ export const Route = createFileRoute('/')({ component: Object.freeze(memo(Page))
   test(
     'renders, and an edit shows',
     { timeout: 60_000 },
-    async ({ expect, onTestFinished }: TestContext) => {
+    async ({ expect, openRouteHmrPage }) => {
       const app = await openRouteHmrPage({
-        onTestFinished,
         files: { 'routes/index.tsx': route('v1') },
         ready: 'frozen page v1',
       })
@@ -174,9 +170,8 @@ export const Route = createFileRoute('/')({ component: Object.freeze(memo(Page))
   test(
     'given as a named import renders',
     { timeout: 60_000 },
-    async ({ expect, onTestFinished }: TestContext) => {
+    async ({ expect, openRouteHmrPage }) => {
       const app = await openRouteHmrPage({
-        onTestFinished,
         files: {
           'page.tsx': `export const Page = Object.freeze(() => <p>frozen page</p>)\n`,
           'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'

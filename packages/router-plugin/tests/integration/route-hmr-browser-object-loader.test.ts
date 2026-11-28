@@ -4,9 +4,8 @@
  * and Solid apps on Vite: an edit of the handler shows its new data in place,
  * without a full reload, and the loader keeps its other keys.
  */
-import { describe, it } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
-import type { TestContext } from 'vitest'
+import { describe } from 'vitest'
+import { it } from '../test'
 
 const timeout = 60_000
 
@@ -31,10 +30,9 @@ describe.each(['react', 'solid'] as const)('vite: a %s app', (target) => {
   it(
     'shows the new data of an edited loader handler in place and keeps the loader options',
     { timeout },
-    async ({ expect, onTestFinished }: TestContext) => {
+    async ({ expect, openRouteHmrPage }) => {
       const app = await openRouteHmrPage({
         target,
-        onTestFinished,
         // only the loader is split
         pluginOptions: {
           codeSplittingOptions: { defaultBehavior: [['loader']] },

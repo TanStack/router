@@ -36,8 +36,7 @@ import react from '@vitejs/plugin-react'
 import { parseSync } from 'vite'
 import webpack from 'webpack'
 import WebpackDevServer from 'webpack-dev-server'
-import { expect } from 'vitest'
-import { onTestFinished } from '@tanstack/compiler-test-utils/test-scope'
+import { expect, onTestFinished } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import { openDiagnosticChannel } from '@tanstack/compiler-test-utils/diagnostic-channel'
@@ -300,7 +299,8 @@ export async function generatorDevApp(
    */
   const open = async (pathname: string) => {
     const last = page as BrowserPage | undefined
-    page = await openPage('about:blank', { registerCleanup: onTestFinished })
+    page = await openPage('about:blank')
+    onTestFinished(page.close)
     await last?.close()
     scripts = []
     const requests = new Set<unknown>()
@@ -522,7 +522,6 @@ async function viteApp(
   const server = await createDevServer({
     dir: harnessDir,
     prefix: '.generator-dev-vite-',
-    registerCleanup: onTestFinished,
     browser: true,
     symlinks,
     files: {
@@ -550,6 +549,7 @@ async function viteApp(
       react(),
     ],
   })
+  onTestFinished(() => server.close())
   // Where the state after the last settled edit begins in Vite's log
   let settled = 0
   return {
@@ -589,7 +589,6 @@ async function rsbuildApp(
   const first = await createRsbuildDevServer({
     dir: harnessDir,
     prefix: '.generator-dev-rsbuild-',
-    registerCleanup: onTestFinished,
     browser: true,
     entry: 'main.tsx',
     symlinks,
@@ -625,6 +624,7 @@ async function rsbuildApp(
       } satisfies RsbuildPlugin,
     ],
   })
+  onTestFinished(() => first.close())
   return rsbuildAppServer(first, printedTexts)
 }
 
@@ -675,7 +675,9 @@ function rsbuildAppServer(
     restart: async (written) => {
       await server.stop()
       await writeAppFiles(server.root, written)
-      return rsbuildAppServer(await server.restart(), printedTexts)
+      const restarted = await server.restart()
+      onTestFinished(() => restarted.close())
+      return rsbuildAppServer(restarted, printedTexts)
     },
   }
 }
@@ -699,7 +701,6 @@ async function webpackApp(
   const app = await createApp({
     dir: harnessDir,
     prefix: '.generator-dev-webpack-',
-    registerCleanup: onTestFinished,
     symlinks,
     files: {
       'public/index.html': `<!doctype html>
@@ -713,6 +714,7 @@ async function webpackApp(
       ...files,
     },
   })
+  onTestFinished(() => app.dispose())
   const root = app.root
   // Files older than the watcher's start: webpack's watcher reports a file
   // modified right before it started as changed

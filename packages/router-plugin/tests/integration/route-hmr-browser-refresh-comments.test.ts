@@ -5,10 +5,9 @@
  * split component both read is one object. Where the comment applies:
  * code-splitter-refresh-placements.test.ts.
  */
-import { describe, it } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
+import { describe } from 'vitest'
+import { it } from '../test'
 import type { TargetFramework } from '../route-app'
-import type { TestContext } from 'vitest'
 
 const timeout = 120_000
 
@@ -39,11 +38,10 @@ describe.each(['vite', 'rsbuild'] as const)(
     it(
       'run as often and share their bindings as without the comment',
       { timeout },
-      async ({ expect, onTestFinished }: TestContext) => {
+      async ({ expect, openRouteHmrPage }) => {
         const run = async (comment: string) => {
           const app = await openRouteHmrPage({
             bundler,
-            onTestFinished,
             files: { 'routes/index.tsx': route(statements(comment), 'v1') },
             ready: 'page v1',
           })
@@ -105,12 +103,11 @@ describe.each([
     it(
       'subscribes once, with a @refresh comment as without it',
       { timeout },
-      async ({ expect, onTestFinished }: TestContext) => {
+      async ({ expect, openRouteHmrPage }) => {
         const calls = async (comment: string) => {
           const app = await openRouteHmrPage({
             bundler,
             target,
-            onTestFinished,
             files: { 'routes/index.tsx': subscribing(target, comment) },
             ready: 'subscribed',
           })
@@ -136,10 +133,9 @@ describe('vite react, verbatimModuleSyntax: an import of a type only, with a @re
   it(
     'evaluates the imported module as often as without the comment',
     { timeout },
-    async ({ expect, onTestFinished }: TestContext) => {
+    async ({ expect, openRouteHmrPage }) => {
       const evaluations = async (comment: string) => {
         const app = await openRouteHmrPage({
-          onTestFinished,
           files: {
             'tsconfig.json': JSON.stringify({
               compilerOptions: { verbatimModuleSyntax: true, jsx: 'react-jsx' },

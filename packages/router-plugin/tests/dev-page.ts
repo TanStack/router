@@ -9,7 +9,7 @@
  * (`importServer`).
  */
 import react from '@vitejs/plugin-react'
-import { onTestFinished } from '@tanstack/compiler-test-utils/test-scope'
+import { onTestFinished } from 'vitest'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import type {
   PluginHost,
@@ -56,17 +56,18 @@ export async function render(component: any, props: Record<string, unknown> = {}
  * Starts the dev server on `files` with `plugins(app)` (the router plugins)
  * followed by `@vitejs/plugin-react`; it closes when the test ends.
  */
-export function createReactDevPage(options: {
+export async function createReactDevPage(options: {
   files: Record<string, string>
   plugins: (app: PluginHostApp) => Array<PluginOption>
 }): Promise<PluginHost> {
-  return createPluginHost({
+  const host = await createPluginHost({
     dir: import.meta.dirname,
     prefix: '.dev-page-',
-    registerCleanup: onTestFinished,
     files: { ...options.files, [renderProbe.slice(1)]: renderProbeSource },
     client: true,
     config: { optimizeDeps: { noDiscovery: true, include: prebundled } },
     plugins: (app) => [...options.plugins(app), react()],
   })
+  onTestFinished(() => host.close())
+  return host
 }

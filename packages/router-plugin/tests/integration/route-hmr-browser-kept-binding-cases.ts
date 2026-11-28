@@ -25,11 +25,10 @@
  * Rsbuild, every row; `-webpack.test.ts` and `-webpack-maps.test.ts`, the
  * rows webpack's `devtool` decides).
  */
-import { describe, expect, test } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
-import { openWebpackHmrPage } from '../webpack-hmr-page'
-import type { TestContext } from 'vitest'
+import { describe, expect } from 'vitest'
+import { test } from '../test'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
+import type { RouterFixtures } from '../test'
 
 type Fw = 'react' | 'solid'
 /**
@@ -489,12 +488,15 @@ function recordHotUpdates(page: BrowserPage['page']) {
   return () => Promise.all(pending.splice(0))
 }
 
+/** The openers of the pages (the test's fixtures). */
+type Openers = Pick<RouterFixtures, 'openRouteHmrPage' | 'openWebpackHmrPage'>
+
 async function open(
+  { openRouteHmrPage, openWebpackHmrPage }: Openers,
   bundler: Bundler,
   fw: Fw,
   files: Record<string, string>,
   ready: string,
-  ctx: TestContext,
   recordHot = false,
 ): Promise<App> {
   if (bundler === 'webpack' || bundler === 'webpack-maps') {
@@ -517,7 +519,6 @@ async function open(
     }
   }
   const app = await openRouteHmrPage({
-    onTestFinished: ctx.onTestFinished,
     bundler,
     target: fw,
     files,
@@ -544,18 +545,18 @@ async function open(
   }
 }
 
-async function runRow(bundler: Bundler, fw: Fw, row: Row, ctx: TestContext) {
+async function runRow(openers: Openers, bundler: Bundler, fw: Fw, row: Row) {
   // React Refresh on Rsbuild and Vite keeps state on every edit
   const webpack = bundler === 'webpack' || bundler === 'webpack-maps'
   const refresh = fw === 'react' && !webpack
   const ui = uiOf(fw, fw === 'solid' || !webpack)
   const edit = row.edit ?? row.files
   const app = await open(
+    openers,
     bundler,
     fw,
     row.files(ui, 'v1'),
     row.unmounted ? 'home' : row.shows('v1'),
-    ctx,
   )
   const loaderRuns = () => app.evaluate<number>('globalThis.__loaderRuns ?? 0')
   if (row.left) {
@@ -683,8 +684,10 @@ export function keptBindingSuite(bundler: keyof typeof hosts, only?: Fw) {
             (bundler === 'rsbuild' || devtoolRows.has(row.name)) &&
             (only === undefined || fw === only),
         ),
-      )(`${hosts[bundler]} $fw: $row.name`, ({ fw, row }, ctx) =>
-        runRow(bundler, fw, row, ctx),
+      )(
+        `${hosts[bundler]} $fw: $row.name`,
+        ({ fw, row }, { openRouteHmrPage, openWebpackHmrPage }) =>
+          runRow({ openRouteHmrPage, openWebpackHmrPage }, bundler, fw, row),
       )
     },
   )
@@ -704,9 +707,16 @@ ${ui.page('value.text', label)}`,
     })
     test.for(['react', 'solid'] as const)(
       'rsbuild %s: a component edit holds the chunk alone, a shared module edit the shared module alone',
-      async (fw, ctx) => {
+      async (fw, { openRouteHmrPage, openWebpackHmrPage }) => {
         const ui = uiOf(fw, true)
-        const app = await open('rsbuild', fw, route(ui, 'a'), 'a v1', ctx, true)
+        const app = await open(
+          { openRouteHmrPage, openWebpackHmrPage },
+          'rsbuild',
+          fw,
+          route(ui, 'a'),
+          'a v1',
+          true,
+        )
         await app.edit({ [FILE]: route(ui, 'b')[FILE] }, 'b v1')
         const component = await app.hotUpdates!()
         expect(component.flatMap((u) => u.modules)).toHaveLength(1)

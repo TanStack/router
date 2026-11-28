@@ -1,7 +1,7 @@
 // Slow-tier half of this suite: the tests that need a real tool. Its
 // page tests are in pages/code-splitter-dead-code.test.ts.
 import { describe, expect, it } from 'vitest'
-import { build, clientMountEntry, head, routeApp } from '../build-harness'
+import { buildShared, clientMountEntry, head, routeApp } from '../build-harness'
 
 /**
  * Which code a production client build drops is the bundler's decision: one
@@ -109,11 +109,10 @@ function appOf(bundler: BundlerName) {
 
 async function buildApp(bundler: BundlerName) {
   const others = otherRoutes[bundler]
-  const app = await build({
+  const app = await buildShared({
     bundler,
     env: 'client',
     // Files outlive the test that built them; the result is all we keep
-    registerCleanup: undefined,
     files: routeApp(unusedFunctions, {
       env: 'client',
       files: {

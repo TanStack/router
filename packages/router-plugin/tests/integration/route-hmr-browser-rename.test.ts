@@ -1,3 +1,4 @@
+import { test } from '../test'
 /**
  * A route file renamed on a Vite dev server while the page shows another
  * route: the route tree changes and the page reloads with it, without a
@@ -8,9 +9,6 @@
  * page before the reload: `Failed to load resource: 404`, `[vite] Failed to
  * reload /src/routes/about.tsx`).
  */
-import { test } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
-import type { TestContext } from 'vitest'
 
 /** The index route, listing the router's routes by path. */
 const index = `import { createFileRoute, useRouter } from '@tanstack/react-router'
@@ -28,10 +26,9 @@ export const Route = createFileRoute('${path}')({ component: () => <p>${label}</
 
 test('vite: renaming a route file the page does not show reloads the page without a failed update', async ({
   expect,
-  onTestFinished,
-}: TestContext) => {
+  openRouteHmrPage,
+}) => {
   const app = await openRouteHmrPage({
-    onTestFinished,
     files: {
       'routes/index.tsx': index,
       'routes/about.tsx': page('/about', 'about v1'),

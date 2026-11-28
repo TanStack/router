@@ -14,9 +14,8 @@
  * holds no component, applies at once. The lazy-file row holds two updates
  * of a lazy route file that both wait.
  */
-import { describe, it } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
-import type { TestContext } from 'vitest'
+import { describe } from 'vitest'
+import { it } from '../test'
 import type { RouteHmrPage } from '../route-hmr-page'
 
 const timeout = 90_000
@@ -121,10 +120,9 @@ describe.each(['vite', 'rsbuild'] as const)(
     it(
       'whose component is split shows the new data without waiting for React Refresh, keeping the component state',
       { timeout },
-      async ({ expect, onTestFinished }: TestContext) => {
+      async ({ expect, openRouteHmrPage }) => {
         const app = await openRouteHmrPage({
           bundler,
-          onTestFinished,
           files: { 'routes/index.tsx': route('v1') },
           ready: 'page data v1 count 0',
         })
@@ -160,13 +158,9 @@ describe.each(['vite', 'rsbuild'] as const)(
     ])(
       'of $name keeps the component state',
       { timeout },
-      async (
-        { autoCodeSplitting, options },
-        { expect, onTestFinished }: TestContext,
-      ) => {
+      async ({ autoCodeSplitting, options }, { expect, openRouteHmrPage }) => {
         const app = await openRouteHmrPage({
           bundler,
-          onTestFinished,
           pluginOptions: { autoCodeSplitting },
           files: { 'routes/index.tsx': route('v1', options) },
           ready: 'page data v1 count 0',
@@ -184,10 +178,9 @@ describe.each(['vite', 'rsbuild'] as const)(
     it(
       'held for React Refresh does not override a newer update applied at once',
       { timeout },
-      async ({ expect, onTestFinished }: TestContext) => {
+      async ({ expect, openRouteHmrPage }) => {
         const app = await openRouteHmrPage({
           bundler,
-          onTestFinished,
           pluginOptions: { autoCodeSplitting: false },
           files: { ...evaluationFiles, 'routes/index.ts': tsRoute(1) },
           ready: 'evaluated 1 data L1card',
@@ -234,10 +227,9 @@ describe.each(['vite', 'rsbuild'] as const)(
     it(
       'of a lazy route file held for React Refresh leaves the newest of two held updates applied',
       { timeout },
-      async ({ expect, onTestFinished }: TestContext) => {
+      async ({ expect, openRouteHmrPage }) => {
         const app = await openRouteHmrPage({
           bundler,
-          onTestFinished,
           files: { ...lazyFiles, 'routes/index.lazy.ts': tsLazyFile(1) },
           ready: 'evaluated 1 data Lcard 1',
         })

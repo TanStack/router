@@ -9,10 +9,9 @@
  * (Astra round 2, B2). A real dev server with the framework's plugins, a
  * real page and the real HMR client (`openRouteHmrPage`).
  */
-import { describe, it } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
+import { describe } from 'vitest'
+import { it } from '../test'
 import type { TargetFramework } from '../route-app'
-import type { TestContext } from 'vitest'
 
 const timeout = 60_000
 const inPlace = { reloaded: false, errors: [] }
@@ -71,12 +70,11 @@ describe.each([
   it(
     'keeps the component of its own file across route file edits, and an option the edit removes is gone',
     { timeout },
-    async ({ expect, onTestFinished }: TestContext) => {
+    async ({ expect, openRouteHmrPage }) => {
       const [pieceFile, piece] = pieces[target]
       const app = await openRouteHmrPage({
         bundler,
         target,
-        onTestFinished,
         files: {
           'routes/index.ts': route(target, undefined, true),
           [pieceFile]: piece,

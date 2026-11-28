@@ -16,10 +16,10 @@
  * One test file per bundler (`route-hmr-browser-identity.test.ts` for Vite,
  * `-rsbuild.test.ts`), each with and without `autoCodeSplitting`.
  */
-import { describe, test } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
+import { describe } from 'vitest'
 import { inPlace } from '../route-hmr-edit'
-import type { TestContext } from 'vitest'
+import { test } from '../test'
+import type { RouterFixtures } from '../test'
 
 const head = `import { createFileRoute } from '@tanstack/react-router'
 import { useState, memo, forwardRef, Component } from 'react'
@@ -295,11 +295,16 @@ export function identitySuite(bundler: Bundler) {
     `${bundler}, react, autoCodeSplitting: %s`,
     { timeout: 60_000 },
     (autoCodeSplitting) => {
-      const run = async (row: Row, { expect, onTestFinished }: TestContext) => {
+      const run = async (
+        row: Row,
+        {
+          expect,
+          openRouteHmrPage,
+        }: Pick<RouterFixtures, 'expect' | 'openRouteHmrPage'>,
+      ) => {
         const counter = row.edits.some((e) => e.count !== undefined)
         const app = await openRouteHmrPage({
           bundler,
-          onTestFinished,
           pluginOptions: { autoCodeSplitting },
           files: row.files,
           ready: row.ready,

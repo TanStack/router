@@ -17,10 +17,9 @@
  * and an edit while the page has a second router, created after the app's,
  * that has no such route (SPEC J3.11).
  */
-import { describe, test } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
+import { describe } from 'vitest'
+import { test } from '../test'
 import type { RouteHmrPage } from '../route-hmr-page'
-import type { TestContext } from 'vitest'
 
 const timeout = 60_000
 const inPlace = { reloaded: false, errors: [] }
@@ -83,7 +82,7 @@ describe('vite: an edit of a route the live router matches, refreshes or preload
   test(
     'keeps matching and resolving routes next to an edited pathless layout or parent; a params.parse edit refreshes matching; the hot Route export keeps its generated route state',
     { timeout },
-    async ({ expect, onTestFinished }: TestContext) => {
+    async ({ expect, openRouteHmrPage }) => {
       const form = (version: string) =>
         fileRoute(
           '/livestock/$farmId/medicine/_form',
@@ -115,7 +114,6 @@ describe('vite: an edit of a route the live router matches, refreshes or preload
   component: () => <p>thing {JSON.stringify(Route.useLoaderData())}</p>,`,
         )
       const app = await openRouteHmrPage({
-        onTestFinished,
         files: {
           'main.tsx': main,
           'routes/index.tsx': home,
@@ -253,7 +251,7 @@ describe('vite: an edit of a route the live router matches, refreshes or preload
   test(
     'keeps the hot loader data when an older refresh settles later',
     { timeout },
-    async ({ expect, onTestFinished }: TestContext) => {
+    async ({ expect, openRouteHmrPage }) => {
       const root = (loader: string) =>
         `import { createRootRoute, Outlet } from '@tanstack/react-router'
 export const Route = createRootRoute({
@@ -262,7 +260,6 @@ export const Route = createRootRoute({
 })
 `
       const app = await openRouteHmrPage({
-        onTestFinished,
         files: {
           'main.tsx': main,
           'routes/__root.tsx': root(`() => {
@@ -318,7 +315,7 @@ export const Route = createRootRoute({
   test(
     'does not cache an obsolete inactive preload, nor run removed loader or beforeLoad callbacks on a later visit',
     { timeout },
-    async ({ expect, onTestFinished }: TestContext) => {
+    async ({ expect, openRouteHmrPage }) => {
       const pre = (loader: string) =>
         fileRoute(
           '/pre',
@@ -340,7 +337,6 @@ export const Route = createRootRoute({
   component: () => <p>gone {String(Route.useLoaderData())} {String((Route.useRouteContext() as any).hotBeforeLoad)}</p>,`,
         )
       const app = await openRouteHmrPage({
-        onTestFinished,
         files: {
           'main.tsx': main,
           'routes/index.tsx': home,
@@ -416,7 +412,7 @@ describe.each(['vite', 'rsbuild'] as const)(
     test(
       'keeps the lazy options the route tree gave the route, removes a removed loader, and applies parser, context and parent edits to the active matches',
       { timeout },
-      async ({ expect, onTestFinished }: TestContext) => {
+      async ({ expect, openRouteHmrPage }) => {
         const items = (version: string) =>
           fileRoute('/items/$id', `loader: () => 'data ${version}',`)
         const hot = (loader: boolean) =>
@@ -444,7 +440,6 @@ describe.each(['vite', 'rsbuild'] as const)(
           )
         const app = await openRouteHmrPage({
           bundler,
-          onTestFinished,
           files: {
             'main.tsx': main,
             'routes/index.tsx': home,
@@ -524,7 +519,7 @@ describe.each(['vite', 'rsbuild'] as const)(
     test(
       'edits setting a component option from null to a component and back update in place',
       { timeout },
-      async ({ expect, onTestFinished }: TestContext) => {
+      async ({ expect, openRouteHmrPage }) => {
         const page = (version: string, errorComponent: string) =>
           fileRoute(
             '/',
@@ -538,7 +533,6 @@ describe.each(['vite', 'rsbuild'] as const)(
           )
         const app = await openRouteHmrPage({
           bundler,
-          onTestFinished,
           files: { 'main.tsx': main, 'routes/index.tsx': page('v1', 'null') },
           ready: 'home v1',
         })
@@ -562,12 +556,11 @@ describe.each(['vite', 'rsbuild'] as const)(
     test(
       "an edit while the page has a second router created after the app's keeps the app working",
       { timeout },
-      async ({ expect, onTestFinished }: TestContext) => {
+      async ({ expect, openRouteHmrPage }) => {
         const page = (version: string) =>
           fileRoute('/', `component: () => <p>home ${version}</p>,`)
         const app = await openRouteHmrPage({
           bundler,
-          onTestFinished,
           files: {
             'main.tsx': `import { createRoot } from 'react-dom/client'
 import { RouterProvider, createRootRoute, createRouter } from '@tanstack/react-router'

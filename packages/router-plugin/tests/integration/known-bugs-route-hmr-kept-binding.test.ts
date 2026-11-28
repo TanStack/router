@@ -10,10 +10,9 @@
  * The edits of a binding the route module keeps and a split chunk reads:
  * route-hmr-browser-kept-binding*.test.ts.
  */
-import { describe, test } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
-import { openWebpackHmrPage } from '../webpack-hmr-page'
-import type { TestContext } from 'vitest'
+import { describe } from 'vitest'
+import { test } from '../test'
+import type { RouterFixtures } from '../test'
 
 type Target = 'react' | 'solid'
 
@@ -39,12 +38,11 @@ describe(
   () => {
     const targets = ['react', 'solid'] as const
     const viaRouteHmrPage = async (
+      openRouteHmrPage: RouterFixtures['openRouteHmrPage'],
       bundler: 'vite' | 'rsbuild',
       target: Target,
-      { onTestFinished }: TestContext,
     ) => {
       const app = await openRouteHmrPage({
-        onTestFinished,
         bundler,
         target,
         files: {
@@ -59,13 +57,15 @@ describe(
       )
     }
 
-    test.fails.for(targets)('rsbuild %s: shows', (target, ctx) =>
-      viaRouteHmrPage('rsbuild', target, ctx),
+    test.fails.for(targets)(
+      'rsbuild %s: shows',
+      (target, { openRouteHmrPage }) =>
+        viaRouteHmrPage(openRouteHmrPage, 'rsbuild', target),
     )
 
     test.fails.for(targets)(
       'webpack with source maps %s: shows',
-      async (target) => {
+      async (target, { openWebpackHmrPage }) => {
         const jsx = target === 'solid'
         const app = await openWebpackHmrPage({
           target,
@@ -83,8 +83,8 @@ describe(
       },
     )
 
-    test.for(targets)('vite %s: shows', (target, ctx) =>
-      viaRouteHmrPage('vite', target, ctx),
+    test.for(targets)('vite %s: shows', (target, { openRouteHmrPage }) =>
+      viaRouteHmrPage(openRouteHmrPage, 'vite', target),
     )
   },
 )

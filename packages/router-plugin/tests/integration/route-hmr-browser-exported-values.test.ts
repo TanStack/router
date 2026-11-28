@@ -4,8 +4,8 @@
  * that value shows on the page (SPEC J3.3), in place or after a reload; with
  * React and `@vitejs/plugin-react` on Vite.
  */
-import { expect, test } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
+import { expect } from 'vitest'
+import { test } from '../test'
 
 const timeout = 60_000
 
@@ -25,9 +25,8 @@ function Page() {
 // module, so `nav.tsx` gets the new `navLabel`, as on main.
 test(
   "an edit of a route file's exported value shows in the module that imports it",
-  async ({ onTestFinished }) => {
+  async ({ openRouteHmrPage }) => {
     const app = await openRouteHmrPage({
-      onTestFinished,
       files: {
         'routes/__root.tsx': `import { createRootRoute, Outlet } from '@tanstack/react-router'
 import { Nav } from '../nav'
@@ -78,9 +77,8 @@ function Page() {
 
 test(
   "an edit of a route file's value exported under another name, which the split component reads, shows in the module that imports it",
-  async ({ onTestFinished }) => {
+  async ({ openRouteHmrPage }) => {
     const app = await openRouteHmrPage({
-      onTestFinished,
       files: {
         'routes/__root.tsx': `import { createRootRoute, Outlet } from '@tanstack/react-router'
 import { Nav } from '../nav'
@@ -128,9 +126,8 @@ function Page() {
 
 test(
   'an edit of what a route file re-exports with `export *` shows in the module that imports it, with a private binding of the same name',
-  async ({ onTestFinished }) => {
+  async ({ openRouteHmrPage }) => {
     const app = await openRouteHmrPage({
-      onTestFinished,
       files: {
         'routes/__root.tsx': `import { createRootRoute, Outlet } from '@tanstack/react-router'
 import { Nav } from '../nav'

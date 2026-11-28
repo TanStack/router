@@ -5,9 +5,9 @@
  * place, on every edit (SPEC J3.3), with React and `@vitejs/plugin-react` on
  * Vite.
  */
-import { expect, test } from 'vitest'
+import { expect } from 'vitest'
 import { inPlace } from '../route-hmr-edit'
-import { openRouteHmrPage } from '../route-hmr-page'
+import { test } from '../test'
 
 const timeout = 60_000
 
@@ -26,9 +26,8 @@ function Page() {
 
 test(
   'a value named like an exported type that the split component reads: each text edit applies in place',
-  async ({ onTestFinished }) => {
+  async ({ openRouteHmrPage }) => {
     const app = await openRouteHmrPage({
-      onTestFinished,
       files: { 'routes/index.tsx': route('text-v1') },
       ready: 'text-v1 cfg',
     })

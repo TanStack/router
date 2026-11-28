@@ -18,9 +18,9 @@
  * (React Refresh on both). webpack: its harness app has no refresh runtime
  * (`webpack-hmr-page.ts`), so the state rows do not apply there.
  */
-import { describe, test } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
+import { describe } from 'vitest'
 import { inPlace } from '../route-hmr-edit'
+import { test } from '../test'
 import type { RouteHmrPage } from '../route-hmr-page'
 
 const timeout = 90_000
@@ -64,7 +64,7 @@ describe.each(['vite', 'rsbuild'] as const)(
     test(
       'an edit of the shared component, then of the inline route component, shows in place',
       { timeout },
-      async ({ expect, onTestFinished }) => {
+      async ({ expect, openRouteHmrPage }) => {
         const route = (page: string, badge: string) =>
           `import { createFileRoute } from '@tanstack/react-router'
 function Badge() {
@@ -77,7 +77,6 @@ export const Route = createFileRoute('/')({
 `
         const app = await openRouteHmrPage({
           bundler,
-          onTestFinished,
           files: { [FILE]: route('v1', 'v1') },
           ready: 'page v1 badge v1',
         })
@@ -96,7 +95,7 @@ export const Route = createFileRoute('/')({
     test(
       'an edit of the shared component, then of the route component, keeps the route component state',
       { timeout },
-      async ({ expect, onTestFinished }) => {
+      async ({ expect, openRouteHmrPage }) => {
         const route = (page: string, badge: string) =>
           `import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
@@ -114,7 +113,6 @@ export const Route = createFileRoute('/')({
 `
         const app = await openRouteHmrPage({
           bundler,
-          onTestFinished,
           files: { [FILE]: route('v1', 'v1') },
           ready: 'page v1 count 0 badge v1',
         })
@@ -159,7 +157,7 @@ export const Route = createFileRoute('/')({
     ])(
       'an edit of a shared plain helper ($name) shows in place, keeping the route component state',
       { timeout },
-      async ({ helper, read }, { expect, onTestFinished }) => {
+      async ({ helper, read }, { expect, openRouteHmrPage }) => {
         const route = (v: string) =>
           `import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
@@ -175,7 +173,6 @@ export const Route = createFileRoute('/')({
 `
         const app = await openRouteHmrPage({
           bundler,
-          onTestFinished,
           files: { [FILE]: route('v1') },
           ready: 'page helper v1 count 0',
         })

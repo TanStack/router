@@ -21,8 +21,8 @@
  * in the route (`require('../…')` too) and of `./routes/index` in the entry
  * and the other files are rewritten to the case's own paths.
  */
-import { onFileFinished } from '@tanstack/compiler-test-utils/test-scope'
-import { build, rootRoute } from './build-harness'
+import { afterAll } from 'vitest'
+import { buildShared, rootRoute } from './build-harness'
 import type { BuildResult } from '@tanstack/compiler-test-utils/build-harness'
 
 export interface BatchCase {
@@ -41,7 +41,7 @@ export interface CaseApp {
   run: BuildResult['run']
 }
 
-type BuildOptions = Omit<Parameters<typeof build>[0], 'files'> & {
+type BuildOptions = Omit<Parameters<typeof buildShared>[0], 'files'> & {
   /** The root route (default React's). */
   root?: string
 }
@@ -68,8 +68,8 @@ function caseFiles(c: BatchCase, i: number): Record<string, string> {
   return files
 }
 
-/** One build of `cases` (disposed of when the test file ended). */
-async function buildCases(
+/** One build of `cases`. */
+function buildCases(
   options: BuildOptions,
   cases: ReadonlyArray<BatchCase>,
 ): Promise<BuildResult> {
@@ -79,14 +79,7 @@ async function buildCases(
   files['entry.ts'] = cases
     .map((_, i) => `export const c${i} = () => import('./c${i}/entry')\n`)
     .join('')
-  const app = await build({
-    ...rest,
-    // Files outlive the row that built them; the file's end disposes
-    registerCleanup: undefined,
-    files,
-  })
-  onFileFinished(() => app.dispose())
-  return app
+  return buildShared({ ...rest, files })
 }
 
 /** `script` on case `i`'s entry of `app`. */
@@ -104,13 +97,21 @@ type Group =
 /**
  * A group of cases registered while the test file is collected: `add(c)`
  * at describe level returns the row's `CaseApp` getter; the group's build
- * starts at the first row's call.
+ * starts at the first row's call, and its apps are disposed of when the file
+ * ends.
  */
 export function batchCases(
   options: BuildOptions,
 ): (c: BatchCase) => () => Promise<CaseApp> {
   const cases: Array<BatchCase> = []
   let group: Promise<Group> | undefined
+  afterAll(async () => {
+    const built = await group
+    const apps = built && ('shared' in built ? [built.shared] : built.alone)
+    for (const app of apps ?? []) {
+      await (await Promise.resolve(app).catch(() => undefined))?.dispose()
+    }
+  })
   const built = () =>
     (group ??= buildCases(options, cases).then(
       (shared): Group => ({ shared }),

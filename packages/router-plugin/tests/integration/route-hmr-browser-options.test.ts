@@ -12,9 +12,10 @@
  * react-refresh-route-components.test.ts, which read the names
  * and hook signatures React Refresh's transform computed.
  */
-import { describe, test } from 'vitest'
-import { countMounts, mountsOf, openRouteHmrPage } from '../route-hmr-page'
-import type { TestContext } from 'vitest'
+import { describe } from 'vitest'
+import { countMounts, mountsOf } from '../route-hmr-page'
+import { test } from '../test'
+import type { RouterFixtures } from '../test'
 
 const inPlace = { reloaded: false, errors: [] }
 
@@ -26,6 +27,10 @@ describe('vite: React route components', { timeout: 60_000 }, () => {
    * and that no component `countMounts` counts was mounted anew.
    */
   async function expectEditInPlace(
+    {
+      expect,
+      openRouteHmrPage,
+    }: Pick<RouterFixtures, 'expect' | 'openRouteHmrPage'>,
     {
       file,
       files,
@@ -44,10 +49,8 @@ describe('vite: React route components', { timeout: 60_000 }, () => {
       /** Whether the route file is split (a file route with splitting on). */
       splits?: boolean
     },
-    { expect, onTestFinished }: TestContext,
   ) {
     const app = await openRouteHmrPage({
-      onTestFinished,
       pluginOptions: { autoCodeSplitting },
       files: { ...files, [file]: route('v1') },
       ready: path ? /./ : shows('v1'),
@@ -101,8 +104,9 @@ export const Route = createFileRoute('/')({
     ]),
   )(
     'written inline as $name: an edit shows in place without mounting it again (autoCodeSplitting: $autoCodeSplitting)',
-    async ({ autoCodeSplitting, component }, context: TestContext) => {
+    async ({ autoCodeSplitting, component }, { expect, openRouteHmrPage }) => {
       await expectEditInPlace(
+        { expect, openRouteHmrPage },
         {
           file: 'routes/index.tsx',
           route: inlineRoute(component),
@@ -110,15 +114,18 @@ export const Route = createFileRoute('/')({
           autoCodeSplitting,
           splits: autoCodeSplitting,
         },
-        context,
       )
     },
   )
 
   // a higher-order call is hoisted and registered as a family, after
   // options that evaluate code too
-  test('written inline as memo(...) after options that call functions: an edit shows in place without mounting it again', async (context: TestContext) => {
+  test('written inline as memo(...) after options that call functions: an edit shows in place without mounting it again', async ({
+    expect,
+    openRouteHmrPage,
+  }) => {
     await expectEditInPlace(
+      { expect, openRouteHmrPage },
       {
         file: 'routes/index.tsx',
         route: (version) =>
@@ -138,7 +145,6 @@ export const Route = createFileRoute('/')({
         autoCodeSplitting: false,
         splits: false,
       },
-      context,
     )
   })
 
@@ -146,8 +152,9 @@ export const Route = createFileRoute('/')({
   // expression (and hoisted like one when nothing is split)
   test.for([false, true])(
     'written as a method: an edit shows in place without mounting it again (autoCodeSplitting: %s)',
-    async (autoCodeSplitting, context: TestContext) => {
+    async (autoCodeSplitting, { expect, openRouteHmrPage }) => {
       await expectEditInPlace(
+        { expect, openRouteHmrPage },
         {
           file: 'routes/index.tsx',
           route: (version) =>
@@ -164,7 +171,6 @@ export const Route = createFileRoute('/')({
           autoCodeSplitting,
           splits: autoCodeSplitting,
         },
-        context,
       )
     },
   )
@@ -225,10 +231,9 @@ export const Route = createRootRoute({
     'written inline as $name: an edit shows in place (autoCodeSplitting: $autoCodeSplitting)',
     async (
       { file, autoCodeSplitting, route, shows },
-      { expect, onTestFinished }: TestContext,
+      { expect, openRouteHmrPage },
     ) => {
       const app = await openRouteHmrPage({
-        onTestFinished,
         pluginOptions: { autoCodeSplitting },
         files: { [file]: route('v1') },
         ready: shows('v1'),
@@ -245,8 +250,8 @@ export const Route = createRootRoute({
   // page never showed the route.
   test('a lowercase function component that is also the unsplit pendingComponent renders, and an edit shows in place', async ({
     expect,
-    onTestFinished,
-  }: TestContext) => {
+    openRouteHmrPage,
+  }) => {
     const route = (version: string) =>
       `import { createFileRoute } from '@tanstack/react-router'
 function page() {
@@ -255,7 +260,6 @@ function page() {
 export const Route = createFileRoute('/')({ component: page, pendingComponent: page })
 `
     const app = await openRouteHmrPage({
-      onTestFinished,
       files: { 'routes/index.tsx': route('v1') },
       ready: 'page v1',
     })
@@ -274,10 +278,7 @@ export const Route = createFileRoute('/')({ component: page, pendingComponent: p
     ]),
   )(
     'written as a method using $uses: shows, and an edit shows in place (autoCodeSplitting: $autoCodeSplitting)',
-    async (
-      { autoCodeSplitting, expr },
-      { expect, onTestFinished }: TestContext,
-    ) => {
+    async ({ autoCodeSplitting, expr }, { expect, openRouteHmrPage }) => {
       const route = (version: string) =>
         `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({
@@ -287,7 +288,6 @@ export const Route = createFileRoute('/')({
 })
 `
       const app = await openRouteHmrPage({
-        onTestFinished,
         pluginOptions: { autoCodeSplitting },
         files: { 'routes/index.tsx': route('v1') },
         ready: /method \w+ v1/,
@@ -382,8 +382,9 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     ]),
   )(
     'root route components $name: an edit shows each in place, and the root component keeps its state (autoCodeSplitting: $autoCodeSplitting)',
-    async ({ autoCodeSplitting, route }, context: TestContext) => {
+    async ({ autoCodeSplitting, route }, { expect, openRouteHmrPage }) => {
       await expectEditInPlace(
+        { expect, openRouteHmrPage },
         {
           file: 'routes/__root.tsx',
           files: {
@@ -397,7 +398,6 @@ export const Route = createFileRoute('/')({ component: () => <p>index</p> })
             `shell ${version} root ${version} not found ${version}`,
           autoCodeSplitting,
         },
-        context,
       )
     },
   )
@@ -410,10 +410,7 @@ export const Route = createFileRoute('/')({ component: () => <p>index</p> })
   // (ReactFreshIntegration-test "preserves state ...").
   test.for([false, true])(
     'an edit that adds component options before an inline component shows in place (autoCodeSplitting: %s)',
-    async (
-      autoCodeSplitting: boolean,
-      { expect, onTestFinished }: TestContext,
-    ) => {
+    async (autoCodeSplitting: boolean, { expect, openRouteHmrPage }) => {
       const route = (version: string) =>
         `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({${
@@ -427,7 +424,6 @@ export const Route = createFileRoute('/')({${
 })
 `
       const app = await openRouteHmrPage({
-        onTestFinished,
         pluginOptions: { autoCodeSplitting },
         files: { 'routes/index.tsx': route('v1') },
         ready: 'page v1',
@@ -466,8 +462,9 @@ export const Route = createFileRoute('/')({
   // signatures").
   test.for([false, true])(
     'an edit of the body of a custom hook a component calls shows in place and keeps its state (autoCodeSplitting: %s)',
-    async (autoCodeSplitting: boolean, context: TestContext) => {
+    async (autoCodeSplitting: boolean, { expect, openRouteHmrPage }) => {
       await expectEditInPlace(
+        { expect, openRouteHmrPage },
         {
           file: 'routes/index.tsx',
           route: hookRoute(
@@ -479,7 +476,6 @@ export const Route = createFileRoute('/')({
           shows: (version) => `page n0 ${version} n1`,
           autoCodeSplitting,
         },
-        context,
       )
     },
   )
@@ -492,10 +488,7 @@ export const Route = createFileRoute('/')({
   // hooks).
   test.for([false, true])(
     'an edit that changes the hooks of a custom hook a component calls shows in place (autoCodeSplitting: %s)',
-    async (
-      autoCodeSplitting: boolean,
-      { expect, onTestFinished }: TestContext,
-    ) => {
+    async (autoCodeSplitting: boolean, { expect, openRouteHmrPage }) => {
       const route = hookRoute((version) =>
         version === 'v1'
           ? `function useCounter() {
@@ -509,7 +502,6 @@ export const Route = createFileRoute('/')({
 }`,
       )
       const app = await openRouteHmrPage({
-        onTestFinished,
         pluginOptions: { autoCodeSplitting },
         files: { 'routes/index.tsx': route('v1') },
         ready: 'page n0 v1 n1',

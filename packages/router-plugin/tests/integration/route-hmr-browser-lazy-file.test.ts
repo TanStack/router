@@ -6,9 +6,8 @@
  * without a full reload (SPEC J3.1), and the route keeps the options of its
  * route file (`routes/index.tsx`, the loader).
  */
-import { describe, it } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
-import type { TestContext } from 'vitest'
+import { describe } from 'vitest'
+import { it } from '../test'
 
 const timeout = 90_000
 
@@ -48,11 +47,10 @@ describe.each([
   it.for([false, true])(
     'shows the new code of an edited lazy route file in place (inline component: %s)',
     { timeout },
-    async (inline: boolean, { expect, onTestFinished }: TestContext) => {
+    async (inline: boolean, { expect, openRouteHmrPage }) => {
       const app = await openRouteHmrPage({
         bundler,
         target,
-        onTestFinished,
         files: {
           'routes/index.tsx': routeFile(target),
           'routes/index.lazy.tsx': lazyFile(target, 'v1', inline),
@@ -97,11 +95,10 @@ describe.each([
   it(
     'loads the edited lazy route file of a route the page has not shown yet',
     { timeout },
-    async ({ expect, onTestFinished }: TestContext) => {
+    async ({ expect, openRouteHmrPage }) => {
       const app = await openRouteHmrPage({
         bundler,
         target,
-        onTestFinished,
         files: aboutApp(target, 'v1'),
         ready: 'home',
       })
@@ -133,10 +130,9 @@ export const Route = createLazyFileRoute('/')({ component: Page })
   it(
     'keeps the state of an edited lazy route component',
     { timeout },
-    async ({ expect, onTestFinished }: TestContext) => {
+    async ({ expect, openRouteHmrPage }) => {
       const app = await openRouteHmrPage({
         bundler,
-        onTestFinished,
         files: {
           'routes/index.tsx': routeFile('react'),
           'routes/index.lazy.tsx': counter('v1'),

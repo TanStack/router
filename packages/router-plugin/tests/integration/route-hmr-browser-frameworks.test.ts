@@ -11,9 +11,8 @@
  *
  * React apps: route-hmr-browser.test.ts.
  */
-import { describe, it } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
-import type { TestContext } from 'vitest'
+import { describe } from 'vitest'
+import { it } from '../test'
 
 const timeout = 90_000
 
@@ -43,14 +42,10 @@ describe.each([
   it.for([true, false])(
     'shows the new code of an edited route file in place (autoCodeSplitting: %s)',
     { timeout },
-    async (
-      autoCodeSplitting: boolean,
-      { expect, onTestFinished }: TestContext,
-    ) => {
+    async (autoCodeSplitting: boolean, { expect, openRouteHmrPage }) => {
       const app = await openRouteHmrPage({
         bundler,
         target,
-        onTestFinished,
         pluginOptions: { autoCodeSplitting },
         files: { 'routes/index.tsx': route(target, 'v1') },
         ready: 'page v1 data v1',
@@ -96,14 +91,10 @@ describe.each(['vite', 'rsbuild'] as const)('%s: a solid app', (bundler) => {
   it.for([true, false])(
     'shows the new code of an edited root route in place (autoCodeSplitting: %s)',
     { timeout },
-    async (
-      autoCodeSplitting: boolean,
-      { expect, onTestFinished }: TestContext,
-    ) => {
+    async (autoCodeSplitting: boolean, { expect, openRouteHmrPage }) => {
       const app = await openRouteHmrPage({
         bundler,
         target: 'solid',
-        onTestFinished,
         pluginOptions: { autoCodeSplitting },
         files: {
           'routes/__root.tsx': solidRoot('v1'),

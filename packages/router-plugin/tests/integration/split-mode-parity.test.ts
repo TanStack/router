@@ -24,7 +24,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { pluginReact } from '@rsbuild/plugin-react'
 import react from '@vitejs/plugin-react'
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import {
@@ -32,8 +32,12 @@ import {
   loadedModulesExpression,
 } from '@tanstack/compiler-test-utils/importers'
 import { tanstackRouter as tanstackRouterRspack } from '../../src/rspack'
-import { build, buildWithRsbuild, routeHead } from '../build-harness'
-import { routerDevServer } from '../dev-server'
+import {
+  buildShared,
+  buildSharedWithRsbuild,
+  routeHead,
+} from '../build-harness'
+import { startRouterDevServer } from '../dev-server'
 import type { CodeSplitGroupings, RouterPluginOptions } from '../build-harness'
 import type { RsbuildPlugin } from '@rsbuild/core'
 
@@ -321,28 +325,26 @@ const vitePageFiles = {
 }
 
 /** Observes a dev server's client in a real page. */
-async function observeDevPage(
-  url: string,
-  registerCleanup: (cleanup: () => Promise<void>) => void,
-) {
-  const page = await openPage(url, { registerCleanup })
-  await page.waitForText('MARK_READY', { selector: '#app' })
-  const result = await page.page.evaluate<Observation>(
-    `(async () => { const app = globalThis.__app\n${observe} })()`,
-  )
-  expect(page.errors).toEqual([])
-  return readObservation(result)
+async function observeDevPage(url: string) {
+  const page = await openPage(url)
+  try {
+    await page.waitForText('MARK_READY', { selector: '#app' })
+    const result = await page.page.evaluate<Observation>(
+      `(async () => { const app = globalThis.__app\n${observe} })()`,
+    )
+    expect(page.errors).toEqual([])
+    return readObservation(result)
+  } finally {
+    await page.close()
+  }
 }
 
 describe('the split decision in dev and in a production build', () => {
-  const cleanups: Array<() => Promise<void>> = []
-  const registerCleanup = (cleanup: () => Promise<void>) => {
-    cleanups.push(cleanup)
-  }
   const observations: Record<string, Observation> = {}
   /** Where the code of the deleted `headers` option is, per build. */
   const deletedCode: Record<string, string> = {}
 
+  // (what the tests read, taken once; each server closes once observed)
   beforeAll(async () => {
     const files = appFiles()
     const entry = `export * from './app'\n`
@@ -350,9 +352,8 @@ describe('the split decision in dev and in a production build', () => {
     // build sets the process's `NODE_ENV` to `production` while it runs
     // (as a build command does), and a dev server starting meanwhile would
     // be configured from it.
-    const viteServer = await routerDevServer({
+    const viteServer = await startRouterDevServer({
       browser: true,
-      registerCleanup,
       files: { ...files, ...vitePageFiles },
       pluginOptions,
       plugins: [react()],
@@ -368,16 +369,16 @@ describe('the split decision in dev and in a production build', () => {
         },
       },
     })
-    observations.viteDev = await observeDevPage(
-      viteServer.url!,
-      registerCleanup,
-    )
+    try {
+      observations.viteDev = await observeDevPage(viteServer.url!)
+    } finally {
+      await viteServer.close()
+    }
     // One dev server at a time: a second one starting meanwhile changes
     // the process's environment the first one is configured from.
     const rsbuildServer = await createRsbuildDevServer({
       dir: harnessDir,
       prefix: '.split-mode-parity-rsbuild-',
-      registerCleanup,
       browser: true,
       entry: 'main.tsx',
       files: { ...files, 'main.tsx': devPageFiles['main.tsx'] },
@@ -404,37 +405,34 @@ describe('the split decision in dev and in a production build', () => {
         } satisfies RsbuildPlugin,
       ],
     })
-    observations.rsbuildDev = await observeDevPage(
-      rsbuildServer.url!,
-      registerCleanup,
-    )
+    try {
+      observations.rsbuildDev = await observeDevPage(rsbuildServer.url!)
+    } finally {
+      await rsbuildServer.close()
+    }
     await Promise.all([
       (async () => {
-        const app = await build({
+        const app = await buildShared({
           bundler: 'vite',
           env: 'client',
           files: { ...files, 'entry.ts': entry },
           pluginOptions,
-          registerCleanup,
         })
         observations.viteBuild = await observeBuild(app)
         deletedCode.vite = app.where('MARK_DELETED_HEADER')
+        await app.dispose()
       })(),
       (async () => {
-        const app = await buildWithRsbuild({
+        const app = await buildSharedWithRsbuild({
           files: { ...files, 'entry.ts': entry },
           pluginOptions,
-          registerCleanup,
         })
         observations.rsbuildBuild = await observeBuild(app)
         deletedCode.rsbuild = app.where('MARK_DELETED_HEADER')
+        await app.dispose()
       })(),
     ])
   }, timeout)
-
-  afterAll(async () => {
-    await Promise.all(cleanups.map((cleanup) => cleanup()))
-  })
 
   test.each(['vite', 'rsbuild'])(
     '%s: the production build splits, groups and deletes as configured, and the routes work',

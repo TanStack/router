@@ -9,9 +9,8 @@
  */
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
-import { describe, it } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
-import type { TestContext } from 'vitest'
+import { describe } from 'vitest'
+import { it } from '../test'
 import type { RouteHmrPage } from '../route-hmr-page'
 
 const timeout = 90_000
@@ -87,10 +86,9 @@ describe('rsbuild: the maps of a split route after an edit', () => {
   it(
     'hold the route file as it is on disk, also where the edit left the code unchanged',
     { timeout },
-    async ({ expect, onTestFinished }: TestContext) => {
+    async ({ expect, openRouteHmrPage }) => {
       const app = await openRouteHmrPage({
         bundler: 'rsbuild',
-        onTestFinished,
         files: { 'routes/index.tsx': route('loader v1', 'page v1') },
         ready: 'page v1 loader v1',
       })

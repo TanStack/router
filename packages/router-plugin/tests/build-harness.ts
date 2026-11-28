@@ -39,8 +39,8 @@ import {
   withBuildEnvironment,
 } from '@tanstack/compiler-test-utils/build-harness'
 import { mergeRsbuildConfig } from '@rsbuild/core'
+import { onTestFinished } from 'vitest'
 import { pluginReact } from '@rsbuild/plugin-react'
-import { onTestFinished } from '@tanstack/compiler-test-utils/test-scope'
 import type {
   App,
   AppInfo,
@@ -181,15 +181,23 @@ export function routeApp(
  * routes and the entry (see `routeApp`). `routerPlugins` creates the router
  * plugins from the harness's plugin options instead of the bundler's
  * `tanstackRouter` (e.g. other entry points). A framework plugin of Vite
- * that `routerPlugins` already gives (by its name) is not added again.
+ * that `routerPlugins` already gives (by its name) is not added again. The
+ * app is removed when the test ends.
  */
-export async function build(
-  options: Omit<BundleOptions, 'dir'> & {
-    pluginOptions?: RouterPluginOptions
-    framework?: Framework
-    routerPlugins?: (config: RouterPluginOptions) => Array<unknown>
-  },
-): Promise<BuildResult> {
+export async function build(options: BuildOptions): Promise<BuildResult> {
+  const app = await buildShared(options)
+  onTestFinished(() => app.dispose())
+  return app
+}
+
+type BuildOptions = Omit<BundleOptions, 'dir'> & {
+  pluginOptions?: RouterPluginOptions
+  framework?: Framework
+  routerPlugins?: (config: RouterPluginOptions) => Array<unknown>
+}
+
+/** `build` for a file's shared build (a hook's): the caller disposes of it. */
+export async function buildShared(options: BuildOptions): Promise<BuildResult> {
   const {
     pluginOptions = {},
     framework = 'react',
@@ -202,7 +210,6 @@ export async function build(
   const frameworkBuild = await frameworkBuilds[framework](options)
   return bundleApp({
     dir: harnessDir,
-    registerCleanup: onTestFinished,
     ...frameworkBuild.target,
     ...bundleOptions,
     plugins: {
@@ -381,27 +388,40 @@ const rsbuildEntryGlobal = '__routerBuildHarnessEntry'
  * differences: no HTML page is emitted, and the output is ES modules
  * (`output.module`) so that `run()` can load it in Node; what is split, and
  * where, does not depend on that. `files` holds the routes and `entry.ts`
- * (see `routeApp`).
+ * (see `routeApp`). The app is removed when the test ends.
  */
 export async function buildWithRsbuild(
-  options: Pick<AppOptions, 'files' | 'packageJson' | 'sideEffects'> & {
-    pluginOptions?: RouterPluginOptions
-    registerCleanup?: AppOptions['registerCleanup']
-    /**
-     * `NODE_ENV` of the build process (default `production`, as the
-     * Rsbuild CLI sets it; `null` unsets it).
-     */
-    nodeEnv?: string | null
-    /**
-     * Builds an app that already exists at this root (its files as they
-     * are; `files` is ignored) instead of writing a new one, e.g. to build
-     * the same app again with a persistent build cache. The caller owns the
-     * directory.
-     */
-    root?: string
-    /** Rsbuild configuration merged over the harness's. */
-    rsbuildConfig?: RsbuildConfig
-  },
+  options: RsbuildBuildOptions,
+): Promise<BuildResult> {
+  const app = await buildSharedWithRsbuild(options)
+  onTestFinished(() => app.dispose())
+  return app
+}
+
+type RsbuildBuildOptions = Pick<
+  AppOptions,
+  'files' | 'packageJson' | 'sideEffects'
+> & {
+  pluginOptions?: RouterPluginOptions
+  /**
+   * `NODE_ENV` of the build process (default `production`, as the
+   * Rsbuild CLI sets it; `null` unsets it).
+   */
+  nodeEnv?: string | null
+  /**
+   * Builds an app that already exists at this root (its files as they
+   * are; `files` is ignored) instead of writing a new one, e.g. to build
+   * the same app again with a persistent build cache. The caller owns the
+   * directory.
+   */
+  root?: string
+  /** Rsbuild configuration merged over the harness's. */
+  rsbuildConfig?: RsbuildConfig
+}
+
+/** `buildWithRsbuild` for a file's shared build: the caller disposes of it. */
+export async function buildSharedWithRsbuild(
+  options: RsbuildBuildOptions,
 ): Promise<BuildResult> {
   const { pluginOptions = {}, nodeEnv = 'production' } = options
   const harnessEntry = `import * as entry from './entry'
@@ -412,7 +432,6 @@ export async function buildWithRsbuild(
     app = await createApp({
       dir: harnessDir,
       prefix: '.build-harness-rsbuild-',
-      registerCleanup: options.registerCleanup ?? onTestFinished,
       packageJson: options.packageJson,
       sideEffects: options.sideEffects,
       files: { ...options.files, 'harness-entry.ts': harnessEntry },
@@ -575,11 +594,7 @@ export async function buildAndRun(
       },
     },
   })
-  try {
-    return (await app.run(script)).result
-  } finally {
-    await app.dispose()
-  }
+  return (await app.run(script)).result
 }
 
 /** Imports `createFileRoute` from the React router package. */

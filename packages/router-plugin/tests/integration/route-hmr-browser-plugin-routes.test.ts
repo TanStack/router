@@ -7,7 +7,6 @@
  */
 import { describe, it } from 'vitest'
 import { openRouteHmrPage } from '../route-hmr-page'
-import type { TestContext } from 'vitest'
 
 const timeout = 90_000
 const inPlace = { reloaded: false, errors: [] }
@@ -55,12 +54,8 @@ export const Route = createFileRoute('/')({ loader: () => 'data ${version}' })
   it.for([true, false])(
     'a React .ts route module shows its new loader data in place (autoCodeSplitting: %s)',
     { timeout },
-    async (
-      autoCodeSplitting: boolean,
-      { expect, onTestFinished }: TestContext,
-    ) => {
+    async (autoCodeSplitting: boolean, { expect }) => {
       const app = await openRouteHmrPage({
-        onTestFinished,
         pluginOptions: { autoCodeSplitting },
         files: {
           'routes/__root.tsx': root,
@@ -80,12 +75,8 @@ export const Route = createFileRoute('/')({ loader: () => 'data ${version}' })
   it.for([true, false])(
     'a route component in an app without @vitejs/plugin-react shows in place (autoCodeSplitting: %s)',
     { timeout },
-    async (
-      autoCodeSplitting: boolean,
-      { expect, onTestFinished }: TestContext,
-    ) => {
+    async (autoCodeSplitting: boolean, { expect }) => {
       const app = await openRouteHmrPage({
-        onTestFinished,
         frameworkPlugin: false,
         pluginOptions: { autoCodeSplitting },
         files: { 'routes/index.tsx': indexRoute('react', 'v1') },
@@ -125,10 +116,9 @@ export const Route = createAppRoute('/')({ component: () => <p>helper ${version}
     it(
       'shows each version, reporting nothing',
       { timeout, fails: bundler === 'rsbuild' },
-      async ({ expect, onTestFinished }) => {
+      async ({ expect }) => {
         const app = await openRouteHmrPage({
           bundler,
-          onTestFinished,
           files: {
             'app-route.ts': helper,
             'routes/index.tsx': route('router', 'v1'),
@@ -165,12 +155,11 @@ describe('vite: a route file switching to an app helper while every generation f
   it(
     'shows the edit, reporting nothing about the route file',
     { timeout },
-    async ({ expect, onTestFinished }) => {
+    async ({ expect }) => {
       const helper = `import { createFileRoute } from '@tanstack/react-router'
 export const createAppRoute = (id: any) => (options: any) => createFileRoute(id)(options)
 `
       const app = await openRouteHmrPage({
-        onTestFinished,
         files: {
           'app-route.ts': helper,
           'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'

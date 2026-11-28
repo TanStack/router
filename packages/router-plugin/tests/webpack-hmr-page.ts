@@ -29,15 +29,16 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import webpack from 'webpack'
 import WebpackDevServer from 'webpack-dev-server'
+import { onTestFinished } from 'vitest'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { trackRequests } from '@tanstack/compiler-test-utils/hmr-sync'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
-import { onTestFinished } from '@tanstack/compiler-test-utils/test-scope'
 import { tanstackRouter } from '../src/webpack'
 import type { AddressInfo } from 'node:net'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { Config } from '../src/webpack'
+import type { At } from './test'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 const require = createRequire(import.meta.url)
@@ -115,6 +116,8 @@ export interface WebpackHmrPage {
     files: Record<string, string>,
     expected: string,
   ) => Promise<WebpackEditResult>
+  /** Closes the page, then the dev server. */
+  close: () => Promise<void>
 }
 
 const editTimeout = 20_000
@@ -127,18 +130,25 @@ const editQuietFailure = 3_000
 
 /**
  * Starts a webpack dev server on an app of `files`, opens it in a browser
- * page and waits until it shows `ready`. The server, the page and the app's
- * directory are disposed of when the test finishes.
+ * page and waits until it shows `ready`; closed when the test ends.
  */
-export async function openWebpackHmrPage(
+export async function openWebpackHmrPage(options: WebpackHmrPageOptions) {
+  const app = await openWebpackHmrPageAt({}, options)
+  onTestFinished(() => app.close())
+  return app
+}
+
+/** `openWebpackHmrPage` in a new directory of `at.parent`, for a fixture (it closes it). */
+export async function openWebpackHmrPageAt(
+  at: At,
   options: WebpackHmrPageOptions,
 ): Promise<WebpackHmrPage> {
   const target = options.target ?? 'react'
   const entry = target === 'react' ? 'main.ts' : 'main.tsx'
   const app = await createApp({
     dir: harnessDir,
+    ...at,
     prefix: '.webpack-hmr-page-',
-    registerCleanup: onTestFinished,
     files: {
       'public/index.html': indexHtml,
       [entry]: mains[target],
@@ -241,19 +251,29 @@ export const Route = createRootRoute({})
     compiler,
   )
   await server.start()
-  onTestFinished(() => server.stop())
   const port = (server.server!.address() as AddressInfo).port
-
-  const page = await openPage(`http://127.0.0.1:${port}/`, {
-    registerCleanup: onTestFinished,
-  })
-  await page.waitForText(options.ready, { selector: '#app' })
+  let page: BrowserPage | undefined
+  const close = async () => {
+    await page?.close()
+    await server.stop()
+  }
+  try {
+    at.signal?.throwIfAborted()
+    page = await openPage(`http://127.0.0.1:${port}/`)
+    at.signal?.throwIfAborted()
+    await page.waitForText(options.ready, { selector: '#app' })
+    at.signal?.throwIfAborted()
+  } catch (error) {
+    await close()
+    throw error
+  }
+  const opened = page
 
   /** The page's requests in flight (hot-update fetches, a reload). */
-  const requests = trackRequests(page)
+  const requests = trackRequests(opened)
   const text = async () => {
     try {
-      return await page.text('#app')
+      return await opened.text('#app')
     } catch {
       // The page is reloading
       return ''
@@ -276,7 +296,7 @@ export const Route = createRootRoute({})
   }
 
   return {
-    page,
+    page: opened,
     root,
     url: `http://127.0.0.1:${port}/`,
     write: async (files) => {
@@ -285,8 +305,8 @@ export const Route = createRootRoute({})
     },
     edit: async (files, expected) => {
       const start = {
-        loads: page.loads(),
-        errors: page.errors.length,
+        loads: opened.loads(),
+        errors: opened.errors.length,
       }
       const deadline = Date.now() + editTimeout
       await write(files, deadline)
@@ -301,16 +321,17 @@ export const Route = createRootRoute({})
         observed: async () => ({ actual: await text(), expected }),
         describe: async () =>
           [
-            `the page shows: ${JSON.stringify(await text())}`,
+            `the opened shows: ${JSON.stringify(await text())}`,
             `expected: ${expected}`,
-            `page loads: ${page.loads()}`,
-            `console:\n${page.console.join('\n') || '(none)'}`,
+            `opened loads: ${opened.loads()}`,
+            `console:\n${opened.console.join('\n') || '(none)'}`,
           ].join('\n'),
       })
       return {
-        reloaded: page.loads() > start.loads,
-        errors: page.errors.slice(start.errors),
+        reloaded: opened.loads() > start.loads,
+        errors: opened.errors.slice(start.errors),
       }
     },
+    close,
   }
 }

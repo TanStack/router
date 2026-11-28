@@ -9,10 +9,9 @@
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { expect, test } from 'vitest'
+import { expect, onTestFinished, test } from 'vitest'
 import { createServer } from 'vite'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
-import { onTestFinished } from '@tanstack/compiler-test-utils/test-scope'
 import { createRouterPluginContext } from '../src/context'
 import {
   tanStackRouterCodeSplitter,

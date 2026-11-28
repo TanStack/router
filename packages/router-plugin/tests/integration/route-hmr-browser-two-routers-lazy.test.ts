@@ -5,15 +5,14 @@
  * page loaded, and leaves the widget's route as it is, whichever router the
  * entry creates last. (Eager routes: route-hmr-browser-two-routers.test.ts.)
  */
-import { describe, it } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
+import { describe } from 'vitest'
+import { it } from '../test'
 import {
   emptyRoute,
   hosts,
   lazyFile,
   twoRouters,
 } from './route-hmr-two-routers-cases'
-import type { TestContext } from 'vitest'
 
 const timeout = 90_000
 
@@ -31,11 +30,10 @@ describe.each(hosts)(
     it.for(['widget-last', 'widget-first'] as const)(
       "a lazy route file's edits show in the app's route and leave the other router's alone (%s)",
       { timeout },
-      async (order, { expect, onTestFinished }: TestContext) => {
+      async (order, { expect, openRouteHmrPage }) => {
         const app = await openRouteHmrPage({
           bundler,
           target,
-          onTestFinished,
           files: {
             'main.tsx': twoRouters(target, 'lazy', order),
             'widget.lazy.tsx': widgetLazy(target),

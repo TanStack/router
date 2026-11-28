@@ -7,7 +7,7 @@
  */
 
 import { afterAll, describe, expect, test } from 'vitest'
-import { build, buildWithRsbuild, head } from '../build-harness'
+import { buildShared, buildSharedWithRsbuild, head } from '../build-harness'
 import type {
   BuildResult,
   Bundler,
@@ -158,12 +158,11 @@ export const label = 'label'
     options: {
       sideEffects: boolean | undefined
       files: Record<string, string>
-      registerCleanup?: () => void
     },
   ) =>
     bundler === 'rsbuild'
-      ? buildWithRsbuild(options)
-      : build({ bundler, env: 'client', ...options })
+      ? buildSharedWithRsbuild(options)
+      : buildShared({ bundler, env: 'client', ...options })
 
   describe.each([...clientBundlers, 'rsbuild'] as const)('%s', (bundler) => {
     describe.each([
@@ -171,12 +170,7 @@ export const label = 'label'
       { hint: 'with "sideEffects": false', sideEffects: false },
     ])('$hint', ({ sideEffects }) => {
       let built: Promise<BuildResult> | undefined
-      const app = () =>
-        (built ??= clientBuild(bundler, {
-          sideEffects,
-          files,
-          registerCleanup: () => {},
-        }))
+      const app = () => (built ??= clientBuild(bundler, { sideEffects, files }))
       afterAll(async () => {
         await (await built)?.dispose()
       })

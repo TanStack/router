@@ -5,10 +5,9 @@
  * global boundary loses the document it renders: the Start rows.) Shared rows of
  * route-hmr-browser-throw-then-fix.test.ts (Vite) and `-rsbuild.test.ts`.
  */
-import { describe, it } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
+import { describe } from 'vitest'
+import { it } from '../test'
 import type { TargetFramework } from '../route-app'
-import type { TestContext } from 'vitest'
 
 const timeout = 90_000
 
@@ -53,12 +52,11 @@ export function throwThenFixSuite(bundler: 'vite' | 'rsbuild') {
         { timeout },
         async (
           { autoCodeSplitting, errorComponent },
-          { expect, onTestFinished }: TestContext,
+          { expect, openRouteHmrPage },
         ) => {
           const app = await openRouteHmrPage({
             bundler,
             target,
-            onTestFinished,
             pluginOptions: { autoCodeSplitting },
             files: {
               'routes/index.tsx': route(

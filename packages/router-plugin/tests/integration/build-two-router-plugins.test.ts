@@ -9,9 +9,8 @@
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, onTestFinished, test } from 'vitest'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
-import { onTestFinished } from '@tanstack/compiler-test-utils/test-scope'
 import { build, buildWithRsbuild, head, rootRoute } from '../build-harness'
 import { timeout } from '../production-bundle'
 import type { RouterPluginOptions } from '../build-harness'

@@ -18,8 +18,7 @@ import { fileURLToPath } from 'node:url'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
-import { expect } from 'vitest'
-import { onTestFinished } from '@tanstack/compiler-test-utils/test-scope'
+import { expect, onTestFinished } from 'vitest'
 import { tanstackRouter } from '../src/vite'
 import { loadRoute } from './route-app'
 import type {
@@ -248,7 +247,16 @@ return [
  * router package). The app resolves the real router packages
  * (`@tanstack/{react,solid,vue}-router`, dependencies of this package).
  */
-export function routerDevServer(
+export async function routerDevServer(
+  options: RouterDevServerOptions,
+): Promise<DevServer> {
+  const server = await startRouterDevServer(options)
+  onTestFinished(() => server.close())
+  return server
+}
+
+/** `routerDevServer` for a file's hook: the caller closes it. */
+export function startRouterDevServer(
   options: RouterDevServerOptions,
 ): Promise<DevServer> {
   const {
@@ -260,7 +268,6 @@ export function routerDevServer(
   return createDevServer({
     dir: harnessDir,
     prefix: '.router-dev-server-',
-    registerCleanup: onTestFinished,
     ...devServerOptions,
     files: {
       'routes/__root.tsx': rootRouteOf(pluginOptions?.target),

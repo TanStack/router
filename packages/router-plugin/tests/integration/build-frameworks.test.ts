@@ -11,12 +11,12 @@ import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { parseSync } from 'vite'
 import { describe, expect, test } from 'vitest'
-import { build, frameworks, routeApp, routeHead } from '../build-harness'
+import { buildShared, frameworks, routeApp, routeHead } from '../build-harness'
 import type {
   BuildEnv,
   Bundler,
 } from '@tanstack/compiler-test-utils/build-harness'
-import type { Framework } from '../build-harness'
+import type { Framework, build } from '../build-harness'
 
 const timeout = 120_000
 
@@ -174,7 +174,7 @@ async function buildRoute(
   framework: Framework,
   env: BuildEnv,
 ) {
-  const app = await build({
+  const app = await buildShared({
     bundler,
     env,
     framework,
@@ -185,7 +185,6 @@ async function buildRoute(
     // The bundler's record of which modules it put in each chunk
     sourcemap: true,
     // Files outlive the test that built them; the result is all we keep
-    registerCleanup: undefined,
     files: routeApp(route(framework), {
       env,
       framework,

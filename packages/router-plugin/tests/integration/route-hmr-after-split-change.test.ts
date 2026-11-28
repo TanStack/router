@@ -32,9 +32,8 @@ ${written ? "Page.displayName = 'Page'\n" : ''}`
 describe('Vite dev: route edits after the split layout changed and changed back', () => {
   test(
     'the component exported, then not: a text edit applies in place',
-    async ({ onTestFinished }) => {
+    async () => {
       const app = await openRouteHmrPage({
-        onTestFinished,
         files: { 'routes/index.tsx': route('text-v1') },
         ready: 'text-v1',
       })
@@ -61,9 +60,8 @@ describe('Vite dev: route edits after the split layout changed and changed back'
 
   test(
     'the component unsplit, then split again: each edit applies in place',
-    async ({ onTestFinished }) => {
+    async () => {
       const app = await openRouteHmrPage({
-        onTestFinished,
         files: { 'routes/index.tsx': route('text-v1') },
         ready: 'text-v1',
       })
@@ -85,9 +83,8 @@ describe('Vite dev: route edits after the split layout changed and changed back'
 
   test(
     'the exported component written, then not: each edit applies in place',
-    async ({ onTestFinished }) => {
+    async () => {
       const app = await openRouteHmrPage({
-        onTestFinished,
         files: { 'routes/index.tsx': route('text-v1', true) },
         ready: 'text-v1',
       })

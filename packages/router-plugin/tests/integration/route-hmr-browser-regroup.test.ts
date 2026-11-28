@@ -13,9 +13,8 @@
  * showed from the move on, until a reload (main showed the moving save,
  * then went stale too).
  */
-import { describe, it } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
-import type { TestContext } from 'vitest'
+import { describe } from 'vitest'
+import { it } from '../test'
 
 const timeout = 90_000
 
@@ -49,11 +48,10 @@ describe.each([
   ])(
     'the component moves $name and back, each move and the next save editing its body',
     { timeout },
-    async ({ moved }, { expect, onTestFinished }: TestContext) => {
+    async ({ moved }, { expect, openRouteHmrPage }) => {
       const app = await openRouteHmrPage({
         bundler,
         target,
-        onTestFinished,
         files: { 'routes/index.tsx': route(target, apart, 1) },
         ready: 'page v1',
       })

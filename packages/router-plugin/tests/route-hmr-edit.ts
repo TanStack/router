@@ -3,9 +3,8 @@
  * the outcome of an edit applied in place, and an edit of one route file
  * on a real page (`route-hmr-page.ts`).
  */
-import { openRouteHmrPage } from './route-hmr-page'
-import type { TestContext } from 'vitest'
 import type { EditResult, RouteHmrPageOptions } from './route-hmr-page'
+import type { RouterFixtures } from './test'
 
 /** An edit that showed without a full reload and without errors. */
 export const inPlace = { reloaded: false, errors: [] }
@@ -16,6 +15,7 @@ export const inPlace = { reloaded: false, errors: [] }
  * the edit once the page shows `shows('v2')`.
  */
 export async function editRoute(
+  openRouteHmrPage: RouterFixtures['openRouteHmrPage'],
   {
     file,
     route,
@@ -26,11 +26,9 @@ export async function editRoute(
     route: (version: string) => string
     shows: (version: string) => string
   },
-  onTestFinished: TestContext['onTestFinished'],
 ): Promise<EditResult> {
   const app = await openRouteHmrPage({
     ...options,
-    onTestFinished,
     files: { ...options.files, [file]: route('v1') },
     ready: shows('v1'),
   })

@@ -10,9 +10,8 @@
  * query or registration.
  *
  * Client semantics run in a real browser: every check is a script run in
- * a run page of the test process (`runClient`: a page of the bounded pool
- * of `@tanstack/compiler-test-utils/browser`, held by the run alone, a fresh
- * document per run), which imports the route module from the dev server
+ * the file's page (`runInPage`: a fresh document of the app per run), which
+ * imports the route module from the dev server
  * with real ES module linking, the real Vite client and the framework's
  * refresh runtime, and renders with the real framework's client renderer
  * and the real router. The test's own modules (what the route file imports)
@@ -29,38 +28,38 @@
  * or a refresh runtime gets none. Never by recognising the helper that
  * builds a lazy value (J2.6, §5.8).
  *
- * Hosts are shared by the tests of a test process (across its files, in
- * projects that keep modules across files), one configuration each (target,
- * plugin options, the route's file and id, the app's tsconfig), and leased
- * to one test at a time (`leaseHost`): a test holds the host it wrote a
- * route into until it ends, and a concurrent test of the same configuration
- * gets another host. Each `loadRoute` writes its files
- * to the app as a dev server sees an edit (`edit`: written to disk, reported
- * by Vite's watcher, settled on a bounded outcome), and removes the files of
- * the previous route of that host. A route whose host has moved on to
- * another route's files writes its own back before its next page run.
- * Diagnostics are the dev server's merged channel (console, process
- * streams, Vite's logger) since the route's files were written. Free hosts
- * beyond `freeHostLimit` are closed; the others close with the process
- * (their apps are removed when it exits).
+ * Hosts are shared by the tests of a file (one per configuration: target,
+ * plugin options, the route's file and id, the app's tsconfig), which run
+ * one at a time, and close when the file ends (`closeRouteHosts`). Each
+ * `loadRoute` writes its files to the app as a dev server sees an edit
+ * (`edit`: written to disk, reported by Vite's watcher, settled on a bounded
+ * outcome), and removes the files of the previous route of that host. A
+ * route whose host has moved on to another route's files writes its own
+ * back before its next page run. Diagnostics are the dev server's merged
+ * channel (console, process streams, Vite's logger) since the route's files
+ * were written. A host of its own (`fresh`, `plugins`) closes when the test
+ * ends.
  */
 import path from 'node:path'
 import react from '@vitejs/plugin-react'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import solid from 'vite-plugin-solid'
 import { parseSync, transformWithOxc } from 'vite'
-import { expect } from 'vitest'
-import { runAsDevCommand } from '@tanstack/compiler-test-utils/dev-command'
+import { expect, onTestFinished } from 'vitest'
+import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
-import { currentTest } from '@tanstack/compiler-test-utils/test-scope'
 import { DanglingNameError } from '@tanstack/compiler-test-utils/build-harness'
 import { readNames } from '@tanstack/compiler-test-utils/free-names'
 import { clientGlobals } from '@tanstack/compiler-test-utils/known-globals'
 import { tanstackRouter } from '../src/vite'
 import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
-import type { PageRun } from '@tanstack/compiler-test-utils/browser'
+import type {
+  BrowserPage,
+  PageRun,
+} from '@tanstack/compiler-test-utils/browser'
 import type { BuildResult } from '@tanstack/compiler-test-utils/build-harness'
 import type { PluginHost } from '@tanstack/compiler-test-utils/plugin-host'
+import type { ConsoleMessage, Page } from '@playwright/test'
 import type { ESTree, Plugin, PluginOption, ViteDevServer } from 'vite'
 import type { Config, DeletableNodes } from '../src'
 
@@ -123,7 +122,7 @@ export interface RouteAppOptions {
    * e.g. `experimentalDecorators`, `jsx`.
    */
   tsconfig?: Record<string, unknown>
-  /** A host of its own (a fresh dev server), not shared with other routes. */
+  /** A host of its own (a fresh dev server), not shared with other tests. */
   fresh?: boolean
   /**
    * Directory the app is created in (default this tests directory), e.g.
@@ -683,99 +682,31 @@ interface HostState {
   used: boolean
 }
 
-/**
- * A host of this test process: shared by the tests of one configuration
- * (`hostKey`), one test at a time. The test that holds it (its lease) writes
- * its routes into it; another test needing that configuration meanwhile (a
- * concurrent test) gets a host of its own. A custom host (`fresh`, or
- * `plugins`) serves only the test that created it, and closes when it ends.
- */
-interface HostEntry {
-  key: string
-  custom: boolean
-  state: Promise<HostState>
-  /** The test holding the host, or `undefined` when it is free. */
-  lease: object | undefined
-  /** When the host was last given back (to close the least recently used). */
-  released: number
-}
+/** The shared hosts of the running file, by configuration (`hostKey`). */
+const hosts = new Map<string, Promise<HostState>>()
 
-const hostEntries: Array<HostEntry> = []
-
-/** Free shared hosts a test process keeps for later tests, at most. */
-const freeHostLimit = 6
-
-/** The holder of hosts taken outside any test (e.g. in a `beforeAll`). */
-const outsideTests = {}
-
-async function closeEntry(entry: HostEntry) {
-  const index = hostEntries.indexOf(entry)
-  if (index !== -1) {
-    hostEntries.splice(index, 1)
-  }
-  const resolved = await entry.state.catch(() => undefined)
-  await resolved?.host.close()
-}
-
-/** Gives a host back; closes free hosts beyond `freeHostLimit`. */
-async function releaseEntry(entry: HostEntry) {
-  entry.lease = undefined
-  entry.released = performance.now()
-  if (entry.custom) {
-    await closeEntry(entry)
-    return
-  }
-  const free = hostEntries
-    .filter((candidate) => candidate.lease === undefined && !candidate.custom)
-    .sort((a, b) => b.released - a.released)
-  for (const extra of free.slice(freeHostLimit)) {
-    await closeEntry(extra)
-  }
-}
+/** The page the running file's routes run in (a browser context of its own). */
+let filePage: Promise<BrowserPage> | undefined
 
 /**
- * The host the current test writes a route of configuration `key` into: the
- * one it holds, a free one, or a new one (`start`).
+ * Closes the running file's page, then its shared hosts, one at a time,
+ * the last started first: when a file ends (`route-hosts-setup.ts`).
  */
-function leaseHost(
-  key: string,
-  custom: boolean,
-  start: () => Promise<HostState>,
-): { entry: HostEntry; created: boolean } {
-  const test = currentTest()
-  const holder = test ?? outsideTests
-  const take = (entry: HostEntry) => {
-    entry.lease = holder
-    test?.onTestFinished(() => releaseEntry(entry))
-  }
-  if (!custom) {
-    const held = hostEntries.find(
-      (entry) => entry.key === key && entry.lease === holder,
+export async function closeRouteHosts() {
+  const page = filePage
+  filePage = undefined
+  await page?.then(
+    (opened) => opened.close(),
+    () => {},
+  )
+  const starting = [...hosts.values()].reverse()
+  hosts.clear()
+  for (const state of starting) {
+    await state.then(
+      ({ host }) => host.close(),
+      () => {},
     )
-    if (held) {
-      return { entry: held, created: false }
-    }
-    const free = hostEntries.find(
-      (entry) => entry.key === key && entry.lease === undefined,
-    )
-    if (free) {
-      // A dev server an earlier file may have started: this file's
-      // environment is Vitest's again (`test-scope-setup`)
-      runAsDevCommand()
-      take(free)
-      return { entry: free, created: false }
-    }
   }
-  const entry: HostEntry = {
-    key,
-    custom,
-    state: start(),
-    lease: undefined,
-    released: 0,
-  }
-  hostEntries.push(entry)
-  take(entry)
-  return { entry, created: true }
 }
 
 /**
@@ -784,6 +715,71 @@ function leaseHost(
  * above what a run takes on a loaded machine.
  */
 const pageRunBound = 10_000
+
+/** The app's page: Vite's client and the framework's refresh preamble. */
+export const pageHtml = `<!doctype html>
+<html>
+  <head><meta charset="utf-8" /></head>
+  <body></body>
+</html>
+`
+
+/**
+ * Imports the client module `url` of `host` (an app with an `index.html`,
+ * `pageHtml`) in a fresh document of its page, in `page`, as the browser
+ * imports a module of the page (real ES module linking), and runs `script`:
+ * an async function body with the module's namespace as `module`; its JSON
+ * value is the result, with the run's errors and console. The page leaves
+ * the document when the run ends.
+ */
+export async function runInPage<T = unknown>(
+  page: Page,
+  host: PluginHost,
+  url: string,
+  script = '',
+): Promise<PageRun<T>> {
+  const errors: Array<string> = []
+  const messages: Array<string> = []
+  const onError = (error: Error) => {
+    errors.push(error.stack ?? error.message)
+  }
+  const onConsole = (message: ConsoleMessage) => {
+    messages.push(`${message.type()}: ${message.text()}`)
+    // (the browser's own `/favicon.ico` request, which no app serves)
+    if (
+      message.type() === 'error' &&
+      !message.location().url.endsWith('/favicon.ico')
+    ) {
+      errors.push(message.text())
+    }
+  }
+  page.on('pageerror', onError)
+  page.on('console', onConsole)
+  try {
+    await page.goto(host.dev.url!)
+    // A string, run as the page's own code: a function would be serialised
+    // from this module as the test runner transformed it
+    const result = (await page.evaluate(
+      `(async () => {\nconst module = await import(${JSON.stringify(new URL(url, host.dev.url).href)})\n${script}\n})()`,
+    )) as T
+    return { result, errors, console: messages }
+  } catch (error) {
+    throw new Error(
+      [
+        `the page run of ${url} failed: ${(error as Error).message}`,
+        `errors:\n${errors.join('\n') || '(none)'}`,
+        `console:\n${messages.join('\n') || '(none)'}`,
+      ].join('\n'),
+      { cause: error },
+    )
+  } finally {
+    page.off('pageerror', onError)
+    page.off('console', onConsole)
+    // Out of the app's document: it no longer follows the dev server (an
+    // edit of the next route would reach it)
+    await page.goto('about:blank').catch(() => {})
+  }
+}
 
 function hostKey(options: RouteAppOptions, root: boolean) {
   return JSON.stringify(
@@ -869,6 +865,7 @@ async function startHost(
     dir: options.dir ?? import.meta.dirname,
     prefix: '.route-app-',
     files: {
+      'index.html': pageHtml,
       'tsconfig.json': JSON.stringify({
         compilerOptions: { verbatimModuleSyntax: true, ...options.tsconfig },
       }),
@@ -993,7 +990,7 @@ export interface RouteApp {
   /** The route file as written. */
   code: string
   /**
-   * Runs `body` (an async function body) in a fresh document of the shared
+   * Runs `body` (an async function body) in a fresh document of the file's
    * page and returns its JSON value. In scope: `exports` and `Route` (the
    * route module and its route, imported from the dev server), `options`,
    * `trigger(option)`, `load(option)` (a component after `preload()`),
@@ -1087,12 +1084,21 @@ export async function loadRoute(
   const url = appUrl(filename)
   const at = root ? '/' : (options.routeId ?? '/')
 
-  const custom = options.fresh || options.plugins !== undefined
   const owner = {}
-  const { entry, created } = leaseHost(hostKey(options, root), custom, () =>
-    startHost(options, root, files),
-  )
-  const state = await entry.state
+  const custom = options.fresh || options.plugins !== undefined
+  const key = hostKey(options, root)
+  const shared = custom ? undefined : hosts.get(key)
+  const created = shared === undefined
+  const starting = shared ?? startHost(options, root, files)
+  if (!custom && created) {
+    hosts.set(key, starting)
+    // (a start that failed is not reused)
+    starting.catch(() => hosts.delete(key))
+  }
+  const state = await starting
+  if (custom) {
+    onTestFinished(() => state.host.close())
+  }
   const mark = created ? 0 : state.host.diagnostics.length
   if (created) {
     state.current = files
@@ -1102,6 +1108,7 @@ export async function loadRoute(
     await writeRoute(state, owner, files)
   }
 
+  const pageOf = async () => (await (filePage ??= openPage('about:blank'))).page
   const runPage = async <T>(
     body: string,
     runOptions: { before?: string } = {},
@@ -1109,7 +1116,9 @@ export async function loadRoute(
     await writeRoute(state, owner, files)
     const hmr = state.host.dev.hmr.length
     try {
-      return await state.host.runClient<T>(
+      return await runInPage<T>(
+        await pageOf(),
+        state.host,
         appUrl(probeFile),
         `${prelude(url, [...own], at, `${options.pageScript ?? ''}\n${runOptions.before ?? ''}`)}
 // A run that never settles (e.g. a page left suspended while a navigation

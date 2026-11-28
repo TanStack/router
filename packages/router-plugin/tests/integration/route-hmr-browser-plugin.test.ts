@@ -19,7 +19,6 @@ import {
   expectEditShownOrReportedFallback,
   openRouteHmrPage,
 } from '../route-hmr-page'
-import type { TestContext } from 'vitest'
 import type { RouteHmrPageOptions } from '../route-hmr-page'
 
 const timeout = 90_000
@@ -101,11 +100,10 @@ describe('the router plugin configured with', () => {
   it.for(rows)(
     '$name applies an edit of a route file in place',
     { timeout },
-    async ({ target = 'react', options }, { expect, onTestFinished }) => {
+    async ({ target = 'react', options }, { expect }) => {
       const app = await openRouteHmrPage({
         ...options,
         target,
-        onTestFinished,
         files: {
           ...options.files,
           'routes/index.tsx': indexRoute(target, 'v1'),
@@ -132,27 +130,22 @@ describe('vite: an edited root route created with', () => {
     'createRootRouteWithContext()({',
     'createRootRouteWithContext<{ user: string }>()({',
     'createRootRouteWithContext <{ user: string }>()({',
-  ])(
-    '`%s` shows in place',
-    { timeout },
-    async (call: string, { expect, onTestFinished }: TestContext) => {
-      const root = (version: string) =>
-        `import { createRootRoute, createRootRouteWithContext } from '@tanstack/react-router'
+  ])('`%s` shows in place', { timeout }, async (call: string, { expect }) => {
+    const root = (version: string) =>
+      `import { createRootRoute, createRootRouteWithContext } from '@tanstack/react-router'
 export const Route = ${call}
   loader: () => 'data ${version}',
   component: () => <p>root ${version} {Route.useLoaderData()}</p>,
 })
 `
-      const app = await openRouteHmrPage({
-        onTestFinished,
-        files: { 'routes/__root.tsx': root('v1') },
-        ready: 'root v1 data v1',
-      })
-      expect(
-        await app.edit({ 'routes/__root.tsx': root('v2') }, 'root v2 data v2'),
-      ).toEqual(inPlace)
-    },
-  )
+    const app = await openRouteHmrPage({
+      files: { 'routes/__root.tsx': root('v1') },
+      ready: 'root v1 data v1',
+    })
+    expect(
+      await app.edit({ 'routes/__root.tsx': root('v2') }, 'root v2 data v2'),
+    ).toEqual(inPlace)
+  })
 })
 
 // A route the route file creates inside a function of the same file (a
@@ -207,11 +200,10 @@ export const Route = (() =>
     )(
       '$shape shows (autoCodeSplitting: $autoCodeSplitting)',
       { timeout },
-      async ({ shape, autoCodeSplitting }, { onTestFinished }: TestContext) => {
+      async ({ shape, autoCodeSplitting }) => {
         const route = factoryRoutes[shape as keyof typeof factoryRoutes]
         const app = await openRouteHmrPage({
           bundler,
-          onTestFinished,
           pluginOptions: { autoCodeSplitting },
           files: { 'routes/index.tsx': route('v1') },
           ready: `${shape} v1 data v1`,

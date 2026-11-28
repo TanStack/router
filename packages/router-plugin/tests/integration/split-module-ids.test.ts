@@ -12,7 +12,7 @@
  * Runs in the integration smoke set (Windows: `C:\` paths).
  */
 import { afterAll, describe, expect, test } from 'vitest'
-import { build, rootRoute } from '../build-harness'
+import { build, buildShared, rootRoute } from '../build-harness'
 import { tanstackRouter } from '../../src/vite'
 import type { BuildResult } from '@tanstack/compiler-test-utils/build-harness'
 import type { Plugin } from 'vite'
@@ -149,7 +149,7 @@ async function webpackIds(
   prefix?: string,
 ): Promise<{ app: BuildResult; ids: Ids }> {
   let json: StatsJson | undefined
-  const app = await build({
+  const app = await buildShared({
     bundler,
     env: 'client',
     minify: false,
@@ -242,7 +242,7 @@ async function viteIds(
       }
     },
   }
-  const app = await build({
+  const app = await buildShared({
     bundler: 'vite',
     env: 'client',
     minify: false,

@@ -6,9 +6,9 @@
  * React Refresh registering the component where it is declared, and the
  * augmentation is kept across edits.
  */
-import { expect, test } from 'vitest'
+import { expect } from 'vitest'
 import { inPlace } from '../route-hmr-edit'
-import { openRouteHmrPage } from '../route-hmr-page'
+import { test } from '../test'
 
 const timeout = 60_000
 
@@ -25,9 +25,8 @@ Page.displayName = 'Named'
 
 test(
   'an exported component with a displayName: each text edit applies in place and keeps the name',
-  async ({ onTestFinished }) => {
+  async ({ openRouteHmrPage }) => {
     const app = await openRouteHmrPage({
-      onTestFinished,
       files: { 'routes/index.tsx': route('text-v1') },
       ready: 'text-v1 Named',
     })

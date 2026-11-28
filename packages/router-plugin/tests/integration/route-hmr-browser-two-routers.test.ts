@@ -5,8 +5,8 @@
  * loaded, whichever router the entry creates last, and leaves the widget's
  * route as it is. (Lazy routes: route-hmr-browser-two-routers-lazy.test.ts.)
  */
-import { describe, it } from 'vitest'
-import { openRouteHmrPage } from '../route-hmr-page'
+import { describe } from 'vitest'
+import { it } from '../test'
 import {
   hosts,
   mount,
@@ -15,7 +15,6 @@ import {
   twoRouters,
 } from './route-hmr-two-routers-cases'
 import type { TargetFramework } from '../route-app'
-import type { TestContext } from 'vitest'
 
 const timeout = 90_000
 
@@ -41,14 +40,10 @@ describe.each(hosts)(
     ] as const)(
       "an eager route file's loader edits show in the app's route ($order, autoCodeSplitting: $autoCodeSplitting)",
       { timeout },
-      async (
-        { order, autoCodeSplitting },
-        { expect, onTestFinished }: TestContext,
-      ) => {
+      async ({ order, autoCodeSplitting }, { expect, openRouteHmrPage }) => {
         const app = await openRouteHmrPage({
           bundler,
           target,
-          onTestFinished,
           pluginOptions: { autoCodeSplitting },
           files: {
             'main.tsx': twoRouters(target, 'eager', order),
@@ -112,11 +107,10 @@ describe.each(hosts)(
     it(
       "leaves the app's route edits in place",
       { timeout },
-      async ({ expect, onTestFinished }: TestContext) => {
+      async ({ expect, openRouteHmrPage }) => {
         const app = await openRouteHmrPage({
           bundler,
           target,
-          onTestFinished,
           files: {
             'main.tsx': brokenWidget(target),
             'routes/index.tsx': shownRoute(target, 'v1'),

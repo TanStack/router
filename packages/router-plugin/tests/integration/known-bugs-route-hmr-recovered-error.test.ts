@@ -8,7 +8,6 @@
  */
 import { test } from 'vitest'
 import { openRouteHmrPage } from '../route-hmr-page'
-import type { TestContext } from 'vitest'
 
 const throwing = `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({ component: Page })
@@ -28,9 +27,8 @@ export const Route = createFileRoute('/other')({
 test(
   'react, vite: a route edit after a render error the page navigated away from updates in place',
   { timeout: 60_000 },
-  async ({ expect, onTestFinished }: TestContext) => {
+  async ({ expect }) => {
     const app = await openRouteHmrPage({
-      onTestFinished,
       files: { 'routes/index.tsx': throwing, 'routes/other.tsx': other('v1') },
       ready: 'Something went wrong!',
     })
