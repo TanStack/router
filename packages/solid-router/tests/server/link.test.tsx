@@ -166,3 +166,29 @@ test.each([
     }
   },
 )
+
+test('SSR custom links leave unread caller props unread', async () => {
+  let reads = 0
+  const title = () => {
+    reads++
+    return 'custom link'
+  }
+  const CustomLink = createLink(
+    (props: JSX.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+      <a href={props.href} />
+    ),
+  )
+  const router = createRouter({
+    routeTree: createRootRoute(),
+    history: createMemoryHistory(),
+    isServer: true,
+  })
+  await router.load()
+  const html = renderToString(() => (
+    <RouterContextProvider router={router}>
+      {() => <CustomLink to="/" title={title()} />}
+    </RouterContextProvider>
+  ))
+  expect(html).toContain('href="/"')
+  expect(reads).toBe(0)
+})

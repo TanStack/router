@@ -74,6 +74,9 @@ export function useLinkProps<
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): ComponentProps<'a'> {
   const router = useRouter()
+  if (isServer ?? router.isServer) {
+    return serverLinkProps(router, options, LINK_OPTION_KEY_SET)
+  }
   const shouldHydrateHash = !isServer && !!router.options.ssr
   const hasHydrated = useHydrated()
 
@@ -128,90 +131,16 @@ export function useLinkProps<
   // active]. An unchanged result keeps its identity, so a navigation that
   // leaves the Link as it was notifies nothing downstream.
   const linkState = Solid.createMemo(
-    (prev?: LinkState): LinkState => {
-      const location = currentLocation()
-      const to = local.to
-      const disabled = local.disabled
-      const scheme = typeof to === 'string' && getUrlScheme(to)
-      let href: string | undefined
-      let external: string | null | undefined
-      let active = false
-      if (scheme) {
-        if (router.protocolAllowlist.has(scheme)) {
-          external = to
-        } else {
-          if (process.env.NODE_ENV !== 'production') {
-            console.warn(`Blocked Link with dangerous protocol: ${to}`)
-          }
-          external = null
-        }
-      } else {
-        const options_ = dest()
-        // Clicks and preloads go where the href points.
-        options_._fromLocation = location
-        // untrack because router-core will also access stores, which are signals in solid
-        const next = Solid.untrack(() => router.buildLocation(options_))
-        if (!disabled) {
-          // Use publicHref - it contains the correct href for display
-          // When a rewrite changes the origin, publicHref is the full URL
-          // Otherwise it's the origin-stripped path
-          // This avoids constructing URL objects in the hot path
-          const shown = next.maskedLocation ?? next
-          const publicHref = shown.publicHref
-          const shownHref = shown.external
-            ? publicHref
-            : router.history.createHref(publicHref) || '/'
-          if (
-            (shown.external || shownHref !== publicHref) &&
-            isDangerousProtocol(shownHref, router.protocolAllowlist)
-          ) {
-            if (process.env.NODE_ENV !== 'production') {
-              console.warn(`Blocked Link with dangerous protocol: ${shownHref}`)
-            }
-          } else {
-            href = shownHref
-          }
-        }
-        external =
-          !href && !disabled
-            ? null
-            : href && getUrlScheme(href)
-              ? href
-              : undefined
-        if (external === undefined) {
-          const activeOptions = local.activeOptions
-          const currentPath = removeTrailingSlash(
-            location.pathname,
-            router.basepath,
-          )
-          const nextPath = removeTrailingSlash(next.pathname, router.basepath)
-          // Both modes compare normalized paths; fuzzy matches need a segment boundary.
-          active =
-            (activeOptions?.exact
-              ? currentPath === nextPath
-              : currentPath.startsWith(nextPath) &&
-                (currentPath.length === nextPath.length ||
-                  currentPath[nextPath.length] === '/')) &&
-            (!(activeOptions?.includeSearch ?? true) ||
-              deepEqual(
-                location.search,
-                next.search,
-                !activeOptions?.exact,
-                activeOptions?.explicitUndefined,
-              )) &&
-            (!activeOptions?.includeHash ||
-              (shouldHydrateHash && !hasHydrated() ? '' : location.hash) ===
-                next.hash)
-        }
-      }
-      href = external === null ? undefined : external || href
-      return prev &&
-        prev[0 /* href */] === href &&
-        prev[1 /* external */] === external &&
-        prev[2 /* active */] === active
-        ? prev
-        : [href, external, active]
-    },
+    (prev?: LinkState): LinkState =>
+      computeLinkState(
+        router,
+        local,
+        currentLocation(),
+        dest,
+        shouldHydrateHash,
+        hasHydrated,
+        prev,
+      ),
     { lazy: true },
   )
 
@@ -384,51 +313,7 @@ export function useLinkProps<
       disabled,
       target: local.target,
     }
-    if (disabled) {
-      Object.assign(base, STATIC_DISABLED_PROPS)
-    }
-
-    if (
-      local.activeProps === undefined &&
-      local.inactiveProps === undefined &&
-      local.class === undefined &&
-      local.style === undefined
-    ) {
-      return (
-        active ? Object.assign(base, STATIC_DEFAULT_ACTIVE_ATTRIBUTES) : base
-      ) as ResolvedLinkStateProps
-    }
-
-    const stateProps: ResolvedLinkStateProps =
-      functionalUpdate(
-        ((active ? local.activeProps : local.inactiveProps) ??
-          (active ? STATIC_ACTIVE_PROPS : EMPTY_OBJECT)) as any,
-        {},
-      ) ?? EMPTY_OBJECT
-    const baseStyle = local.style
-    const stateStyle = stateProps.style
-    // Snapshot reactive style properties so in-place updates remain observable.
-    const style =
-      baseStyle || stateStyle ? { ...baseStyle, ...stateStyle } : undefined
-    const baseClass = local.class
-    const stateClass = stateProps.class
-    const className = baseClass
-      ? stateClass
-        ? `${baseClass} ${stateClass}`
-        : baseClass
-      : stateClass
-
-    return {
-      ...base,
-      ...stateProps,
-      // State props can override element props, but not routing options.
-      href,
-      disabled,
-      target: base.target,
-      ...(style && hasKeys(style) && { style }),
-      ...(className && { class: className }),
-      ...(active && STATIC_ACTIVE_ATTRIBUTES),
-    } as ResolvedLinkStateProps
+    return withStateProps(base, local, active) as ResolvedLinkStateProps
   }
 
   // `merge` memoizes this itself; the ref reads its latest result.
@@ -444,6 +329,212 @@ export function useLinkProps<
   return Solid.merge(propsSafeToSpread, resolvedProps, {
     ref: linkRef,
   }) as any
+}
+
+// Owners the client's useLinkProps creates; link-hydration-ids.test.tsx checks it.
+const CLIENT_LINK_PROPS_OWNERS = 8
+
+// The server reads each value once, so it builds plain props without owners.
+function serverLinkProps(
+  router: AnyRouter,
+  props: Record<string, any>,
+  skip: ReadonlySet<string>,
+): Record<string, any> {
+  const location = router.stores.location.get()
+  const [href, external, active] = computeLinkState(
+    router,
+    props,
+    location,
+    () => {
+      const dest: any = {}
+      for (const key of NAVIGATION_KEYS) {
+        dest[key] = props[key]
+      }
+      return dest
+    },
+    !isServer && !!router.options.ssr,
+    NOT_HYDRATED,
+  )
+  const resolved = withStateProps(
+    {
+      // Custom link components still receive the caller's handlers.
+      onClick: props.onClick,
+      onBlur: props.onBlur,
+      onFocus: props.onFocus,
+      onMouseEnter: props.onMouseEnter,
+      onMouseOver: props.onMouseOver,
+      onMouseLeave: props.onMouseLeave,
+      onMouseOut: props.onMouseOut,
+      onTouchStart: props.onTouchStart,
+      href,
+      disabled: !!props.disabled || external === null,
+      target: props.target,
+    },
+    props,
+    active,
+  )
+  // Keys in merge's order: element props, then the resolved ones that win.
+  const linkProps: Record<string, any> = {}
+  const proxied = Solid.$PROXY in props
+  for (const key of Object.keys(props)) {
+    if (skip.has(key) || key in resolved) {
+      continue
+    }
+    // A getter stays lazy, as it was behind merge, for whoever renders it.
+    if (proxied || Object.getOwnPropertyDescriptor(props, key)!.get) {
+      Object.defineProperty(linkProps, key, {
+        get: () => props[key],
+        enumerable: true,
+        configurable: true,
+      })
+    } else {
+      linkProps[key] = props[key]
+    }
+  }
+  if (Solid.getOwner()?.id != null) {
+    for (let i = 0; i < CLIENT_LINK_PROPS_OWNERS; i++) {
+      Solid.createUniqueId()
+    }
+  }
+  return Object.assign(linkProps, resolved)
+}
+
+function withStateProps(
+  base: Record<string, any>,
+  local: Record<string, any>,
+  active: boolean,
+): Record<string, any> {
+  if (base.disabled) {
+    Object.assign(base, STATIC_DISABLED_PROPS)
+  }
+
+  if (
+    local.activeProps === undefined &&
+    local.inactiveProps === undefined &&
+    local.class === undefined &&
+    local.style === undefined
+  ) {
+    return active ? Object.assign(base, STATIC_DEFAULT_ACTIVE_ATTRIBUTES) : base
+  }
+
+  const stateProps: Record<string, any> =
+    functionalUpdate(
+      (active ? local.activeProps : local.inactiveProps) ??
+        (active ? STATIC_ACTIVE_PROPS : EMPTY_OBJECT),
+      {},
+    ) ?? EMPTY_OBJECT
+  const baseStyle = local.style
+  const stateStyle = stateProps.style
+  // Snapshot reactive style properties so in-place updates remain observable.
+  const style =
+    baseStyle || stateStyle ? { ...baseStyle, ...stateStyle } : undefined
+  const baseClass = local.class
+  const stateClass = stateProps.class
+  const className = baseClass
+    ? stateClass
+      ? `${baseClass} ${stateClass}`
+      : baseClass
+    : stateClass
+
+  return {
+    ...base,
+    ...stateProps,
+    // State props can override element props, but not routing options.
+    href: base.href,
+    disabled: base.disabled,
+    target: base.target,
+    ...(style && hasKeys(style) && { style }),
+    ...(className && { class: className }),
+    ...(active && STATIC_ACTIVE_ATTRIBUTES),
+  }
+}
+
+function computeLinkState(
+  router: AnyRouter,
+  local: Record<string, any>,
+  location: ParsedLocation,
+  dest: () => any,
+  shouldHydrateHash: boolean,
+  hasHydrated: () => boolean,
+  prev?: LinkState,
+): LinkState {
+  const to = local.to
+  const disabled = local.disabled
+  const scheme = typeof to === 'string' && getUrlScheme(to)
+  let href: string | undefined
+  let external: string | null | undefined
+  let active = false
+  if (scheme) {
+    if (router.protocolAllowlist.has(scheme)) {
+      external = to
+    } else {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(`Blocked Link with dangerous protocol: ${to}`)
+      }
+      external = null
+    }
+  } else {
+    const options_ = dest()
+    // Clicks and preloads go where the href points.
+    options_._fromLocation = location
+    // untrack because router-core will also access stores, which are signals in solid
+    const next = Solid.untrack(() => router.buildLocation(options_))
+    if (!disabled) {
+      // Use publicHref - it contains the correct href for display
+      // When a rewrite changes the origin, publicHref is the full URL
+      // Otherwise it's the origin-stripped path
+      // This avoids constructing URL objects in the hot path
+      const shown = next.maskedLocation ?? next
+      const publicHref = shown.publicHref
+      const shownHref = shown.external
+        ? publicHref
+        : router.history.createHref(publicHref) || '/'
+      if (
+        (shown.external || shownHref !== publicHref) &&
+        isDangerousProtocol(shownHref, router.protocolAllowlist)
+      ) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(`Blocked Link with dangerous protocol: ${shownHref}`)
+        }
+      } else {
+        href = shownHref
+      }
+    }
+    external =
+      !href && !disabled ? null : href && getUrlScheme(href) ? href : undefined
+    if (external === undefined) {
+      const activeOptions = local.activeOptions
+      const currentPath = removeTrailingSlash(
+        location.pathname,
+        router.basepath,
+      )
+      const nextPath = removeTrailingSlash(next.pathname, router.basepath)
+      // Both modes compare normalized paths; fuzzy matches need a segment boundary.
+      active =
+        (activeOptions?.exact
+          ? currentPath === nextPath
+          : currentPath.startsWith(nextPath) &&
+            (currentPath.length === nextPath.length ||
+              currentPath[nextPath.length] === '/')) &&
+        (!(activeOptions?.includeSearch ?? true) ||
+          deepEqual(
+            location.search,
+            next.search,
+            !activeOptions?.exact,
+            activeOptions?.explicitUndefined,
+          )) &&
+        (!activeOptions?.includeHash ||
+          (shouldHydrateHash && !hasHydrated() ? '' : location.hash) ===
+            next.hash)
+    }
+  }
+  href = external === null ? undefined : external || href
+  return prev &&
+    prev[0 /* href */] === href &&
+    prev[1 /* external */] === external &&
+    prev[2 /* active */] === active
+    ? prev
+    : [href, external, active]
 }
 
 // [element href, external href (null when blocked), active]
@@ -496,6 +587,14 @@ const LINK_OPTION_KEYS = [
   'onMouseOut',
   'onTouchStart',
 ]
+const NOT_HYDRATED = () => false
+const LINK_OPTION_KEY_SET: ReadonlySet<string> = new Set(LINK_OPTION_KEYS)
+const LINK_COMPONENT_SKIP_KEYS: ReadonlySet<string> = new Set([
+  ...LINK_OPTION_KEYS,
+  '_asChild',
+  'children',
+  'type',
+])
 
 const STATIC_ACTIVE_PROPS = { class: 'active' }
 const EMPTY_OBJECT = {}
@@ -652,13 +751,22 @@ export function createLink<const TComp>(
 }
 
 export const Link: LinkComponent<'a'> = (props) => {
-  const [local, rest] = splitProps(props as typeof props & { _asChild: any }, [
-    '_asChild',
-    'children',
-  ])
-  const [_, linkProps] = splitProps(useLinkProps(rest as unknown as any), [
-    'type',
-  ])
+  let local: { _asChild?: any; children?: LinkProps['children'] }
+  let linkProps: Record<string, any>
+  if (isServer ?? useRouter().isServer) {
+    local = props as typeof local
+    linkProps = serverLinkProps(useRouter(), props, LINK_COMPONENT_SKIP_KEYS)
+    if ('type' in linkProps) {
+      delete linkProps.type
+    }
+  } else {
+    let rest
+    ;[local, rest] = splitProps(props as typeof props & { _asChild: any }, [
+      '_asChild',
+      'children',
+    ])
+    linkProps = splitProps(useLinkProps(rest as unknown as any), ['type'])[1]
+  }
 
   // Resolve children once using Solid.children to avoid
   // re-accessing the children getter (which in Solid 2.0 would
