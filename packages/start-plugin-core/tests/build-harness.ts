@@ -600,13 +600,16 @@ export async function buildStart(
   options: StartBuildOptions,
 ): Promise<StartBuild> {
   const app = await createBuildApp(options)
-  onTestFinished(app.close)
-  return buildAt(
+  const built = buildAt(
     app,
     options.bundler ?? 'vite',
     app.target,
     options.builds ?? 1,
   )
+  // (after a timeout, the build still running: removing its app while it
+  // writes would leave what it writes next)
+  onTestFinished(() => built.then(app.close, app.close))
+  return built
 }
 
 /**
