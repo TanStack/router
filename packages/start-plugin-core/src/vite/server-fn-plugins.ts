@@ -23,7 +23,7 @@ import {
 import { createVirtualModule, resolvedVirtualId } from './createVirtualModule'
 import { outputOnDisk } from './compiler-state'
 import type { PackageClasses } from '../compiler/package-class'
-import type { Environment, Plugin, ResolvedConfig } from 'vite'
+import type { Environment, Plugin } from 'vite'
 import type { ClientBuildRecord, ViteCompilerState } from './compiler-state'
 import type { ServerFnEntry } from '../server-fns/registry'
 
@@ -40,12 +40,15 @@ function toDevSpecifier(id: string, root: string): string {
   return normalized.startsWith('/') ? `/@fs${normalized}` : `/@fs/${normalized}`
 }
 
+type EnvironmentConfig = Environment['config']
+
 /**
  * Whether Vite's dev server may serve `file` (`server.fs`, the check of a
  * `/@fs/` request, on the path and on the path without its query, as Vite
- * does). A server environment's own requests skip that check.
+ * does; `config`: the client environment's, which answers those requests).
+ * A server environment's own requests skip that check.
  */
-function servable(config: ResolvedConfig, file: string): boolean {
+function servable(config: EnvironmentConfig, file: string): boolean {
   return (
     isFileLoadingAllowed(config, file) &&
     isFileLoadingAllowed(config, file.replace(/[?#].*$/s, ''))
@@ -61,7 +64,7 @@ function servable(config: ResolvedConfig, file: string): boolean {
  * answer.
  */
 async function compilableOnRequest(
-  config: ResolvedConfig,
+  config: EnvironmentConfig,
   named: string,
   srcDirectory: string,
 ): Promise<string | null> {
@@ -128,9 +131,9 @@ export function devLookupPlugin(state: ViteCompilerState): Plugin {
       const key = !entry && decodeDevFunctionId(fnId)
       if (key && this.environment.mode === 'dev') {
         // a fresh server: compile an app source's defining module through
-        // the normal transform
+        // the normal transform (a dev session has its server)
         const file = await compilableOnRequest(
-          this.environment.getTopLevelConfig(),
+          s.server!.environments[VITE_ENVIRONMENT_NAMES.client].config,
           normalizePath(path.resolve(startOpts.root, key.rootRel)),
           startOpts.srcDirectory,
         )
