@@ -18,9 +18,10 @@
  *   test ends, the last opened first, then `appRoot` goes.
  *
  * Every opener registers its close before it waits for its start, and
- * checks the test's signal before it starts and after it (the harness checks
- * it between the steps of a start, `signal` of `./build-harness`): a test
- * that timed out opens nothing more, and its starts end at their next step.
+ * checks the test's signal before it starts (once its module is loaded:
+ * a cold import can outlast the test) and after it (the harness checks it
+ * between the steps of a start, `signal` of `./build-harness`): a test that
+ * timed out opens nothing more, and its starts end at their next step.
  * The work a step runs (a plugin hook, a build) is not cancelled: it ends
  * on its own, and the test's close waits for it.
  */
@@ -135,8 +136,8 @@ export const test = base
       async (
         options: OpenOptions<BundleOptions> & { plugins?: BundlerPlugins },
       ) => {
-        signal.throwIfAborted()
         const { bundleApp } = await import('./build-harness')
+        signal.throwIfAborted()
         const building = bundleApp({
           dir: path.dirname(task.file.filepath),
           ...options,
@@ -159,8 +160,8 @@ export const test = base
     'devServer',
     ({ appRoot, task, signal, onTestFinished }) =>
       async (options: OpenOptions<DevServerOptions>) => {
-        signal.throwIfAborted()
         const { createDevServer } = await import('./dev-server')
+        signal.throwIfAborted()
         const starting = createDevServer({
           dir: path.dirname(task.file.filepath),
           ...options,
@@ -182,8 +183,8 @@ export const test = base
     'rsbuildServer',
     ({ appRoot, task, signal, onTestFinished }) =>
       async (options: OpenOptions<RsbuildDevServerOptions>) => {
-        signal.throwIfAborted()
         const { createRsbuildDevServer } = await import('./rsbuild-dev-server')
+        signal.throwIfAborted()
         const starting = createRsbuildDevServer({
           dir: path.dirname(task.file.filepath),
           ...options,
@@ -205,8 +206,8 @@ export const test = base
     'pluginHost',
     ({ appRoot, task, signal, onTestFinished }) =>
       async (options: OpenOptions<PluginHostOptions>) => {
-        signal.throwIfAborted()
         const { createPluginHost } = await import('./plugin-host')
+        signal.throwIfAborted()
         const starting = createPluginHost({
           dir: path.dirname(task.file.filepath),
           ...options,
@@ -228,9 +229,9 @@ export const test = base
     'rsbuildPluginHost',
     ({ appRoot, task, signal, onTestFinished }) =>
       async (options: OpenOptions<RsbuildPluginHostOptions>) => {
-        signal.throwIfAborted()
         const { createRsbuildPluginHost } =
           await import('./rsbuild-plugin-host')
+        signal.throwIfAborted()
         const starting = createRsbuildPluginHost({
           dir: path.dirname(task.file.filepath),
           ...options,

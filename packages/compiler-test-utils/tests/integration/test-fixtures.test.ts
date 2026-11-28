@@ -20,7 +20,8 @@ const packageDirectory = path.dirname(path.dirname(import.meta.dirname))
  * test after each subject test records whether the subject's `appRoot`
  * survived it.
  */
-const probe = `import { appendFileSync, existsSync, readdirSync } from 'node:fs'
+const probe = `import { appendFileSync, existsSync, readdirSync, writeFileSync } from 'node:fs'
+import path from 'node:path'
 import { describe, expect } from 'vitest'
 import { test } from ${JSON.stringify(path.join(packageDirectory, 'src/test.ts'))}
 
@@ -105,7 +106,13 @@ test('a timeout during a build', { timeout: 500 }, async ({ appRoot, build, sign
     bundler: 'vite',
     entry: 'src/entry.ts',
     files: app,
-    plugins: { vite: () => ({ name: 'held', buildStart: () => afterAbort(signal) }) },
+    plugins: {
+      vite: () => ({
+        name: 'held',
+        // (whether the test's directory is still there for the build to write into)
+        buildStart: () => afterAbort(signal).then(() => log({ buildResumed: existsSync(appRoot) })),
+      }),
+    },
   })
   log({ resumed: 'build' })
 })
@@ -125,16 +132,30 @@ test('after a second open after a timeout', async () => {
   survived('a second open after a timeout')
 })
 
+/** A file outside every app, which the failing Vite plugin below watches. */
+const outside = path.join(path.dirname(process.env.PROBE_LOG), 'outside.txt')
+writeFileSync(outside, 'v1')
 test('a failed start', async ({ appRoot, devServer, rsbuildServer }) => {
   previous = appRoot
-  await expect(
-    devServer({ dir, files: app, plugins: [{ name: 'fails', configureServer() { throw new Error('MARK_VITE') } }] }),
-  ).rejects.toThrow('MARK_VITE')
+  const watchesThenFails = {
+    name: 'fails',
+    configureServer(server) {
+      server.watcher.add(outside)
+      server.watcher.on('change', (file) => file === outside && log({ watched: 'failed vite' }))
+      throw new Error('MARK_VITE')
+    },
+  }
+  await expect(devServer({ dir, files: app, plugins: [watchesThenFails] })).rejects.toThrow('MARK_VITE')
   await expect(
     rsbuildServer({ dir, files: app, plugins: [{ name: 'fails', setup() { throw new Error('MARK_RSBUILD') } }] }),
   ).rejects.toThrow('MARK_RSBUILD')
 })
-test('after a failed start', () => survived('a failed start'))
+test('after a failed start', async () => {
+  survived('a failed start')
+  // (an edit the failed server's watcher would report)
+  writeFileSync(outside, 'v2')
+  await new Promise((resolve) => setTimeout(resolve, 1000))
+})
 
 test('a test that fails with a page open', async ({ page }) => {
   await page.goto('about:blank')
@@ -142,6 +163,21 @@ test('a test that fails with a page open', async ({ page }) => {
 })
 test('after a test that fails with a page open', ({ browser }) => {
   log({ contexts: browser.contexts().length })
+})
+
+let lateOpen
+test('a timeout during the first import of an opener', { timeout: 300 }, async ({ appRoot, rsbuildPluginHost }) => {
+  previous = appRoot
+  lateOpen = rsbuildPluginHost({ dir, files: app }).then(
+    () => log({ lateImport: 'opened' }),
+    (error) => log({ lateImport: error.name, code: error.code }),
+  )
+  await lateOpen
+})
+test('after a timeout during the first import of an opener', async () => {
+  survived('a timeout during the first import of an opener')
+  writeFileSync(process.env.PROBE_RELEASE, '')
+  await lateOpen
 })
 
 // (what U8's probe showed of Vitest's global onTestFinished: in concurrent
@@ -205,6 +241,8 @@ const run = test.extend(
     await mkdir(runDir)
     const { stdout } = await runNodeProgram(
       `import { startVitest } from 'vitest/node'
+import { existsSync } from 'node:fs'
+import { setTimeout as sleep } from 'node:timers/promises'
 const vitest = await startVitest('test', [], {
   root: ${JSON.stringify(root)},
   config: false,
@@ -213,6 +251,17 @@ const vitest = await startVitest('test', [], {
   // (one worker that keeps its modules across files, as router-generator's)
   maxWorkers: 1,
   isolate: false,
+}, {
+  plugins: [{
+    // The first import of the Rsbuild plugin host's module takes until the
+    // probe releases it (a cold import that outlasts the test's timeout)
+    name: 'hold-first-import',
+    async transform(_code, id) {
+      if (id.endsWith('/src/rsbuild-plugin-host.ts')) {
+        while (!existsSync(process.env.PROBE_RELEASE)) await sleep(20)
+      }
+    },
+  }],
 })
 const tests = {}
 const record = (task) => {
@@ -236,6 +285,7 @@ process.exit(0)
           ...process.env,
           TANSTACK_COMPILER_TESTS_RUN_DIR: runDir,
           PROBE_LOG: logFile,
+          PROBE_RELEASE: path.join(root, 'release'),
         },
       },
     )
@@ -330,6 +380,8 @@ run(
       errors: [expect.stringMatching(/^TestTimeoutError: /)],
     })
     expect(probe.events).not.toContainEqual({ resumed: 'build' })
+    // (the build still had the test's directory when it went on)
+    expect(probe.events).toContainEqual({ buildResumed: true })
     expect(probe.events).toContainEqual({
       survived: 'a timeout during a build',
       appRoot: false,
@@ -358,6 +410,40 @@ run(
     expect(probe.tests['a failed start']).toEqual({ state: 'pass', errors: [] })
     expect(probe.events).toContainEqual({
       survived: 'a failed start',
+      appRoot: false,
+    })
+  },
+)
+
+// Bug (upstream, Vite 8.3.8): a server whose plugin throws from
+// `configureServer` keeps its file watcher: `createServer` creates the
+// watcher before it awaits the hook, and rejects without closing it. The
+// harness gets no server to close (bare Vite reproduces it).
+// Source: vite/dist/node/chunks/node.js `_createServer` (the watcher is set up
+// before `configureServer` hooks run).
+// Impact: each such failed start leaves a watcher, and its edits' events, in
+// the process for good.
+run.fails(
+  'a Vite start whose plugin throws from configureServer leaves no file watcher',
+  ({ probe }) => {
+    // (the edit after the test reached no watcher)
+    expect(probe.events).not.toContainEqual({ watched: 'failed vite' })
+  },
+)
+
+run(
+  'an opener whose import outlasts the test opens nothing once it is imported',
+  ({ probe }) => {
+    expect(
+      probe.tests['a timeout during the first import of an opener'],
+    ).toEqual({
+      state: 'fail',
+      errors: [expect.stringMatching(/^TestTimeoutError: /)],
+    })
+    // (refused at the test's signal, not by the removed directory)
+    expect(probe.events).toContainEqual({ lateImport: 'TestTimeoutError' })
+    expect(probe.events).toContainEqual({
+      survived: 'a timeout during the first import of an opener',
       appRoot: false,
     })
   },
@@ -408,6 +494,6 @@ run(
 
 run('nothing is left in the run’s directory', ({ probe }) => {
   // (the probe's tests ran: this is not an empty run)
-  expect(Object.keys(probe.tests)).toHaveLength(20)
+  expect(Object.keys(probe.tests)).toHaveLength(22)
   expect(probe.left).toEqual([])
 })

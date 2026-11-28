@@ -316,10 +316,11 @@ const defaultPackageJson = { name: 'app', private: true, type: 'module' }
 const ssrExternal = /^(react|react-dom)(\/.*)?$/
 
 /**
- * The apps of this process not disposed of yet. A host kept for the whole
- * test process (shared by the test files of a worker) is never disposed of
- * by a test: its directory is removed when the process exits, or with a run
- * directory by the run's teardown (its one owner: `./app-directory`).
+ * The apps of this process in the shared directories not disposed of yet. A
+ * host kept for the whole test process (shared by the test files of a
+ * worker) is never disposed of by a test: its directory is removed when the
+ * process exits, or with a run directory by the run's teardown (its one
+ * owner: `./app-directory`). An app in a `parent` goes with that directory.
  */
 const liveApps = new Set<string>()
 if (process.env[runDirectoryVariable] === undefined) {
@@ -343,7 +344,9 @@ export async function createApp(options: AppOptions): Promise<App> {
     options.prefix ?? '.build-harness-',
     options.parent,
   )
-  liveApps.add(root)
+  if (options.parent === undefined) {
+    liveApps.add(root)
+  }
   const dispose = async () => {
     liveApps.delete(root)
     await rm(root, { recursive: true, force: true })

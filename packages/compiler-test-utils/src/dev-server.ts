@@ -1196,6 +1196,7 @@ async function startServer(
       for (const [relative, code] of await appFiles()) {
         known.set(relative, code)
       }
+      options.signal?.throwIfAborted()
     }
   } catch (error) {
     await close()

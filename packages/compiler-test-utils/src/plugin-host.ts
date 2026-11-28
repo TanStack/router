@@ -316,6 +316,7 @@ export async function createPluginHost(
   let disconnectIdle: (() => void) | undefined
   if (server && client) {
     try {
+      options.signal?.throwIfAborted()
       disconnectIdle = await connectIdleHmrClient(server)
     } catch (error) {
       await server.close()

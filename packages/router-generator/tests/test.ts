@@ -22,8 +22,14 @@ export const test = base
     ({ fileRoot }, { onCleanup }): RouteTreeHost => {
       const hosts = new Map<string, Promise<Host>>()
       onCleanup(async () => {
+        // (a host that failed to start failed its test, and has nothing to close)
         await Promise.all(
-          [...hosts.values()].map(async (host) => (await host).server.close()),
+          [...hosts.values()].map((host) =>
+            host.then(
+              ({ server }) => server.close(),
+              () => {},
+            ),
+          ),
         )
       })
       return (framework) => {
@@ -41,7 +47,12 @@ export const test = base
       const servers = new Map<string, Promise<ViteDevServer>>()
       onCleanup(async () => {
         await Promise.all(
-          [...servers.values()].map(async (server) => (await server).close()),
+          [...servers.values()].map((server) =>
+            server.then(
+              (started) => started.close(),
+              () => {},
+            ),
+          ),
         )
       })
       return (framework) => {
