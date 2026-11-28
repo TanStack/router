@@ -21,7 +21,7 @@ const packageDirectory = path.dirname(path.dirname(import.meta.dirname))
  * survived it.
  */
 const probe = `import { appendFileSync, existsSync, readdirSync } from 'node:fs'
-import { expect } from 'vitest'
+import { describe, expect } from 'vitest'
 import { test } from ${JSON.stringify(path.join(packageDirectory, 'src/test.ts'))}
 
 const dir = ${JSON.stringify(packageDirectory)}
@@ -135,6 +135,29 @@ test('a failed start', async ({ appRoot, devServer, rsbuildServer }) => {
   ).rejects.toThrow('MARK_RSBUILD')
 })
 test('after a failed start', () => survived('a failed start'))
+
+test('a test that fails with a page open', async ({ page }) => {
+  await page.goto('about:blank')
+  throw new Error('MARK_FAILED')
+})
+test('after a test that fails with a page open', ({ browser }) => {
+  log({ contexts: browser.contexts().length })
+})
+
+// (what U8's probe showed of Vitest's global onTestFinished: in concurrent
+// tests it attaches to the test that started last)
+describe.concurrent('concurrent', () => {
+  test('a slow start in a long test', async ({ appRoot, devServer }) => {
+    const slow = { configureServer: () => new Promise((resolve) => setTimeout(resolve, 300)) }
+    await devServer({ dir, files: app, plugins: [vitePlugin('slow', appRoot, slow)] })
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    log({ ends: 'slow' })
+  })
+  test('a quick test', async () => {
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    log({ ends: 'quick' })
+  })
+})
 `
 
 /**
@@ -192,14 +215,17 @@ const vitest = await startVitest('test', [], {
   isolate: false,
 })
 const tests = {}
-for (const file of vitest.state.getFiles()) {
-  for (const task of file.tasks) {
-    tests[task.name] = {
-      state: task.result?.state,
-      errors: (task.result?.errors ?? []).map((error) => error.name + ': ' + error.message),
-    }
+const record = (task) => {
+  if (task.type === 'suite') {
+    task.tasks.forEach(record)
+    return
+  }
+  tests[task.name] = {
+    state: task.result?.state,
+    errors: (task.result?.errors ?? []).map((error) => error.name + ': ' + error.message),
   }
 }
+vitest.state.getFiles().forEach((file) => file.tasks.forEach(record))
 await vitest.close()
 process.stdout.write('\\n' + JSON.stringify(tests))
 process.exit(0)
@@ -354,8 +380,34 @@ run(
   },
 )
 
+run(
+  'a test that fails with a page open leaves no browser context',
+  ({ probe }) => {
+    expect(probe.tests['a test that fails with a page open']).toEqual({
+      state: 'fail',
+      errors: [expect.stringContaining('MARK_FAILED')],
+    })
+    expect(probe.events).toContainEqual({ contexts: 0 })
+  },
+)
+
+run(
+  'in concurrent tests, what a test opened closes when that test ends',
+  ({ probe }) => {
+    expect(
+      probe.events.flatMap((event) =>
+        'ends' in event
+          ? [`${event.ends} ends`]
+          : event.closed === 'slow'
+            ? ['slow closed']
+            : [],
+      ),
+    ).toEqual(['quick ends', 'slow ends', 'slow closed'])
+  },
+)
+
 run('nothing is left in the run’s directory', ({ probe }) => {
   // (the probe's tests ran: this is not an empty run)
-  expect(Object.keys(probe.tests)).toHaveLength(16)
+  expect(Object.keys(probe.tests)).toHaveLength(20)
   expect(probe.left).toEqual([])
 })
