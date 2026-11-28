@@ -4,8 +4,7 @@
  * report gives them, in an Rsbuild production build with RSC
  * (rsc-use-client-fix-cases.ts).
  */
-import { describe, expect, test } from 'vitest'
-import { openRscPage, startRscRsbuildPreviewServer } from './rsc-app'
+import { describe, expect } from 'vitest'
 import {
   clientOnlyApp,
   deniedApp,
@@ -16,13 +15,14 @@ import {
   reportOf,
 } from './rsc-use-client-fix-cases'
 import { recorder } from './rsc-use-client-app'
+import { test } from './test'
 
 const timeout = 120_000
 
 describe('Rsbuild build with RSC', () => {
   test(
     "the fixes a report prints for a *.client.* 'use client' component, applied as written, build and work in the browser",
-    async () => {
+    async ({ openRscPage, startRscRsbuildPreviewServer }) => {
       const build = (files: Record<string, string>) =>
         startRscRsbuildPreviewServer({ start: recorder('error').start, files })
       const report = reportOf(

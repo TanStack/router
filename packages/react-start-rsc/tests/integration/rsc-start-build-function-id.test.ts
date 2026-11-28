@@ -7,18 +7,14 @@
  * - a custom id the browser calls reaches its handler, also a deprecated
  *   one (`:`, `'`), which builds with a warning naming the file.
  */
-import { describe, expect, test } from 'vitest'
+import { describe, expect } from 'vitest'
 import {
   expectDiagnostic,
   expectNoDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import {
-  openRscPage,
-  startRscPreviewServer,
-  startRscRsbuildPreviewServer,
-  waitForHydration,
-} from './rsc-app'
+import { waitForHydration } from './rsc-app'
+import { test } from './test'
 
 const files = {
   'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
@@ -131,12 +127,11 @@ const labelStart = {
   },
 }
 
-describe.each([
-  ['vite', startRscPreviewServer],
-  ['rsbuild', startRscRsbuildPreviewServer],
-] as const)('%s', (_bundler, startServer) => {
-  test('an id that is not one URL path segment fails the build, naming the file', async () => {
-    const failure = await startServer({ files, start }).then(
+describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
+  test('an id that is not one URL path segment fails the build, naming the file', async ({
+    serveRscBuild,
+  }) => {
+    const failure = await serveRscBuild({ bundler, files, start }).then(
       () => undefined,
       (error: unknown) => error,
     )
@@ -148,19 +143,30 @@ describe.each([
   // the client's emitted code holds answers the browser; `unused`, whose
   // custom id is also a label the page shows, is refused (c9701e2fc1: the
   // client build was scanned for the id's text, which admitted it)
-  test('a custom id that is also a label of the page admits nothing: the unused server fn is refused', async () => {
-    const server = await startServer({ files: labelFiles, start: labelStart })
+  test('a custom id that is also a label of the page admits nothing: the unused server fn is refused', async ({
+    openRscPage,
+    serveRscBuild,
+  }) => {
+    const server = await serveRscBuild({
+      bundler,
+      files: labelFiles,
+      start: labelStart,
+    })
     const page = await openRscPage(server, '/label')
     await waitForHydration(page)
-    expect(await page.text('[data-testid=label]')).toBe('display')
-    await page.page.locator('[data-testid=used]').click()
-    await page.waitForText('used-id answered MARK_USED', {
-      selector: '[data-testid=outcome]',
-    })
-    await page.page.locator('[data-testid=display]').click()
-    await page.waitForText('display refused', {
-      selector: '[data-testid=outcome]',
-    })
+    expect(await page.locator('[data-testid=label]').textContent()).toBe(
+      'display',
+    )
+    await page.locator('[data-testid=used]').click()
+    await page
+      .locator('[data-testid=outcome]', {
+        hasText: 'used-id answered MARK_USED',
+      })
+      .waitFor()
+    await page.locator('[data-testid=display]').click()
+    await page
+      .locator('[data-testid=outcome]', { hasText: 'display refused' })
+      .waitFor()
     // (no report names the module: the server build provides what the
     // client calls)
     expectNoDiagnostic(server.messages, {
@@ -169,14 +175,25 @@ describe.each([
     })
   }, 60_000)
 
-  test('custom ids the browser calls reach their handlers; a deprecated one warns', async () => {
-    const server = await startServer({ files: calledFiles, start: calledStart })
+  test('custom ids the browser calls reach their handlers; a deprecated one warns', async ({
+    openRscPage,
+    serveRscBuild,
+  }) => {
+    const server = await serveRscBuild({
+      bundler,
+      files: calledFiles,
+      start: calledStart,
+    })
     const page = await openRscPage(server, '/calls')
     await waitForHydration(page)
-    await page.page.locator('[data-testid=greet]').click()
-    await page.waitForText('MARK_GREET', { selector: '[data-testid=called]' })
-    await page.page.locator('[data-testid=quoted]').click()
-    await page.waitForText('MARK_QUOTED', { selector: '[data-testid=called]' })
+    await page.locator('[data-testid=greet]').click()
+    await page
+      .locator('[data-testid=called]', { hasText: 'MARK_GREET' })
+      .waitFor()
+    await page.locator('[data-testid=quoted]').click()
+    await page
+      .locator('[data-testid=called]', { hasText: 'MARK_QUOTED' })
+      .waitFor()
     // (the build succeeded: a report naming the file is a warning)
     expect(
       findDiagnostics(server.messages, {

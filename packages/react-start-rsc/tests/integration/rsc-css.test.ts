@@ -7,7 +7,7 @@
  * rsc-css-hmr.test.ts.
  */
 import path from 'node:path'
-import { describe, expect, test } from 'vitest'
+import { describe, expect } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   BADGE_BACKGROUND,
@@ -18,13 +18,9 @@ import {
   streamImport,
   stylesheetsOf,
 } from './rsc-css-app'
-import {
-  computedStyle,
-  openRscPage,
-  settledValue,
-  waitForHydration,
-} from './rsc-app'
-import type { Row } from './rsc-css-app'
+import { computedStyle, settledValue, waitForHydration } from './rsc-app'
+import { test } from './test'
+import type { Row, RscCssApp } from './rsc-css-app'
 
 const rows = {
   // Both calls in one helper module deliver CSS.
@@ -268,63 +264,66 @@ const rows = {
 } satisfies Record<string, Row>
 
 describe('RSC CSS through the real transport (Vite dev)', () => {
-  const app = rscCssApp({
-    rows: Object.values(rows),
-    files: {
-      ...Object.fromEntries(
-        ['a', 'b'].map((name) => [
-          `src/routes/pair-${name}.tsx`,
-          `import { createFileRoute } from '@tanstack/react-router'
+  let app: RscCssApp
+  test.beforeAll(async ({ browser, fileRoot }) => {
+    app = await rscCssApp(fileRoot, browser, {
+      rows: Object.values(rows),
+      files: {
+        ...Object.fromEntries(
+          ['a', 'b'].map((name) => [
+            `src/routes/pair-${name}.tsx`,
+            `import { createFileRoute } from '@tanstack/react-router'
 import { render } from '../rows/helper-${name}'
 export const Route = createFileRoute('/pair-${name}')({
   loader: () => render(),
   component: () => <main>{Route.useLoaderData()}</main>,
 })
 `,
-        ]),
-      ),
-      'src/pair.module.css': `.a { background: #fef3c7; } .b { background: #e0f2fe; }\n`,
-      'src/pair.tsx': `import { renderServerComponent } from '@tanstack/react-start/rsc'
+          ]),
+        ),
+        'src/pair.module.css': `.a { background: #fef3c7; } .b { background: #e0f2fe; }\n`,
+        'src/pair.tsx': `import { renderServerComponent } from '@tanstack/react-start/rsc'
 import styles from './pair.module.css'
 function A() { return <div data-testid="card" className={styles.a}>MARK_A</div> }
 function B() { return <div data-testid="badge" className={styles.b}>MARK_B</div> }
 export function renderA() { return renderServerComponent(<A />) }
 export function renderB() { return renderServerComponent(<B />) }
 `,
-      'src/plain.tsx': `import { renderServerComponent } from '@tanstack/react-start/rsc'
+        'src/plain.tsx': `import { renderServerComponent } from '@tanstack/react-start/rsc'
 import './global.css'
 export function renderPlain() {
   return renderServerComponent(<p className="plain" data-testid="plain">MARK_PLAIN</p>)
 }
 `,
-      'src/render.ts': `export { renderServerComponent as renderThing } from '@tanstack/react-start/rsc'\n`,
-      'src/wrap.tsx': `import { renderServerComponent } from '@tanstack/react-start/rsc'
+        'src/render.ts': `export { renderServerComponent as renderThing } from '@tanstack/react-start/rsc'\n`,
+        'src/wrap.tsx': `import { renderServerComponent } from '@tanstack/react-start/rsc'
 export const wrap = (node: React.ReactNode) => renderServerComponent(node)
 `,
-      'node_modules/other-rsc/package.json': JSON.stringify({
-        name: 'other-rsc',
-        type: 'module',
-        exports: './index.js',
-      }),
-      'node_modules/other-rsc/index.js': `export const renderServerComponent = (...args) => ({ arity: args.length, label: args[0].props['data-label'], children: args[0].props.children, scalars: args.slice(1, 3), effects: [...args[0].props['data-effects']] })\n`,
-    },
-    // The app's own package (a look-alike row), pre-bundled like the rest.
-    config: { optimizeDeps: { include: ['other-rsc'] } },
+        'node_modules/other-rsc/package.json': JSON.stringify({
+          name: 'other-rsc',
+          type: 'module',
+          exports: './index.js',
+        }),
+        'node_modules/other-rsc/index.js': `export const renderServerComponent = (...args) => ({ arity: args.length, label: args[0].props['data-label'], children: args[0].props.children, scalars: args.slice(1, 3), effects: [...args[0].props['data-effects']] })\n`,
+      },
+      // The app's own package (a look-alike row), pre-bundled like the rest.
+      config: { optimizeDeps: { include: ['other-rsc'] } },
+    })
+    return () => app.close()
   })
 
   test('two render helpers in one module each carry their component CSS', async ({
-    onTestFinished,
+    openRscPage,
+    pageErrors,
   }) => {
-    // Separate browser contexts/results: renderA's stylesheet must not mask
+    // Separate documents and results: renderA's stylesheet must not mask
     // renderB missing its own delivery, even though both helpers share CSS.
     for (const [name, marker, selector, expected] of [
       ['a', 'MARK_A', '[data-testid=card]', CARD_BACKGROUND],
       ['b', 'MARK_B', '[data-testid=badge]', BADGE_BACKGROUND],
     ] as const) {
-      const page = await openRscPage(app.server(), `/pair-${name}`, {
-        registerCleanup: onTestFinished,
-      })
-      await page.waitForText(marker, { selector: 'main' })
+      const page = await openRscPage(app.server, `/pair-${name}`)
+      await page.locator('main', { hasText: marker }).waitFor()
       await waitForHydration(page)
       expect(
         await settledValue(
@@ -333,7 +332,7 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
           (value) => value === expected,
         ),
       ).toBe(expected)
-      expect(page.errors).toEqual([])
+      expect(pageErrors).toEqual([])
     }
   })
 
@@ -421,9 +420,8 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
     'conditional stream $row.key selects its runtime input and evaluates it once',
     async ({ row, text }) => {
       expect(await app.text(row)).toBe(text)
-      const selected = await app
-        .page()
-        .page.locator(
+      const selected = await app.page
+        .locator(
           `section[data-row="${row.key}"] [data-testid=card], section[data-row="${row.key}"] [data-testid=badge]`,
         )
         .evaluateAll((elements) =>
@@ -437,9 +435,8 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
             : [],
       )
       expect(
-        await app
-          .page()
-          .page.locator(`section[data-row="${row.key}"] [data-evaluations]`)
+        await app.page
+          .locator(`section[data-row="${row.key}"] [data-evaluations]`)
           .getAttribute('data-evaluations'),
       ).toBe('1')
     },
@@ -492,7 +489,7 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
   ])(
     'dev: renderToReadableStream with $name warns, naming the file',
     ({ row }) => {
-      const server = app.server()
+      const server = app.server
       expectDiagnostic(server.diagnostics, {
         severity: 'warning',
         times: 1,

@@ -28,9 +28,10 @@
  * (/var/tmp/rsc-p1-recheck4/report.md §1 `late-guess.py`, §2
  * `newprobes.py cycle`).
  */
-import { describe, expect, test } from 'vitest'
-import { startRscRsbuildDevServer } from './rsc-app'
+import { describe, expect } from 'vitest'
 import { recorder, summary } from './rsc-environments-app'
+import { test } from './test'
+import type { RscFixtures } from './test'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
 const timeout = 90_000
@@ -126,6 +127,7 @@ const unsettled = (server: RsbuildDevServer, since: number) =>
     .some(({ text }) => /did not settle|could not settle/.test(text))
 
 async function start(
+  startRscRsbuildDevServer: RscFixtures['startRscRsbuildDevServer'],
   files: Record<string, string>,
   exclude: Array<string>,
   rules: Array<Record<string, unknown>>,
@@ -144,7 +146,7 @@ async function start(
 }
 
 describe('Rsbuild dev with RSC, a denied file whose exempt importer only a real denied file brings', () => {
-  test.each([
+  test.for([
     { layout: 'a layer each', rules: layers, mixed: false },
     { layout: 'no layer', rules: [], mixed: false },
     {
@@ -154,8 +156,10 @@ describe('Rsbuild dev with RSC, a denied file whose exempt importer only a real 
     },
   ])(
     '$layout: served as a fresh server serves it after the route leaves the importer and comes back',
-    async ({ rules, mixed }) => {
+    { timeout },
+    async ({ rules, mixed }, { startRscRsbuildDevServer }) => {
       const { server, violations } = await start(
+        startRscRsbuildDevServer,
         { ...nested, 'src/routes/index.tsx': route('feature', 'LIVE', mixed) },
         ['**/feature.ts', '**/bridge.ts'],
         rules,
@@ -227,18 +231,19 @@ describe('Rsbuild dev with RSC, a denied file whose exempt importer only a real 
         })
       }
     },
-    timeout,
   )
 })
 
 describe('Rsbuild dev with RSC, one edit that flips two denied files', () => {
-  test.each([
+  test.for([
     { layout: 'a layer each', rules: layers },
     { layout: 'no layer', rules: [] },
   ])(
     '$layout: both are served as their mock, no conflict, no internal error',
-    async ({ rules }) => {
+    { timeout },
+    async ({ rules }, { startRscRsbuildDevServer }) => {
       const { server, violations } = await start(
+        startRscRsbuildDevServer,
         {
           ...nested,
           'src/upperPattern.ts': pattern('upper'),
@@ -288,12 +293,11 @@ describe('Rsbuild dev with RSC, one edit that flips two denied files', () => {
         'ssr server file upper.client.ts -> src/upper.client.ts',
       ])
     },
-    timeout,
   )
 })
 
 describe('Rsbuild dev with RSC, a denied file in a cycle with its barrel', () => {
-  test.each([
+  test.for([
     {
       grant: 'an exempt barrel',
       exclude: ['**/kit/index.ts'],
@@ -309,8 +313,10 @@ describe('Rsbuild dev with RSC, a denied file in a cycle with its barrel', () =>
     },
   ])(
     '$grant: once only a pattern import reaches it, it is served as its mock and reported once, no conflict',
-    async ({ exclude, allow }) => {
+    { timeout },
+    async ({ exclude, allow }, { startRscRsbuildDevServer }) => {
       const { server, violations } = await start(
+        startRscRsbuildDevServer,
         {
           'src/kit/index.ts': `export { value } from './a.client'
 export const helper = () => 'H'
@@ -348,15 +354,15 @@ export const read = () => value()
       }
       expect(violations).toHaveLength(1)
     },
-    timeout,
   )
 })
 
 describe('Rsbuild dev with RSC, a denied file a round of the settlement brings, which only a pattern import reaches', () => {
   test(
     'it is served as its mock, no internal error, no conflict',
-    async () => {
+    async ({ startRscRsbuildDevServer }) => {
       const { server, violations } = await start(
+        startRscRsbuildDevServer,
         {
           'src/feature.ts': nested['src/feature.ts'],
           'src/upper.client.ts': `import { read } from './ghost'

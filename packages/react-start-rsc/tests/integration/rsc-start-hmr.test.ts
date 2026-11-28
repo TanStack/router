@@ -7,11 +7,12 @@
  * call answers, whether the page reloaded. A handler edit that also changes
  * what the loader shows on Rsbuild is in rsc-start-rsbuild.test.ts.
  */
-import { describe, expect, test } from 'vitest'
+import { describe, expect } from 'vitest'
 import { describeHmr } from '@tanstack/compiler-test-utils/dev-server'
-import { openRscPage, startRscDevServer, waitForHydration } from './rsc-app'
+import { waitForHydration } from './rsc-app'
 import { callFromPage } from './rsc-start-page'
 import { route } from './rsc-start-hmr-page'
+import { test } from './test'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 
 /** The HMR messages telling the client to reload the page. */
@@ -29,17 +30,26 @@ describe('Vite dev: edits with a separate RSC provider (SPEC J3.6)', () => {
   // hot-updates the page, keeping its state, and the server fn still
   // answers; no full reload either way (SPEC J3.6, G10).
   // Source: #7618.
-  test('a handler edit reaches the next call and a component edit hot-updates, without a full reload', async () => {
+  test('a handler edit reaches the next call and a component edit hot-updates, without a full reload', async ({
+    openRscPage,
+    pageErrors,
+    startRscDevServer,
+    page,
+  }) => {
     const server = await startRscDevServer({
       browser: true,
       files: { 'src/routes/index.tsx': route('MARK_HANDLER_V1', 'Page v1') },
     })
+    let loads = 0
+    page.on('load', () => loads++)
     const browser = await openRscPage(server, '/')
-    await browser.waitForText('Page v1 MARK_HANDLER_V1')
+    await browser
+      .locator('body', { hasText: 'Page v1 MARK_HANDLER_V1' })
+      .waitFor()
     await waitForHydration(browser)
-    await browser.page.locator('[data-testid=count]').click()
-    await browser.page.locator('[data-testid=count]').click()
-    await browser.waitForText('count 2')
+    await browser.locator('[data-testid=count]').click()
+    await browser.locator('[data-testid=count]').click()
+    await browser.locator('body', { hasText: 'count 2' }).waitFor()
     await callFromPage(browser, 'called Page v1 MARK_HANDLER_V1')
 
     // The handler
@@ -57,12 +67,16 @@ describe('Vite dev: edits with a separate RSC provider (SPEC J3.6)', () => {
     await server.write({
       'src/routes/index.tsx': route('MARK_HANDLER_V2', 'Page v2'),
     })
-    await browser.waitForText('Page v2', { selector: '[data-testid=text]' })
-    expect(await browser.text('[data-testid=count]')).toBe('count 2')
+    await browser
+      .locator('[data-testid=text]', { hasText: 'Page v2' })
+      .waitFor()
+    expect(await browser.locator('[data-testid=count]').textContent()).toBe(
+      'count 2',
+    )
     await callFromPage(browser, 'called Page v2 MARK_HANDLER_V2')
 
-    expect(browser.loads()).toBe(1)
+    expect(loads).toBe(1)
     expect(fullReloads(server)).toEqual([])
-    expect(browser.errors).toEqual([])
+    expect(pageErrors).toEqual([])
   })
 })

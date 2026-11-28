@@ -5,13 +5,9 @@
  * without a full reload. The Rsbuild counterpart is in
  * rsc-css-rsbuild.test.ts.
  */
-import { expect, test } from 'vitest'
-import {
-  openRscPage,
-  startRscDevServer,
-  waitForHydration,
-  waitForStyle,
-} from './rsc-app'
+import { expect } from 'vitest'
+import { waitForHydration, waitForStyle } from './rsc-app'
+import { test } from './test'
 
 const card = (
   css: boolean,
@@ -32,7 +28,12 @@ export const Route = createFileRoute('/')({
 `
 const styles = (background: string) => `.card { background: ${background}; }\n`
 
-test("editing a server component's CSS updates the page without a full reload", async () => {
+test("editing a server component's CSS updates the page without a full reload", async ({
+  openRscPage,
+  page,
+  pageErrors,
+  startRscDevServer,
+}) => {
   const server = await startRscDevServer({
     browser: true,
     files: {
@@ -41,8 +42,10 @@ test("editing a server component's CSS updates the page without a full reload", 
       'src/routes/index.tsx': route,
     },
   })
-  const page = await openRscPage(server, '/')
-  await page.waitForText('MARK_CARD')
+  let loads = 0
+  page.on('load', () => loads++)
+  await openRscPage(server, '/')
+  await page.locator('body', { hasText: 'MARK_CARD' }).waitFor()
   const background = (expected: string) =>
     waitForStyle(page, '[data-testid=card]', 'background-color', expected)
   await background('rgb(254, 243, 199)')
@@ -68,6 +71,6 @@ test("editing a server component's CSS updates the page without a full reload", 
   await server.write({ 'src/card.tsx': card(false) })
   await background('rgba(0, 0, 0, 0)')
 
-  expect(page.loads()).toBe(1)
-  expect(page.errors).toEqual([])
+  expect(loads).toBe(1)
+  expect(pageErrors).toEqual([])
 })

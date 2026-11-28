@@ -9,8 +9,8 @@
  * Two files that each define the function fail the build, naming the
  * browser's file (main built, and the call answered 500).
  */
-import { describe, expect, test } from 'vitest'
-import { failedRscBuild, openRscPage, startRscPreviewServer } from './rsc-app'
+import { describe, expect } from 'vitest'
+import { test } from './test'
 
 const timeout = 60_000
 
@@ -79,7 +79,7 @@ export const pkgPing = createServerFn({ method: 'GET' }).handler(() => '${mark}'
 describe('Vite production build with RSC: a package whose export conditions give the browser and the server different files', () => {
   test(
     'both conditions re-export one defining module: the build succeeds and the browser call answers',
-    async () => {
+    async ({ openRscPage, startRscPreviewServer }) => {
       const server = await startRscPreviewServer({
         files: conditionalPackage({
           'fn.js': serverFn('MARK_ONE'),
@@ -88,22 +88,24 @@ describe('Vite production build with RSC: a package whose export conditions give
         }),
       })
       const page = await openRscPage(server, '/cond')
-      await page.waitForText('MARK_ONE', { selector: '[data-testid=loader]' })
-      const response = page.page.waitForResponse((r) =>
+      await page
+        .locator('[data-testid=loader]', { hasText: 'MARK_ONE' })
+        .waitFor()
+      const response = page.waitForResponse((r) =>
         r.url().includes('/_serverFn/'),
       )
-      await page.page.locator('[data-testid=cond]').click()
+      await page.locator('[data-testid=cond]').click()
       expect((await response).status()).toBe(200)
-      await page.waitForText('cond MARK_ONE', {
-        selector: '[data-testid=cond]',
-      })
+      await page
+        .locator('[data-testid=cond]', { hasText: 'cond MARK_ONE' })
+        .waitFor()
     },
     timeout,
   )
 
   test(
     "each condition's file defines the function: the build fails, naming the browser's file",
-    async () => {
+    async ({ failedRscBuild }) => {
       const { error } = await failedRscBuild({
         files: conditionalPackage({
           'browser.js': serverFn('MARK_BROWSER'),

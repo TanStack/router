@@ -16,9 +16,9 @@
  * file's `log: 'once'` key for the pattern import's.
  */
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
-import { describe, expect, test } from 'vitest'
-import { startRscRsbuildDevServer } from './rsc-app'
+import { describe, expect } from 'vitest'
 import { recorder, summary } from './rsc-environments-app'
+import { test } from './test'
 
 const timeout = 60_000
 
@@ -61,7 +61,7 @@ async function label(url: string): Promise<string | undefined> {
 describe('Rsbuild dev with RSC, a denied file in a layer of the user', () => {
   test(
     "an exempt file's import of it is real, after an edit of it too; a checked file's is mocked and reported",
-    async () => {
+    async ({ startRscRsbuildDevServer }) => {
       const { violations, start } = recorder('mock')
       const server = await startRscRsbuildDevServer({
         browser: true,

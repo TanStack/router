@@ -11,14 +11,11 @@
  */
 import path from 'node:path'
 import { readFile, readdir } from 'node:fs/promises'
-import { describe, expect, test } from 'vitest'
-import {
-  openRscPage,
-  startRscPreviewServer,
-  startRscRsbuildPreviewServer,
-  waitForHydration,
-} from './rsc-app'
+import { describe, expect } from 'vitest'
+import { openRscPage, waitForHydration } from './rsc-app'
+import { test } from './test'
 import type { RscPreviewServer } from './rsc-app'
+import type { Page } from '@tanstack/compiler-test-utils/test'
 
 const files = {
   'node_modules/dev-only-label/package.json': JSON.stringify({
@@ -48,12 +45,12 @@ export const Route = createFileRoute('/label')({
 }
 
 /** The page shows the label, and no built file holds the unused handler. */
-async function expectLabelOnly(server: RscPreviewServer) {
-  const page = await openRscPage(server, '/label')
+async function expectLabelOnly(page: Page, server: RscPreviewServer) {
+  await openRscPage(page, server, '/label')
   await waitForHydration(page)
-  await page.waitForText('MARK_ORDINARY_LABEL', {
-    selector: '[data-testid=label]',
-  })
+  await page
+    .locator('[data-testid=label]', { hasText: 'MARK_ORDINARY_LABEL' })
+    .waitFor()
   const dist = path.join(server.root, 'dist')
   const entries = await readdir(dist, { recursive: true, withFileTypes: true })
   const holding: Array<string> = []
@@ -70,17 +67,23 @@ async function expectLabelOnly(server: RscPreviewServer) {
 }
 
 describe('a server fn nothing calls, beside a label the browser renders', () => {
-  test('Vite: the build serves the label and holds no copy of the handler', async () => {
-    await expectLabelOnly(await startRscPreviewServer({ files }))
+  test('Vite: the build serves the label and holds no copy of the handler', async ({
+    startRscPreviewServer,
+    page,
+  }) => {
+    await expectLabelOnly(page, await startRscPreviewServer({ files }))
   })
 
   // c640edebf2: the server compilation's last settlement run listed every
   // function a client compile stubbed and built its provider, whose
   // package export the production conditions do not match (main and
   // db260cf3a3 built it)
-  test('Rsbuild: the build serves the label and holds no copy of the handler', async () => {
+  test('Rsbuild: the build serves the label and holds no copy of the handler', async ({
+    startRscRsbuildPreviewServer,
+    page,
+  }) => {
     const server = await startRscRsbuildPreviewServer({ files })
     expect(server.errors).toEqual([])
-    await expectLabelOnly(server)
+    await expectLabelOnly(page, server)
   })
 })

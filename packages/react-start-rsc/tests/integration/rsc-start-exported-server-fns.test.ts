@@ -8,13 +8,9 @@
  * Learned from the server-functions e2e app (its `method-not-allowed/$method`
  * route), whose builds failed the compiler's self-checks.
  */
-import { afterAll, beforeAll, describe, test } from 'vitest'
-import {
-  openRscPage,
-  startRscPreviewServer,
-  startRscRsbuildPreviewServer,
-  waitForHydration,
-} from './rsc-app'
+import { describe } from 'vitest'
+import { serveRscBuild, waitForHydration } from './rsc-app'
+import { test } from './test'
 import type { RscPreviewServer } from './rsc-app'
 
 const files = {
@@ -49,36 +45,30 @@ function Page() {
 `,
 }
 
-describe.each([
-  ['vite', startRscPreviewServer],
-  ['rsbuild', startRscRsbuildPreviewServer],
-] as const)('a %s build', (_, start) => {
+describe.each(['vite', 'rsbuild'] as const)('a %s build', (bundler) => {
   let server: RscPreviewServer
-  const cleanups: Array<() => Promise<void>> = []
 
-  beforeAll(async () => {
-    server = await start({
-      registerCleanup: (cleanup) => {
-        cleanups.push(cleanup)
-      },
+  test.beforeAll(async ({ fileRoot }) => {
+    server = await serveRscBuild(fileRoot, {
+      bundler,
       files,
     })
-  })
-  afterAll(async () => {
-    for (const cleanup of cleanups.reverse()) {
-      await cleanup()
-    }
+    return () => server.close()
   })
 
-  test('a route exporting two server fns its component reads renders and both answer the browser', async () => {
+  test('a route exporting two server fns its component reads renders and both answer the browser', async ({
+    openRscPage,
+  }) => {
     const opened = await openRscPage(server, '/two-exported')
-    await opened.waitForText('MARK_PAGE', {
-      selector: '[data-testid=label]',
-    })
+    await opened
+      .locator('[data-testid=label]', { hasText: 'MARK_PAGE' })
+      .waitFor()
     await waitForHydration(opened)
-    await opened.page.locator('[data-testid=call]').click()
-    await opened.waitForText('called MARK_FIRST MARK_SECOND', {
-      selector: '[data-testid=called]',
-    })
+    await opened.locator('[data-testid=call]').click()
+    await opened
+      .locator('[data-testid=called]', {
+        hasText: 'called MARK_FIRST MARK_SECOND',
+      })
+      .waitFor()
   })
 })

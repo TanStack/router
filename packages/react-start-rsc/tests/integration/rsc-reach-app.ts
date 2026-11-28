@@ -9,9 +9,10 @@
  * - the six client-only positions of `client-only-reach-app.ts`
  *   (`<ClientOnly>` child, `createClientOnlyFn` body, `<Hydrate>` fallback;
  *   route file and component file).
- * `clickEveryButton` clicks each button of a running app (a dev server or a
- * served build) and records the server fn's response and the value the
- * page shows; `editedReach` is a real edit of every server fn. Used by the
+ * `everyOutcome` clicks each button of a running app (a dev server or a
+ * served build), each in a page of its own, and records the server fn's
+ * response and the value the page shows; `editedReach` is a real edit of
+ * every server fn. Used by the
  * rsc-reach-* files (Vite dev, Rsbuild dev, Rsbuild warm builds); the
  * fresh production builds of the same graphs are rsc-start-build.test.ts
  * and rsc-start-rsbuild-build.test.ts (a Vite production build fails on
@@ -19,10 +20,12 @@
  */
 import { expect } from 'vitest'
 import {
+  clickOutcome,
   clientOnlyPositions,
   clientOnlyReachFiles,
 } from './client-only-reach-app'
-import { answeredText, openRscPage, waitForHydration } from './rsc-app'
+import type { ClickOutcome } from './client-only-reach-app'
+import type { Browser } from './rsc-app'
 
 /** The public #7943 counter (`G4RDS/tanstack-router-7943-repro`'s shape). */
 export const publicCounterFiles = {
@@ -96,98 +99,70 @@ export function editedReach(): Record<string, string> {
   return edits
 }
 
-/** A click's outcome: the server fn's HTTP status and the button's text. */
-export interface ClickOutcome {
-  status: number
-  text: string
-}
+/** The test ids of the buttons: the client-only positions and the counter. */
+const buttons = [...clientOnlyPositions.map(({ name }) => name), 'counter']
 
 /**
- * Clicks every button of the app at `server` (the `<Hydrate>` fallbacks
- * after a client-side navigation, the only way they show), one after
- * another, and records each outcome by test id; a click that got no
- * answer, or no server fn response, is recorded as the error it is (a
- * broken run, not the outcome under test: `expectAnswer` rethrows it).
+ * What every button's click gives (`clickOutcome`), each clicked in a page
+ * of its own (a new context of `browser`), by test id; a click that failed
+ * is recorded as its error.
  */
-export async function clickEveryButton(server: {
-  url: string | undefined
-}): Promise<Record<string, ClickOutcome | Error>> {
+export async function everyOutcome(
+  browser: Browser,
+  server: { url?: string },
+): Promise<Record<string, ClickOutcome | Error>> {
   const outcomes: Record<string, ClickOutcome | Error> = {}
-  const click = async (
-    page: Awaited<ReturnType<typeof openRscPage>>,
-    name: string,
-  ) => {
-    const selector = `[data-testid=${name}]`
+  for (const name of buttons) {
+    const context = await browser.newContext()
     try {
-      const response = page.page.waitForResponse(
-        (r) => r.url().includes('/_serverFn/'),
-        { timeout: 15_000 },
-      )
-      await page.page.locator(selector).click()
-      const status = (await response).status()
-      const text = await answeredText(
-        page,
-        selector,
-        (value) => value.includes('MARK_') || value.includes('error'),
-      )
-      outcomes[name] = { status, text }
-    } catch (error) {
-      outcomes[name] = error instanceof Error ? error : new Error(String(error))
+      outcomes[name] = await clickOutcome(
+        await context.newPage(),
+        server,
+        name,
+      ).catch((error: Error) => error)
+    } finally {
+      await context.close()
     }
-  }
-  // (closed here: the clicks run in a hook, outside any test)
-  const open = async (pathname: string) => {
-    const page = await openRscPage(server, pathname, {
-      registerCleanup: () => {},
-    })
-    await waitForHydration(page)
-    return page
-  }
-  const positions = await open('/client-only')
-  try {
-    for (const { name } of clientOnlyPositions) {
-      if (!name.startsWith('hydrate')) {
-        await click(positions, name)
-      }
-    }
-    await positions.page.locator('[data-testid=to-hydrate]').click()
-    for (const { name } of clientOnlyPositions) {
-      if (name.startsWith('hydrate')) {
-        await click(positions, name)
-      }
-    }
-  } finally {
-    await positions.close()
-  }
-  const counter = await open('/client-ref')
-  try {
-    await click(counter, 'counter')
-  } finally {
-    await counter.close()
   }
   return outcomes
 }
 
 /**
- * `name`'s click answered 200 and the button shows its server fn's value
- * (`edited`: after `editedReach`).
+ * `name`'s expected outcome: its click answered 200 and the button shows
+ * its server fn's value (`edited`: after `editedReach`).
  */
-export function expectAnswer(
-  outcomes: Record<string, ClickOutcome | Error>,
-  name: string,
-  edited = false,
+export const answer = (name: string, edited = false): ClickOutcome => ({
+  status: 200,
+  text: `${name} ${marker(name, edited)}`,
+})
+
+/**
+ * The reach gate across a dev server's history, one named checkpoint each:
+ * a fresh start, a restart (`restart()`, giving the restarted server) and
+ * a real edit of every server fn; every button answers at each
+ * (`everyOutcome`).
+ */
+export async function expectReachHistory(
+  browser: Browser,
+  server: { url?: string; edit: (files: Record<string, string>) => unknown },
+  restart: () => Promise<typeof server>,
 ) {
-  const outcome = outcomes[name]
-  if (!outcome) {
-    throw new Error(`${name}: not clicked`)
-  }
-  if (outcome instanceof Error) {
-    throw outcome
-  }
-  expect(outcome).toEqual({
-    status: 200,
-    text: `${name} ${marker(name, edited)}`,
-  })
+  const answers = (edited?: boolean) =>
+    Object.fromEntries(buttons.map((name) => [name, answer(name, edited)]))
+  expect
+    .soft(await everyOutcome(browser, server), 'a fresh start')
+    .toEqual(answers())
+  server = await restart()
+  expect
+    .soft(await everyOutcome(browser, server), 'after a restart')
+    .toEqual(answers())
+  await server.edit(editedReach())
+  expect
+    .soft(
+      await everyOutcome(browser, server),
+      'after an edit of every server fn',
+    )
+    .toEqual(answers(true))
 }
 
 /** The client-only positions (rows of `test.for`: `$position`, `$where`). */

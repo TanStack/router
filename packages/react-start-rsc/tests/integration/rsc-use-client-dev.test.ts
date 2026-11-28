@@ -7,19 +7,26 @@
  * client), not there. Rsbuild's RSC layer is the `rsc` environment, as
  * Vite's.
  */
-import { describe, expect, test } from 'vitest'
-import {
-  rscStreams,
-  startRscDevServer,
-  startRscRsbuildDevServer,
-} from './rsc-app'
+import { describe, expect } from 'vitest'
+import { rscStreams } from './rsc-app'
 import { clientHelperApp, recorder, summary } from './rsc-use-client-app'
+import { test } from './test'
+import type { RscFixtures } from './test'
 
 const timeout = 60_000
 
+/** The dev servers' openers (fixtures). */
+type DevOpeners = Pick<
+  RscFixtures,
+  'startRscDevServer' | 'startRscRsbuildDevServer'
+>
+
 /** The page `/c` of a dev server of `clientHelperApp`, per host. */
 const devHosts = {
-  'Vite dev': async (start: Record<string, unknown>) => {
+  'Vite dev': async (
+    { startRscDevServer }: DevOpeners,
+    start: Record<string, unknown>,
+  ) => {
     const server = await startRscDevServer({
       listen: true,
       start,
@@ -27,7 +34,10 @@ const devHosts = {
     })
     return server.fetch('/c')
   },
-  'Rsbuild dev': async (start: Record<string, unknown>) => {
+  'Rsbuild dev': async (
+    { startRscRsbuildDevServer }: DevOpeners,
+    start: Record<string, unknown>,
+  ) => {
     const server = await startRscRsbuildDevServer({
       browser: true,
       start,
@@ -41,11 +51,15 @@ const devHosts = {
 describe.each(Object.keys(devHosts) as Array<keyof typeof devHosts>)(
   '%s with RSC',
   (host) => {
-    test.each(['mock', 'error'] as const)(
+    test.for(['mock', 'error'] as const)(
       "a 'use client' component's .client helper is judged in SSR only (%s)",
-      async (behavior) => {
+      { timeout },
+      async (behavior, { startRscDevServer, startRscRsbuildDevServer }) => {
         const { violations, start } = recorder(behavior)
-        const page = await devHosts[host](start)
+        const page = await devHosts[host](
+          { startRscDevServer, startRscRsbuildDevServer },
+          start,
+        )
         expect(page.status).toBe(200)
         if (behavior === 'mock') {
           // SSR rendered the server component, `Comp` with the helper's mock
@@ -66,7 +80,6 @@ describe.each(Object.keys(devHosts) as Array<keyof typeof devHosts>)(
           'ssr file Comp.tsx -> ./store.client',
         ])
       },
-      timeout,
     )
   },
 )

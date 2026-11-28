@@ -1,4 +1,4 @@
-import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
+import type { Page } from '@tanstack/compiler-test-utils/test'
 
 /**
  * A dependency whose entry differs by export condition: the environment a
@@ -26,7 +26,7 @@ export const where = () => 'MARK_REACT_SERVER:' + globalThis.__envMarkerInits
 }
 
 /** Clicks the page's call button and waits for the answer. */
-export async function callFromPage(browser: BrowserPage, expected: string) {
-  await browser.page.locator('[data-testid=call]').click()
-  await browser.waitForText(expected, { selector: '[data-testid=called]' })
+export async function callFromPage(browser: Page, expected: string) {
+  await browser.locator('[data-testid=call]').click()
+  await browser.locator('[data-testid=called]', { hasText: expected }).waitFor()
 }

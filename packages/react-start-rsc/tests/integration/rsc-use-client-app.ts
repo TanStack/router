@@ -12,7 +12,7 @@
  * is a button that shows `MARK_OK` once clicked.
  */
 import { waitForHydration } from './rsc-app'
-import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
+import type { Page } from '@tanstack/compiler-test-utils/test'
 
 /** What the app's import protection reported (`onViolation`). */
 export interface Violation {
@@ -180,12 +180,13 @@ export const clientHelperApp = {
 }
 
 /** After hydration, `Comp` renders in the server component and its click updates it. */
-export async function expectCompClicks(page: BrowserPage): Promise<void> {
+export async function expectCompClicks(page: Page): Promise<void> {
   await waitForHydration(page)
-  await page.waitForText('SERVER_ROOT comp', {
-    selector: '[data-testid=root]',
-    timeout: 5_000,
-  })
-  await page.page.locator('[data-testid=comp]').click()
-  await page.waitForText('comp MARK_OK', { selector: '[data-testid=comp]' })
+  await page
+    .locator('[data-testid=root]', { hasText: 'SERVER_ROOT comp' })
+    .waitFor({ timeout: 5_000 })
+  await page.locator('[data-testid=comp]').click()
+  await page
+    .locator('[data-testid=comp]', { hasText: 'comp MARK_OK' })
+    .waitFor()
 }

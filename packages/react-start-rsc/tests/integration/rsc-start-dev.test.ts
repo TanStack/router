@@ -6,9 +6,10 @@
  * page shows, what a call by id answers, what the browser loaded. Edits
  * are in rsc-start-hmr.test.ts.
  */
-import { describe, expect, test } from 'vitest'
-import { openRscPage, startRscDevServer, waitForHydration } from './rsc-app'
+import { describe, expect } from 'vitest'
+import { waitForHydration } from './rsc-app'
 import { callFromPage, envMarkerPackage } from './rsc-start-page'
+import { test } from './test'
 
 describe('Vite dev: a separate RSC provider', () => {
   // J4.3, J4.16: SSR (the loader during the page render) and a client call
@@ -16,7 +17,11 @@ describe('Vite dev: a separate RSC provider', () => {
   // conditions (`react-server`), and the provider initialises the package
   // once; SSR's own code gets the `default` entry and the browser's the
   // `browser` entry, and no client script has another environment's entry.
-  test('each environment runs its own entry of a dependency; the provider runs the handler, whether SSR or the browser calls it', async () => {
+  test('each environment runs its own entry of a dependency; the provider runs the handler, whether SSR or the browser calls it', async ({
+    openRscPage,
+    pageErrors,
+    startRscDevServer,
+  }) => {
     const server = await startRscDevServer({
       browser: true,
       config: {
@@ -61,18 +66,20 @@ function Page() {
       },
     })
     const browser = await openRscPage(server, '/')
-    await browser.waitForText('ssr MARK_DEFAULT provider MARK_REACT_SERVER:1', {
-      selector: '[data-testid=label]',
-    })
+    await browser
+      .locator('[data-testid=label]', {
+        hasText: 'ssr MARK_DEFAULT provider MARK_REACT_SERVER:1',
+      })
+      .waitFor()
     await waitForHydration(browser)
     await callFromPage(browser, 'called MARK_REACT_SERVER:1')
-    await browser.page.locator('[data-testid=where]').click()
-    await browser.waitForText('browser MARK_BROWSER', {
-      selector: '[data-testid=browser]',
-    })
+    await browser.locator('[data-testid=where]').click()
+    await browser
+      .locator('[data-testid=browser]', { hasText: 'browser MARK_BROWSER' })
+      .waitFor()
 
     // What the browser loaded as code (not the server fn answers)
-    const scripts = await browser.page.evaluate(() =>
+    const scripts = await browser.evaluate(() =>
       performance
         .getEntriesByType('resource')
         .filter(
@@ -93,6 +100,6 @@ function Page() {
     // The check covers the dependency's browser entry
     expect(scripts.some((script) => script.includes('env-marker'))).toBe(true)
     expect(leaks).toEqual([])
-    expect(browser.errors).toEqual([])
+    expect(pageErrors).toEqual([])
   })
 })

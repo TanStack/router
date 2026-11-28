@@ -1,12 +1,9 @@
 import { pluginReact } from '@rsbuild/plugin-react'
-import { describe, expect, test } from 'vitest'
-import {
-  openRscPage,
-  startRscRsbuildDevServer,
-  waitForHydration,
-} from './rsc-app'
+import { describe, expect } from 'vitest'
+import { waitForHydration } from './rsc-app'
 import { callFromPage } from './rsc-start-page'
 import { route } from './rsc-start-hmr-page'
+import { test } from './test'
 
 describe('Rsbuild dev: edits with a separate RSC provider (SPEC J3.6)', () => {
   // The Vite test above on Start's Rsbuild RSC layer, with React Refresh
@@ -15,7 +12,12 @@ describe('Rsbuild dev: edits with a separate RSC provider (SPEC J3.6)', () => {
   // never has it; editing the component then hot-updates the page, keeping
   // its state; no full reload either way, and the server fn still answers.
   // Source: #7618 (SPEC J3.6).
-  test('a handler edit reaches the next call and a component edit hot-updates, keeping the state, without a full reload', async () => {
+  test('a handler edit reaches the next call and a component edit hot-updates, keeping the state, without a full reload', async ({
+    openRscPage,
+    pageErrors,
+    startRscRsbuildDevServer,
+    page,
+  }) => {
     const server = await startRscRsbuildDevServer({
       browser: true,
       hmr: true,
@@ -23,12 +25,16 @@ describe('Rsbuild dev: edits with a separate RSC provider (SPEC J3.6)', () => {
       files: { 'src/routes/index.tsx': route('MARK_HANDLER_V1', 'Page v1') },
     })
     expect(server.errors).toEqual([])
+    let loads = 0
+    page.on('load', () => loads++)
     const browser = await openRscPage(server, '/')
-    await browser.waitForText('Page v1 MARK_HANDLER_V1')
+    await browser
+      .locator('body', { hasText: 'Page v1 MARK_HANDLER_V1' })
+      .waitFor()
     await waitForHydration(browser)
-    await browser.page.locator('[data-testid=count]').click()
-    await browser.page.locator('[data-testid=count]').click()
-    await browser.waitForText('count 2')
+    await browser.locator('[data-testid=count]').click()
+    await browser.locator('[data-testid=count]').click()
+    await browser.locator('body', { hasText: 'count 2' }).waitFor()
     await callFromPage(browser, 'called Page v1 MARK_HANDLER_V1')
 
     // The handler
@@ -37,7 +43,7 @@ describe('Rsbuild dev: edits with a separate RSC provider (SPEC J3.6)', () => {
     })
     expect(server.errors).toEqual([])
     await callFromPage(browser, 'called Page v1 MARK_HANDLER_V2')
-    expect(browser.loads()).toBe(1)
+    expect(loads).toBe(1)
     // The client's output of the route never has the handler (J4.12)
     const client = [
       ...Object.values(await server.outputs('client')),
@@ -50,12 +56,16 @@ describe('Rsbuild dev: edits with a separate RSC provider (SPEC J3.6)', () => {
       'src/routes/index.tsx': route('MARK_HANDLER_V2', 'Page v2'),
     })
     expect(server.errors).toEqual([])
-    await browser.waitForText('Page v2', { selector: '[data-testid=text]' })
-    expect(await browser.text('[data-testid=count]')).toBe('count 2')
+    await browser
+      .locator('[data-testid=text]', { hasText: 'Page v2' })
+      .waitFor()
+    expect(await browser.locator('[data-testid=count]').textContent()).toBe(
+      'count 2',
+    )
     await callFromPage(browser, 'called Page v2 MARK_HANDLER_V2')
 
-    expect(browser.loads()).toBe(1)
-    expect(browser.errors).toEqual([])
+    expect(loads).toBe(1)
+    expect(pageErrors).toEqual([])
   })
 
   // A module the route imports changes what the route reads of it: `base`
@@ -67,7 +77,12 @@ describe('Rsbuild dev: edits with a separate RSC provider (SPEC J3.6)', () => {
   // reaches the server.
   // Source: F7-6 (Fable review 2026-11-10: Start and the coordinator both
   // started a client compilation for one edit).
-  test('an edit that makes the import of a client module a server fn builder hot-updates the page once built', async () => {
+  test('an edit that makes the import of a client module a server fn builder hot-updates the page once built', async ({
+    openRscPage,
+    pageErrors,
+    startRscRsbuildDevServer,
+    page,
+  }) => {
     const plainBase = `export const base = { handler: (fn: () => string) => fn }
 export const baseText = 'base: plain'
 `
@@ -89,8 +104,12 @@ export const baseText = 'base: builder'
       },
     })
     expect(server.errors).toEqual([])
+    let loads = 0
+    page.on('load', () => loads++)
     const browser = await openRscPage(server, '/')
-    await browser.waitForText('Page v1 MARK_HANDLER_V1')
+    await browser
+      .locator('body', { hasText: 'Page v1 MARK_HANDLER_V1' })
+      .waitFor()
     await waitForHydration(browser)
     expect(Object.values(await server.outputs('client')).join('\n')).toContain(
       'MARK_HANDLER_V1',
@@ -105,12 +124,12 @@ export const baseText = 'base: builder'
     expect(client).not.toContain('MARK_HANDLER_V1')
     // React Refresh re-renders 30 ms after the update applies, in one commit
     // with the call button's new handler: click once the page shows the edit
-    await browser.waitForText('base: builder', {
-      selector: '[data-testid=base]',
-    })
+    await browser
+      .locator('[data-testid=base]', { hasText: 'base: builder' })
+      .waitFor()
     await callFromPage(browser, 'called Page v1 MARK_HANDLER_V1')
-    expect(browser.loads()).toBe(1)
-    expect(browser.errors).toEqual([])
+    expect(loads).toBe(1)
+    expect(pageErrors).toEqual([])
   })
 
   // A route file created while the dev server is idle: the generator
@@ -122,7 +141,12 @@ export const baseText = 'base: builder'
   // Source: Fable review of design 3 step 2, finding 1 (a client
   // compilation asked for beside the coordinator; observed: the compiles of
   // the route's creation never ended).
-  test('edits after a route file is created reach the page', async () => {
+  test('edits after a route file is created reach the page', async ({
+    openRscPage,
+    pageErrors,
+    startRscRsbuildDevServer,
+    page,
+  }) => {
     const server = await startRscRsbuildDevServer({
       browser: true,
       hmr: true,
@@ -130,8 +154,10 @@ export const baseText = 'base: builder'
       files: { 'src/routes/index.tsx': route('MARK_HANDLER', 'Page v1') },
     })
     expect(server.errors).toEqual([])
+    let loads = 0
+    page.on('load', () => loads++)
     const browser = await openRscPage(server, '/')
-    await browser.waitForText('Page v1 MARK_HANDLER')
+    await browser.locator('body', { hasText: 'Page v1 MARK_HANDLER' }).waitFor()
     await waitForHydration(browser)
 
     await server.edit({
@@ -144,15 +170,15 @@ export const Route = createFileRoute('/about')({ component: () => <p>about</p> }
     // The next edits are saved once it hydrated again: one saved while the
     // reloading document renders on the server can meet a client that has
     // it already (a hydration mismatch React recovers from)
-    await expect.poll(() => browser.loads(), { timeout: 15_000 }).toBe(2)
+    await expect.poll(() => loads, { timeout: 15_000 }).toBe(2)
     await waitForHydration(browser)
     for (const text of ['Page v2', 'Page v3']) {
       await server.edit({
         'src/routes/index.tsx': route('MARK_HANDLER', text),
       })
       expect(server.errors).toEqual([])
-      await browser.waitForText(text, { selector: '[data-testid=text]' })
+      await browser.locator('[data-testid=text]', { hasText: text }).waitFor()
     }
-    expect(browser.errors).toEqual([])
+    expect(pageErrors).toEqual([])
   })
 })

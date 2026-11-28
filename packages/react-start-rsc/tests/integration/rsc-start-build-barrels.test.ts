@@ -7,14 +7,10 @@
  * barrel, and each server fn answers its own call from the page and from
  * the route's loader on the server.
  */
-import { describe, test } from 'vitest'
+import { describe } from 'vitest'
 import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
-import {
-  openRscPage,
-  startRscPreviewServer,
-  startRscRsbuildPreviewServer,
-  waitForHydration,
-} from './rsc-app'
+import { waitForHydration } from './rsc-app'
+import { test } from './test'
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 
@@ -86,24 +82,24 @@ function Page() {
 `,
 }
 
-describe.each([
-  ['vite', startRscPreviewServer],
-  ['rsbuild', startRscRsbuildPreviewServer],
-] as const)('%s', (_bundler, startServer) => {
-  test('server fns behind an `export *` barrel build with no report about it, and each answers its own call', async () => {
-    const server = await startServer({ files })
+describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
+  test('server fns behind an `export *` barrel build with no report about it, and each answers its own call', async ({
+    openRscPage,
+    serveRscBuild,
+  }) => {
+    const server = await serveRscBuild({ bundler, files })
     expectNoDiagnostic(server.messages, {
       file: 'src/api/index.ts',
       root: server.root,
     })
     const page = await openRscPage(server, '/barrels')
     await waitForHydration(page)
-    await page.waitForText(`loaded ${results}`, {
-      selector: '[data-testid=loaded]',
-    })
-    await page.page.locator('[data-testid=call]').click()
-    await page.waitForText(`called ${results}`, {
-      selector: '[data-testid=called]',
-    })
+    await page
+      .locator('[data-testid=loaded]', { hasText: `loaded ${results}` })
+      .waitFor()
+    await page.locator('[data-testid=call]').click()
+    await page
+      .locator('[data-testid=called]', { hasText: `called ${results}` })
+      .waitFor()
   }, 90_000)
 })

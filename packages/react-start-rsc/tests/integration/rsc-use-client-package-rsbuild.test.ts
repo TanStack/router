@@ -10,18 +10,14 @@
  * Source: the reviews of the node_modules policy implementation (Gemini
  * F1 `case6a`, `rsbuild-rsc-dev`; Astra 3 `head-rsbuild-rsc-mixed`).
  */
-import { describe, expect, test } from 'vitest'
+import { describe, expect } from 'vitest'
 import { diagnosticPosition } from '@tanstack/compiler-test-utils/diagnostics'
-import {
-  openRscPage,
-  startRscRsbuildDevServer,
-  startRscRsbuildPreviewServer,
-} from './rsc-app'
 import {
   packageWidgetApp,
   packageWidgetMixedApp,
   summary,
 } from './rsc-use-client-app'
+import { test } from './test'
 import type { Violation } from './rsc-use-client-app'
 
 const timeout = 60_000
@@ -43,7 +39,7 @@ function protection(options: Record<string, unknown>) {
 }
 
 describe('Rsbuild build with RSC', () => {
-  test.each<[string, Record<string, unknown>]>([
+  test.for<[string, Record<string, unknown>]>([
     [
       'allowImport on the marked file',
       {
@@ -57,7 +53,8 @@ describe('Rsbuild build with RSC', () => {
     ],
   ])(
     '%s gives the widget the real module, nothing reported',
-    async (_, options) => {
+    { timeout },
+    async ([_, options], { openRscPage, startRscRsbuildPreviewServer }) => {
       const { violations, start } = protection({
         behavior: 'error',
         ...options,
@@ -67,17 +64,16 @@ describe('Rsbuild build with RSC', () => {
         files: packageWidgetApp,
       })
       const page = await openRscPage(server, '/c')
-      await page.waitForText('MARK_SECRET', {
-        selector: '[data-testid=widget]',
-      })
+      await page
+        .locator('[data-testid=widget]', { hasText: 'MARK_SECRET' })
+        .waitFor()
       expect(summary(violations)).toEqual([])
     },
-    timeout,
   )
 
   test(
     'mock: the widget and a route component reading the mock through a package barrel are both reported',
-    async () => {
+    async ({ startRscRsbuildPreviewServer }) => {
       const { violations, start } = protection({
         behavior: 'mock',
         mockAccess: 'off',
@@ -103,7 +99,7 @@ describe('Rsbuild build with RSC', () => {
 describe('Rsbuild build with RSC, importers that disagree', () => {
   test(
     'the conflict names the widget at its import of the marked file',
-    async () => {
+    async ({ startRscRsbuildPreviewServer }) => {
       const { start } = protection({
         behavior: 'error',
         exclude: ['src/admin.ts'],
@@ -153,7 +149,7 @@ function Page() {
 describe('Rsbuild dev with RSC', () => {
   test(
     'the widget is served the mock, and the marked file is reported',
-    async () => {
+    async ({ openRscPage, startRscRsbuildDevServer }) => {
       const { violations, start } = protection({ mockAccess: 'off' })
       const server = await startRscRsbuildDevServer({
         browser: true,
@@ -161,7 +157,9 @@ describe('Rsbuild dev with RSC', () => {
         files: packageWidgetApp,
       })
       const page = await openRscPage(server, '/c')
-      await page.waitForText('SERVER_ROOT', { selector: '[data-testid=root]' })
+      await page
+        .locator('[data-testid=root]', { hasText: 'SERVER_ROOT' })
+        .waitFor()
       // (a dev server names the denied file of an importer it does not
       // compile: it serves the file before it knows who imports it)
       expect(summary(violations)).toEqual([

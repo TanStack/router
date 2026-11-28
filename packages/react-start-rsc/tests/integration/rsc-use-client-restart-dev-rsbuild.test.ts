@@ -11,9 +11,9 @@
  * `ssr src/utils/ClientBox.client.tsx` once), opinion-rsc-p1-dev-reporting.md
  * (a).
  */
-import { describe, expect, test } from 'vitest'
-import { startRscRsbuildDevServer } from './rsc-app'
+import { describe, expect } from 'vitest'
 import { recorder, summary } from './rsc-environments-app'
+import { test } from './test'
 
 const timeout = 60_000
 
@@ -59,9 +59,10 @@ async function boxes(url: string): Promise<Array<string>> {
 }
 
 describe('Rsbuild dev with RSC on the persistent cache, an exempt server component alone imports a denied client component', () => {
-  test.each(['mock', 'error'] as const)(
+  test.for(['mock', 'error'] as const)(
     'behavior %s: the box renders on a cold start and after a restart, nothing is reported',
-    async (behavior) => {
+    { timeout },
+    async (behavior, { startRscRsbuildDevServer }) => {
       const { violations, start } = recorder(behavior)
       const cold = await startRscRsbuildDevServer({
         browser: true,
@@ -81,6 +82,5 @@ describe('Rsbuild dev with RSC on the persistent cache, an exempt server compone
       expect(await boxes(warm.url!)).toEqual(['client-only label'])
       expect(summary(violations)).toEqual([])
     },
-    timeout,
   )
 })

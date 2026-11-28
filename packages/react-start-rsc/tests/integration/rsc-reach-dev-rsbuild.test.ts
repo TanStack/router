@@ -10,87 +10,22 @@
  * Source: RSC investigation (Astra, 11-19: outcomes of the two graphs
  * depend on the start history and the persistent cache, in opposite ways).
  */
-import { afterAll, beforeAll, describe, test } from 'vitest'
-import { startRscRsbuildDevServer } from './rsc-app'
-import {
-  clickEveryButton,
-  counterTest,
-  editedReach,
-  expectAnswer,
-  reachFiles,
-  reachPositions,
-} from './rsc-reach-app'
-import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
-import type { ClickOutcome } from './rsc-reach-app'
-
-const timeout = 60_000
-
-let server: RsbuildDevServer
-beforeAll(async () => {
-  server = await startRscRsbuildDevServer({
-    browser: true,
-    // (the server lives across this file's tests)
-    registerCleanup: () => {},
-    config: { performance: { buildCache: true } },
-    files: reachFiles,
-  })
-}, timeout)
-afterAll(async () => {
-  // (none when the start failed)
-  await (server as RsbuildDevServer | undefined)?.close()
-})
-
-describe('Rsbuild dev with RSC, a fresh start', () => {
-  let outcomes: Record<string, ClickOutcome | Error>
-  beforeAll(async () => {
-    outcomes = await clickEveryButton(server)
-  }, timeout)
-  test.for(reachPositions)(
-    'a server fn only $position of a $where imports answers',
-    ({ name }) => {
-      expectAnswer(outcomes, name)
-    },
-  )
-  test(counterTest, () => {
-    expectAnswer(outcomes, 'counter')
-  })
-})
+import { expectReachHistory, reachFiles } from './rsc-reach-app'
+import { test } from './test'
 
 // SPEC J4.2: a server fn the client calls is callable by id, whatever the
 // start history: a restart whose route tree is up to date answers too (the
 // server compilation's last settlement run builds the resolver again once
 // the client compiled, from what it calls; db260cf3a3 and 0a261a0259
 // answered "Server function info not found").
-describe('Rsbuild dev with RSC, after a restart', () => {
-  let outcomes: Record<string, ClickOutcome | Error>
-  beforeAll(async () => {
-    server = await server.restart()
-    outcomes = await clickEveryButton(server)
-  }, timeout)
-  test.for(reachPositions)(
-    'a server fn only $position of a $where imports answers',
-    ({ name }) => {
-      expectAnswer(outcomes, name)
-    },
-  )
-  test(counterTest, () => {
-    expectAnswer(outcomes, 'counter')
+test('Rsbuild dev with RSC: every server fn the client calls answers after a fresh start, a restart and an edit of every server fn', async ({
+  browser,
+  startRscRsbuildDevServer,
+}) => {
+  const server = await startRscRsbuildDevServer({
+    browser: true,
+    config: { performance: { buildCache: true } },
+    files: reachFiles,
   })
-})
-
-describe('Rsbuild dev with RSC, after an edit of every server fn', () => {
-  let outcomes: Record<string, ClickOutcome | Error>
-  beforeAll(async () => {
-    await server.edit(editedReach())
-    outcomes = await clickEveryButton(server)
-  }, timeout)
-  test.for(reachPositions)(
-    'a server fn only $position of a $where imports answers with the edited value',
-    ({ name }) => {
-      expectAnswer(outcomes, name, true)
-    },
-  )
-  test(`${counterTest}, with the edited value`, () => {
-    expectAnswer(outcomes, 'counter', true)
-  })
-})
+  await expectReachHistory(browser, server, () => server.restart())
+}, 120_000)

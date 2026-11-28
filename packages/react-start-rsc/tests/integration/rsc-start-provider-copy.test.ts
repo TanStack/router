@@ -6,13 +6,9 @@
  * still renders with the state its own exports read. One row per module of
  * `src/rows/`, each a button of the page.
  */
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import {
-  openRscPage,
-  startRscPreviewServer,
-  startRscRsbuildPreviewServer,
-  waitForHydration,
-} from './rsc-app'
+import { describe, expect } from 'vitest'
+import { serveRscBuild, waitForHydration } from './rsc-app'
+import { test } from './test'
 import type { RscPreviewServer } from './rsc-app'
 
 /** Each row: a module of `src/rows/`, what its server fn answers the page, and what its `ssr()` renders. */
@@ -185,40 +181,36 @@ function Page() {
 `,
 }
 
-describe.each([
-  ['vite', startRscPreviewServer],
-  ['rsbuild', startRscRsbuildPreviewServer],
-] as const)('a %s build', (_, start) => {
+describe.each(['vite', 'rsbuild'] as const)('a %s build', (bundler) => {
   let server: RscPreviewServer
-  const cleanups: Array<() => Promise<void>> = []
 
-  beforeAll(async () => {
-    server = await start({
-      registerCleanup: (cleanup) => {
-        cleanups.push(cleanup)
-      },
+  test.beforeAll(async ({ fileRoot }) => {
+    server = await serveRscBuild(fileRoot, {
+      bundler,
       files,
     })
-  })
-  afterAll(async () => {
-    for (const cleanup of cleanups.reverse()) {
-      await cleanup()
-    }
+    return () => server.close()
   })
 
-  test.each(rows.map((row, i) => ({ ...row, i })))(
+  test.for(rows.map((row, i) => ({ ...row, i })))(
     'a server fn reads its state: $name',
-    async ({ i, answers, renders }) => {
+    async ({ i, answers, renders }, { openRscPage }) => {
       const opened = await openRscPage(server, '/provider-copy')
-      await opened.waitForText('MARK_PAGE', { selector: '[data-testid=label]' })
+      await opened
+        .locator('[data-testid=label]', { hasText: 'MARK_PAGE' })
+        .waitFor()
       await waitForHydration(opened)
       if (renders !== undefined) {
-        expect(await opened.text(`[data-testid=rendered-${i}]`)).toBe(renders)
+        expect(
+          await opened.locator(`[data-testid=rendered-${i}]`).textContent(),
+        ).toBe(renders)
       }
-      await opened.page.locator(`[data-testid=call-${i}]`).click()
-      await opened.waitForText(`called ${JSON.stringify(answers)}`, {
-        selector: `[data-testid=called-${i}]`,
-      })
+      await opened.locator(`[data-testid=call-${i}]`).click()
+      await opened
+        .locator(`[data-testid=called-${i}]`, {
+          hasText: `called ${JSON.stringify(answers)}`,
+        })
+        .waitFor()
     },
   )
 })

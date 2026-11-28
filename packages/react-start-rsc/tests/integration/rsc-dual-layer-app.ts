@@ -103,23 +103,30 @@ export function clientBoxLabels(html: string): Array<string> {
 }
 
 /**
- * The document `/uc` answers 200 with `count` real labels, and nothing
- * since `since` reported an error.
+ * The document `/uc` answers 200 with `count` real labels, and none of
+ * `diagnostics` is an error; at `checkpoint` of a history, the history
+ * goes on (a soft assertion).
  */
 export function expectRealLabels(
   page: { status: number; body: string },
   count: number,
   diagnostics: Array<ChannelDiagnostic>,
+  checkpoint?: string,
 ) {
-  expect({
-    status: page.status,
-    labels: clientBoxLabels(page.body),
-    errors: diagnostics
-      .filter(({ severity }) => severity === 'error')
-      .map(({ text }) => text),
-  }).toEqual({
-    status: 200,
-    labels: Array.from({ length: count }, () => 'client-only label'),
-    errors: [],
-  })
+  expect
+    .soft(
+      {
+        status: page.status,
+        labels: clientBoxLabels(page.body),
+        errors: diagnostics
+          .filter(({ severity }) => severity === 'error')
+          .map(({ text }) => text),
+      },
+      checkpoint,
+    )
+    .toEqual({
+      status: 200,
+      labels: Array.from({ length: count }, () => 'client-only label'),
+      errors: [],
+    })
 }

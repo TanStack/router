@@ -17,16 +17,14 @@
  * provider does not list gives (rsc-start-build-not-provided.test.ts),
  * applied, for a file of the app and for one of an installed package.
  */
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { describe, expect } from 'vitest'
 import { installedServerFnFiles } from './client-only-reach-app'
 import {
   answeredText,
-  openRscPage,
-  settledValue,
   startRscPreviewServer,
   waitForHydration,
 } from './rsc-app'
-import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
+import { test } from './test'
 import type { RscPreviewServer } from './rsc-app'
 
 /** The server fns the `'use client'` component calls, by test id. */
@@ -376,47 +374,28 @@ function Page() {
 
 describe("Vite production build with RSC: server fns only 'use client' components import", () => {
   let server: RscPreviewServer
-  const cleanups: Array<() => Promise<void>> = []
 
   // The build fails when the early compile follows the development-only
   // import into its provider's dependency, which has no production entry.
-  beforeAll(async () => {
-    server = await startRscPreviewServer({
+  test.beforeAll(async ({ fileRoot }) => {
+    server = await startRscPreviewServer(fileRoot, {
       files,
       config: { build: { minify: false } },
-      registerCleanup: (cleanup) => {
-        cleanups.push(cleanup)
-      },
     })
+    return () => server.close()
   })
-  afterAll(async () => {
-    for (const cleanup of cleanups.reverse()) {
-      await cleanup()
-    }
-  })
-
-  // (a page closes when its test ends: a test process keeps at most 16
-  // pages open, `openPageLimit` of the browser harness)
-  const open = async (pathname: string): Promise<BrowserPage> => {
-    const page = await openRscPage(server, pathname)
-    await waitForHydration(page)
-    return page
-  }
 
   // SPEC J4.2: a server fn the client calls is callable by id, whichever
   // spelling of its chain the planner accepts.
-  test.each(Object.keys(shapes))(
+  test.for(Object.keys(shapes))(
     'a server fn written as the %s spelling runs when clicked',
-    async (name) => {
-      const page = await open('/reach')
+    async (name, { openRscPage }) => {
+      const page = await openRscPage(server, '/reach')
+      await waitForHydration(page)
       const button = `[data-testid=${name}]`
-      await page.page.locator(button).click()
+      await page.locator(button).click()
       expect(
-        await settledValue(
-          page,
-          () => page.text(button),
-          (text) => text.includes('MARK_'),
-        ),
+        await answeredText(page, button, (text) => text.includes('MARK_')),
       ).toBe(`${name} MARK_${name.toUpperCase()}`)
     },
   )
@@ -424,10 +403,13 @@ describe("Vite production build with RSC: server fns only 'use client' component
   // SPEC J4.2, J4.17: under `verbatimModuleSyntax` the import of a binding a
   // client component uses only in a type stays, so the module runs in the
   // browser, and the server fn its load reaches answers.
-  test('a server fn a client component reaches through a type-only use of an import answers', async () => {
-    const page = await open('/reach')
-    await page.page.locator('[data-testid=booted]').waitFor()
-    expect(await page.page.evaluate(() => (window as any).callBooted())).toBe(
+  test('a server fn a client component reaches through a type-only use of an import answers', async ({
+    openRscPage,
+  }) => {
+    const page = await openRscPage(server, '/reach')
+    await waitForHydration(page)
+    await page.locator('[data-testid=booted]').waitFor()
+    expect(await page.evaluate(() => (window as any).callBooted())).toBe(
       'MARK_BOOTED',
     )
   })
@@ -435,13 +417,17 @@ describe("Vite production build with RSC: server fns only 'use client' component
   // SPEC J4.2, G1: a server fn only a development branch of the client
   // entry imports is no part of the production build: it builds, and the
   // app's server fns answer.
-  test('a server fn only development code imports adds no production dependency', async () => {
-    const page = await open('/')
-    await page.page.locator('[data-testid=greet]').click()
-    await page.waitForText('called MARK_GREET', {
-      selector: '[data-testid=greet]',
-    })
-    expect(page.errors).toEqual([])
+  test('a server fn only development code imports adds no production dependency', async ({
+    pageErrors,
+    openRscPage,
+  }) => {
+    const page = await openRscPage(server, '/')
+    await waitForHydration(page)
+    await page.locator('[data-testid=greet]').click()
+    await page
+      .locator('[data-testid=greet]', { hasText: 'called MARK_GREET' })
+      .waitFor()
+    expect(pageErrors).toEqual([])
   })
 
   // SPEC J4.2, G1: the same when the development branch is in a `'use
@@ -453,16 +439,17 @@ describe("Vite production build with RSC: server fns only 'use client' component
     { name: 'noted', prologue: 'commented directive' },
   ])(
     "a server fn only development code of a 'use client' component ($prologue prologue) imports adds no production dependency",
-    async ({ name }) => {
-      const page = await open('/guarded')
+    async ({ name }, { pageErrors, openRscPage }) => {
+      const page = await openRscPage(server, '/guarded')
+      await waitForHydration(page)
       const button = `[data-testid=${name}]`
-      const response = page.page.waitForResponse((r) =>
+      const response = page.waitForResponse((r) =>
         r.url().includes('/_serverFn/'),
       )
-      await page.page.locator(button).click()
+      await page.locator(button).click()
       expect((await response).status()).toBe(200)
-      await page.waitForText(`${name} MARK_PING`, { selector: button })
-      expect(page.errors).toEqual([])
+      await page.locator(button, { hasText: `${name} MARK_PING` }).waitFor()
+      expect(pageErrors).toEqual([])
     },
   )
 
@@ -470,14 +457,17 @@ describe("Vite production build with RSC: server fns only 'use client' component
   // component a server fn's handler imports lazily, is callable by id; a
   // comment in the handler's module that quotes the directive does not
   // make it a client boundary.
-  test("a server fn below a server handler's lazy import runs when clicked", async () => {
-    const page = await open('/split')
+  test("a server fn below a server handler's lazy import runs when clicked", async ({
+    openRscPage,
+  }) => {
+    const page = await openRscPage(server, '/split')
+    await waitForHydration(page)
     const button = '[data-testid=inner]'
-    await page.page.locator(button).click()
+    await page.locator(button).click()
     expect(
-      await settledValue(
+      await answeredText(
         page,
-        () => page.text(button),
+        button,
         (text) => text.includes('MARK_') || text.includes('error'),
       ),
     ).toBe('inner MARK_INNER')
@@ -517,14 +507,17 @@ describe("Vite production build with RSC: server fns only 'use client' component
     },
   ])(
     "the build error's way out for $kind makes its server fn answer",
-    async ({ pathname, name, server: answered }) => {
-      const page = await open(pathname)
-      await page.waitForText(answered.text, { selector: answered.selector })
+    async ({ pathname, name, server: answered }, { openRscPage }) => {
+      const page = await openRscPage(server, pathname)
+      await waitForHydration(page)
+      await page
+        .locator(answered.selector, { hasText: answered.text })
+        .waitFor()
       const button = `[data-testid=${name}]`
-      const response = page.page.waitForResponse((r) =>
+      const response = page.waitForResponse((r) =>
         r.url().includes('/_serverFn/'),
       )
-      await page.page.locator(button).click()
+      await page.locator(button).click()
       expect((await response).status()).toBe(200)
       expect(
         await answeredText(

@@ -9,9 +9,8 @@
  * (`rsc-start-build-not-provided.test.ts`). Also: an installed package
  * defining a server fn (`installedServerFnFiles`).
  */
-import { expect } from 'vitest'
 import { answeredText, openRscPage, waitForHydration } from './rsc-app'
-import type { RscPreviewServer } from './rsc-app'
+import type { Page } from '@tanstack/compiler-test-utils/test'
 
 const serverFn = (
   name: string,
@@ -178,27 +177,41 @@ export const clientOnlyPositions = [
   },
 ]
 
+/** A click's outcome: the server fn's HTTP status and the button's text. */
+export interface ClickOutcome {
+  status: number
+  text: string
+}
+
 /**
- * Clicks `name`'s button in a page of `server` (the `<Hydrate>` fallback
- * after a client-side navigation, the only way it shows) and expects its
- * server fn's value.
+ * Opens `server` in `page` and clicks `name`'s button (a client-only
+ * position: the `<Hydrate>` fallbacks after a client-side navigation, the
+ * only way they show; `counter`: the public #7943 counter of
+ * `rsc-reach-app.ts`): the server fn's response status and the text the
+ * button shows then.
  */
-export async function expectClientOnlyCallAnswers(
-  server: RscPreviewServer,
+export async function clickOutcome(
+  page: Page,
+  server: { url?: string },
   name: string,
-) {
-  const page = await openRscPage(server, '/client-only')
+): Promise<ClickOutcome> {
+  await openRscPage(
+    page,
+    server,
+    name === 'counter' ? '/client-ref' : '/client-only',
+  )
   await waitForHydration(page)
   if (name.startsWith('hydrate')) {
-    await page.page.locator('[data-testid=to-hydrate]').click()
+    await page.locator('[data-testid=to-hydrate]').click()
   }
   const selector = `[data-testid=${name}]`
-  await page.page.locator(selector).click()
-  expect(
-    await answeredText(
-      page,
-      selector,
-      (text) => text.includes('MARK_') || text.includes('error'),
-    ),
-  ).toBe(`${name} MARK_${name.toUpperCase()}`)
+  const response = page.waitForResponse((r) => r.url().includes('/_serverFn/'))
+  await page.locator(selector).click()
+  const status = (await response).status()
+  const text = await answeredText(
+    page,
+    selector,
+    (value) => value.includes('MARK_') || value.includes('error'),
+  )
+  return { status, text }
 }

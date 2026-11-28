@@ -10,16 +10,16 @@
  */
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { describe, expect } from 'vitest'
 import {
+  answeredText,
   computedStyle,
-  openRscPage,
   settledValue,
   startRscPreviewServer,
   waitForHydration,
 } from './rsc-app'
 import { HELPER_CARD_BACKGROUND, helperRow } from './rsc-css-rsbuild-app'
-import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
+import { test } from './test'
 import type { RscPreviewServer } from './rsc-app'
 
 /** A dependency whose entry differs by export condition. */
@@ -370,10 +370,9 @@ async function filesOf(dir: string): Promise<Array<string>> {
 
 describe('Vite production build with RSC', () => {
   let server: RscPreviewServer
-  const cleanups: Array<() => Promise<void>> = []
 
-  beforeAll(async () => {
-    server = await startRscPreviewServer({
+  test.beforeAll(async ({ fileRoot }) => {
+    server = await startRscPreviewServer(fileRoot, {
       files: { ...files, ...privateFnFiles },
       config: {
         // Bundled into the provider like Start's own packages are: the
@@ -384,38 +383,35 @@ describe('Vite production build with RSC', () => {
         // Output size is not under test
         build: { minify: false },
       },
-      registerCleanup: (cleanup) => {
-        cleanups.push(cleanup)
-      },
     })
+    return () => server.close()
   })
-  afterAll(async () => {
-    for (const cleanup of cleanups.reverse()) {
-      await cleanup()
-    }
-  })
-
-  const open = (pathname: string): Promise<BrowserPage> =>
-    openRscPage(server, pathname)
 
   // J4.3, J4.16, J4.12: the provider runs the handler with `react-server`
   // and initialises the package once, whether SSR or the browser calls it;
   // SSR's own code gets `default`, the browser `browser`; no client file of
   // the build has another environment's entry.
-  test('each environment runs its own entry of a dependency; the provider runs the handler', async () => {
-    const page = await open('/env')
-    await page.waitForText('ssr MARK_DEFAULT provider MARK_REACT_SERVER:1', {
-      selector: '[data-testid=label]',
-    })
+  test('each environment runs its own entry of a dependency; the provider runs the handler', async ({
+    pageErrors,
+    openRscPage,
+  }) => {
+    const page = await openRscPage(server, '/env')
+    await page
+      .locator('[data-testid=label]', {
+        hasText: 'ssr MARK_DEFAULT provider MARK_REACT_SERVER:1',
+      })
+      .waitFor()
     await waitForHydration(page)
-    await page.page.locator('[data-testid=call]').click()
-    await page.waitForText('called MARK_REACT_SERVER:1', {
-      selector: '[data-testid=called]',
-    })
-    await page.page.locator('[data-testid=where]').click()
-    await page.waitForText('browser MARK_BROWSER', {
-      selector: '[data-testid=browser]',
-    })
+    await page.locator('[data-testid=call]').click()
+    await page
+      .locator('[data-testid=called]', {
+        hasText: 'called MARK_REACT_SERVER:1',
+      })
+      .waitFor()
+    await page.locator('[data-testid=where]').click()
+    await page
+      .locator('[data-testid=browser]', { hasText: 'browser MARK_BROWSER' })
+      .waitFor()
     const client = await Promise.all(
       (await filesOf(path.join(server.root, 'dist/client'))).map((file) =>
         readFile(file, 'utf8'),
@@ -427,18 +423,21 @@ describe('Vite production build with RSC', () => {
         /MARK_REACT_SERVER|MARK_DEFAULT/.test(code),
       ),
     }).toEqual({ browser: true, server: false })
-    expect(page.errors).toEqual([])
+    expect(pageErrors).toEqual([])
   })
 
   // SPEC J4.1, J4.14: the provider runs what the server fn needs, not the
   // route module's client-only code beside it.
   // Source: the react-start/rsc e2e app (rsc-context, Vite).
-  test("a server fn runs in the provider next to its route module's client-only code", async () => {
-    const page = await open('/context')
-    await page.waitForText('MARK_THEME MARK_DATA', {
-      selector: '[data-testid=label]',
-    })
-    expect(page.errors).toEqual([])
+  test("a server fn runs in the provider next to its route module's client-only code", async ({
+    pageErrors,
+    openRscPage,
+  }) => {
+    const page = await openRscPage(server, '/context')
+    await page
+      .locator('[data-testid=label]', { hasText: 'MARK_THEME MARK_DATA' })
+      .waitFor()
+    expect(pageErrors).toEqual([])
   })
 
   // SPEC J4.1, J4.12, J4.14: a server fn created inside a function only the
@@ -449,13 +448,16 @@ describe('Vite production build with RSC', () => {
   // `start-env` planner's claim of the nested chain for the provider
   // output only): a route's component code
   // is in no file of the rsc environment.
-  test('a hoisted server fn only the split component calls', async () => {
-    const page = await open('/nested')
+  test('a hoisted server fn only the split component calls', async ({
+    pageErrors,
+    openRscPage,
+  }) => {
+    const page = await openRscPage(server, '/nested')
     await waitForHydration(page)
-    await page.page.locator('[data-testid=call]').click()
-    await page.waitForText('called MARK_NESTED_FN', {
-      selector: '[data-testid=called]',
-    })
+    await page.locator('[data-testid=call]').click()
+    await page
+      .locator('[data-testid=called]', { hasText: 'called MARK_NESTED_FN' })
+      .waitFor()
     const read = async (dir: string) =>
       Promise.all(
         (await filesOf(path.join(server.root, dir))).map((file) =>
@@ -469,7 +471,7 @@ describe('Vite production build with RSC', () => {
       handlerInRsc: rsc.some((code) => code.includes('MARK_NESTED_FN')),
       pageInRsc: rsc.some((code) => code.includes('MARK_NESTED_PAGE')),
     }).toEqual({ handlerInClient: false, handlerInRsc: true, pageInRsc: false })
-    expect(page.errors).toEqual([])
+    expect(pageErrors).toEqual([])
   })
 
   // SPEC J4.10, J4.12, G11 (the Start compiler composed with the RSC CSS
@@ -478,17 +480,20 @@ describe('Vite production build with RSC', () => {
   // createServerFn, are compiled: the server-only one runs, the client-only
   // one throws, whether SSR or the browser calls the server fn; the
   // server-only body is not in any client file.
-  test('a server fn handler compiles env-only fns of renamed re-exports in the provider', async () => {
+  test('a server fn handler compiles env-only fns of renamed re-exports in the provider', async ({
+    pageErrors,
+    openRscPage,
+  }) => {
     const expected = 'server-only MARK_ALIASED_SERVER_ONLY client-only threw'
-    const page = await open('/aliased')
-    await page.waitForText(`loaded ${expected}`, {
-      selector: '[data-testid=loaded]',
-    })
+    const page = await openRscPage(server, '/aliased')
+    await page
+      .locator('[data-testid=loaded]', { hasText: `loaded ${expected}` })
+      .waitFor()
     await waitForHydration(page)
-    await page.page.locator('[data-testid=call]').click()
-    await page.waitForText(`called ${expected}`, {
-      selector: '[data-testid=called]',
-    })
+    await page.locator('[data-testid=call]').click()
+    await page
+      .locator('[data-testid=called]', { hasText: `called ${expected}` })
+      .waitFor()
     const client = await Promise.all(
       (await filesOf(path.join(server.root, 'dist/client'))).map((file) =>
         readFile(file, 'utf8'),
@@ -497,24 +502,27 @@ describe('Vite production build with RSC', () => {
     expect(
       client.some((code) => code.includes('MARK_ALIASED_SERVER_ONLY')),
     ).toBe(false)
-    expect(page.errors).toEqual([])
+    expect(pageErrors).toEqual([])
   })
 
   // SPEC J4.9, J4.10: a handler that is itself a client-only fn throws in
   // the provider, and one that is an isomorphic fn runs its server
   // implementation, whether SSR or the browser calls it; the provider holds
   // neither client implementation.
-  test('a server fn whose handler is an env-only or isomorphic call runs it compiled for the server', async () => {
+  test('a server fn whose handler is an env-only or isomorphic call runs it compiled for the server', async ({
+    pageErrors,
+    openRscPage,
+  }) => {
     const expected = 'MARK_ISO_SERVER threw'
-    const page = await open('/handler-fns')
-    await page.waitForText(`loaded ${expected}`, {
-      selector: '[data-testid=loaded]',
-    })
+    const page = await openRscPage(server, '/handler-fns')
+    await page
+      .locator('[data-testid=loaded]', { hasText: `loaded ${expected}` })
+      .waitFor()
     await waitForHydration(page)
-    await page.page.locator('[data-testid=call]').click()
-    await page.waitForText(`called ${expected}`, {
-      selector: '[data-testid=called]',
-    })
+    await page.locator('[data-testid=call]').click()
+    await page
+      .locator('[data-testid=called]', { hasText: `called ${expected}` })
+      .waitFor()
     const rsc = await Promise.all(
       (await filesOf(path.join(server.root, 'dist/server/rsc'))).map((file) =>
         readFile(file, 'utf8'),
@@ -524,7 +532,7 @@ describe('Vite production build with RSC', () => {
       clientOnly: rsc.some((code) => code.includes('MARK_CLIENT_ONLY_IMPL')),
       isomorphicClient: rsc.some((code) => code.includes('MARK_ISO_CLIENT')),
     }).toEqual({ clientOnly: false, isomorphicClient: false })
-    expect(page.errors).toEqual([])
+    expect(pageErrors).toEqual([])
   })
 
   // SPEC J4.2: a server fn the client references is registered and runs
@@ -532,16 +540,16 @@ describe('Vite production build with RSC', () => {
   // component that reaches the browser through a server component (the
   // provider builds before the client: it compiles the reach of its
   // handlers before its build, so its manifest lists the fn; #7943).
-  test("a server fn only a 'use client' component of a server component imports runs when clicked", async () => {
-    const page = await open('/client-ref')
-    await page.page.locator('[data-testid=counter]').waitFor()
+  test("a server fn only a 'use client' component of a server component imports runs when clicked", async ({
+    openRscPage,
+  }) => {
+    const page = await openRscPage(server, '/client-ref')
+    await page.locator('[data-testid=counter]').waitFor()
     await waitForHydration(page)
-    await page.page.locator('[data-testid=counter]').click()
+    await page.locator('[data-testid=counter]').click()
     expect(
-      await settledValue(
-        page,
-        () => page.text('[data-testid=counter]'),
-        (text) => text.includes('MARK_UPDATED'),
+      await answeredText(page, '[data-testid=counter]', (text) =>
+        text.includes('MARK_UPDATED'),
       ),
     ).toBe('counter MARK_UPDATED')
   })
@@ -552,13 +560,19 @@ describe('Vite production build with RSC', () => {
   // from the browser is refused, while the same request to `greet` answers.
   // With a separate provider the provider builds before the client, so the
   // refusal is decided where the HTTP handler runs, after the client built.
-  test('a server function only server code calls is not callable from the browser', async () => {
-    const page = await open('/private')
-    await page.waitForText('label MARK_GREET:MARK_INTERNAL', {
-      selector: '[data-testid=label]',
-    })
+  test('a server function only server code calls is not callable from the browser', async ({
+    openRscPage,
+  }) => {
+    const page = await openRscPage(server, '/private')
+    await page
+      .locator('[data-testid=label]', {
+        hasText: 'label MARK_GREET:MARK_INTERNAL',
+      })
+      .waitFor()
     await waitForHydration(page)
-    const urls = JSON.parse(await page.text('[data-testid=urls]')) as {
+    const urls = JSON.parse(
+      (await page.locator('[data-testid=urls]').textContent())!,
+    ) as {
       greet: string
       internal: string
       sameFile: string
@@ -566,7 +580,7 @@ describe('Vite production build with RSC', () => {
     expect(typeof urls.internal).toBe('string')
     expect(typeof urls.sameFile).toBe('string')
     const call = (url: string) =>
-      page.page.evaluate(
+      page.evaluate(
         (functionUrl) => (window as any).callUrl(functionUrl),
         url,
       ) as Promise<{ ok?: boolean; value?: string; error?: string }>
@@ -586,11 +600,14 @@ describe('Vite production build with RSC', () => {
     expect(refusedSameFile.value ?? '').not.toContain('MARK_SAME_FILE')
   })
 
-  test('loading the client callers without an RSC result supplies no server CSS', async () => {
-    const page = await open('/control')
-    await page.waitForText('caller', { selector: '[data-testid=control]' })
+  test('loading the client callers without an RSC result supplies no server CSS', async ({
+    pageErrors,
+    openRscPage,
+  }) => {
+    const page = await openRscPage(server, '/control')
+    await page.locator('[data-testid=control]', { hasText: 'caller' }).waitFor()
     await waitForHydration(page)
-    const css = await page.page.evaluate(() =>
+    const css = await page.evaluate(() =>
       [...document.styleSheets]
         .flatMap((sheet) => {
           try {
@@ -602,32 +619,36 @@ describe('Vite production build with RSC', () => {
         .join('\n'),
     )
     expect(css).not.toMatch(/254, 243, 199|#fef3c7/i)
-    expect(page.errors).toEqual([])
+    expect(pageErrors).toEqual([])
   })
 
-  test.each(['identifier', 'spread'])(
+  test.for(['identifier', 'spread'])(
     'production %s stream still renders without development warnings',
-    async (row) => {
-      const page = await open('/css')
-      await page.waitForText('MARK_CARD', {
-        selector: `section[data-row=${row}]`,
-      })
+    async (row, { pageErrors, openRscPage }) => {
+      const page = await openRscPage(server, '/css')
+      await page
+        .locator(`section[data-row=${row}]`, { hasText: 'MARK_CARD' })
+        .waitFor()
       await waitForHydration(page)
       expect(
-        [...server.messages, ...page.console].filter((message) =>
-          /renderToReadableStream/.test(message),
-        ),
+        [
+          ...server.messages,
+          ...(await page.consoleMessages()).map((message) => message.text()),
+        ].filter((message) => /renderToReadableStream/.test(message)),
       ).toEqual([])
-      expect(page.errors).toEqual([])
+      expect(pageErrors).toEqual([])
     },
   )
 
   // SPEC J7.1, J7.2: the CSS is delivered wherever the render runs, here in
   // a helper module the server fn calls (the dev twin: rsc-css.test.ts).
-  test('a render call in a helper module styles the server component', async () => {
-    const page = await open(helperRow.path)
+  test('a render call in a helper module styles the server component', async ({
+    pageErrors,
+    openRscPage,
+  }) => {
+    const page = await openRscPage(server, helperRow.path)
     const selector = '[data-testid=helper-card]'
-    await page.page.locator(selector).waitFor()
+    await page.locator(selector).waitFor()
     await waitForHydration(page)
     expect(
       await settledValue(
@@ -636,15 +657,15 @@ describe('Vite production build with RSC', () => {
         (value) => value === HELPER_CARD_BACKGROUND,
       ),
     ).toBe(HELPER_CARD_BACKGROUND)
-    expect(page.errors).toEqual([])
+    expect(pageErrors).toEqual([])
   })
 
-  test.each(['renderable', 'composite', 'flight'])(
+  test.for(['renderable', 'composite', 'flight'])(
     'the %s row styles its server component',
-    async (row) => {
-      const page = await open('/css')
+    async (row, { pageErrors, openRscPage }) => {
+      const page = await openRscPage(server, '/css')
       const selector = `section[data-row=${row}] [data-testid=card]`
-      await page.page.locator(selector).waitFor()
+      await page.locator(selector).waitFor()
       await waitForHydration(page)
       expect(
         await settledValue(
@@ -653,7 +674,7 @@ describe('Vite production build with RSC', () => {
           (value) => value === CARD_BACKGROUND,
         ),
       ).toBe(CARD_BACKGROUND)
-      expect(page.errors).toEqual([])
+      expect(pageErrors).toEqual([])
     },
   )
 })

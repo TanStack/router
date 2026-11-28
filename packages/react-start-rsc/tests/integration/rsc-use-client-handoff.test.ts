@@ -20,8 +20,9 @@
  * 407da6ddac and db260cf3a3 named the entry, or mocked silently).
  */
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
-import { describe, expect, test } from 'vitest'
-import { startRscPreviewServer, startRscRsbuildPreviewServer } from './rsc-app'
+import { describe, expect } from 'vitest'
+import { test } from './test'
+import type { RscFixtures } from './test'
 
 const timeout = 120_000
 
@@ -87,17 +88,19 @@ const imports = (asked: Array<Asked>) =>
   ].sort()
 
 const hosts = [
-  { host: 'Vite', serve: startRscPreviewServer },
-  { host: 'Rsbuild', serve: startRscRsbuildPreviewServer },
+  { host: 'Vite', bundler: 'vite' },
+  { host: 'Rsbuild', bundler: 'rsbuild' },
 ] as const
 
 /** Builds and serves the app on `host` with `importProtection` over `behavior: 'error'`; the labels of `/uc`. */
 async function labels(
-  serve: (typeof hosts)[number]['serve'],
+  serve: RscFixtures['serveRscBuild'],
+  bundler: 'vite' | 'rsbuild',
   files: Record<string, string>,
   importProtection: Record<string, unknown>,
 ): Promise<Array<string>> {
   const server = await serve({
+    bundler,
     files,
     start: { importProtection: { behavior: 'error', ...importProtection } },
   })
@@ -107,13 +110,13 @@ async function labels(
   )
 }
 
-describe.each(hosts)('$host build with RSC', ({ serve }) => {
+describe.each(hosts)('$host build with RSC', ({ bundler }) => {
   test(
     "the route and the server component import a denied 'use client' file, allowImport allows both: each is asked once, the page renders",
-    async () => {
+    async ({ serveRscBuild }) => {
       const asked: Array<Asked> = []
       expect(
-        await labels(serve, app(true), {
+        await labels(serveRscBuild, bundler, app(true), {
           allowImport: (info: Asked) => {
             asked.push(info)
             return true
@@ -130,8 +133,8 @@ describe.each(hosts)('$host build with RSC', ({ serve }) => {
 
   test(
     "allowImport allows the route's import only: the build fails at the server component's import",
-    async () => {
-      const failed = await labels(serve, app(true), {
+    async ({ serveRscBuild }) => {
+      const failed = await labels(serveRscBuild, bundler, app(true), {
         allowImport: (info: Asked) => info.importer.endsWith('/uc.tsx'),
       }).then(
         () => null,
@@ -149,10 +152,10 @@ describe.each(hosts)('$host build with RSC', ({ serve }) => {
 
   test(
     'the server component alone imports it, allowImport allows it: its import is asked about, the page renders',
-    async () => {
+    async ({ serveRscBuild }) => {
       const asked: Array<Asked> = []
       expect(
-        await labels(serve, app(false), {
+        await labels(serveRscBuild, bundler, app(false), {
           allowImport: (info: Asked) => {
             asked.push(info)
             return true
@@ -171,12 +174,13 @@ describe.each(hosts)('$host build with RSC', ({ serve }) => {
   // Source: the RSC phase 1 re-check 2 (/var/tmp/rsc-p1-recheck2/report.md
   // §2, `isolated.py aliases_only`: 2f8afeccc0 built the allowed-first app
   // with zero reports and failed the denied-first one)
-  test.each([
+  test.for([
     { order: 'allowed first', deniedFirst: false, line: 4 },
     { order: 'denied first', deniedFirst: true, line: 3 },
   ])(
     'the server component imports it twice, allowImport allows one spelling ($order): the build fails at the denied import',
-    async ({ deniedFirst, line }) => {
+    { timeout },
+    async ({ deniedFirst, line }, { serveRscBuild }) => {
       const allowed = `import { ClientBox } from './ClientBox.client'`
       const denied = `import { ClientBox as Another } from './ClientBox.client.tsx'`
       const files = app(false)
@@ -186,7 +190,7 @@ describe.each(hosts)('$host build with RSC', ({ serve }) => {
         `${allowed}\n`,
         `${deniedFirst ? `${denied}\n${allowed}` : `${allowed}\n${denied}`}\n`,
       ).replace('<ClientBox />', '<ClientBox />\n      <Another />')
-      const failed = await labels(serve, files, {
+      const failed = await labels(serveRscBuild, bundler, files, {
         allowImport: (info: Asked) => !info.specifier.endsWith('.tsx'),
       }).then(
         () => null,
@@ -199,15 +203,14 @@ describe.each(hosts)('$host build with RSC', ({ serve }) => {
         position: { line, column: 38 },
       })
     },
-    timeout,
   )
 
   test(
     'an exempt server component alone imports it: the page renders, nothing is reported',
-    async () => {
+    async ({ serveRscBuild }) => {
       const reported: Array<unknown> = []
       expect(
-        await labels(serve, app(false), {
+        await labels(serveRscBuild, bundler, app(false), {
           exclude: ['**/ucServer.tsx'],
           onViolation: (info: unknown) => {
             reported.push(info)
@@ -250,15 +253,17 @@ function Page() {
 
 describe.each(hosts)(
   '$host build with RSC, a denied file a nested server component renders',
-  ({ serve }) => {
-    test.each([
+  ({ bundler }) => {
+    test.for([
       { layout: "not its chunk's entry", routes: ['n'] },
       { layout: 'in a chunk two server fns share', routes: ['n', 'm'] },
     ])(
       '$layout: the build fails, reporting the import of the server component that renders it',
-      async ({ routes }) => {
+      { timeout },
+      async ({ routes }, { serveRscBuild }) => {
         const reported: Array<Asked> = []
-        const failed = await serve({
+        const failed = await serveRscBuild({
+          bundler,
           files: {
             'src/n/Comp.client.tsx': comp,
             'src/n/ServerChart.tsx': `import { Comp } from './Comp.client'
@@ -291,7 +296,6 @@ export function ServerChart() {
           ].sort(),
         ).toEqual(['rsc ServerChart.tsx ./Comp.client'])
       },
-      timeout,
     )
   },
 )

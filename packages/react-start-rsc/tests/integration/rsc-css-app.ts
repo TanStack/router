@@ -17,7 +17,6 @@
  * Mechanism is free (SPEC §5): how the CSS travels (`loadCss`, envelopes,
  * link precedence) is never asserted, only that the component is styled.
  */
-import { afterAll, beforeAll } from 'vitest'
 import {
   computedStyle,
   devStylesGone,
@@ -26,8 +25,9 @@ import {
   startRscDevServer,
   waitForHydration,
 } from './rsc-app'
-import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
+import type { Page } from '@tanstack/compiler-test-utils/test'
+import type { Browser } from './rsc-app'
 
 /** A row's `Card` background (its CSS module). */
 export const CARD_BACKGROUND = 'rgb(254, 243, 199)'
@@ -220,9 +220,9 @@ export const renderableImport = `import { renderServerComponent } from '@tanstac
 
 export interface RscCssApp {
   /** The shared dev server. */
-  server: () => DevServer
+  server: DevServer
   /** The page, once every section shows something and the page hydrated. */
-  page: () => BrowserPage
+  page: Page
   /** The text of a row's section. */
   text: (row: Row) => Promise<string>
   /**
@@ -243,28 +243,33 @@ export interface RscCssApp {
    * imports, outside `node_modules` and Vite's own modules.
    */
   clientModules: (row: Row) => Promise<Array<string>>
+  /** Closes the page and the server. */
+  close: () => Promise<void>
 }
 
 /**
- * In `beforeAll`: starts the dev server of an app with the page of `rows`
- * (and `files`) and opens the page; stops both in `afterAll`.
+ * Starts the dev server of an app (in `parent`) with the page of `rows` (and
+ * `files`) and opens the page in a context of its own of `browser`, once
+ * every section shows something and the page hydrated.
  */
-export function rscCssApp(options: {
-  rows: Array<Row>
-  files?: Record<string, string>
-  config?: Record<string, unknown>
-}): RscCssApp {
+export async function rscCssApp(
+  parent: string,
+  browser: Browser,
+  options: {
+    rows: Array<Row>
+    files?: Record<string, string>
+    config?: Record<string, unknown>
+  },
+): Promise<RscCssApp> {
+  const context = await browser.newContext()
   let server: DevServer | undefined
-  let page: BrowserPage | undefined
-  const cleanups: Array<() => Promise<void>> = []
-  const registerCleanup = (cleanup: () => Promise<void>) => {
-    cleanups.push(cleanup)
+  const close = async () => {
+    await context.close()
+    await server?.close()
   }
-
-  beforeAll(async () => {
-    server = await startRscDevServer({
+  try {
+    server = await startRscDevServer(parent, {
       browser: true,
-      registerCleanup,
       files: {
         'src/global.css': `.plain { color: rgb(1, 2, 3); }\n`,
         ...options.files,
@@ -283,8 +288,9 @@ export function rscCssApp(options: {
       },
       config: options.config,
     })
-    page = await openRscPage(server, '/', { registerCleanup })
-    await page.page.waitForFunction(
+    const started = server
+    const page = await openRscPage(await context.newPage(), server, '/')
+    await page.waitForFunction(
       () =>
         [...document.querySelectorAll('section[data-row]')].every(
           (element) =>
@@ -296,48 +302,36 @@ export function rscCssApp(options: {
     )
     await waitForHydration(page)
     await devStylesGone(page)
-  })
-  afterAll(async () => {
-    for (const cleanup of cleanups.reverse()) {
-      await cleanup()
-    }
-  })
-
-  const started = <T>(value: T | undefined): T => {
-    if (!value) {
-      throw new Error('the app did not start')
-    }
-    return value
-  }
-  const inRow = (row: Row, selector = '') =>
-    `section[data-row="${row.key}"] ${selector}`.trim()
-
-  return {
-    server: () => started(server),
-    page: () => started(page),
-    text: async (row) =>
-      (await started(page).page.locator(inRow(row)).textContent()) ?? '',
-    style: async (row, selector, property, expected) => {
-      const current = started(page)
-      return settledValue(
-        current,
-        async () =>
-          (await current.page.locator(inRow(row, selector)).count()) === 0
-            ? 'missing'
-            : computedStyle(current, inRow(row, selector), property),
-        (value) => value === expected,
-      )
-    },
-    clientModules: async (row) =>
-      Object.keys(
-        await started(server).load(
-          `/src/rows/${row.key}.${row.jsx ? 'jsx' : 'tsx'}`,
-          {
-            environment: 'client',
-            skip: /\/node_modules\/|^\/@(vite|react-refresh)\b/,
-          },
+    const inRow = (row: Row, selector = '') =>
+      `section[data-row="${row.key}"] ${selector}`.trim()
+    return {
+      server: started,
+      page,
+      text: async (row) => (await page.locator(inRow(row)).textContent()) ?? '',
+      style: (row, selector, property, expected) =>
+        settledValue(
+          page,
+          async () =>
+            (await page.locator(inRow(row, selector)).count()) === 0
+              ? 'missing'
+              : computedStyle(page, inRow(row, selector), property),
+          (value) => value === expected,
         ),
-      ),
+      clientModules: async (row) =>
+        Object.keys(
+          await started.load(
+            `/src/rows/${row.key}.${row.jsx ? 'jsx' : 'tsx'}`,
+            {
+              environment: 'client',
+              skip: /\/node_modules\/|^\/@(vite|react-refresh)\b/,
+            },
+          ),
+        ),
+      close,
+    }
+  } catch (error) {
+    await close()
+    throw error
   }
 }
 

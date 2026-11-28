@@ -6,13 +6,9 @@
  */
 import path from 'node:path'
 import { readFile, readdir } from 'node:fs/promises'
-import { expect, test } from 'vitest'
-import {
-  answeredText,
-  openRscPage,
-  startRscRsbuildPreviewServer,
-  waitForHydration,
-} from './rsc-app'
+import { expect } from 'vitest'
+import { answeredText, waitForHydration } from './rsc-app'
+import { test } from './test'
 
 const timeout = 120_000
 
@@ -30,7 +26,7 @@ export const old = createServerFn().handler(() => 'MARK_OLD')
 // their previous compile, so the server's manifest still listed it.
 test(
   'a server fn an edit removes from its module leaves the rebuilt server',
-  async () => {
+  async ({ openRscPage, startRscRsbuildPreviewServer }) => {
     const server = await startRscRsbuildPreviewServer({
       start: {
         serverFns: {
@@ -62,7 +58,7 @@ function Page() {
     expect(server.errors).toEqual([])
     const page = await openRscPage(server, '/watched')
     await waitForHydration(page)
-    await page.page.click('[data-testid=call]')
+    await page.click('[data-testid=call]')
     expect(
       await answeredText(page, '[data-testid=call]', (text) => text !== 'none'),
     ).toBe('MARK_PLAIN')
@@ -124,7 +120,7 @@ function Page() {
 // follows the client build of the rebuild).
 test(
   "an edit that moves the client's call to another server fn moves what the rebuilt server answers",
-  async () => {
+  async ({ openRscPage, startRscRsbuildPreviewServer }) => {
     const server = await startRscRsbuildPreviewServer({
       files: {
         'src/moved/a.ts': `import { createServerFn } from '@tanstack/react-start'
@@ -140,16 +136,18 @@ export const callB = createServerFn().handler(() => 'MARK_B')
     expect(server.errors).toEqual([])
     const page = await openRscPage(server, '/moved')
     await waitForHydration(page)
-    await page.page.click('[data-testid=call]')
+    await page.click('[data-testid=call]')
     expect(
       await answeredText(page, '[data-testid=call]', (text) => text !== 'none'),
     ).toBe('MARK_B')
-    const urls = JSON.parse(await page.text('[data-testid=urls]')) as {
+    const urls = JSON.parse(
+      (await page.locator('[data-testid=urls]').textContent())!,
+    ) as {
       a: string
       b: string
     }
     const callId = (url: string) =>
-      page.page.evaluate(
+      page.evaluate(
         (id) => (window as any).callId(id),
         url.slice(url.lastIndexOf('/') + 1),
       )

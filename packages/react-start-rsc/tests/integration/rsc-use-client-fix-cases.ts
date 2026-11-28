@@ -25,7 +25,7 @@
  */
 import { expect } from 'vitest'
 import { waitForHydration } from './rsc-app'
-import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
+import type { Page } from '@tanstack/compiler-test-utils/test'
 
 /** A `'use client'` button showing `MARK_OK` once clicked. */
 const comp = `'use client'
@@ -158,7 +158,7 @@ export function CompClientOnly() {
 /** Each route's server-rendered HTML holds `ssr`, and after hydration its `Comp` responds to a click. */
 export async function expectRoutesWork(
   url: string,
-  open: (pathname: string) => Promise<BrowserPage>,
+  open: (pathname: string) => Promise<Page>,
   ssr: 'component' | 'fallback',
 ): Promise<void> {
   for (const pathname of ['/c', '/n']) {
@@ -172,8 +172,10 @@ export async function expectRoutesWork(
     }
     const page = await open(pathname)
     await waitForHydration(page)
-    await page.page.locator('[data-testid=comp]').click()
-    await page.waitForText('comp MARK_OK', { selector: '[data-testid=comp]' })
+    await page.locator('[data-testid=comp]').click()
+    await page
+      .locator('[data-testid=comp]', { hasText: 'comp MARK_OK' })
+      .waitFor()
   }
 }
 

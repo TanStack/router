@@ -8,13 +8,10 @@
  * A component edit keeping state (the other half of J3.6, with React
  * Refresh from `@rsbuild/plugin-react`) is in rsc-start-hmr.test.ts.
  */
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import {
-  openRscPage,
-  startRscRsbuildDevServer,
-  waitForHydration,
-} from './rsc-app'
-import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
+import { describe, expect } from 'vitest'
+import { startRscRsbuildDevServer, waitForHydration } from './rsc-app'
+import { test } from './test'
+import type { Page } from '@tanstack/compiler-test-utils/test'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
 /** A dependency whose entry differs by export condition. */
@@ -66,21 +63,17 @@ function Page() {
 `
 
 /** Clicks the page's call button and waits for the answer. */
-async function callFromPage(page: BrowserPage, expected: string) {
-  await page.page.locator('[data-testid=call]').click()
-  await page.waitForText(expected, { selector: '[data-testid=called]' })
+async function callFromPage(page: Page, expected: string) {
+  await page.locator('[data-testid=call]').click()
+  await page.locator('[data-testid=called]', { hasText: expected }).waitFor()
 }
 
 describe('Rsbuild dev with RSC', () => {
   let server: RsbuildDevServer
-  const cleanups: Array<() => Promise<void>> = []
 
-  beforeAll(async () => {
-    server = await startRscRsbuildDevServer({
+  test.beforeAll(async ({ fileRoot }) => {
+    server = await startRscRsbuildDevServer(fileRoot, {
       browser: true,
-      registerCleanup: (cleanup) => {
-        cleanups.push(cleanup)
-      },
       files: {
         ...envMarkerPackage,
         'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
@@ -113,61 +106,70 @@ function Page() {
         'src/routes/edit.tsx': editRoute('V1'),
       },
     })
-  })
-  afterAll(async () => {
-    for (const cleanup of cleanups.reverse()) {
-      await cleanup()
-    }
+    return () => server.close()
   })
 
   // J4.3, J4.16: the provider runs the handler with `react-server` and
   // initialises the package once, whether SSR or the browser calls it; SSR's
   // own code gets `default`, the browser `browser`, and the client output
   // has no other environment's entry.
-  test('each environment runs its own entry of a dependency; the provider runs the handler', async () => {
+  test('each environment runs its own entry of a dependency; the provider runs the handler', async ({
+    openRscPage,
+    pageErrors,
+  }) => {
     expect(server.errors).toEqual([])
     const page = await openRscPage(server, '/env')
-    await page.waitForText('ssr MARK_DEFAULT provider MARK_REACT_SERVER:1', {
-      selector: '[data-testid=label]',
-    })
+    await page
+      .locator('[data-testid=label]', {
+        hasText: 'ssr MARK_DEFAULT provider MARK_REACT_SERVER:1',
+      })
+      .waitFor()
     await waitForHydration(page)
     await callFromPage(page, 'called MARK_REACT_SERVER:1')
-    await page.page.locator('[data-testid=where]').click()
-    await page.waitForText('browser MARK_BROWSER', {
-      selector: '[data-testid=browser]',
-    })
+    await page.locator('[data-testid=where]').click()
+    await page
+      .locator('[data-testid=browser]', { hasText: 'browser MARK_BROWSER' })
+      .waitFor()
     const client = Object.values(await server.outputs('client')).join('\n')
     expect({
       browser: client.includes('MARK_BROWSER'),
       server: /MARK_REACT_SERVER|MARK_DEFAULT/.test(client),
     }).toEqual({ browser: true, server: false })
-    expect(page.errors).toEqual([])
+    expect(pageErrors).toEqual([])
   })
 
   // J3.6 (#7618) on Rsbuild's RSC layer: after an edit of
   // the handler of a route module's server fn, the page applies the hot
   // update (its loader runs the new handler) and the next call runs it,
   // without a full reload; the client's hot update never has the handler.
-  test('a handler edit reaches the loader and the next call, without a full reload', async () => {
-    const page = await openRscPage(server, '/edit')
-    await page.waitForText('MARK_LABEL_V1 MARK_HANDLER_V1', {
-      selector: '[data-testid=label]',
-    })
+  test('a handler edit reaches the loader and the next call, without a full reload', async ({
+    openRscPage,
+    pageErrors,
+    page,
+  }) => {
+    let loads = 0
+    page.on('load', () => loads++)
+    await openRscPage(server, '/edit')
+    await page
+      .locator('[data-testid=label]', {
+        hasText: 'MARK_LABEL_V1 MARK_HANDLER_V1',
+      })
+      .waitFor()
     await waitForHydration(page)
     await callFromPage(page, 'called MARK_HANDLER_V1')
 
     await server.edit({ 'src/routes/edit.tsx': editRoute('V2') })
     expect(server.errors).toEqual([])
-    await page.waitForText('MARK_HANDLER_V2', {
-      selector: '[data-testid=label]',
-    })
+    await page
+      .locator('[data-testid=label]', { hasText: 'MARK_HANDLER_V2' })
+      .waitFor()
     await callFromPage(page, 'called MARK_HANDLER_V2')
-    expect(page.loads()).toBe(1)
+    expect(loads).toBe(1)
     const update = Object.values(await server.hotUpdates('client')).join('\n')
     expect({
       label: update.includes('MARK_LABEL_V2'),
       handler: update.includes('MARK_HANDLER_V2'),
     }).toEqual({ label: true, handler: false })
-    expect(page.errors).toEqual([])
+    expect(pageErrors).toEqual([])
   })
 })

@@ -6,17 +6,13 @@
  * provider; one created inside a function that captures a binding of it is
  * a compile error at the capture in every environment.
  */
-import { describe, expect, test } from 'vitest'
+import { describe, expect } from 'vitest'
 import {
   diagnosticsOf,
   expectDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import {
-  openRscPage,
-  startRscDevServer,
-  startRscRsbuildDevServer,
-  waitForHydration,
-} from './rsc-app'
+import { waitForHydration } from './rsc-app'
+import { test } from './test'
 
 /** `fns.make` is a server fn whose chain reads module bindings only. */
 const hoistable = `import { createServerFn } from '@tanstack/react-start'
@@ -92,7 +88,11 @@ function positionOf(code: string, at: string) {
 }
 
 describe('Vite dev with a separate RSC provider', () => {
-  test('a hoisted server fn runs in every environment', async () => {
+  test('a hoisted server fn runs in every environment', async ({
+    openRscPage,
+    pageErrors,
+    startRscDevServer,
+  }) => {
     const server = await startRscDevServer({ browser: true, files })
     // the `rsc` environment evaluates the module (the factory, the options
     // and the stub it reads stay with the chain)
@@ -101,19 +101,19 @@ describe('Vite dev with a separate RSC provider', () => {
     const inSsr = await server.import('/src/fns.ts', 'ssr')
     expect(typeof inSsr.fns.make).toBe('function')
     const page = await openRscPage(server, '/')
-    await page.waitForText('loaded MARK_NESTED', {
-      selector: '[data-testid=label]',
-    })
+    await page
+      .locator('[data-testid=label]', { hasText: 'loaded MARK_NESTED' })
+      .waitFor()
     await waitForHydration(page)
-    expect(page.errors).toEqual([])
+    expect(pageErrors).toEqual([])
     const client = await server.transform('/src/fns.ts', 'client')
     expect(client).not.toContain('MARK_NESTED')
     expect(client).not.toContain('./secret')
   })
 
-  test.each(capturing)(
+  test.for(capturing)(
     'a server fn nested in a function capturing $name is a compile error in every environment',
-    async ({ code, at }) => {
+    async ({ code, at }, { startRscDevServer }) => {
       const server = await startRscDevServer({
         files: { ...files, 'src/fns.ts': code },
       })
@@ -140,15 +140,19 @@ describe('Vite dev with a separate RSC provider', () => {
 })
 
 describe('Rsbuild dev with an RSC layer', () => {
-  test('a hoisted server fn runs, and a capture in a function is a compile error', async () => {
+  test('a hoisted server fn runs, and a capture in a function is a compile error', async ({
+    openRscPage,
+    pageErrors,
+    startRscRsbuildDevServer,
+  }) => {
     const server = await startRscRsbuildDevServer({ browser: true, files })
     expect(server.errors).toEqual([])
     const page = await openRscPage(server, '/')
-    await page.waitForText('loaded MARK_NESTED', {
-      selector: '[data-testid=label]',
-    })
+    await page
+      .locator('[data-testid=label]', { hasText: 'loaded MARK_NESTED' })
+      .waitFor()
     await waitForHydration(page)
-    expect(page.errors).toEqual([])
+    expect(pageErrors).toEqual([])
     const client = Object.values(await server.outputs('client')).join('\n')
     expect(client).not.toContain('MARK_NESTED')
 

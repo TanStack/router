@@ -6,13 +6,9 @@
  * reads the class or the declaration there. Nothing may read an uninitialised
  * binding while the modules load, on the server or in the browser.
  */
-import { afterAll, beforeAll, describe, test } from 'vitest'
-import {
-  openRscPage,
-  startRscPreviewServer,
-  startRscRsbuildPreviewServer,
-  waitForHydration,
-} from './rsc-app'
+import { describe } from 'vitest'
+import { serveRscBuild, waitForHydration } from './rsc-app'
+import { test } from './test'
 import type { RscPreviewServer } from './rsc-app'
 
 const page = (fn: string) => `export const Route = createFileRoute(ROUTE)({
@@ -74,39 +70,29 @@ registry.add(createServerFn().middleware([auth]).handler(async () => 'MARK_HANDL
   ),
 }
 
-describe.each([
-  ['vite', startRscPreviewServer],
-  ['rsbuild', startRscRsbuildPreviewServer],
-] as const)('a %s build', (_, start) => {
+describe.each(['vite', 'rsbuild'] as const)('a %s build', (bundler) => {
   let server: RscPreviewServer
-  const cleanups: Array<() => Promise<void>> = []
 
-  beforeAll(async () => {
-    server = await start({
-      registerCleanup: (cleanup) => {
-        cleanups.push(cleanup)
-      },
+  test.beforeAll(async ({ fileRoot }) => {
+    server = await serveRscBuild(fileRoot, {
+      bundler,
       files,
     })
-  })
-  afterAll(async () => {
-    for (const cleanup of cleanups.reverse()) {
-      await cleanup()
-    }
+    return () => server.close()
   })
 
-  test.each(Object.keys(files).map((f) => f.replace(/.*\/|\.tsx/g, '')))(
+  test.for(Object.keys(files).map((f) => f.replace(/.*\/|\.tsx/g, '')))(
     '/%s renders and its server fn answers the browser',
-    async (name) => {
+    async (name, { openRscPage }) => {
       const opened = await openRscPage(server, `/${name}`)
-      await opened.waitForText('MARK_PAGE', {
-        selector: '[data-testid=label]',
-      })
+      await opened
+        .locator('[data-testid=label]', { hasText: 'MARK_PAGE' })
+        .waitFor()
       await waitForHydration(opened)
-      await opened.page.locator('[data-testid=call]').click()
-      await opened.waitForText('called MARK_HANDLER', {
-        selector: '[data-testid=called]',
-      })
+      await opened.locator('[data-testid=call]').click()
+      await opened
+        .locator('[data-testid=called]', { hasText: 'called MARK_HANDLER' })
+        .waitFor()
     },
   )
 })

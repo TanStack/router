@@ -8,13 +8,9 @@
  * route's loader calls it) renders `Inner` too, so the client manifest has
  * it and both clicks answer.
  */
-import { expect, onTestFinished, test } from 'vitest'
-import {
-  answeredText,
-  openRscPage,
-  startRscRsbuildPreviewServer,
-  waitForHydration,
-} from './rsc-app'
+import { expect } from 'vitest'
+import { answeredText, waitForHydration } from './rsc-app'
+import { test } from './test'
 
 const timeout = 60_000
 
@@ -63,7 +59,7 @@ function Page() {
 
 test(
   'a component a server fn the build reaches first renders: both clicks answer',
-  async () => {
+  async ({ openRscPage, startRscRsbuildPreviewServer }) => {
     const server = await startRscRsbuildPreviewServer({
       files: {
         ...files,
@@ -82,12 +78,10 @@ export const Route = createFileRoute('/early')({
       },
     })
     expect(server.errors).toEqual([])
-    const page = await openRscPage(server, '/nested', {
-      registerCleanup: onTestFinished,
-    })
+    const page = await openRscPage(server, '/nested')
     await waitForHydration(page)
-    await page.page.locator('[data-testid=outer]').click()
-    await page.page.locator('[data-testid=inner]').click()
+    await page.locator('[data-testid=outer]').click()
+    await page.locator('[data-testid=inner]').click()
     expect(
       await answeredText(
         page,

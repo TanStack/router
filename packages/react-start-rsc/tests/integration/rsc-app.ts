@@ -17,6 +17,10 @@
  * is not one of them (it depends on this package), so the built workspace
  * package is linked (`workspacePackageLinks`); the `test:integration` Nx
  * target depends on its `build`.
+ *
+ * Each opener takes the directory it makes its app in (a test's `appRoot`,
+ * a file's `fileRoot`) and returns what it opened with its `close()`; the
+ * test's fixtures (`./test`) bind them to the test.
  */
 import { writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
@@ -25,7 +29,6 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import react from '@vitejs/plugin-react'
 import rsc from '@vitejs/plugin-rsc'
 import { pluginReact } from '@rsbuild/plugin-react'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { holdNodeEnv } from '@tanstack/compiler-test-utils/node-env'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import {
@@ -40,9 +43,9 @@ import {
 } from '@tanstack/compiler-test-utils/build-harness'
 import { createBuilder, mergeConfig, preview } from 'vite'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
-import { onTestFinished } from 'vitest'
+import { expect } from 'vitest'
 import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
-import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
+import type { Page } from '@tanstack/compiler-test-utils/test'
 import type {
   DevServer,
   DevServerOptions,
@@ -53,6 +56,11 @@ import type {
 } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
+
+/** The test's browser (the `browser` fixture). */
+export type Browser = NonNullable<
+  ReturnType<ReturnType<Page['context']>['browser']>
+>
 
 /**
  * Node's own `import()`, outside Vitest's module runner (as
@@ -68,11 +76,13 @@ const nativeImport = createRequire(import.meta.url)(
  * layout; with `native`, loaded by Node itself (`nativeImport`).
  */
 async function tanstackStartPlugin(
+  parent: string,
   bundler: 'vite' | 'rsbuild',
   native = false,
 ): Promise<(options?: Record<string, unknown>) => unknown> {
   const app = await createApp({
     dir: harnessDir,
+    parent,
     prefix: '.rsc-plugin-import-',
     files: {
       'plugin.mjs': `export { tanstackStart } from '@tanstack/react-start/plugin/${bundler}'`,
@@ -124,7 +134,7 @@ function Root() {
 
 export interface RscDevServerOptions extends Omit<
   DevServerOptions,
-  'dir' | 'plugins'
+  'dir' | 'parent' | 'plugins' | 'registerCleanup'
 > {
   /** Start's plugin options (`tanstackStart(options)`), `rsc` enabled. */
   start?: Record<string, unknown>
@@ -138,14 +148,15 @@ export interface RscDevServerOptions extends Omit<
  * (`server.import(url, 'rsc')` runs a module in the provider).
  */
 export async function startRscDevServer(
+  parent: string,
   options: RscDevServerOptions,
 ): Promise<DevServer> {
   const { files, start, config, ...devServerOptions } = options
-  const tanstackStart = await tanstackStartPlugin('vite')
+  const tanstackStart = await tanstackStartPlugin(parent, 'vite')
   return createDevServer({
     dir: harnessDir,
+    parent,
     prefix: '.rsc-dev-server-',
-    registerCleanup: onTestFinished,
     ...devServerOptions,
     files: { ...rscAppFiles, ...files },
     // An app may also import this package directly (`@tanstack/react-start-rsc`).
@@ -192,14 +203,16 @@ export interface RscPreviewServer {
   url: string
   /** What the build logged (warnings and errors). */
   messages: Array<string>
+  /** Closes the server. */
+  close: () => Promise<void>
 }
 
 /** What `buildRscApp` and its callers take. */
-interface RscBuildOptions {
+export interface RscBuildOptions {
   files: Record<string, string>
   start?: Record<string, unknown>
   config?: Record<string, unknown>
-  registerCleanup?: (cleanup: () => Promise<void>) => void
+  signal?: AbortSignal
 }
 
 /**
@@ -208,13 +221,13 @@ interface RscBuildOptions {
  * environments, `buildApp()`). `built`: the build's rejection, if it
  * failed (null: it built).
  */
-async function buildRscApp(options: RscBuildOptions) {
-  const registerCleanup = options.registerCleanup ?? onTestFinished
-  const tanstackStart = await tanstackStartPlugin('vite')
+async function buildRscApp(parent: string, options: RscBuildOptions) {
+  const tanstackStart = await tanstackStartPlugin(parent, 'vite')
   const app = await createApp({
     dir: harnessDir,
+    parent,
+    signal: options.signal,
     prefix: '.rsc-preview-server-',
-    registerCleanup,
     files: { ...rscAppFiles, ...options.files },
     symlinks: workspacePackageLinks([
       '@tanstack/react-start',
@@ -244,26 +257,27 @@ async function buildRscApp(options: RscBuildOptions) {
     (error: unknown) => error,
   )
   const messages = reported.map(({ text }) => text)
-  return { root: app.root, config, messages, built, registerCleanup }
+  return { root: app.root, config, messages, built }
 }
 
 /**
  * Builds a React Start app with RSC enabled for production (`buildRscApp`)
  * and serves the build with `vite preview` (Start's own preview server
  * runs the built server entry). The test process runs with
- * `NODE_ENV=production` until the cleanup, as `vite preview` does, so the
- * server's React matches the client's. No `vite build --watch`
+ * `NODE_ENV=production`, as `vite preview` does, so the
+ * server's React matches the client's until `close()`. No `vite build --watch`
  * counterpart: `@vitejs/plugin-rsc`'s watch build exits before its server
  * output exists (KNOWN-BUGS, "Upstream issues").
  */
 export async function startRscPreviewServer(
+  parent: string,
   options: RscBuildOptions,
 ): Promise<RscPreviewServer> {
-  const { root, config, messages, built, registerCleanup } =
-    await buildRscApp(options)
+  const { root, config, messages, built } = await buildRscApp(parent, options)
   if (built !== null) {
     throw built
   }
+  options.signal?.throwIfAborted()
   // (`vite preview` runs under it, for as long as the server serves)
   const { result: server, release: releaseNodeEnv } = await holdNodeEnv(
     'production',
@@ -276,18 +290,19 @@ export async function startRscPreviewServer(
         preview: { host: '127.0.0.1' },
       }),
   )
-  registerCleanup(async () => {
+  const close = async () => {
     try {
       await server.close()
     } finally {
       releaseNodeEnv()
     }
-  })
+  }
   const url = server.resolvedUrls?.local[0]
   if (!url) {
+    await close()
     throw new Error('the preview server does not listen')
   }
-  return { root, url, messages }
+  return { root, url, messages, close }
 }
 
 /**
@@ -295,11 +310,14 @@ export async function startRscPreviewServer(
  * that must fail: the message of the build's rejection, without colours
  * (throws if it built).
  */
-export async function failedRscBuild(options: RscBuildOptions): Promise<{
+export async function failedRscBuild(
+  parent: string,
+  options: RscBuildOptions,
+): Promise<{
   root: string
   error: string
 }> {
-  const { root, built } = await buildRscApp(options)
+  const { root, built } = await buildRscApp(parent, options)
   if (built === null) {
     throw new Error('the build succeeded')
   }
@@ -307,6 +325,19 @@ export async function failedRscBuild(options: RscBuildOptions): Promise<{
     root,
     error: stripAnsi(built instanceof Error ? built.message : String(built)),
   }
+}
+
+/**
+ * `startRscPreviewServer` with `bundler: 'vite'`,
+ * `startRscRsbuildPreviewServer` with `'rsbuild'`.
+ */
+export function serveRscBuild(
+  parent: string,
+  { bundler, ...options }: RscBuildOptions & { bundler: 'vite' | 'rsbuild' },
+): Promise<RscPreviewServer> {
+  return bundler === 'vite'
+    ? startRscPreviewServer(parent, options)
+    : startRscRsbuildPreviewServer(parent, options)
 }
 
 /** The bound of a watch mode build's first build, and of an edit's rebuild. */
@@ -349,47 +380,23 @@ async function rsbuildApi(): Promise<RsbuildApi> {
  * built `@tanstack/react-start/plugin/rsbuild` and `@rsbuild/plugin-react`,
  * as for `startRscRsbuildDevServer`), and serves the build as `rsbuild
  * preview` does (Start's own middleware runs the built server entry). The
- * test process runs with `NODE_ENV=production` until the cleanup, as for
+ * test process runs with `NODE_ENV=production` until `close()`, as for
  * `startRscPreviewServer`. `errors`: what the build reported as errors
  * (a failed build rejects with them, an `AggregateError`).
  */
-export async function startRscRsbuildPreviewServer(options: {
-  files: Record<string, string>
-  start?: Record<string, unknown>
-  /** Rsbuild's `tools` (the harness's `htmlPlugin: false` stays). */
-  tools?: Record<string, unknown>
-  registerCleanup?: (cleanup: () => Promise<void>) => void
-  /**
-   * Files written after a first build, which a second `build()` of the
-   * same Rsbuild instance (the same plugins) then builds: the build served
-   * is the second.
-   */
-  rebuildWith?: Record<string, string>
-  /**
-   * Builds in watch mode (`rsbuild build --watch`) and writes these files
-   * once the first build is done: the build served is the rebuild of the
-   * edit (its errors reject).
-   */
-  watchWith?: Record<string, string>
-  /**
-   * Files written after a first build, then `rsbuild build` runs again (a
-   * new Rsbuild instance and new plugins, what the first build left in the
-   * directory kept, e.g. its persistent cache): the build served is the
-   * second.
-   */
-  buildAgainWith?: Record<string, string>
-  /** Rsbuild's `performance` (e.g. `{ buildCache: true }`). */
-  performance?: Record<string, unknown>
-}): Promise<RscPreviewServer & { errors: Array<string> }> {
-  const registerCleanup = options.registerCleanup ?? onTestFinished
+export async function startRscRsbuildPreviewServer(
+  parent: string,
+  options: RscRsbuildBuildOptions,
+): Promise<RscPreviewServer & { errors: Array<string> }> {
   // Loaded by Node: Start's preview middleware imports the built server
   // bundle, which Node runs, not Vitest's module runner
-  const tanstackStart = await tanstackStartPlugin('rsbuild', true)
+  const tanstackStart = await tanstackStartPlugin(parent, 'rsbuild', true)
   const { createRsbuild } = await rsbuildApi()
   const app = await createApp({
     dir: harnessDir,
+    parent,
+    signal: options.signal,
     prefix: '.rsc-rsbuild-preview-server-',
-    registerCleanup,
     files: { ...rscAppFiles, ...options.files },
     symlinks: workspacePackageLinks([
       '@tanstack/react-start',
@@ -512,21 +519,23 @@ export async function startRscRsbuildPreviewServer(options: {
         { cause: error },
       )
     })
+    options.signal?.throwIfAborted()
     const {
       result: { server, urls },
       release: releaseNodeEnv,
     } = await holdNodeEnv('production', async () =>
       (await rsbuild()).preview({ getPortSilently: true }),
     )
-    registerCleanup(async () => {
+    const close = async () => {
       try {
         await server.close()
       } finally {
         releaseNodeEnv()
       }
-    })
+    }
     const url = urls[0]
     if (!url) {
+      await close()
       throw new Error('the preview server does not listen')
     }
     return {
@@ -536,15 +545,46 @@ export async function startRscRsbuildPreviewServer(options: {
       errors: reported
         .filter(({ severity }) => severity === 'error')
         .map(({ text }) => text),
+      close,
     }
   } finally {
     process.chdir(cwd)
   }
 }
 
+/** What `startRscRsbuildPreviewServer` takes. */
+export interface RscRsbuildBuildOptions {
+  files: Record<string, string>
+  start?: Record<string, unknown>
+  /** Rsbuild's `tools` (the harness's `htmlPlugin: false` stays). */
+  tools?: Record<string, unknown>
+  signal?: AbortSignal
+  /**
+   * Files written after a first build, which a second `build()` of the
+   * same Rsbuild instance (the same plugins) then builds: the build served
+   * is the second.
+   */
+  rebuildWith?: Record<string, string>
+  /**
+   * Builds in watch mode (`rsbuild build --watch`) and writes these files
+   * once the first build is done: the build served is the rebuild of the
+   * edit (its errors reject).
+   */
+  watchWith?: Record<string, string>
+  /**
+   * Files written after a first build, then `rsbuild build` runs again (a
+   * new Rsbuild instance and new plugins, what the first build left in the
+   * directory kept, e.g. its persistent cache): the build served is the
+   * second.
+   */
+  buildAgainWith?: Record<string, string>
+  /** Rsbuild's `performance` (e.g. `{ buildCache: true }`). */
+  performance?: Record<string, unknown>
+}
+
 export interface RscRsbuildDevServerOptions extends Omit<
   RsbuildDevServerOptions,
-  'dir' | 'plugins' | 'entry'
+  'dir' | 'parent' | 'plugins' | 'entry' | 'registerCleanup'
 > {
   /** Start's plugin options (`tanstackStart(options)`), `rsc` enabled. */
   start?: Record<string, unknown>
@@ -563,9 +603,11 @@ export interface RscRsbuildDevServerOptions extends Omit<
  * RSC layer and `react-server-dom-rspack`) and `@rsbuild/plugin-react`, as
  * an Rsbuild React app lists them (unless `config.plugins` has it, e.g.
  * with other options). With `browser`, Start's own dev middleware serves
- * the pages (SSR) and Rsbuild's HMR client runs in the page.
+ * the pages (SSR) and Rsbuild's HMR client runs in the page. Its `close()`
+ * also closes the server its last `restart()` started.
  */
 export async function startRscRsbuildDevServer(
+  parent: string,
   options: RscRsbuildDevServerOptions,
 ): Promise<RsbuildDevServer> {
   const {
@@ -575,8 +617,10 @@ export async function startRscRsbuildDevServer(
     inAppDirectory = true,
     ...devServerOptions
   } = options
-  const tanstackStart = await tanstackStartPlugin('rsbuild')
+  const tanstackStart = await tanstackStartPlugin(parent, 'rsbuild')
   const cwd = process.cwd()
+  /** The close of the server the last `restart()` started. */
+  let closeLatest = () => Promise.resolve()
   /** In the test process's directory again once `open()` resolved. */
   const inTestDirectory = async (
     open: () => Promise<RsbuildDevServer>,
@@ -584,6 +628,7 @@ export async function startRscRsbuildDevServer(
     try {
       const server = await open()
       const { restart } = server
+      closeLatest = server.close
       // `rsbuild dev` run again in the app: new plugin instances (`plugins`
       // is called again), the directory's caches kept
       return Object.assign(server, {
@@ -593,11 +638,11 @@ export async function startRscRsbuildDevServer(
       process.chdir(cwd)
     }
   }
-  return inTestDirectory(() =>
+  const server = await inTestDirectory(() =>
     createRsbuildDevServer({
       dir: harnessDir,
+      parent,
       prefix: '.rsc-rsbuild-dev-server-',
-      registerCleanup: onTestFinished,
       ...devServerOptions,
       // Start's plugin defines the entries of its environments (the harness
       // default is overridden by its client entry of the same name).
@@ -634,6 +679,10 @@ export async function startRscRsbuildDevServer(
       ],
     }),
   )
+  const { close } = server
+  return Object.assign(server, {
+    close: () => Promise.all([close(), closeLatest()]).then(() => {}),
+  })
 }
 
 /** The HTTP requests of a page in flight, and when that last changed. */
@@ -642,37 +691,37 @@ interface Network {
   changed: number
 }
 
-const networks = new WeakMap<BrowserPage, Network>()
+const networks = new WeakMap<Page, Network>()
 
 /**
- * Opens `pathname` of a dev server with `browser` in a real page, closed
- * when the current test finishes unless `registerCleanup` says otherwise.
- * The page's requests from then on are tracked for `settledValue`.
+ * Opens `pathname` of a server (a dev server with `browser`, a preview) in
+ * `page` (the `openRscPage` fixture: the test's page). The page's requests
+ * from its first open on are tracked for `settledValue`.
  */
 export async function openRscPage(
-  server: Pick<DevServer | RsbuildDevServer, 'url'>,
+  page: Page,
+  server: { url?: string },
   pathname: string,
-  options: { registerCleanup?: (cleanup: () => Promise<void>) => void } = {},
-): Promise<BrowserPage> {
+): Promise<Page> {
   if (!server.url) {
     throw new Error('the dev server does not listen: start it with `browser`')
   }
-  const page = await openPage(new URL(pathname, server.url).href, {
-    registerCleanup: options.registerCleanup ?? onTestFinished,
-  })
-  const network: Network = { pending: new Set(), changed: Date.now() }
-  page.page.on('request', (request) => {
-    network.pending.add(request)
-    network.changed = Date.now()
-  })
-  const done = (request: unknown) => {
-    if (network.pending.delete(request)) {
+  if (!networks.has(page)) {
+    const network: Network = { pending: new Set(), changed: Date.now() }
+    page.on('request', (request) => {
+      network.pending.add(request)
       network.changed = Date.now()
+    })
+    const done = (request: unknown) => {
+      if (network.pending.delete(request)) {
+        network.changed = Date.now()
+      }
     }
+    page.on('requestfinished', done)
+    page.on('requestfailed', done)
+    networks.set(page, network)
   }
-  page.page.on('requestfinished', done)
-  page.page.on('requestfailed', done)
-  networks.set(page, network)
+  await page.goto(new URL(pathname, server.url).href)
   return page
 }
 
@@ -685,7 +734,7 @@ export async function openRscPage(
  * asserts on it. For pages of `openRscPage`.
  */
 export async function settledValue<T>(
-  page: BrowserPage,
+  page: Page,
   read: () => Promise<T>,
   accept: (value: T) => boolean,
   { quiet = 500, timeout = 15_000 } = {},
@@ -724,11 +773,15 @@ export async function settledValue<T>(
  * its bug (`pins-setup.ts`).
  */
 export async function answeredText(
-  page: BrowserPage,
+  page: Page,
   selector: string,
   answered: (text: string) => boolean,
 ): Promise<string> {
-  const text = await settledValue(page, () => page.text(selector), answered)
+  const text = await settledValue(
+    page,
+    async () => (await page.locator(selector).first().textContent()) ?? '',
+    answered,
+  )
   if (!answered(text)) {
     throw new Error(`${selector}: the click got no answer (${text})`)
   }
@@ -740,8 +793,10 @@ export async function answeredText(
  * shows it through the router's `useHydrated()`): only then does the page
  * run the client, e.g. its HMR listeners.
  */
-export function waitForHydration(page: BrowserPage): Promise<void> {
-  return page.waitForText('hydrated', { selector: '[data-testid=hydrated]' })
+export function waitForHydration(page: Page): Promise<void> {
+  return page
+    .locator('[data-testid=hydrated]', { hasText: /^hydrated$/ })
+    .waitFor()
 }
 
 /** What Seroval's string literals escape, by the text after the backslash. */
@@ -794,8 +849,8 @@ export function rscStreams(html: string): Array<string> {
  * content before hydration and which the client removes once it hydrated)
  * is gone, so that the computed styles come from what the client loaded.
  */
-export async function devStylesGone(page: BrowserPage): Promise<void> {
-  await page.page.waitForFunction(
+export async function devStylesGone(page: Page): Promise<void> {
+  await page.waitForFunction(
     () =>
       document.querySelector('link[href*="/@tanstack-start/styles.css"]') ===
       null,
@@ -810,11 +865,11 @@ export async function devStylesGone(page: BrowserPage): Promise<void> {
  * `rgb(r, g, b)`).
  */
 export function computedStyle(
-  page: BrowserPage,
+  page: Page,
   selector: string,
   property: string,
 ): Promise<string> {
-  return page.page
+  return page
     .locator(selector)
     .first()
     .evaluate(
@@ -826,38 +881,15 @@ export function computedStyle(
 /**
  * Waits until the computed `property` of `selector` is `expected`, for at
  * most `timeout` ms (default 15 000): a hot update applies asynchronously.
- * Throws with the current value, the page's errors and console otherwise.
  */
 export async function waitForStyle(
-  page: BrowserPage,
+  page: Page,
   selector: string,
   property: string,
   expected: string,
   timeout = 15_000,
 ): Promise<void> {
-  const deadline = Date.now() + timeout
-  let current = ''
-  for (;;) {
-    try {
-      current = await computedStyle(page, selector, property)
-    } catch {
-      // The page is reloading
-      current = ''
-    }
-    if (current === expected) {
-      return
-    }
-    if (Date.now() > deadline) {
-      throw new Error(
-        [
-          `${selector}'s ${property} did not become ${expected} within ${timeout} ms`,
-          `it is: ${JSON.stringify(current)}`,
-          `page loads: ${page.loads()}`,
-          `errors:\n${page.errors.join('\n') || '(none)'}`,
-          `console:\n${page.console.join('\n') || '(none)'}`,
-        ].join('\n'),
-      )
-    }
-    await new Promise((resolve) => setTimeout(resolve, 50))
-  }
+  await expect
+    .poll(() => computedStyle(page, selector, property), { timeout })
+    .toBe(expected)
 }

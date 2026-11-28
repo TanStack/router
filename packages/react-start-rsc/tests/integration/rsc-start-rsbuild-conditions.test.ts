@@ -17,12 +17,9 @@
  * RSC layer), a route's loader calls it. Vite's provider environment
  * (`rsc`) is the dev twin.
  */
-import { describe, expect, test } from 'vitest'
-import {
-  startRscDevServer,
-  startRscRsbuildDevServer,
-  startRscRsbuildPreviewServer,
-} from './rsc-app'
+import { describe, expect } from 'vitest'
+import { test } from './test'
+import type { RscFixtures } from './test'
 
 const timeout = 60_000
 
@@ -129,6 +126,12 @@ const devFiles = {
   ...appFiles(['#where', '#whereMarked', '#leak', '#leakMarked']),
 }
 
+/** The dev servers' openers (fixtures). */
+type DevOpeners = Pick<
+  RscFixtures,
+  'startRscDevServer' | 'startRscRsbuildDevServer'
+>
+
 /**
  * The provider's environment and the page of a dev server, per host. Vite's
  * provider is an environment of its own (`rsc`, `react-server` among its
@@ -136,7 +139,10 @@ const devFiles = {
  * name `rsc` too.
  */
 const devHosts = {
-  'Rsbuild dev': async (start: Record<string, unknown>) => {
+  'Rsbuild dev': async (
+    { startRscRsbuildDevServer }: DevOpeners,
+    start: Record<string, unknown>,
+  ) => {
     const server = await startRscRsbuildDevServer({
       browser: true,
       start,
@@ -145,7 +151,10 @@ const devHosts = {
     const page = await (await fetch(new URL('/', server.url))).text()
     return { env: 'rsc', page }
   },
-  'Vite dev': async (start: Record<string, unknown>) => {
+  'Vite dev': async (
+    { startRscDevServer }: DevOpeners,
+    start: Record<string, unknown>,
+  ) => {
     const server = await startRscDevServer({
       listen: true,
       start,
@@ -160,9 +169,12 @@ describe.each(Object.keys(devHosts) as Array<keyof typeof devHosts>)(
   (host) => {
     test(
       'the provider judges the files its react-server condition resolves',
-      async () => {
+      async ({ startRscDevServer, startRscRsbuildDevServer }) => {
         const { violations, start } = recorder()
-        const { env, page } = await devHosts[host](start)
+        const { env, page } = await devHosts[host](
+          { startRscDevServer, startRscRsbuildDevServer },
+          start,
+        )
         // (the denied files are served as their mocks)
         expect(page).toContain('MARK_SERVER MARK_SERVER')
         expect(page).not.toMatch(/MARK_LEAK_|MARK_PLAIN|MARK_CLIENT_/)
@@ -176,7 +188,7 @@ describe.each(Object.keys(devHosts) as Array<keyof typeof devHosts>)(
 describe('Rsbuild build with RSC', () => {
   test(
     'a file only the default condition names is not reported',
-    async () => {
+    async ({ startRscRsbuildPreviewServer }) => {
       const { violations, start } = recorder()
       const server = await startRscRsbuildPreviewServer({
         start,
@@ -196,7 +208,7 @@ describe('Rsbuild build with RSC', () => {
 
   test(
     'a denied file only the react-server condition names fails the build',
-    async () => {
+    async ({ startRscRsbuildPreviewServer }) => {
       const { violations, start } = recorder()
       const built = await startRscRsbuildPreviewServer({
         start,
