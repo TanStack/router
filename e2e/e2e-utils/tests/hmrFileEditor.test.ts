@@ -13,10 +13,7 @@ async function fixture() {
 
 test('spaces successive writes of one file past the watcher change window', async () => {
   const { file } = await fixture()
-  const editor = createHmrFileEditor({
-    files: { route: file },
-    minWriteIntervalMs: 100,
-  })
+  const editor = createHmrFileEditor({ files: { route: file } })
   await editor.capturePromise
 
   const started = Date.now()
