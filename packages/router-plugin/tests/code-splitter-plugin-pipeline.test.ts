@@ -229,6 +229,31 @@ export const Route = createFileRoute('/unknown')({
     await expectValidModules({ reference })
   })
 
+  it('keeps dependencies shared by the deleted server option and the client component', async () => {
+    const splitter = await createCodeSplitterTransforms(hostOptions, {})
+    const source = `
+import { createFileRoute } from '@tanstack/react-router'
+import { getTitle } from './title'
+import { secret } from './server-only'
+
+export const Route = createFileRoute('/unknown')({
+  server: { handlers: { GET: () => new Response(getTitle() + secret) } },
+  component: () => <h1>{getTitle()}</h1>,
+})
+`
+
+    const reference = splitter.reference(source, file)!
+
+    expect(importSources(reference).sort()).toEqual([
+      './title',
+      '@tanstack/react-router',
+    ])
+    expect(reference).toContain('<h1>{getTitle()}</h1>')
+    expect(reference).not.toContain('new Response')
+    expect(reference).not.toContain('tsr-split')
+    await expectValidModules({ reference })
+  })
+
   it('is left as it is when the host plugin asks for it and there are no route options to delete', async () => {
     const splitter = await createCodeSplitterTransforms(
       { codeSplittingOptions: { deleteNodesInUnknownRoutes: true } },

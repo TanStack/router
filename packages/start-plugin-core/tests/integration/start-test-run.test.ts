@@ -269,6 +269,42 @@ describe('an app with routes', () => {
     timeout,
   )
 
+  test(
+    'generates a virtual route tree without a physical routes directory',
+    async () => {
+      const virtualRouteConfig = {
+        type: 'root',
+        file: '../pages/root.tsx',
+        children: [
+          { type: 'route', path: '/about', file: '../pages/about.tsx' },
+        ],
+      }
+      const app = await createStartApp({
+        'tsr.config.json': JSON.stringify({ virtualRouteConfig }),
+        'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+export const getRouter = () => createRouter({ routeTree })
+`,
+        'src/pages/root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute()
+`,
+        'src/pages/about.tsx': `${head}export const Route = createFileRoute('/about')({ component: () => 'MARK_ABOUT' })\n`,
+      })
+      const { server } = await startViteTestServer(app)
+
+      expect(await app.read('src/routeTree.gen.ts')).toContain('./pages/about')
+      const { getRouter } = await importOnServer(
+        server,
+        '#tanstack-router-entry',
+      )
+      expect(Object.keys(getRouter().routesById).sort()).toEqual([
+        '/about',
+        '__root__',
+      ])
+    },
+    timeout,
+  )
+
   // A dev server and a build update the route path of a route file that was
   // moved, and fill an empty route file. A test run does not edit sources.
   test(

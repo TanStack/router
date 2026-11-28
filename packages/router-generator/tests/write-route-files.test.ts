@@ -81,6 +81,31 @@ export const Route = createFileRoute('/moved-from')({
     )
   })
 
+  it('warns about a non-lazy factory in a lazy route without rewriting it', async () => {
+    const lazySource = `import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/about')({
+  component: () => 'about',
+})
+`
+    const project = await createProject({
+      '__root.tsx': rootRouteSource,
+      'about.lazy.tsx': lazySource,
+    })
+
+    await project.generator.run()
+
+    expect(await fs.readFile(project.route('about.lazy.tsx'), 'utf8')).toBe(
+      lazySource,
+    )
+    expect(await project.routeTree()).toContain(
+      ".lazy(() => import('./routes/about.lazy')",
+    )
+    expect(project.warnings()).toContain(
+      `Route file "${project.route('about.lazy.tsx')}" is out of date`,
+    )
+  })
+
   it('leaves an empty route file empty and out of the route tree, and warns', async () => {
     const project = await createProject({
       '__root.tsx': rootRouteSource,

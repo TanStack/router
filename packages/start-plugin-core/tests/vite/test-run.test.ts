@@ -40,6 +40,14 @@ describe('excludeFromTestRuns', () => {
       expect(applies(plugin, build)).toBe(true)
     }
   })
+
+  test('keeps dev plugins active for a Vite server started in test mode outside Vitest', () => {
+    vi.stubEnv('VITEST', undefined)
+    const plugin = excludeFromTestRuns({ name: 'dev-middleware' }) as Plugin
+
+    expect(applies(plugin, testRun)).toBe(true)
+    expect(applies(testRunRouterEntryPlugin(), testRun)).toBe(false)
+  })
 })
 
 /** Calls a hook of a plugin, whether it is a function or has a handler. */
