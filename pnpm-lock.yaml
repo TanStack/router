@@ -194,6 +194,9 @@ catalogs:
     '@vitejs/plugin-vue-jsx':
       specifier: ^4.1.2
       version: 4.2.0
+    '@vitest/browser-playwright':
+      specifier: ^5.1.1
+      version: 5.1.1
     '@vitest/ui':
       specifier: ^5.1.1
       version: 5.1.1
@@ -4407,7 +4410,7 @@ importers:
         specifier: 'catalog:'
         version: 6.0.1(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(rolldown@1.2.19)(vite@8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)))(babel-plugin-react-compiler@1.0.0)(vite@8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@vitest/browser-playwright':
-        specifier: 5.1.1
+        specifier: 'catalog:'
         version: 5.1.1(msw@2.15.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(playwright@1.63.0)(vite@8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))(vitest@5.1.1)
       jsdom:
         specifier: 'catalog:'
@@ -4450,7 +4453,7 @@ importers:
         specifier: 'catalog:'
         version: 6.0.1(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(rolldown@1.2.19)(vite@8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)))(babel-plugin-react-compiler@1.0.0)(vite@8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@vitest/browser-playwright':
-        specifier: 5.1.1
+        specifier: 'catalog:'
         version: 5.1.1(msw@2.15.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(playwright@1.63.0)(vite@8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))(vitest@5.1.1)
       jsdom:
         specifier: 'catalog:'
@@ -15064,7 +15067,7 @@ importers:
         version: 8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
       vite-plugin-solid:
         specifier: ^2.11.10 || ^3.0.0-0
-        version: 2.11.16(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
+        version: 2.11.11(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       zod:
         specifier: 'catalog:'
         version: 4.5.4
@@ -29411,16 +29414,6 @@ packages:
     resolution: {integrity: sha512-YMZCXsLw9kyuvQFEdwLP27fuTQJLmjNoHy90AOJnbRuJ6DwShUxKFo38gdFrWn9v11hnGicKCZEaeI/TFs6JKw==}
     peerDependencies:
       '@testing-library/jest-dom': ^5.16.6 || ^5.17.0 || ^6.*
-      solid-js: 1.9.12
-      vite: ^8.3.8
-    peerDependenciesMeta:
-      '@testing-library/jest-dom':
-        optional: true
-
-  vite-plugin-solid@2.11.16:
-    resolution: {integrity: sha512-qguFUmqY2ICuoGHrZjm+cWpvKkqVyWDMptipC/BIEGr9q6wEzwTWYOjM9pEWJ+yoTuF6T5OpysI2Okdy7rsVlQ==}
-    peerDependencies:
-      '@testing-library/jest-dom': ^5.16.6 || ^5.17.0 || ^6.0.0 || ^7.0.0
       solid-js: 1.9.12
       vite: ^8.3.8
     peerDependenciesMeta:
@@ -44767,21 +44760,6 @@ snapshots:
       vitefu: 1.1.1(vite@8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
     optionalDependencies:
       '@testing-library/jest-dom': 7.0.1(@testing-library/dom@10.4.1)(vitest@5.0.4)
-    transitivePeerDependencies:
-      - supports-color
-
-  vite-plugin-solid@2.11.16(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)):
-    dependencies:
-      '@babel/core': 7.29.7(supports-color@10.2.2)
-      '@types/babel__core': 7.20.5
-      babel-preset-solid: 1.9.10(@babel/core@7.29.7(supports-color@10.2.2))(solid-js@1.9.12)
-      merge-anything: 5.1.7
-      solid-js: 1.9.12
-      solid-refresh: 0.6.3(solid-js@1.9.12)(supports-color@10.2.2)
-      vite: 8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0)
-      vitefu: 1.1.3(vite@8.3.8(@types/node@25.0.9)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
-    optionalDependencies:
-      '@testing-library/jest-dom': 6.6.3
     transitivePeerDependencies:
       - supports-color
 
