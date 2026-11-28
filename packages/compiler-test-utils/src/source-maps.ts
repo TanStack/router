@@ -419,7 +419,7 @@ export function expectNamesFileOnce(
 ): void {
   const named = maps.flatMap(({ file: emitted, map }) =>
     map.sources.flatMap((source, i) => {
-      if (source === null) {
+      if (source == null) {
         return []
       }
       const at = emittedSourcePath(
