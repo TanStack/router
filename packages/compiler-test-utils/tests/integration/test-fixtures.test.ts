@@ -1,0 +1,361 @@
+/**
+ * Controls of the fixtures (test.ts): a probe file uses them in a Vitest of
+ * its own (a child Node process) whose run directory is a directory of this
+ * file's, and records what happened (`log`). Then each row reads the
+ * outcome of the probe's tests, the records, and what the run left on disk.
+ */
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
+import path from 'node:path'
+import { expect } from 'vitest'
+import { createAppDirectory } from '../../src/app-directory'
+import { runNodeProgram } from '../../src/run-node'
+import { test } from '../../src/test'
+
+const packageDirectory = path.dirname(path.dirname(import.meta.dirname))
+
+/**
+ * The probe. Each test records events as JSON lines: what closed and in
+ * which order (`closed`), whether its `appRoot` was still there at that
+ * point, and whether a test body went on after an await (`resumed`). A
+ * test after each subject test records whether the subject's `appRoot`
+ * survived it.
+ */
+const probe = `import { appendFileSync, existsSync, readdirSync } from 'node:fs'
+import { expect } from 'vitest'
+import { test } from ${JSON.stringify(path.join(packageDirectory, 'src/test.ts'))}
+
+const dir = ${JSON.stringify(packageDirectory)}
+const log = (event) => appendFileSync(process.env.PROBE_LOG, JSON.stringify(event) + '\\n')
+const app = { 'index.html': '<p>app</p>', 'src/entry.ts': 'export {}\\n' }
+/** Records the close of a Vite dev server, and the listening of its port. */
+const vitePlugin = (name, appRoot, hooks = {}) => ({
+  name: 'probe-' + name,
+  configureServer(server) {
+    server.httpServer?.on('listening', () => log({ listening: name, port: server.httpServer.address().port }))
+    return hooks.configureServer?.()
+  },
+  closeServer() {
+    log({ closed: name, appRoot: existsSync(appRoot) })
+    hooks.closeServer?.()
+  },
+})
+const rsbuildPlugin = (name, appRoot, hooks = {}) => ({
+  name: 'probe-' + name,
+  setup(api) {
+    api.onBeforeCreateCompiler(() => hooks.beforeCreateCompiler?.())
+    api.onDevCompileDone(() => log({ compiled: name }))
+    api.onCloseDevServer(() => log({ closed: name, appRoot: existsSync(appRoot) }))
+  },
+})
+/** Resolves a moment after the test's signal aborted (the test timed out). */
+const afterAbort = (signal) =>
+  new Promise((resolve) => signal.addEventListener('abort', () => setTimeout(resolve, 200)))
+let previous
+const survived = (name) => log({ survived: name, appRoot: existsSync(previous) })
+
+test('order', async ({ appRoot, page, devServer, rsbuildServer, build, onTestFinished }) => {
+  previous = appRoot
+  page.on('close', () => log({ closed: 'page', appRoot: existsSync(appRoot) }))
+  await page.goto('about:blank')
+  await devServer({ dir, files: app, listen: true, plugins: [vitePlugin('vite', appRoot)] })
+  await build({ dir, bundler: 'vite', entry: 'src/entry.ts', files: app })
+  await rsbuildServer({ dir, files: app, plugins: [rsbuildPlugin('rsbuild', appRoot)] })
+  log({ apps: readdirSync(appRoot).length })
+})
+test('after order', () => survived('order'))
+
+test('a close that throws', async ({ appRoot, devServer }) => {
+  previous = appRoot
+  await devServer({ dir, files: app, plugins: [vitePlugin('first', appRoot)] })
+  await devServer({
+    dir,
+    files: app,
+    plugins: [vitePlugin('throws', appRoot, { closeServer: () => { throw new Error('MARK_CLOSE') } })],
+  })
+})
+test('after a close that throws', () => survived('a close that throws'))
+
+test('a timeout during a Vite start', { timeout: 500 }, async ({ appRoot, devServer, signal }) => {
+  previous = appRoot
+  await devServer({
+    dir,
+    files: app,
+    listen: true,
+    plugins: [vitePlugin('held vite', appRoot, { configureServer: () => afterAbort(signal) })],
+  })
+  log({ resumed: 'vite' })
+})
+test('after a timeout during a Vite start', () => survived('a timeout during a Vite start'))
+
+test('a timeout during an Rsbuild start', { timeout: 500 }, async ({ appRoot, rsbuildServer, signal }) => {
+  previous = appRoot
+  await rsbuildServer({
+    dir,
+    files: app,
+    plugins: [rsbuildPlugin('held rsbuild', appRoot, { beforeCreateCompiler: () => afterAbort(signal) })],
+  })
+  log({ resumed: 'rsbuild' })
+})
+test('after a timeout during an Rsbuild start', () => survived('a timeout during an Rsbuild start'))
+
+test('a timeout during a build', { timeout: 500 }, async ({ appRoot, build, signal }) => {
+  previous = appRoot
+  await build({
+    dir,
+    bundler: 'vite',
+    entry: 'src/entry.ts',
+    files: app,
+    plugins: { vite: () => ({ name: 'held', buildStart: () => afterAbort(signal) }) },
+  })
+  log({ resumed: 'build' })
+})
+test('after a timeout during a build', () => survived('a timeout during a build'))
+
+test('a second open after a timeout', { timeout: 300 }, async ({ appRoot, devServer, signal }) => {
+  previous = appRoot
+  await new Promise((resolve) => signal.addEventListener('abort', resolve))
+  await devServer({ dir, files: app }).then(
+    () => log({ second: 'opened' }),
+    (error) => log({ second: error.name, apps: existsSync(appRoot) ? readdirSync(appRoot).length : 0 }),
+  )
+})
+test('after a second open after a timeout', async () => {
+  // (the second open of the timed-out test ran meanwhile)
+  await new Promise((resolve) => setTimeout(resolve, 200))
+  survived('a second open after a timeout')
+})
+
+test('a failed start', async ({ appRoot, devServer, rsbuildServer }) => {
+  previous = appRoot
+  await expect(
+    devServer({ dir, files: app, plugins: [{ name: 'fails', configureServer() { throw new Error('MARK_VITE') } }] }),
+  ).rejects.toThrow('MARK_VITE')
+  await expect(
+    rsbuildServer({ dir, files: app, plugins: [{ name: 'fails', setup() { throw new Error('MARK_RSBUILD') } }] }),
+  ).rejects.toThrow('MARK_RSBUILD')
+})
+test('after a failed start', () => survived('a failed start'))
+`
+
+/**
+ * A test of each probe file: records the file's `fileRoot` and the
+ * `workerRoot`, and whether the `fileRoot` of a file that ran before is
+ * still there.
+ */
+const fileRow = (
+  name: string,
+) => `import { appendFileSync as append, existsSync as exists, readFileSync } from 'node:fs'
+test('${name}', ({ fileRoot, workerRoot }) => {
+  for (const line of readFileSync(process.env.PROBE_LOG, 'utf8').split('\\n').filter(Boolean)) {
+    const event = JSON.parse(line)
+    if ('fileRoot' in event) {
+      append(process.env.PROBE_LOG, JSON.stringify({ earlierFileRoot: exists(event.fileRoot) }) + '\\n')
+    }
+  }
+  append(process.env.PROBE_LOG, JSON.stringify({ fileRoot, workerRoot }) + '\\n')
+})
+`
+
+/** What the probe's run gave: each test's state and errors, the records, what is left. */
+interface ProbeRun {
+  tests: Record<string, { state: string; errors: Array<string> }>
+  events: Array<Record<string, unknown>>
+  left: Array<string>
+}
+
+const run = test.extend(
+  'probe',
+  { scope: 'file' },
+  async ({ fileRoot }): Promise<ProbeRun> => {
+    const root = await createAppDirectory(packageDirectory, '.probe-', fileRoot)
+    const runDir = path.join(root, 'run')
+    const logFile = path.join(root, 'events.log')
+    await writeFile(
+      path.join(root, 'fixtures.test.ts'),
+      probe + fileRow('the first file'),
+    )
+    await writeFile(
+      path.join(root, 'second.test.ts'),
+      `import { test } from ${JSON.stringify(path.join(packageDirectory, 'src/test.ts'))}\n${fileRow('the second file')}`,
+    )
+    await writeFile(logFile, '')
+    await mkdir(runDir)
+    const { stdout } = await runNodeProgram(
+      `import { startVitest } from 'vitest/node'
+const vitest = await startVitest('test', [], {
+  root: ${JSON.stringify(root)},
+  config: false,
+  watch: false,
+  reporters: [],
+  // (one worker that keeps its modules across files, as router-generator's)
+  maxWorkers: 1,
+  isolate: false,
+})
+const tests = {}
+for (const file of vitest.state.getFiles()) {
+  for (const task of file.tasks) {
+    tests[task.name] = {
+      state: task.result?.state,
+      errors: (task.result?.errors ?? []).map((error) => error.name + ': ' + error.message),
+    }
+  }
+}
+await vitest.close()
+process.stdout.write('\\n' + JSON.stringify(tests))
+process.exit(0)
+`,
+      {
+        cwd: root,
+        env: {
+          ...process.env,
+          TANSTACK_COMPILER_TESTS_RUN_DIR: runDir,
+          PROBE_LOG: logFile,
+        },
+      },
+    )
+    return {
+      tests: JSON.parse(stdout.trim().split('\n').at(-1)!),
+      events: (await readFile(logFile, 'utf8'))
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => JSON.parse(line)),
+      left: await readdir(runDir, { recursive: true }),
+    }
+  },
+)
+
+/** The records of closes, in order. */
+const closes = (events: ProbeRun['events']) =>
+  events.filter((event) => 'closed' in event)
+
+run(
+  'the page closes first, then the servers, newest first, then the test’s directory',
+  ({ probe }) => {
+    expect(probe.tests.order).toEqual({ state: 'pass', errors: [] })
+    // (what the start rows read is recorded)
+    expect(probe.events).toContainEqual(
+      expect.objectContaining({ listening: 'vite' }),
+    )
+    expect(probe.events).toContainEqual({ compiled: 'rsbuild' })
+    const events = probe.events.slice(
+      probe.events.findIndex((event) => 'apps' in event),
+    )
+    // (the page, the two servers and the build each had a directory of their own)
+    expect(events[0]).toEqual({ apps: 3 })
+    expect(closes(events).slice(0, 3)).toEqual([
+      { closed: 'page', appRoot: true },
+      { closed: 'rsbuild', appRoot: true },
+      { closed: 'vite', appRoot: true },
+    ])
+    expect(probe.events).toContainEqual({ survived: 'order', appRoot: false })
+  },
+)
+
+run(
+  'a close that throws fails the test, and the others still close',
+  ({ probe }) => {
+    expect(probe.tests['a close that throws']).toEqual({
+      state: 'fail',
+      errors: [expect.stringContaining('MARK_CLOSE')],
+    })
+    expect(closes(probe.events)).toEqual(
+      expect.arrayContaining([
+        { closed: 'throws', appRoot: true },
+        { closed: 'first', appRoot: true },
+      ]),
+    )
+    expect(probe.events).toContainEqual({
+      survived: 'a close that throws',
+      appRoot: false,
+    })
+  },
+)
+
+run.for(['Vite', 'Rsbuild'] as const)(
+  'a timeout during a %s start: the test goes no further, the server never listens and is closed',
+  (bundler, { probe }) => {
+    const name = `a timeout during a${bundler === 'Vite' ? '' : 'n'} ${bundler} start`
+    expect(probe.tests[name]).toEqual({
+      state: 'fail',
+      errors: [expect.stringMatching(/^TestTimeoutError: /)],
+    })
+    const server = `held ${bundler.toLowerCase()}`
+    // (the start stopped at its next step: no port, no compile)
+    expect(probe.events).not.toContainEqual(
+      expect.objectContaining({ listening: server }),
+    )
+    expect(probe.events).not.toContainEqual({ compiled: server })
+    expect(probe.events).not.toContainEqual({
+      resumed: bundler.toLowerCase(),
+    })
+    expect(closes(probe.events)).toContainEqual({
+      closed: server,
+      appRoot: true,
+    })
+    expect(probe.events).toContainEqual({ survived: name, appRoot: false })
+  },
+)
+
+run(
+  'a timeout during a build: the test goes no further, and its directory goes once the build ended',
+  ({ probe }) => {
+    expect(probe.tests['a timeout during a build']).toEqual({
+      state: 'fail',
+      errors: [expect.stringMatching(/^TestTimeoutError: /)],
+    })
+    expect(probe.events).not.toContainEqual({ resumed: 'build' })
+    expect(probe.events).toContainEqual({
+      survived: 'a timeout during a build',
+      appRoot: false,
+    })
+  },
+)
+
+run(
+  'an open after the test timed out is refused, and creates nothing',
+  ({ probe }) => {
+    expect(probe.tests['a second open after a timeout']).toEqual({
+      state: 'fail',
+      errors: [expect.stringMatching(/^TestTimeoutError: /)],
+    })
+    expect(probe.events).toContainEqual({ second: 'TestTimeoutError', apps: 0 })
+    expect(probe.events).toContainEqual({
+      survived: 'a second open after a timeout',
+      appRoot: false,
+    })
+  },
+)
+
+run(
+  'a start that fails closes what it started, and the test goes on',
+  ({ probe }) => {
+    expect(probe.tests['a failed start']).toEqual({ state: 'pass', errors: [] })
+    expect(probe.events).toContainEqual({
+      survived: 'a failed start',
+      appRoot: false,
+    })
+  },
+)
+
+run(
+  'a file’s directory goes when the file ended, in the worker’s',
+  ({ probe }) => {
+    const roots = probe.events.filter((event) => 'fileRoot' in event)
+    expect(roots).toHaveLength(2)
+    expect(roots[0]!.fileRoot).not.toBe(roots[1]!.fileRoot)
+    expect(roots[0]!.workerRoot).toBe(roots[1]!.workerRoot)
+    expect(path.dirname(roots[0]!.fileRoot as string)).toBe(
+      roots[0]!.workerRoot,
+    )
+    // (checked by the file that ran second)
+    expect(probe.events.filter((event) => 'earlierFileRoot' in event)).toEqual([
+      { earlierFileRoot: false },
+    ])
+  },
+)
+
+run('nothing is left in the run’s directory', ({ probe }) => {
+  // (the probe's tests ran: this is not an empty run)
+  expect(Object.keys(probe.tests)).toHaveLength(16)
+  expect(probe.left).toEqual([])
+})

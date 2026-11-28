@@ -93,6 +93,17 @@ export interface AppOptions {
    * directory (`./app-directory`).
    */
   dir: string
+  /**
+   * The directory the app is created in (a test's `appRoot`, `./test`): the
+   * app, and everything the tool writes for it, goes with that directory.
+   * Without it, the app is in the run's shared directory of `dir`.
+   */
+  parent?: string
+  /**
+   * The test's signal: once it aborted (the test timed out), the start goes
+   * no further than its next step, and closes what it started.
+   */
+  signal?: AbortSignal
   /** App files by path relative to the app root (bytes for a binary file). */
   files: Record<string, string | Uint8Array>
   /**
@@ -330,6 +341,7 @@ export async function createApp(options: AppOptions): Promise<App> {
   const root = await createAppDirectory(
     options.dir,
     options.prefix ?? '.build-harness-',
+    options.parent,
   )
   liveApps.add(root)
   const dispose = async () => {
@@ -361,6 +373,7 @@ export async function createApp(options: AppOptions): Promise<App> {
       await mkdir(path.dirname(path.join(root, link)), { recursive: true })
       await symlink(path.resolve(root, target), path.join(root, link))
     }
+    options.signal?.throwIfAborted()
   } catch (error) {
     await dispose()
     throw error
@@ -381,6 +394,8 @@ export async function bundleApp(
 ): Promise<BuildResult> {
   const {
     dir,
+    parent,
+    signal,
     files,
     packageJson,
     sideEffects,
@@ -392,6 +407,8 @@ export async function bundleApp(
   } = options
   const app = await createApp({
     dir,
+    parent,
+    signal,
     files,
     packageJson,
     sideEffects,

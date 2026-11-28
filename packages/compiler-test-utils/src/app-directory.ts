@@ -31,12 +31,16 @@
  * of the nearest `package.json`, which is then the shared directory's, in
  * the linked `node_modules`.
  *
- * The shared directories are in this run's directory (`./run-directory`),
- * which the run removes when it ends; or without it in the system's
- * temporary directory, removed when their test process exits normally.
+ * An app of a test (`parent`: the test's `appRoot` of `./test`) has a
+ * mirror of its own in a new directory of `parent`, and goes with the test.
+ * The shared directories of the other apps are in this run's directory
+ * (`./run-directory`), which the run removes when it ends; or without it in
+ * the system's temporary directory, removed when their test process exits
+ * normally.
  */
 import {
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -51,8 +55,6 @@ import path from 'node:path'
 import { runDirectoryVariable } from './run-directory'
 
 interface StandIn {
-  /** The directory the apps stand in for. */
-  dir: string
   /** The shared directory (removed with the run, or when the process exits). */
   base: string
   /** Where the apps are created. */
@@ -84,54 +86,62 @@ function standIn(dir: string): StandIn {
         }
       })
     }
-    /** The directories above `dir` (itself included) with `node_modules`. */
-    const levels = ancestors(resolved).filter((level) =>
-      existsSync(path.join(level, 'node_modules')),
-    )
-    const top = levels.at(-1) ?? resolved
     const base = mkdtempSync(
       path.join(
         process.env[runDirectoryVariable] ?? realpathSync(os.tmpdir()),
         'apps-',
       ),
     )
-    /** The place of a directory of the repository in the mirror. */
-    const mirrored = (directory: string) => {
-      const relative = path.relative(top, directory)
-      return relative === '..' || relative.startsWith(`..${path.sep}`)
-        ? base
-        : path.join(base, relative)
-    }
-    const apps = mirrored(resolved)
-    mkdirSync(apps, { recursive: true })
-    for (const level of levels) {
-      mkdirSync(mirrored(level), { recursive: true })
-      linkDirectorySync(
-        path.join(level, 'node_modules'),
-        path.join(mirrored(level), 'node_modules'),
-      )
-    }
-    const tsconfig = nearest(resolved, 'tsconfig.json')
-    if (tsconfig) {
-      writeFileSync(
-        path.join(mirrored(path.dirname(tsconfig)), 'tsconfig.json'),
-        `${JSON.stringify({ extends: tsconfig, include: ['**/*'] }, null, 2)}\n`,
-      )
-    }
-    const packageJson = nearest(resolved, 'package.json')
-    if (packageJson) {
-      const { type, sideEffects } = JSON.parse(
-        readFileSync(packageJson, 'utf8'),
-      ) as Record<string, unknown>
-      writeFileSync(
-        path.join(mirrored(path.dirname(packageJson)), 'package.json'),
-        `${JSON.stringify({ private: true, type, sideEffects }, null, 2)}\n`,
-      )
-    }
-    found = { dir: resolved, base, apps }
+    found = { base, apps: mirror(resolved, base) }
     registry.set(resolved, found)
   }
   return found
+}
+
+/**
+ * Lays out `base` as the repository's place of `dir` (see the module
+ * comment) and returns the directory that stands in for `dir`.
+ */
+function mirror(dir: string, base: string): string {
+  /** The directories above `dir` (itself included) with `node_modules`. */
+  const levels = ancestors(dir).filter((level) =>
+    existsSync(path.join(level, 'node_modules')),
+  )
+  const top = levels.at(-1) ?? dir
+  /** The place of a directory of the repository in the mirror. */
+  const mirrored = (directory: string) => {
+    const relative = path.relative(top, directory)
+    return relative === '..' || relative.startsWith(`..${path.sep}`)
+      ? base
+      : path.join(base, relative)
+  }
+  const apps = mirrored(dir)
+  mkdirSync(apps, { recursive: true })
+  for (const level of levels) {
+    mkdirSync(mirrored(level), { recursive: true })
+    linkDirectorySync(
+      path.join(level, 'node_modules'),
+      path.join(mirrored(level), 'node_modules'),
+    )
+  }
+  const tsconfig = nearest(dir, 'tsconfig.json')
+  if (tsconfig) {
+    writeFileSync(
+      path.join(mirrored(path.dirname(tsconfig)), 'tsconfig.json'),
+      `${JSON.stringify({ extends: tsconfig, include: ['**/*'] }, null, 2)}\n`,
+    )
+  }
+  const packageJson = nearest(dir, 'package.json')
+  if (packageJson) {
+    const { type, sideEffects } = JSON.parse(
+      readFileSync(packageJson, 'utf8'),
+    ) as Record<string, unknown>
+    writeFileSync(
+      path.join(mirrored(path.dirname(packageJson)), 'package.json'),
+      `${JSON.stringify({ private: true, type, sideEffects }, null, 2)}\n`,
+    )
+  }
+  return apps
 }
 
 /**
@@ -206,31 +216,51 @@ function nearest(dir: string, name: string): string | undefined {
 
 /**
  * Creates an empty app directory, named `prefix` and a random suffix, that
- * stands in for an app created in `dir` (see the module comment). The caller
- * removes it.
+ * stands in for an app created in `dir` (see the module comment). With
+ * `parent` (a test's `appRoot`, `./test`), the app and the links it resolves
+ * through are in a new directory of `parent`, and go with it; without it, in
+ * the shared directory of `dir` in the run's directory, and the caller
+ * removes the app.
  */
-export function createAppDirectory(
+export async function createAppDirectory(
   dir: string,
   prefix: string,
+  parent?: string,
 ): Promise<string> {
-  return mkdtemp(path.join(standIn(dir).apps, prefix))
+  const apps =
+    parent === undefined
+      ? standIn(dir).apps
+      : mirror(path.resolve(dir), await mkdtemp(path.join(parent, prefix)))
+  return mkdtemp(path.join(apps, prefix))
 }
 
 /**
  * The directories a Vite dev server of the app at `root` serves files from
  * (`server.fs.allow`). For an app of `createAppDirectory(dir)`: the apps of
- * `dir`, and what Vite allows for an app in `dir` (the workspace root of
- * `dir`), where the packages the app imports really are. For another app,
- * Vite's default.
+ * its directory (the outermost directory above `root` whose `node_modules`
+ * is a link: the mirror's root), and what Vite allows for an app in `dir`
+ * (the workspace root the link leads to), where the packages the app
+ * imports really are. For another app, Vite's default.
  */
 export async function servedDirectories(root: string): Promise<Array<string>> {
   // (Vite only where a dev server runs: the build harness loads it lazily)
   const { searchForWorkspaceRoot } = await import('vite')
   const resolved = path.resolve(root)
-  const owner = [...registry.values()].find(({ base }) =>
-    resolved.startsWith(base + path.sep),
-  )
-  return owner
-    ? [owner.base, searchForWorkspaceRoot(owner.dir)]
+  const base = ancestors(resolved)
+    .filter((level) => {
+      try {
+        return lstatSync(path.join(level, 'node_modules')).isSymbolicLink()
+      } catch {
+        return false
+      }
+    })
+    .at(-1)
+  return base
+    ? [
+        base,
+        searchForWorkspaceRoot(
+          path.dirname(realpathSync(path.join(base, 'node_modules'))),
+        ),
+      ]
     : [searchForWorkspaceRoot(resolved)]
 }

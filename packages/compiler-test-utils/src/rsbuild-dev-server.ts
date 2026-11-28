@@ -538,12 +538,16 @@ async function startServer(
         config,
       ),
     })
+    options.signal?.throwIfAborted()
     server = await rsbuild.createDevServer()
     created = server
+    options.signal?.throwIfAborted()
     await compiles.first(compileTimeout)
+    options.signal?.throwIfAborted()
     // Rspack attaches its watcher after the first compile; an edit before
     // the watcher scanned the app could lose a removal (`watching`).
     await compiles.watching(root, compileTimeout)
+    options.signal?.throwIfAborted()
     if (browser) {
       http = await serve(server)
       url = http.url

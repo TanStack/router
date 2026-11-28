@@ -1180,6 +1180,7 @@ async function startServer(
   }
 
   try {
+    options.signal?.throwIfAborted()
     if (listen) {
       // Vite's default port (`strictPort` off): the server binds a port
       // itself, trying the next one while a port is in use, and `url` reads
@@ -1187,9 +1188,11 @@ async function startServer(
       // close it and bind it after: another process can take it meanwhile,
       // and the server fails with "Port … is already in use".)
       await vite.listen()
+      options.signal?.throwIfAborted()
     }
     if (watching) {
       await watcherReady()
+      options.signal?.throwIfAborted()
       for (const [relative, code] of await appFiles()) {
         known.set(relative, code)
       }

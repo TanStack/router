@@ -24,6 +24,10 @@ package. What the suite is and how to read it: [oracle/README.md](oracle/README.
 
 ## Helpers
 
+- `./test`: Vitest's `test` with the shared fixtures (`browser`, `workerRoot`/`fileRoot`/`appRoot`, `context`,
+  `page`, `pageErrors`, and the openers `build`, `devServer`, `rsbuildServer`, `pluginHost`, `rsbuildPluginHost`):
+  what a test opens closes when it ends (pages first, then the openers newest first, then `appRoot`); a package
+  extends it once in `tests/test.ts`. Its controls: `tests/integration/test-fixtures.test.ts`.
 - `./plugin-host` (`createPluginHost`): the public Vite plugins on a real Vite dev server (server code through the
   environment's module runner, client code in the browser) and `vite build`.
 - `./rsbuild-plugin-host` (`createRsbuildPluginHost`): the same through Rsbuild's JavaScript API.
