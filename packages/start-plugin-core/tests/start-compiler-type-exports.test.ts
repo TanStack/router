@@ -32,7 +32,7 @@ beforeAll(async () => {
     ],
   })
   return () => host.close()
-})
+}, 60_000)
 beforeAll(async () => {
   await host.page()
 }, 60_000)

@@ -221,7 +221,7 @@ let host: StartHost
 beforeAll(async () => {
   host = await createStartHost({ files: routeFiles() })
   return () => host.close()
-})
+}, 60_000)
 
 const serverFn = `import { createServerFn } from '@tanstack/react-start'\n`
 

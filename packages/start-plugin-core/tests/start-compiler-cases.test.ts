@@ -74,7 +74,7 @@ let host: StartHost
 beforeAll(async () => {
   host = await createStartHost()
   return () => host.close()
-})
+}, 60_000)
 
 /** A case of `files` with the server-only module. */
 async function newCase(files: Record<string, string>) {

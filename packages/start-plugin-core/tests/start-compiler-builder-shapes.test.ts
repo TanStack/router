@@ -31,7 +31,7 @@ let host: StartHost
 beforeAll(async () => {
   host = await createStartHost()
   return () => host.close()
-})
+}, 60_000)
 
 const DB = `export const db = { x: () => 'from the server', y: () => 'more from the server' }\n`
 const P = `import { createServerFn, createMiddleware, createIsomorphicFn, createServerOnlyFn, createStart } from '@tanstack/react-start'

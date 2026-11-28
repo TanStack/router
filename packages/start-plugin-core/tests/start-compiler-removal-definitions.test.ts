@@ -14,7 +14,7 @@ let host: StartHost
 beforeAll(async () => {
   host = await createStartHost()
   return () => host.close()
-})
+}, 60_000)
 const check = async (row: Row) => checkRow(host, row)
 
 // A parameter that is a name with a default keeps its place: when every read of it

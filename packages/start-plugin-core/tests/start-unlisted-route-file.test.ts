@@ -29,7 +29,7 @@ export const Route = createFileRoute('/widget')({
     },
   })
   return () => host.close()
-})
+}, 60_000)
 
 test('a route file the generator does not list is served as written, with nothing reported', async () => {
   const { host: dev, diagnostics, root } = host

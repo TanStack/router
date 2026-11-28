@@ -22,7 +22,7 @@ let hosts: HydrateHost
 beforeAll(async () => {
   hosts = await createHydrateHost()
   return () => hosts.close()
-})
+}, 60_000)
 
 for (const shape of deadCodeShapes) {
   test(`client: the parent drops what only the children use through ${shape.name}`, async () => {

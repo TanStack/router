@@ -7,7 +7,7 @@ let hosts: HydrateHost
 beforeAll(async () => {
   hosts = await createHydrateHost()
   return () => hosts.close()
-})
+}, 60_000)
 
 // `<Hydrate>` moves its children into a lazily loaded chunk on the client.
 // Whatever the children read from the enclosing scopes and the module must

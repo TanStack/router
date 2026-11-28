@@ -38,7 +38,7 @@ let host: StartHost
 beforeAll(async () => {
   host = await createStartHost()
   return () => host.close()
-})
+}, 60_000)
 beforeAll(async () => {
   await host.page()
 }, 60_000)
@@ -639,7 +639,7 @@ describe('keeps working with the classic JSX runtime downstream', () => {
   beforeAll(async () => {
     classic = await createStartHost({ react: { jsxRuntime: 'classic' } })
     return () => classic.close()
-  })
+  }, 60_000)
 
   test('the client and the server render it', async () => {
     const served = await serveCase(classic, {

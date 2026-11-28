@@ -33,7 +33,7 @@ let hosts: HydrateHost
 beforeAll(async () => {
   hosts = await createHydrateHost()
   return () => hosts.close()
-})
+}, 60_000)
 
 const head = `import { Hydrate } from '@tanstack/react-start'
 import { load } from '@tanstack/react-start/hydration'

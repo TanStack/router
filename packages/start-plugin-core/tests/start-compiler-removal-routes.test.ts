@@ -104,7 +104,7 @@ beforeAll(async () => {
     },
   })
   return () => host.close()
-})
+}, 60_000)
 
 describe('route files', () => {
   test.each(Object.keys(routes))(

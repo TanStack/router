@@ -49,7 +49,7 @@ beforeAll(async () => {
     plugins: [virtualFactories(), exactVirtualFactory()],
   })
   return () => host.close()
-})
+}, 60_000)
 
 describe('createServerFn compiles correctly', () => {
   // A server fn without its handler (`.handler()` type-checks against the

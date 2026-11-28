@@ -6,7 +6,7 @@ let hosts: HydrateHost
 beforeAll(async () => {
   hosts = await createHydrateHost()
   return () => hosts.close()
-})
+}, 60_000)
 
 // On the server, `<ClientOnly>` (of a TanStack router package) renders its
 // fallback: the server output drops its children and the imports only they

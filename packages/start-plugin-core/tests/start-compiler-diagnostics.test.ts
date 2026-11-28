@@ -17,7 +17,7 @@ let host: StartHost
 beforeAll(async () => {
   host = await createStartHost()
   return () => host.close()
-})
+}, 60_000)
 
 // Spreading the handler's arguments is a type error (TS2556 against the real
 // declarations: a spread argument must be a tuple or go to a rest

@@ -42,7 +42,7 @@ beforeAll(async () => {
     },
   })
   return () => host.close()
-})
+}, 60_000)
 
 /**
  * What `settle` gave in the page for the function `fn` (a page

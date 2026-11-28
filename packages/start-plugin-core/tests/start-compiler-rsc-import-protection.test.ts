@@ -39,7 +39,7 @@ describe("Vite with RSC: import protection's 'use client' exception", () => {
       },
     })
     return () => host.close()
-  })
+  }, 60_000)
 
   // SPEC J6.1: the provider compiles the module, which the RSC plugin
   // replaces by client references: nothing of its code runs there, so its

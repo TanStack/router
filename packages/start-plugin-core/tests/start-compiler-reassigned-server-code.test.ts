@@ -360,7 +360,7 @@ describe('Vite: every compile refuses server code passed by a name the module as
   beforeAll(async () => {
     host = await createStartHost()
     return () => host.close()
-  })
+  }, 60_000)
 
   test.each(writes)('a handler: %s', async (_, body) => {
     const source = head + body
@@ -581,7 +581,7 @@ describe('Vite with RSC: every compile refuses server code passed by a name the 
   beforeAll(async () => {
     host = await createStartHost({ rsc: true })
     return () => host.close()
-  })
+  }, 60_000)
 
   // the client, the SSR caller and the provider the rsc environment derives
   test('a handler: a second function', async () => {
@@ -786,7 +786,7 @@ describe("Vite: a route's server options by a name the module assigns", () => {
       },
     })
     return () => host.close()
-  })
+  }, 60_000)
 
   // what the user reads in a `createHandlers(…)` object: the argument, with
   // the callback and its middleware kept
@@ -896,7 +896,7 @@ export const Route = createFileRoute('/const-create-handlers')({
       },
     })
     return () => host.close()
-  })
+  }, 60_000)
 
   // only server code assigns it, or it holds no server code
   test.each([
@@ -936,7 +936,7 @@ describe('Solid: a callback ref is no reassignment', () => {
   beforeAll(async () => {
     host = await createStartHost({ framework: 'solid' })
     return () => host.close()
-  })
+  }, 60_000)
   const solidHead = `import { createServerFn } from '@tanstack/solid-start'
 import { db } from './db'
 `

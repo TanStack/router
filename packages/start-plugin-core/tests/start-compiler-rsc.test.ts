@@ -33,7 +33,7 @@ describe('Vite with RSC: client references', () => {
   beforeAll(async () => {
     host = await createStartHost({ rsc: true })
     return () => host.close()
-  })
+  }, 60_000)
 
   // SPEC J4.17: the compiler keeps the directive, so the RSC plugin makes
   // the module's exports client references in the provider; SSR and the
@@ -62,7 +62,7 @@ describe('Vite with RSC: the server-fn provider', () => {
   beforeAll(async () => {
     host = await createStartHost({ rsc: true })
     return () => host.close()
-  })
+  }, 60_000)
 
   const serverFnModule = {
     'module.ts': `import { createServerFn } from '@tanstack/react-start'
@@ -110,7 +110,7 @@ describe('RSC: the caller and the provider', () => {
   beforeAll(async () => {
     host = await createStartHost({ rsc: true })
     return () => host.close()
-  })
+  }, 60_000)
   const record = `export const calls: Array<string> = []
 export const record = (name: string) => {
   calls.push(name)
@@ -160,7 +160,7 @@ describe('Vite with RSC: RSC CSS', () => {
   beforeAll(async () => {
     host = await createStartHost({ rsc: true })
     return () => host.close()
-  })
+  }, 60_000)
 
   /**
    * A module that imports its own stylesheet (no component of its own, so

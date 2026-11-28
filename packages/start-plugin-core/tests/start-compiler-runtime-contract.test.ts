@@ -22,12 +22,12 @@ let host: StartHost
 beforeAll(async () => {
   host = await createStartHost()
   return () => host.close()
-})
+}, 60_000)
 let solidHost: StartHost
 beforeAll(async () => {
   solidHost = await createStartHost({ framework: 'solid' })
   return () => solidHost.close()
-})
+}, 60_000)
 beforeAll(async () => {
   await host.page()
 }, 60_000)

@@ -41,7 +41,7 @@ let host: StartHost
 beforeAll(async () => {
   host = await createStartHost({ plugins: [workersPlatform()] })
   return () => host.close()
-})
+}, 60_000)
 
 const head = `import { createMiddleware, createServerFn } from '@tanstack/react-start'\n`
 

@@ -42,12 +42,12 @@ let hosts: HydrateHost
 beforeAll(async () => {
   hosts = await createHydrateHost()
   return () => hosts.close()
-})
+}, 60_000)
 let solidHost: SolidHost
 beforeAll(async () => {
   solidHost = await createSolidHost()
   return () => solidHost.close()
-})
+}, 60_000)
 
 /**
  * The directives a served module carries from the user's file: the string

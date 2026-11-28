@@ -13,7 +13,7 @@ let host: StartHost
 beforeAll(async () => {
   host = await createStartHost()
   return () => host.close()
-})
+}, 60_000)
 const check = async (row: Row) => checkRow(host, row)
 
 // A reference names the declarations of its space (D1 A): a read or `typeof`

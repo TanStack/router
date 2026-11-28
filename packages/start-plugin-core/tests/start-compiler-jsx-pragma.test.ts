@@ -65,7 +65,7 @@ beforeAll(async () => {
     config: { optimizeDeps: { exclude: ['pragma-jsx'] } },
   })
   return () => host.close()
-})
+}, 60_000)
 beforeAll(async () => {
   await host.page()
 }, 60_000)

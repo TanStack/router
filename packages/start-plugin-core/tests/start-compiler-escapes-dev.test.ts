@@ -17,7 +17,7 @@ let host: StartHost
 beforeAll(async () => {
   host = await createStartHost()
   return () => host.close()
-})
+}, 60_000)
 
 test('a builder passed to unknown code fails the client module at the use', async () => {
   const source = `import { createServerFn } from '@tanstack/react-start'

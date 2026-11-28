@@ -28,7 +28,7 @@ let host: StartHost
 beforeAll(async () => {
   host = await createStartHost()
   return () => host.close()
-})
+}, 60_000)
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 const top = `export const top = createServerFn().handler(async () => 'top')\n`

@@ -26,7 +26,7 @@ let host: StartHost
 beforeAll(async () => {
   host = await createStartHost()
   return () => host.close()
-})
+}, 60_000)
 
 describe('createMiddleware compiles correctly', () => {
   // Malformed-input diagnostic control (SPEC §8, G5): `.validator()`

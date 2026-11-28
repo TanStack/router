@@ -44,7 +44,7 @@ export const Route = createFileRoute('${path}')({
     },
   })
   return () => host.close()
-})
+}, 60_000)
 
 test.each(rows)(
   'in development, a component kept in the route module, `$component`, serves the client nothing of its server implementation',

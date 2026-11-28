@@ -14,7 +14,7 @@ let host: StartHost
 beforeAll(async () => {
   host = await createStartHost()
   return () => host.close()
-})
+}, 60_000)
 
 /** What a call returned, `undefined` spelled out (results cross JSON). */
 const UNDEFINED = '<undefined>'

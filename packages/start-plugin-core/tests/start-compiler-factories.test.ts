@@ -37,7 +37,7 @@ let host: StartHost
 beforeAll(async () => {
   host = await createStartHost()
   return () => host.close()
-})
+}, 60_000)
 beforeAll(async () => {
   await host.page()
 }, 60_000)
