@@ -19,6 +19,7 @@ describe('Vite dev: a separate RSC provider', () => {
   // `browser` entry, and no client script has another environment's entry.
   test('each environment runs its own entry of a dependency; the provider runs the handler, whether SSR or the browser calls it', async ({
     openRscPage,
+    page,
     pageErrors,
     startRscDevServer,
   }) => {
@@ -65,6 +66,19 @@ function Page() {
 `,
       },
     })
+    // What the browser loaded as code, as it received it (its full URL: a
+    // split route module is the route's path with a query), not the
+    // document or the server fn answers
+    const loaded: Array<{ url: () => string; text: () => Promise<string> }> = []
+    page.on('response', (response) => {
+      if (
+        !['document', 'fetch', 'xhr'].includes(
+          response.request().resourceType(),
+        )
+      ) {
+        loaded.push(response)
+      }
+    })
     const browser = await openRscPage(server, '/')
     await browser
       .locator('[data-testid=label]', {
@@ -78,27 +92,16 @@ function Page() {
       .locator('[data-testid=browser]', { hasText: 'browser MARK_BROWSER' })
       .waitFor()
 
-    // What the browser loaded as code (not the server fn answers)
-    const scripts = await browser.evaluate(() =>
-      performance
-        .getEntriesByType('resource')
-        .filter(
-          (entry) =>
-            !['fetch', 'xmlhttprequest'].includes(
-              (entry as PerformanceResourceTiming).initiatorType,
-            ),
-        )
-        .map((entry) => new URL(entry.name).pathname),
-    )
     const leaks: Array<string> = []
-    for (const script of scripts) {
-      const { body } = await server.fetch(script)
-      if (/MARK_REACT_SERVER|MARK_DEFAULT/.test(body)) {
-        leaks.push(script)
+    for (const response of loaded) {
+      if (/MARK_REACT_SERVER|MARK_DEFAULT/.test(await response.text())) {
+        leaks.push(response.url())
       }
     }
     // The check covers the dependency's browser entry
-    expect(scripts.some((script) => script.includes('env-marker'))).toBe(true)
+    expect(
+      loaded.some((response) => response.url().includes('env-marker')),
+    ).toBe(true)
     expect(leaks).toEqual([])
     expect(pageErrors).toEqual([])
   })
