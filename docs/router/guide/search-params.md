@@ -4,8 +4,6 @@ title: Search Params
 
 Similar to how TanStack Query made handling server-state in your React and Solid applications a breeze, TanStack Router aims to unlock the power of URL search params in your applications.
 
-> 🧠 If you are on a really old browser, like IE11, you may need to use a polyfill for `URLSearchParams`.
-
 ## Why not just use `URLSearchParams`?
 
 We get it, you've been hearing a lot of "use the platform" lately and for the most part, we agree. However, we also believe it's important to recognize where the platform falls short for more advanced use-cases and we believe `URLSearchParams` is one of these circumstances.
@@ -86,38 +84,20 @@ If you noticed, there are a few things going on here:
 
 Despite TanStack Router being able to parse search params into reliable JSON, they ultimately still came from **a user-facing raw-text input**. Similar to other serialization boundaries, this means that before you consume search params, they should be validated into a format that your application can trust and rely on.
 
-### Enter Validation + TypeScript!
-
-TanStack Router provides convenient APIs for validating and typing search params. This all starts with the `Route`'s `validateSearch` option:
-
-```tsx title="src/routes/shop/products.tsx"
-type ProductSearchSortOptions = 'newest' | 'oldest' | 'price'
-
-type ProductSearch = {
-  page: number
-  filter: string
-  sort: ProductSearchSortOptions
-}
-
-export const Route = createFileRoute('/shop/products')({
-  validateSearch: (search: Record<string, unknown>): ProductSearch => {
-    // validate and parse the search params into a typed state
-    return {
-      page: Number(search?.page ?? 1),
-      filter: (search.filter as string) || '',
-      sort: (search.sort as ProductSearchSortOptions) || 'newest',
-    }
-  },
-})
-```
-
-In the above example, we're validating the search params of the `Route` and returning a typed `ProductSearch` object. This typed object is then made available to this route's other options **and any child routes, too!**
-
 ### Validating Search Params
 
-The `validateSearch` option is a function that is provided the JSON parsed (but non-validated) search params as a `Record<string, unknown>` and returns a typed object of your choice. It's usually best to provide sensible fallbacks for malformed or unexpected search params so your users' experience stays non-interrupted.
+TanStack Router provides convenient APIs for validating and typing search params via the `Route`'s `validateSearch` option. The validated, typed object is made available to this route's other options **and any child routes, too.**
 
-Here's an example:
+`validateSearch` accepts any of:
+
+- A plain function `(search) => T`
+- An object with a `parse` method (`{ parse: (search) => T }`)
+- A [Standard Schema](https://github.com/standard-schema/standard-schema) validator — including [Zod](https://zod.dev/) v4+, [Valibot](https://valibot.dev/) v1+, [ArkType](https://arktype.io/) v2+, and [Effect Schema](https://effect.website/docs/schema/introduction/)
+- A `ValidatorAdapter` (used by `@tanstack/zod-adapter` for Zod v3)
+
+It's usually best to provide sensible fallbacks for malformed or unexpected search params so your users' experience isn't interrupted.
+
+Here's the simplest form — a hand-written validator:
 
 ```tsx title="src/routes/shop/products.tsx"
 type ProductSearchSortOptions = 'newest' | 'oldest' | 'price'
@@ -130,7 +110,6 @@ type ProductSearch = {
 
 export const Route = createFileRoute('/shop/products')({
   validateSearch: (search: Record<string, unknown>): ProductSearch => {
-    // validate and parse the search params into a typed state
     return {
       page: Number(search?.page ?? 1),
       filter: (search.filter as string) || '',
@@ -140,7 +119,15 @@ export const Route = createFileRoute('/shop/products')({
 })
 ```
 
-Here's an example using the [Zod](https://zod.dev/) library (but feel free to use any validation library you want) to both validate and type the search params in a single step:
+If `validateSearch` throws, the route's `onError` option will be triggered (with `error.routerCode === 'VALIDATE_SEARCH'`) and the `errorComponent` will render instead of the route's `component`.
+
+### Validating with a schema library
+
+Any library that implements [Standard Schema](https://github.com/standard-schema/standard-schema) can be passed directly to `validateSearch` — no adapter required. Both the input type (used when navigating) and output type (used when reading search params) are inferred for you.
+
+#### Zod
+
+For Zod v4 and later, pass the schema directly:
 
 ```tsx title="src/routes/shop/products.tsx"
 import { z } from 'zod'
@@ -151,54 +138,32 @@ const productSearchSchema = z.object({
   sort: z.enum(['newest', 'oldest', 'price']).catch('newest'),
 })
 
-type ProductSearch = z.infer<typeof productSearchSchema>
-
 export const Route = createFileRoute('/shop/products')({
-  validateSearch: (search) => productSearchSchema.parse(search),
+  validateSearch: productSearchSchema,
 })
 ```
 
-Because `validateSearch` also accepts an object with the `parse` property, this can be shortened to:
+`.catch()` swaps in a fallback value instead of throwing when validation fails — appropriate when you'd rather absorb a malformed param than interrupt the user with an error screen. Use `.default()` instead if you want the route's `errorComponent` to render on bad input.
+
+When your schema uses `.default(...)` to fill in missing values, navigation and reading get the right types automatically:
 
 ```tsx
-validateSearch: productSearchSchema
-```
-
-In the above example, we used Zod's `.catch()` modifier instead of `.default()` to avoid showing an error to the user because we firmly believe that if a search parameter is malformed, you probably don't want to halt the user's experience through the app to show a big fat error message. That said, there may be times that you **do want to show an error message**. In that case, you can use `.default()` instead of `.catch()`.
-
-The underlying mechanics why this works relies on the `validateSearch` function throwing an error. If an error is thrown, the route's `onError` option will be triggered (and `error.routerCode` will be set to `VALIDATE_SEARCH` and the `errorComponent` will be rendered instead of the route's `component` where you can handle the search param error however you'd like.
-
-#### Adapters
-
-When using a library like [Zod](https://zod.dev/) to validate search params you might want to `transform` search params before committing the search params to the URL. A common `zod` `transform` is `default` for example.
-
-```tsx
-import { z } from 'zod'
-
 const productSearchSchema = z.object({
   page: z.number().default(1),
   filter: z.string().default(''),
   sort: z.enum(['newest', 'oldest', 'price']).default('newest'),
 })
 
-export const Route = createFileRoute('/shop/products/')({
-  validateSearch: productSearchSchema,
-})
-```
-
-It might be surprising that when you try to navigate to this route, `search` is required. The following `Link` will type error as `search` is missing.
-
-```tsx
+// page/filter/sort are optional when navigating (defaults fill in)…
 <Link to="/shop/products" />
+
+// …and guaranteed present when reading.
+const { page, filter, sort } = Route.useSearch()
 ```
 
-For validation libraries we recommend using adapters which infer the correct `input` and `output` types.
+##### Zod v3
 
-### Zod
-
-An adapter is provided for [Zod](https://zod.dev/) which will pipe through the correct `input` type and `output` type.
-
-For Zod v3:
+If you're still on Zod v3, install `@tanstack/zod-adapter` and wrap the schema with `zodValidator`. The adapter exists because Zod v3 schemas don't implement Standard Schema:
 
 ```tsx
 import { zodValidator } from '@tanstack/zod-adapter'
@@ -215,30 +180,7 @@ export const Route = createFileRoute('/shop/products/')({
 })
 ```
 
-With Zod v4, you should directly use the schema in `validateSearch`:
-
-```tsx
-import { z } from 'zod'
-
-const productSearchSchema = z.object({
-  page: z.number().default(1),
-  filter: z.string().default(''),
-  sort: z.enum(['newest', 'oldest', 'price']).default('newest'),
-})
-
-export const Route = createFileRoute('/shop/products/')({
-  // With Zod v4, we can use the schema without the adapter
-  validateSearch: productSearchSchema,
-})
-```
-
-The important part here is the following use of `Link` no longer requires `search` params:
-
-```tsx
-<Link to="/shop/products" />
-```
-
-In Zod v3, the use of `catch` here overrides the types and makes `page`, `filter` and `sort` `unknown` causing type loss. We have handled this case by providing a `fallback` generic function which retains the types but provides a `fallback` value when validation fails:
+In Zod v3, `.catch()` widens the type to `unknown`. The adapter package ships a `fallback` helper that preserves types while providing a fallback value:
 
 ```tsx
 import { fallback, zodValidator } from '@tanstack/zod-adapter'
@@ -257,38 +199,19 @@ export const Route = createFileRoute('/shop/products/')({
 })
 ```
 
-Therefore when navigating to this route, `search` is optional and retains the correct types.
-
-In Zod v4, schemas may use `catch` instead of the fallback and will retain type inference throughout.
-
-While not recommended, it is also possible to configure `input` and `output` type in case the `output` type is more accurate than the `input` type:
+`zodValidator` also accepts an options object if you need to swap the `input` / `output` inference (rare, usually only when the `output` type is more accurate than the `input`):
 
 ```tsx
-const productSearchSchema = z.object({
-  page: fallback(z.number(), 1).default(1),
-  filter: fallback(z.string(), '').default(''),
-  sort: fallback(z.enum(['newest', 'oldest', 'price']), 'newest').default(
-    'newest',
-  ),
-})
-
-export const Route = createFileRoute('/shop/products/')({
-  validateSearch: zodValidator({
-    schema: productSearchSchema,
-    input: 'output',
-    output: 'input',
-  }),
+validateSearch: zodValidator({
+  schema: productSearchSchema,
+  input: 'output',
+  output: 'input',
 })
 ```
 
-This provides flexibility in which type you want to infer for navigation and which types you want to infer for reading search params.
+#### Valibot
 
-### Valibot
-
-> [!WARNING]
-> Router expects the valibot 1.0 package to be installed.
-
-When using [Valibot](https://valibot.dev/) an adapter is not needed to ensure the correct `input` and `output` types are used for navigation and reading search params. This is because `valibot` implements [Standard Schema](https://github.com/standard-schema/standard-schema)
+[Valibot](https://valibot.dev/) v1+ implements Standard Schema, so the schema can be used directly:
 
 ```tsx
 import * as v from 'valibot'
@@ -307,12 +230,9 @@ export const Route = createFileRoute('/shop/products/')({
 })
 ```
 
-### Arktype
+#### ArkType
 
-> [!WARNING]
-> Router expects the arktype 2.0-rc package to be installed.
-
-When using [ArkType](https://arktype.io/) an adapter is not needed to ensure the correct `input` and `output` types are used for navigation and reading search params. This is because [ArkType](https://arktype.io/) implements [Standard Schema](https://github.com/standard-schema/standard-schema)
+[ArkType](https://arktype.io/) v2+ implements Standard Schema, so the schema can be used directly:
 
 ```tsx
 import { type } from 'arktype'
@@ -328,43 +248,40 @@ export const Route = createFileRoute('/shop/products/')({
 })
 ```
 
-### Effect/Schema
+#### Effect Schema
 
-When using [Effect/Schema](https://effect.website/docs/schema/introduction/) an adapter is not needed to ensure the correct `input` and `output` types are used for navigation and reading search params. This is because [Effect/Schema](https://effect.website/docs/schema/standard-schema/) implements [Standard Schema](https://github.com/standard-schema/standard-schema)
+[Effect Schema](https://effect.website/docs/schema/introduction/) implements [Standard Schema](https://effect.website/docs/schema/standard-schema/) natively:
 
 ```tsx
 import { Schema as S } from 'effect'
 
-const productSearchSchema = S.standardSchemaV1(
-  S.Struct({
-    page: S.NumberFromString.pipe(
-      S.optional,
-      S.withDefaults({
-        constructor: () => 1,
-        decoding: () => 1,
-      }),
-    ),
-    filter: S.String.pipe(
-      S.optional,
-      S.withDefaults({
-        constructor: () => '',
-        decoding: () => '',
-      }),
-    ),
-    sort: S.Literal('newest', 'oldest', 'price').pipe(
-      S.optional,
-      S.withDefaults({
-        constructor: () => 'newest' as const,
-        decoding: () => 'newest' as const,
-      }),
-    ),
+const productSearchSchema = S.Struct({
+  page: S.optionalWith(S.NumberFromString, { default: () => 1 }),
+  filter: S.optionalWith(S.String, { default: () => '' }),
+  sort: S.optionalWith(S.Literal('newest', 'oldest', 'price'), {
+    default: () => 'newest' as const,
   }),
-)
+})
 
 export const Route = createFileRoute('/shop/products/')({
   validateSearch: productSearchSchema,
 })
 ```
+
+### Strict mode for unknown search params
+
+By default, search keys that aren't returned by any route's `validateSearch` are passed through unchanged. To strip unknown keys on every navigation, set `search.strict` to `true` on the router:
+
+```tsx
+const router = createRouter({
+  routeTree,
+  search: {
+    strict: true,
+  },
+})
+```
+
+With `strict: true`, only keys produced by a `validateSearch` (anywhere in the matched route tree) are kept in the URL.
 
 ## Reading Search Params
 
@@ -423,6 +340,14 @@ const ProductList = () => {
 
 > [!TIP]
 > If your component is code-split, you can use the [getRouteApi function](./code-splitting.md#manually-accessing-route-apis-in-other-files-with-the-getrouteapi-helper) to avoid having to import the `Route` configuration to get access to the typed `useSearch()` hook.
+
+`useSearch` also accepts `select`, `structuralSharing`, and `shouldThrow` options. Use `select` to read a slice of the search object so the component only re-renders when that slice changes:
+
+```tsx
+const page = Route.useSearch({ select: (s) => s.page })
+```
+
+See [Render Optimizations](./render-optimizations.md) for when to enable `structuralSharing`.
 
 ### Search Params outside of Route Components
 
@@ -581,14 +506,13 @@ The following example shows how to make sure that for **every** link that is bei
 
 ```tsx
 import { z } from 'zod'
-import { zodValidator } from '@tanstack/zod-adapter'
 
 const searchSchema = z.object({
   rootValue: z.string().optional(),
 })
 
 export const Route = createRootRoute({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: searchSchema,
   search: {
     middlewares: [
       ({ search, next }) => {
@@ -611,15 +535,14 @@ Since this specific use case is quite common, TanStack Router provides a generic
 
 ```tsx
 import { z } from 'zod'
-import { createFileRoute, retainSearchParams } from '@tanstack/react-router'
-import { zodValidator } from '@tanstack/zod-adapter'
+import { createRootRoute, retainSearchParams } from '@tanstack/react-router'
 
 const searchSchema = z.object({
   rootValue: z.string().optional(),
 })
 
 export const Route = createRootRoute({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: searchSchema,
   search: {
     middlewares: [retainSearchParams(['rootValue'])],
   },
@@ -630,15 +553,14 @@ export const Route = createRootRoute({
 
 ```tsx
 import { z } from 'zod'
-import { createFileRoute, retainSearchParams } from '@tanstack/solid-router'
-import { zodValidator } from '@tanstack/zod-adapter'
+import { createRootRoute, retainSearchParams } from '@tanstack/solid-router'
 
 const searchSchema = z.object({
   rootValue: z.string().optional(),
 })
 
 export const Route = createRootRoute({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: searchSchema,
   search: {
     middlewares: [retainSearchParams(['rootValue'])],
   },
@@ -646,6 +568,14 @@ export const Route = createRootRoute({
 ```
 
 <!-- ::end:framework -->
+
+Pass `true` instead of a key list to retain **every** current search param across navigations:
+
+```tsx
+search: {
+  middlewares: [retainSearchParams(true)],
+}
+```
 
 Another common use case is to strip out search params from links if their default value is set. TanStack Router provides a generic implementation for this use case via `stripSearchParams`:
 
@@ -656,7 +586,6 @@ Another common use case is to strip out search params from links if their defaul
 ```tsx
 import { z } from 'zod'
 import { createFileRoute, stripSearchParams } from '@tanstack/react-router'
-import { zodValidator } from '@tanstack/zod-adapter'
 
 const defaultValues = {
   one: 'abc',
@@ -669,7 +598,7 @@ const searchSchema = z.object({
 })
 
 export const Route = createFileRoute('/hello')({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: searchSchema,
   search: {
     // strip default values
     middlewares: [stripSearchParams(defaultValues)],
@@ -682,7 +611,6 @@ export const Route = createFileRoute('/hello')({
 ```tsx
 import { z } from 'zod'
 import { createFileRoute, stripSearchParams } from '@tanstack/solid-router'
-import { zodValidator } from '@tanstack/zod-adapter'
 
 const defaultValues = {
   one: 'abc',
@@ -695,7 +623,7 @@ const searchSchema = z.object({
 })
 
 export const Route = createFileRoute('/hello')({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: searchSchema,
   search: {
     // strip default values
     middlewares: [stripSearchParams(defaultValues)],
@@ -704,6 +632,12 @@ export const Route = createFileRoute('/hello')({
 ```
 
 <!-- ::end:framework -->
+
+`stripSearchParams` accepts three forms:
+
+- An **object of defaults** — strips a key when its current value deeply equals the default (shown above).
+- An **array of keys** — always strips those optional keys, regardless of value: `stripSearchParams(['debug', 'tracking'])`.
+- `true` — strips all search params. Only allowed when the route's schema has no required keys.
 
 Multiple middlewares can be chained. The following example shows how to combine both `retainSearchParams` and `stripSearchParams`.
 
@@ -719,18 +653,15 @@ import {
   stripSearchParams,
 } from '@tanstack/react-router'
 import { z } from 'zod'
-import { zodValidator } from '@tanstack/zod-adapter'
 
 const defaultValues = ['foo', 'bar']
 
 export const Route = createFileRoute('/search')({
-  validateSearch: zodValidator(
-    z.object({
-      retainMe: z.string().optional(),
-      arrayWithDefaults: z.string().array().default(defaultValues),
-      required: z.string(),
-    }),
-  ),
+  validateSearch: z.object({
+    retainMe: z.string().optional(),
+    arrayWithDefaults: z.string().array().default(defaultValues),
+    required: z.string(),
+  }),
   search: {
     middlewares: [
       retainSearchParams(['retainMe']),
@@ -750,18 +681,15 @@ import {
   stripSearchParams,
 } from '@tanstack/solid-router'
 import { z } from 'zod'
-import { zodValidator } from '@tanstack/zod-adapter'
 
 const defaultValues = ['foo', 'bar']
 
 export const Route = createFileRoute('/search')({
-  validateSearch: zodValidator(
-    z.object({
-      retainMe: z.string().optional(),
-      arrayWithDefaults: z.string().array().default(defaultValues),
-      required: z.string(),
-    }),
-  ),
+  validateSearch: z.object({
+    retainMe: z.string().optional(),
+    arrayWithDefaults: z.string().array().default(defaultValues),
+    required: z.string(),
+  }),
   search: {
     middlewares: [
       retainSearchParams(['retainMe']),
