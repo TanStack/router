@@ -85,6 +85,7 @@ export const Match = (props: { routeId: string }) => {
           return renderInNonRouteComponentContext(
             () => <Dynamic component={resolvePendingComponent()} />,
             'pendingComponent',
+            route,
           )
         }
         return <Dynamic component={resolvePendingComponent()} />
@@ -108,6 +109,7 @@ export const Match = (props: { routeId: string }) => {
               return renderInNonRouteComponentContext(
                 () => <Dynamic component={resolvePendingComponent()} />,
                 'pendingComponent',
+                route,
               )
             }
             return <Dynamic component={resolvePendingComponent()} />
@@ -173,6 +175,7 @@ export const Match = (props: { routeId: string }) => {
                             <Dynamic component={resolvePendingComponent()} />
                           ),
                           'pendingComponent',
+                          route,
                         )
                       }
                       return <Dynamic component={resolvePendingComponent()} />
@@ -294,7 +297,7 @@ export const Outlet = () => {
     const nonRouteComponent = Solid.useContext(nonRouteComponentContext!)
     if (nonRouteComponent) {
       console.warn(
-        `Warning: An <Outlet /> was rendered inside a ${nonRouteComponent}. <Outlet /> should only be rendered inside a route component.`,
+        `Warning: An <Outlet /> was rendered inside a ${nonRouteComponent.component}. <Outlet /> should only be rendered inside a route component.`,
       )
     }
   }
@@ -339,6 +342,7 @@ export const Outlet = () => {
                       />
                     ),
                     'pendingComponent',
+                    router.routesById[childRouteId()!],
                   )
                 }
                 return (

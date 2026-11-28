@@ -394,6 +394,7 @@ export type {
   ResolveValidatorOutput,
 } from './validators'
 
+export { _assertPendingRouteContextAccess } from './useRouteContext'
 export type {
   UseRouteContextBaseOptions,
   UseRouteContextOptions,

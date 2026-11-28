@@ -1,3 +1,6 @@
+import * as Solid from 'solid-js'
+import { _assertPendingRouteContextAccess } from '@tanstack/router-core'
+import { nonRouteComponentContext } from './nonRouteComponentContext'
 import { useMatch } from './useMatch'
 import type { Accessor } from 'solid-js'
 import type {
@@ -23,6 +26,13 @@ export function useRouteContext<
 >(
   opts: UseRouteContextOptions<TRouter, TFrom, TStrict, TSelected>,
 ): Accessor<UseRouteContextResult<TRouter, TFrom, TStrict, TSelected>> {
+  if (process.env.NODE_ENV !== 'production') {
+    const nonRouteComponent = Solid.useContext(nonRouteComponentContext!)
+    if (nonRouteComponent?.component === 'pendingComponent') {
+      _assertPendingRouteContextAccess(nonRouteComponent.route, opts.from)
+    }
+  }
+
   return useMatch({
     ...opts,
     select: (match) =>

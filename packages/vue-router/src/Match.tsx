@@ -55,6 +55,7 @@ export const Match = Vue.defineComponent({
               PendingComponent,
               undefined,
               'pendingComponent',
+              router.routesById[routeId] as AnyRoute,
             )
           : Vue.h(PendingComponent)
         : undefined
@@ -251,6 +252,7 @@ export const MatchInner = Vue.defineComponent({
                 PendingComponent,
                 undefined,
                 'pendingComponent',
+                route,
               )
             : Vue.h(PendingComponent)
         }
@@ -284,7 +286,7 @@ export const Outlet = Vue.defineComponent({
       const nonRouteComponent = Vue.inject(nonRouteComponentContext!, undefined)
       if (nonRouteComponent) {
         Vue.watch(
-          nonRouteComponent,
+          () => nonRouteComponent.value.component,
           (component) => {
             console.warn(
               `Warning: An <Outlet /> was rendered inside a ${component}. <Outlet /> should only be rendered inside a route component.`,

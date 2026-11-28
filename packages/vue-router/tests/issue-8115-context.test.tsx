@@ -599,10 +599,10 @@ test('a same-id child retry presents one coherent beforeLoad context generation'
   })
   const ChildPendingComponent = Vue.defineComponent({
     setup() {
-      const context = childRoute.useRouteContext()
+      const context = parentRoute.useRouteContext()
       return () => (
         <div data-testid="child-pending-generation">
-          Child generation {context.value.inheritedGeneration}
+          Child generation {context.value.generation}
         </div>
       )
     },

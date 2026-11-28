@@ -515,10 +515,10 @@ test('a same-id child retry presents one coherent beforeLoad context generation'
     pendingMs: 0,
     pendingMinMs: 0,
     pendingComponent: () => {
-      const context = childRoute.useRouteContext()
+      const context = parentRoute.useRouteContext()
       return (
         <div data-testid="child-pending-generation">
-          Child generation {context().inheritedGeneration}
+          Child generation {context().generation}
         </div>
       )
     },

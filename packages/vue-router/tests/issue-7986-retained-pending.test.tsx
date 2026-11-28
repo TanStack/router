@@ -889,7 +889,7 @@ test('a retained prefix exposes one fresh context chain before descendant pendin
   })
   const FPendingComponent = defineComponent({
     setup() {
-      const context = fRoute.useRouteContext()
+      const context = eRoute.useRouteContext()
       return () => (
         <div data-testid="f-pending">F pending for {context.value.user}</div>
       )
