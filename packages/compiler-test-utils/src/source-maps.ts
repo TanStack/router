@@ -65,12 +65,13 @@ export type AnySourceMap = SourceMapInput | TraceMap | LooseSourceMap
 
 /**
  * A version 3 map as tools type it (Vite, Babel, the build harness: a
- * `number` version, possibly `null` sources).
+ * `number` version, possibly `null` sources; Rolldown's `transformWithOxc`
+ * types them `undefined` too).
  */
 export interface LooseSourceMap {
   version: number
   mappings: string
-  sources: ReadonlyArray<string | null>
+  sources: ReadonlyArray<string | null | undefined>
   names?: ReadonlyArray<string>
   sourceRoot?: string
   sourcesContent?: ReadonlyArray<string | null>
