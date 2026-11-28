@@ -20,6 +20,13 @@ const CustomLink = createLink((props: Record<string, any>) => (
   <button {...props} />
 ))
 
+const IconLink = createLink((props: Record<string, any>) => (
+  <button data-href={props.href}>
+    {props.icon}
+    {props.children}
+  </button>
+))
+
 function OwnAnchor() {
   const props = useLinkProps({ to: '/posts', class: 'own' })
   return (
@@ -69,6 +76,9 @@ async function render(serverPath: boolean) {
           <CustomLink to="/posts" id="custom">
             <Id />
           </CustomLink>
+          <IconLink to="/posts" activeProps={() => ({ icon: <Id /> })}>
+            <Id />
+          </IconLink>
           <OwnAnchor />
           <Id />
         </div>

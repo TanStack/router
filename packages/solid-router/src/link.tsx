@@ -355,23 +355,31 @@ function serverLinkProps(
     !isServer && !!router.options.ssr,
     NOT_HYDRATED,
   )
-  const resolved = withStateProps(
-    {
-      // Custom link components still receive the caller's handlers.
-      onClick: props.onClick,
-      onBlur: props.onBlur,
-      onFocus: props.onFocus,
-      onMouseEnter: props.onMouseEnter,
-      onMouseOver: props.onMouseOver,
-      onMouseLeave: props.onMouseLeave,
-      onMouseOut: props.onMouseOut,
-      onTouchStart: props.onTouchStart,
-      href,
-      disabled: !!props.disabled || external === null,
-      target: props.target,
-    },
-    props,
-    active,
+  if (Solid.getOwner()?.id != null) {
+    for (let i = 1; i < CLIENT_LINK_PROPS_OWNERS; i++) {
+      Solid.createUniqueId()
+    }
+  }
+  // The last owner is merge's memo, where the client evaluates state props.
+  const resolved = Solid.createRoot(() =>
+    withStateProps(
+      {
+        // Custom link components still receive the caller's handlers.
+        onClick: props.onClick,
+        onBlur: props.onBlur,
+        onFocus: props.onFocus,
+        onMouseEnter: props.onMouseEnter,
+        onMouseOver: props.onMouseOver,
+        onMouseLeave: props.onMouseLeave,
+        onMouseOut: props.onMouseOut,
+        onTouchStart: props.onTouchStart,
+        href,
+        disabled: !!props.disabled || external === null,
+        target: props.target,
+      },
+      props,
+      active,
+    ),
   )
   // Keys in merge's order: element props, then the resolved ones that win.
   const linkProps: Record<string, any> = {}
@@ -389,11 +397,6 @@ function serverLinkProps(
       })
     } else {
       linkProps[key] = props[key]
-    }
-  }
-  if (Solid.getOwner()?.id != null) {
-    for (let i = 0; i < CLIENT_LINK_PROPS_OWNERS; i++) {
-      Solid.createUniqueId()
     }
   }
   return Object.assign(linkProps, resolved)
