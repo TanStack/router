@@ -60,16 +60,14 @@ export function createReactDevPage(options: {
   files: Record<string, string>
   plugins: (app: PluginHostApp) => Array<PluginOption>
 }): Promise<PluginHost> {
-  return closeAtEnd(
-    () =>
-      createPluginHost({
-        dir: import.meta.dirname,
-        prefix: '.dev-page-',
-        files: { ...options.files, [renderProbe.slice(1)]: renderProbeSource },
-        client: true,
-        config: { optimizeDeps: { noDiscovery: true, include: prebundled } },
-        plugins: (app) => [...options.plugins(app), react()],
-      }),
-    (host) => host.close(),
+  return closeAtEnd(() =>
+    createPluginHost({
+      dir: import.meta.dirname,
+      prefix: '.dev-page-',
+      files: { ...options.files, [renderProbe.slice(1)]: renderProbeSource },
+      client: true,
+      config: { optimizeDeps: { noDiscovery: true, include: prebundled } },
+      plugins: (app) => [...options.plugins(app), react()],
+    }),
   )
 }

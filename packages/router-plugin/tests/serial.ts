@@ -9,16 +9,12 @@ import type { WebpackHmrPageOptions } from './webpack-hmr-page'
 
 /** `openRouteHmrPageAt` in the shared directory, closed when the test ends. */
 export const openRouteHmrPage = (options: RouteHmrPageOptions) =>
-  closeAtEnd(
-    async () =>
-      (await import('./route-hmr-page')).openRouteHmrPageAt({}, options),
-    (app) => app.close(),
+  closeAtEnd(async () =>
+    (await import('./route-hmr-page')).openRouteHmrPageAt({}, options),
   )
 
 /** `openWebpackHmrPageAt` in the shared directory, closed when the test ends. */
 export const openWebpackHmrPage = (options: WebpackHmrPageOptions) =>
-  closeAtEnd(
-    async () =>
-      (await import('./webpack-hmr-page')).openWebpackHmrPageAt({}, options),
-    (app) => app.close(),
+  closeAtEnd(async () =>
+    (await import('./webpack-hmr-page')).openWebpackHmrPageAt({}, options),
   )

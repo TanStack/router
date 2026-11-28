@@ -158,14 +158,12 @@ async function previewFixed(
   files: Record<string, string>,
 ) {
   if (bundler === 'vite') {
-    const host = await closeAtEnd(
-      () =>
-        createStartHost({
-          serve: false,
-          files,
-          start: { importProtection: { enabled: true } },
-        }),
-      (opened) => opened.close(),
+    const host = await closeAtEnd(() =>
+      createStartHost({
+        serve: false,
+        files,
+        start: { importProtection: { enabled: true } },
+      }),
     )
     return (await host.preview()).url
   }

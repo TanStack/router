@@ -60,12 +60,10 @@ async function editWhileLoaded(
   })
   // (a run page of its own, before the page below loads every option)
   const split = await app.isLazy('component')
-  const page = await closeAtEnd(
-    () =>
-      openPage(new URL('/__plugin-host__/page.html', app.host.dev.url).href, {
-        initScript: hmrSyncInitScript('/hmr-sync.ts'),
-      }),
-    (opened) => opened.close(),
+  const page = await closeAtEnd(() =>
+    openPage(new URL('/__plugin-host__/page.html', app.host.dev.url).href, {
+      initScript: hmrSyncInitScript('/hmr-sync.ts'),
+    }),
   )
   const inFlight = trackRequests(page)
   await page.page.evaluate(`(async () => {

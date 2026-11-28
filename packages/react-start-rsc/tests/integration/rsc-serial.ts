@@ -23,10 +23,7 @@ const closedAfterTest =
     open: (options: TOptions) => Promise<TOpened>,
   ) =>
   (options: TOptions): Promise<TOpened> =>
-    closeAtEnd(
-      () => open(options),
-      (opened) => opened.close(),
-    )
+    closeAtEnd(() => open(options))
 
 export const startRscDevServer = closedAfterTest(openRscDevServer)
 export const startRscRsbuildDevServer = closedAfterTest(openRscRsbuildDevServer)
@@ -38,7 +35,7 @@ export const serveRscBuild = closedAfterTest(openRscBuild)
 
 /** A blank page in a browser context of its own, closed when the test finishes. */
 export async function blankPage(): Promise<Page> {
-  return (await closedAfterTest(() => openPage('about:blank'))(undefined)).page
+  return (await closeAtEnd(() => openPage('about:blank'))).page
 }
 
 /** Opens `pathname` of `server` in a new page (`blankPage`). */

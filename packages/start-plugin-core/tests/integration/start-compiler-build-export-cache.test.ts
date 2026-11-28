@@ -42,10 +42,7 @@ async function expectImportersThroughRpc(reExports: Record<string, string>) {
   const [first, ...others] = Object.keys(reExports).map((file) =>
     file.replace(/\.ts$/, ''),
   )
-  const host = await closeAtEnd(
-    () => createStartHost({ serve: false }),
-    (opened) => opened.close(),
-  )
+  const host = await closeAtEnd(() => createStartHost({ serve: false }))
   const startCase = await host.case({
     'd.ts': `${head}export const base = createServerFn()`,
     'db.server.ts': `export const db = { x: () => 'from the server' }\n`,

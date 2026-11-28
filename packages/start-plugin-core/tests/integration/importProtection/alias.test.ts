@@ -161,27 +161,24 @@ function startAliasDevServer(
   alias: (typeof viteAliases)[number],
   importProtection: ImportProtectionOptions,
 ) {
-  return closeAtEnd(
-    async () => {
-      const recorder = violationRecorder(importProtection)
-      const server = await createDevServer({
-        dir: testsDir,
-        prefix: '.start-dev-server-',
-        files: { ...startPluginFiles, ...aliasApp },
-        browser: true,
-        symlinks: startRuntimeLinks(),
-        config: alias.devConfig,
-        plugins: ({ root }) => [
-          clientFixturePlugin,
-          ...alias.devPlugins(
-            startPlugin(root, { importProtection: recorder.importProtection }),
-          ),
-        ],
-      })
-      return Object.assign(server, { violations: recorder.violations })
-    },
-    (server) => server.close(),
-  )
+  return closeAtEnd(async () => {
+    const recorder = violationRecorder(importProtection)
+    const server = await createDevServer({
+      dir: testsDir,
+      prefix: '.start-dev-server-',
+      files: { ...startPluginFiles, ...aliasApp },
+      browser: true,
+      symlinks: startRuntimeLinks(),
+      config: alias.devConfig,
+      plugins: ({ root }) => [
+        clientFixturePlugin,
+        ...alias.devPlugins(
+          startPlugin(root, { importProtection: recorder.importProtection }),
+        ),
+      ],
+    })
+    return Object.assign(server, { violations: recorder.violations })
+  })
 }
 
 /**

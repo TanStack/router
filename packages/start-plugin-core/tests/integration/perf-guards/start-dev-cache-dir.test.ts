@@ -57,16 +57,14 @@ describe.each([
       onTestFinished(() => {
         vi.unstubAllEnvs()
       })
-      const host = await closeAtEnd(
-        () =>
-          createStartHost({
-            files: plainLibrary,
-            config: {
-              ...(cacheDir && { cacheDir }),
-              optimizeDeps: { include: ['plain-lib', 'named-lib'] },
-            },
-          }),
-        (opened) => opened.close(),
+      const host = await closeAtEnd(() =>
+        createStartHost({
+          files: plainLibrary,
+          config: {
+            ...(cacheDir && { cacheDir }),
+            optimizeDeps: { include: ['plain-lib', 'named-lib'] },
+          },
+        }),
       )
       // the page itself, and the framework's own pre-bundled dependencies
       await importCase(host, `export const value = () => 'MARK_WARM'`)

@@ -15,24 +15,23 @@ import { tanstackRouter } from '../../src/vite'
 import { head, rootRoute } from '../build-harness'
 
 test('a split component compiled before its route reads the store its loader wrote', async () => {
-  const server = await closeAtEnd(
-    () =>
-      createDevServer({
-        dir: path.dirname(fileURLToPath(import.meta.url)),
-        prefix: '.split-before-route-',
-        files: {
-          'store.ts': `export const stores: Array<unknown> = []
+  const server = await closeAtEnd(() =>
+    createDevServer({
+      dir: path.dirname(fileURLToPath(import.meta.url)),
+      prefix: '.split-before-route-',
+      files: {
+        'store.ts': `export const stores: Array<unknown> = []
 export function createStore(value: number) {
   const store = { get: () => value, set: (next: number) => { value = next } }
   stores.push(store)
   return store
 }
 `,
-          'render.tsx': `import { renderToString } from 'react-dom/server'
+        'render.tsx': `import { renderToString } from 'react-dom/server'
 export const render = (Component: () => unknown) => renderToString(<Component />)
 `,
-          'routes/__root.tsx': rootRoute,
-          'routes/posts.tsx': `${head}import { createStore } from '../store'
+        'routes/__root.tsx': rootRoute,
+        'routes/posts.tsx': `${head}import { createStore } from '../store'
 const visits = createStore(0)
 export const Route = createFileRoute('/posts')({
   loader: () => {
@@ -41,18 +40,17 @@ export const Route = createFileRoute('/posts')({
   component: () => <p>{visits.get()}</p>,
 })
 `,
-        },
-        plugins: [
-          tanstackRouter({
-            target: 'react',
-            routesDirectory: './routes',
-            generatedRouteTree: './routeTree.gen.ts',
-            autoCodeSplitting: true,
-          }),
-          react(),
-        ],
-      }),
-    (opened) => opened.close(),
+      },
+      plugins: [
+        tanstackRouter({
+          target: 'react',
+          routesDirectory: './routes',
+          generatedRouteTree: './routeTree.gen.ts',
+          autoCodeSplitting: true,
+        }),
+        react(),
+      ],
+    }),
   )
   const split = await server.import('/routes/posts.tsx?tsr-split=component')
   const { Route } = await server.import('/routes/posts.tsx')

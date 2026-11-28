@@ -263,13 +263,11 @@ async function warm(hosts: HydrateHost) {
  * `target`.
  */
 export async function startEditHost(): Promise<HydrateHost> {
-  const start = await closeAtEnd(
-    () =>
-      createStartHost({
-        start: startOptions,
-        files: { ...renderFiles, 'tsconfig.json': reactTsconfig },
-      }),
-    (opened) => opened.close(),
+  const start = await closeAtEnd(() =>
+    createStartHost({
+      start: startOptions,
+      files: { ...renderFiles, 'tsconfig.json': reactTsconfig },
+    }),
   )
   // The page loads its runtime before an edit reloads it
   await start.run('1')

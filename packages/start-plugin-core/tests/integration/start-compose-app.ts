@@ -146,10 +146,7 @@ async function serverFetch(build: StartBuild) {
  * the server entry for every other request.
  */
 export function serveStartBuild(build: StartBuild): Promise<ServedStartBuild> {
-  return closeAtEnd(
-    () => serveStartBuildShared(build),
-    (opened) => opened.close(),
-  )
+  return closeAtEnd(() => serveStartBuildShared(build))
 }
 
 /** `serveStartBuild` for a server several tests share: the caller closes it. */

@@ -135,30 +135,28 @@ async function host(options: { route: string; root: boolean; hmr: boolean }) {
       },
     },
   }
-  return closeAtEnd(
-    () =>
-      createRsbuildPluginHost({
-        dir: path.dirname(import.meta.dirname),
-        prefix: '.route-hmr-rsbuild-',
-        entry: 'src/entry.tsx',
-        files: {
-          ...(options.root
-            ? {}
-            : {
-                '__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+  return closeAtEnd(() =>
+    createRsbuildPluginHost({
+      dir: path.dirname(import.meta.dirname),
+      prefix: '.route-hmr-rsbuild-',
+      entry: 'src/entry.tsx',
+      files: {
+        ...(options.root
+          ? {}
+          : {
+              '__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute({})
 `,
-              }),
-          'route.tsx': options.route,
-          'environment.ts': environment,
-          'src/entry.tsx': clientEntry,
-          'src/server.tsx': serverEntry,
-        },
-        plugins: ({ root }) => [pluginReact(), routerPlugin(root)],
-        config,
-        client: true,
-      }),
-    (opened) => opened.close(),
+            }),
+        'route.tsx': options.route,
+        'environment.ts': environment,
+        'src/entry.tsx': clientEntry,
+        'src/server.tsx': serverEntry,
+      },
+      plugins: ({ root }) => [pluginReact(), routerPlugin(root)],
+      config,
+      client: true,
+    }),
   )
 }
 

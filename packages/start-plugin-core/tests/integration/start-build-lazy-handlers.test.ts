@@ -1278,9 +1278,8 @@ describe('vite build of a Vue app', () => {
   test(
     'SSR: the server-only module of a handler in a <script lang="ts"> block is not loaded with the SFC',
     async () => {
-      const host = await closeAtEnd(
-        () => createStartHost({ framework: 'vue', serve: false }),
-        (opened) => opened.close(),
+      const host = await closeAtEnd(() =>
+        createStartHost({ framework: 'vue', serve: false }),
       )
       const startCase = await host.case({
         'Page.vue': `<script lang="ts">

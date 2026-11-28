@@ -439,30 +439,28 @@ async function expectModuleThrowMapsToRouteFileVite(
   source: string,
   marker: string,
 ) {
-  const host = await closeAtEnd(
-    () =>
-      createPluginHost({
-        dir: appsDir,
-        prefix: '.build-source-maps-',
-        serve: false,
-        files: routeApp(source, {
-          env: 'client',
-          files: {
-            'lib/label.ts': `export const label = 'MARK_LABEL'\n`,
-            'entry.ts': `export * from './routes/index'\n`,
-          },
-        }),
-        plugins: () => [
-          tanstackRouterVite({
-            target: 'react',
-            autoCodeSplitting: true,
-            routesDirectory: './routes',
-            generatedRouteTree: './routeTree.gen.ts',
-          }),
-          react(),
-        ],
+  const host = await closeAtEnd(() =>
+    createPluginHost({
+      dir: appsDir,
+      prefix: '.build-source-maps-',
+      serve: false,
+      files: routeApp(source, {
+        env: 'client',
+        files: {
+          'lib/label.ts': `export const label = 'MARK_LABEL'\n`,
+          'entry.ts': `export * from './routes/index'\n`,
+        },
       }),
-    (opened) => opened.close(),
+      plugins: () => [
+        tanstackRouterVite({
+          target: 'react',
+          autoCodeSplitting: true,
+          routesDirectory: './routes',
+          generatedRouteTree: './routeTree.gen.ts',
+        }),
+        react(),
+      ],
+    }),
   )
   const built = await host.build({
     config: {

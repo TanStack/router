@@ -68,12 +68,10 @@ test.for([
         },
       ],
     })
-    const page = await closeAtEnd(
-      () =>
-        openPage(server.url!, {
-          ...(sync ? {} : { initScript: hmrSyncInitScript('/hmr-sync.ts') }),
-        }),
-      (opened) => opened.close(),
+    const page = await closeAtEnd(() =>
+      openPage(server.url!, {
+        ...(sync ? {} : { initScript: hmrSyncInitScript('/hmr-sync.ts') }),
+      }),
     )
     const inFlight = trackRequests(page)
     await page.waitForText('text v1 other v1')
@@ -117,10 +115,7 @@ import.meta.hot.accept(() => import.meta.hot.invalidate('cannot apply'))
 `,
       },
     })
-    const page = await closeAtEnd(
-      () => openPage('about:blank'),
-      (opened) => opened.close(),
-    )
+    const page = await closeAtEnd(() => openPage('about:blank'))
     // What the page sends over its HMR WebSocket reaches the server 400 ms
     // late (a busy server or a slow link); what the server sends is not held
     await page.page.context().routeWebSocket(/./, (ws) => {

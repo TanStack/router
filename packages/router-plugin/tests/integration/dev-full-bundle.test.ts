@@ -69,26 +69,24 @@ const loadedScripts = (page: Awaited<ReturnType<typeof openPage>>) =>
   )
 
 test('a split route renders, loads its component on demand and hot-updates in full-bundle dev', async () => {
-  const server = await closeAtEnd(
-    () =>
-      createDevServer({
-        dir: harnessDir,
-        prefix: '.dev-full-bundle-',
-        browser: true,
-        // The client bundle starts from the page, as \`vite dev\` bundles it.
-        bundledDev: { entry: 'index.html' },
-        files,
-        plugins: ({ root }) => [
-          tanstackRouter({
-            target: 'react',
-            routesDirectory: path.join(root, 'routes'),
-            generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
-            autoCodeSplitting: true,
-          }),
-          react(),
-        ],
-      }),
-    (opened) => opened.close(),
+  const server = await closeAtEnd(() =>
+    createDevServer({
+      dir: harnessDir,
+      prefix: '.dev-full-bundle-',
+      browser: true,
+      // The client bundle starts from the page, as \`vite dev\` bundles it.
+      bundledDev: { entry: 'index.html' },
+      files,
+      plugins: ({ root }) => [
+        tanstackRouter({
+          target: 'react',
+          routesDirectory: path.join(root, 'routes'),
+          generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
+          autoCodeSplitting: true,
+        }),
+        react(),
+      ],
+    }),
   )
   // The chunks of the client bundle the about page's code is in.
   const bundle = await server.clientBundle()
@@ -97,10 +95,7 @@ test('a split route renders, loads its component on demand and hot-updates in fu
   )
   expect(aboutChunks.length).toBeGreaterThan(0)
 
-  const page = await closeAtEnd(
-    () => openPage(server.url!),
-    (opened) => opened.close(),
-  )
+  const page = await closeAtEnd(() => openPage(server.url!))
   await page.waitForText('MARK_HOME', { selector: '#app' })
   const atHome = await loadedScripts(page)
   await page.page.locator('a').first().click()

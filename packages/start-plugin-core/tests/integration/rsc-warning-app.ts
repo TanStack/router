@@ -78,23 +78,20 @@ const appLinks = () => ({
 export function startViteRscApp(
   files: Record<string, string>,
 ): Promise<DevServer> {
-  return closeAtEnd(
-    async () => {
-      const start = await startPluginFactory('react')
-      const rsc = await rscPluginFactory()
-      return createDevServer({
-        dir: appsDir,
-        prefix: '.start-rsc-warnings-vite-',
-        listen: true,
-        files: { ...rscAppFiles, ...files },
-        symlinks: appLinks(),
-        // Start serves the pages (SSR through its dev middleware)
-        config: { appType: 'custom' },
-        plugins: [start({ rsc: { enabled: true } }), rsc(), react()],
-      })
-    },
-    (server) => server.close(),
-  )
+  return closeAtEnd(async () => {
+    const start = await startPluginFactory('react')
+    const rsc = await rscPluginFactory()
+    return createDevServer({
+      dir: appsDir,
+      prefix: '.start-rsc-warnings-vite-',
+      listen: true,
+      files: { ...rscAppFiles, ...files },
+      symlinks: appLinks(),
+      // Start serves the pages (SSR through its dev middleware)
+      config: { appType: 'custom' },
+      plugins: [start({ rsc: { enabled: true } }), rsc(), react()],
+    })
+  })
 }
 
 /** An Rsbuild dev server on the RSC app of `files` (over `rscAppFiles`). */
@@ -102,10 +99,7 @@ export function startRsbuildRscApp(
   files: Record<string, string>,
   options: RsbuildRscAppOptions = {},
 ): Promise<RsbuildDevServer> {
-  return closeAtEnd(
-    () => openRsbuildRscApp(files, options),
-    (server) => server.close(),
-  )
+  return closeAtEnd(() => openRsbuildRscApp(files, options))
 }
 
 /** `startRsbuildRscApp` for a server several tests share: the caller closes it. */

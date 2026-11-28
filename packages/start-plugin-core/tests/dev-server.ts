@@ -200,10 +200,7 @@ export function startPlugin(
 export function startDevServer(
   options: StartDevServerOptions,
 ): Promise<DevServer> {
-  return closeAtEnd(
-    () => openDevServer(options),
-    (server) => server.close(),
-  )
+  return closeAtEnd(() => openDevServer(options))
 }
 
 /** `startDevServer` for a server several tests share: the caller closes it. */

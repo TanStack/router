@@ -251,10 +251,7 @@ return [
 export function routerDevServer(
   options: RouterDevServerOptions,
 ): Promise<DevServer> {
-  return closeAtEnd(
-    () => startRouterDevServer(options),
-    (server) => server.close(),
-  )
+  return closeAtEnd(() => startRouterDevServer(options))
 }
 
 /** `routerDevServer` for a file's hook: the caller closes it. */

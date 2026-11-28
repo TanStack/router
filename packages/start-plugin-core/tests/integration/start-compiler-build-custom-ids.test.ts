@@ -213,9 +213,8 @@ describe('relocation', () => {
     await expectRelocatable(
       ['first root', 'second root'],
       async () => {
-        const host = await closeAtEnd(
-          () => createStartHost({ ...hostDefaults, serve: false }),
-          (opened) => opened.close(),
+        const host = await closeAtEnd(() =>
+          createStartHost({ ...hostDefaults, serve: false }),
         )
         const startCase = await host.case({
           'fns.ts': serverFnModule('fn', 'from the server'),

@@ -6,8 +6,5 @@ export function openTestPage(
   url: string,
   options?: Parameters<typeof openPage>[1],
 ) {
-  return closeAtEnd(
-    () => openPage(url, options),
-    (page) => page.close(),
-  )
+  return closeAtEnd(() => openPage(url, options))
 }

@@ -311,49 +311,44 @@ describe('rsbuild dev server', () => {
     async () => {
       const { tanstackRouter: tanstackRouterRspack } =
         await import('../../src/rspack')
-      const server = await closeAtEnd(
-        () =>
-          createRsbuildDevServer({
-            dir: appsDir,
-            prefix: '.dev-source-maps-rsbuild-',
-            browser: true,
-            entry: 'main.tsx',
-            files: {
-              'main.tsx': `import { throws } from './probe'
+      const server = await closeAtEnd(() =>
+        createRsbuildDevServer({
+          dir: appsDir,
+          prefix: '.dev-source-maps-rsbuild-',
+          browser: true,
+          entry: 'main.tsx',
+          files: {
+            'main.tsx': `import { throws } from './probe'
 ;(window as any).__throws = throws()
 `,
-              'probe.ts': probe,
-              'page-label.ts': pageLabel,
-              'routes/__root.tsx': rootRoute,
-              'routes/index.tsx': route,
-            },
-            config: { output: { sourceMap: { js: 'source-map' } } },
-            plugins: ({ root }) => [
-              pluginReact({ fastRefresh: false }),
-              {
-                name: 'dev-source-maps',
-                setup(api) {
-                  api.modifyRspackConfig((config) => {
-                    config.plugins.push(
-                      tanstackRouterRspack({
-                        target: 'react',
-                        autoCodeSplitting: true,
-                        routesDirectory: path.join(root, 'routes'),
-                        generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
-                      }),
-                    )
-                  })
-                },
+            'probe.ts': probe,
+            'page-label.ts': pageLabel,
+            'routes/__root.tsx': rootRoute,
+            'routes/index.tsx': route,
+          },
+          config: { output: { sourceMap: { js: 'source-map' } } },
+          plugins: ({ root }) => [
+            pluginReact({ fastRefresh: false }),
+            {
+              name: 'dev-source-maps',
+              setup(api) {
+                api.modifyRspackConfig((config) => {
+                  config.plugins.push(
+                    tanstackRouterRspack({
+                      target: 'react',
+                      autoCodeSplitting: true,
+                      routesDirectory: path.join(root, 'routes'),
+                      generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
+                    }),
+                  )
+                })
               },
-            ],
-          }),
-        (opened) => opened.close(),
+            },
+          ],
+        }),
       )
       await server.settle()
-      const page = await closeAtEnd(
-        () => openPage(server.url!),
-        (opened) => opened.close(),
-      )
+      const page = await closeAtEnd(() => openPage(server.url!))
       await page.page.waitForFunction(() => (window as any).__throws, null, {
         timeout: 15_000,
       })

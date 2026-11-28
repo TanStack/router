@@ -180,10 +180,7 @@ function recordClientEntry(entry: ClientEntry): RsbuildPlugin {
 export function startRsbuildStartDevServer(
   options: RsbuildStartDevServerOptions,
 ): Promise<RsbuildDevServer> {
-  return closeAtEnd(
-    () => openRsbuildStartDevServer(options),
-    (server) => server.close(),
-  )
+  return closeAtEnd(() => openRsbuildStartDevServer(options))
 }
 
 /** `startRsbuildStartDevServer` for a server several tests share: the caller closes it. */

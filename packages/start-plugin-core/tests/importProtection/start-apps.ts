@@ -379,44 +379,40 @@ export async function startProtectedDevServer(
 export function startRscProtectedDevServer(
   files: Record<string, string>,
 ): Promise<ProtectedDevServer> {
-  return closeAtEnd(
-    async () => {
-      const recorder = violationRecorder({})
-      const tanstackStart = await startPluginFactory('react')
-      const rsc = await rscPluginFactory()
-      const server = await createDevServer({
-        dir: path.dirname(path.dirname(fileURLToPath(import.meta.url))),
-        prefix: '.start-rsc-dev-server-',
-        files: {
-          'src/router.tsx': `export const getRouter = () => undefined\n`,
-          'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+  return closeAtEnd(async () => {
+    const recorder = violationRecorder({})
+    const tanstackStart = await startPluginFactory('react')
+    const rsc = await rscPluginFactory()
+    const server = await createDevServer({
+      dir: path.dirname(path.dirname(fileURLToPath(import.meta.url))),
+      prefix: '.start-rsc-dev-server-',
+      files: {
+        'src/router.tsx': `export const getRouter = () => undefined\n`,
+        'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute()
 `,
-          ...files,
-        },
-        symlinks: {
-          ...workspacePackageLinks([
-            '@tanstack/react-start',
-            '@tanstack/react-start-rsc',
-          ]),
-          'node_modules/@vitejs/plugin-rsc':
-            rscDependency('@vitejs/plugin-rsc'),
-        },
-        config: { appType: 'custom' },
-        plugins: [
-          tanstackStart({
-            rsc: { enabled: true },
-            importProtection: recorder.importProtection,
-            router: { entry: 'entry.ts' },
-          }),
-          rsc(),
-          react(),
-        ],
-      })
-      return Object.assign(server, { violations: recorder.violations })
-    },
-    (server) => server.close(),
-  )
+        ...files,
+      },
+      symlinks: {
+        ...workspacePackageLinks([
+          '@tanstack/react-start',
+          '@tanstack/react-start-rsc',
+        ]),
+        'node_modules/@vitejs/plugin-rsc': rscDependency('@vitejs/plugin-rsc'),
+      },
+      config: { appType: 'custom' },
+      plugins: [
+        tanstackStart({
+          rsc: { enabled: true },
+          importProtection: recorder.importProtection,
+          router: { entry: 'entry.ts' },
+        }),
+        rsc(),
+        react(),
+      ],
+    })
+    return Object.assign(server, { violations: recorder.violations })
+  })
 }
 
 /**

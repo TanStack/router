@@ -13,8 +13,5 @@ import type { StartBuild, StartBuildOptions } from './build-harness'
  * the current test finishes (`StartBuild.close`).
  */
 export function buildStart(options: StartBuildOptions): Promise<StartBuild> {
-  return closeAtEnd(
-    () => buildStartShared(options),
-    (opened) => opened.close(),
-  )
+  return closeAtEnd(() => buildStartShared(options))
 }

@@ -42,9 +42,8 @@ const hostDefaults = {
 }
 
 test('build: each environment keeps the implementation of its environment and only its dependencies', async () => {
-  const host = await closeAtEnd(
-    () => createStartHost({ ...hostDefaults, serve: false }),
-    (opened) => opened.close(),
+  const host = await closeAtEnd(() =>
+    createStartHost({ ...hostDefaults, serve: false }),
   )
   const startCase = await host.case({
     'module.tsx': `import { createServerOnlyFn, createClientOnlyFn as clientOnly } from '@tanstack/react-start'

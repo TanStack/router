@@ -90,10 +90,7 @@ if (!location.search.includes('later')) {
    * link).
    */
   async function renderInPage(server: DevServer) {
-    const opened = await closeAtEnd(
-      () => openPage(server.url!),
-      (opened) => opened.close(),
-    )
+    const opened = await closeAtEnd(() => openPage(server.url!))
     try {
       return await renderedBy(opened)
     } finally {
@@ -162,10 +159,7 @@ if (!location.search.includes('later')) {
       },
       files: { ...page, 'routes/page.tsx': before },
     })
-    const stale = await closeAtEnd(
-      () => openPage('about:blank'),
-      (opened) => opened.close(),
-    )
+    const stale = await closeAtEnd(() => openPage('about:blank'))
     await stale.page.context().routeWebSocket(/./, (ws) => ws.close())
     await stale.page.goto(new URL('/?later', server.url).href)
     await stale.page.waitForFunction(() => (window as any).__routeLoaded)

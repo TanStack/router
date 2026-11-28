@@ -15,15 +15,13 @@ const timeout = 30_000
 
 /** A page whose init script traps `$Trapped$` (`window.touches()`). */
 async function trappedPage() {
-  return closeAtEnd(
-    () =>
-      openPage('http://trap.invalid/', {
-        html: '<!doctype html><div id="app"></div>',
-        initScript: `Object.defineProperty(window, 'touches', {
+  return closeAtEnd(() =>
+    openPage('http://trap.invalid/', {
+      html: '<!doctype html><div id="app"></div>',
+      initScript: `Object.defineProperty(window, 'touches', {
   value: ${globalTrapSource({ names: '["$Trapped$"]' })},
 })`,
-      }),
-    (opened) => opened.close(),
+    }),
   )
 }
 

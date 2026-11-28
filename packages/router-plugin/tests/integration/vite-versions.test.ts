@@ -229,10 +229,7 @@ export const Route = createFileRoute('/shared')({ component: Shared })
     if (!url) {
       throw new Error('the dev server has no URL')
     }
-    const browser = await closeAtEnd(
-      () => openPage(url),
-      (opened) => opened.close(),
-    )
+    const browser = await closeAtEnd(() => openPage(url))
     await browser.waitForText('MARK_COMPONENT', { selector: '#root' })
     // The live route of the page's router, which the route HMR updates
     const label = () =>

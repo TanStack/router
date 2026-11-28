@@ -249,9 +249,8 @@ export async function generatorDevApp(
    * stderr carries no severity: it counts as a warning, a report, not as an
    * error), merged (`openDiagnosticChannel`).
    */
-  const channel = await closeAtEnd(
-    () => Promise.resolve(openDiagnosticChannel()),
-    (opened) => opened.close(),
+  const channel = await closeAtEnd(() =>
+    Promise.resolve(openDiagnosticChannel()),
   )
   const printed = () => channel.diagnostics
 
@@ -302,10 +301,7 @@ export async function generatorDevApp(
    */
   const open = async (pathname: string) => {
     const last = page as BrowserPage | undefined
-    page = await closeAtEnd(
-      () => openPage('about:blank'),
-      (opened) => opened.close(),
-    )
+    page = await closeAtEnd(() => openPage('about:blank'))
     await last?.close()
     scripts = []
     const requests = new Set<unknown>()
@@ -524,15 +520,14 @@ async function viteApp(
   symlinks: Record<string, string>,
   pluginOptions: GeneratorDevAppOptions['pluginOptions'] = {},
 ): Promise<AppServer> {
-  const server = await closeAtEnd(
-    () =>
-      createDevServer({
-        dir: harnessDir,
-        prefix: '.generator-dev-vite-',
-        browser: true,
-        symlinks,
-        files: {
-          'index.html': `<!doctype html>
+  const server = await closeAtEnd(() =>
+    createDevServer({
+      dir: harnessDir,
+      prefix: '.generator-dev-vite-',
+      browser: true,
+      symlinks,
+      files: {
+        'index.html': `<!doctype html>
 <html>
   <body>
     <div id="app"></div>
@@ -540,23 +535,22 @@ async function viteApp(
   </body>
 </html>
 `,
-          ...files,
-        },
-        config: { optimizeDeps: { include: prebundled } },
-        plugins: ({ root }) => [
-          tanstackRouter({
-            target: 'react',
-            routesDirectory: './routes',
-            generatedRouteTree: './routeTree.gen.ts',
-            autoCodeSplitting: true,
-            ...(typeof pluginOptions === 'function'
-              ? pluginOptions(root)
-              : pluginOptions),
-          }),
-          react(),
-        ],
-      }),
-    (opened) => opened.close(),
+        ...files,
+      },
+      config: { optimizeDeps: { include: prebundled } },
+      plugins: ({ root }) => [
+        tanstackRouter({
+          target: 'react',
+          routesDirectory: './routes',
+          generatedRouteTree: './routeTree.gen.ts',
+          autoCodeSplitting: true,
+          ...(typeof pluginOptions === 'function'
+            ? pluginOptions(root)
+            : pluginOptions),
+        }),
+        react(),
+      ],
+    }),
   )
   // Where the state after the last settled edit begins in Vite's log
   let settled = 0
@@ -594,47 +588,45 @@ async function rsbuildApp(
   config: RsbuildConfig,
   printedTexts: () => Array<string>,
 ): Promise<AppServer> {
-  const first = await closeAtEnd(
-    () =>
-      createRsbuildDevServer({
-        dir: harnessDir,
-        prefix: '.generator-dev-rsbuild-',
-        browser: true,
-        entry: 'main.tsx',
-        symlinks,
-        files,
-        config: mergeRsbuildConfig(
-          {
-            html: { mountId: 'app' },
-            ...(persistentCache && { performance: { buildCache: true } }),
+  const first = await closeAtEnd(() =>
+    createRsbuildDevServer({
+      dir: harnessDir,
+      prefix: '.generator-dev-rsbuild-',
+      browser: true,
+      entry: 'main.tsx',
+      symlinks,
+      files,
+      config: mergeRsbuildConfig(
+        {
+          html: { mountId: 'app' },
+          ...(persistentCache && { performance: { buildCache: true } }),
+        },
+        config,
+      ),
+      plugins: ({ root }) => [
+        pluginReact(),
+        {
+          name: 'generator-dev-app',
+          setup(api) {
+            api.modifyRspackConfig((config) => {
+              config.plugins.push(
+                tanstackRouterRspack({
+                  target: 'react',
+                  // The Rspack plugin resolves relative paths from the working
+                  // directory
+                  routesDirectory: path.join(root, 'routes'),
+                  generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
+                  autoCodeSplitting: true,
+                  ...(typeof pluginOptions === 'function'
+                    ? pluginOptions(root)
+                    : pluginOptions),
+                }),
+              )
+            })
           },
-          config,
-        ),
-        plugins: ({ root }) => [
-          pluginReact(),
-          {
-            name: 'generator-dev-app',
-            setup(api) {
-              api.modifyRspackConfig((config) => {
-                config.plugins.push(
-                  tanstackRouterRspack({
-                    target: 'react',
-                    // The Rspack plugin resolves relative paths from the working
-                    // directory
-                    routesDirectory: path.join(root, 'routes'),
-                    generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
-                    autoCodeSplitting: true,
-                    ...(typeof pluginOptions === 'function'
-                      ? pluginOptions(root)
-                      : pluginOptions),
-                  }),
-                )
-              })
-            },
-          } satisfies RsbuildPlugin,
-        ],
-      }),
-    (opened) => opened.close(),
+        } satisfies RsbuildPlugin,
+      ],
+    }),
   )
   return rsbuildAppServer(first, printedTexts)
 }
@@ -686,10 +678,7 @@ function rsbuildAppServer(
     restart: async (written) => {
       await server.stop()
       await writeAppFiles(server.root, written)
-      const restarted = await closeAtEnd(
-        () => server.restart(),
-        (opened) => opened.close(),
-      )
+      const restarted = await closeAtEnd(() => server.restart())
       return rsbuildAppServer(restarted, printedTexts)
     },
   }

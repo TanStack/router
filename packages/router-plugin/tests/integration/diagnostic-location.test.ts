@@ -192,41 +192,36 @@ describe('rsbuild dev server', () => {
         },
       }
       const serve = async (route: string) => {
-        const server = await closeAtEnd(
-          () =>
-            createRsbuildDevServer({
-              dir: appsDir,
-              prefix: '.diagnostic-location-rsbuild-',
-              entry: 'main.tsx',
-              files: {
-                'main.tsx': `import { Route } from './routes/index'\n;(globalThis as any).__route = Route\n`,
-                'routes/__root.tsx': rootRoute,
-                'routes/index.tsx': route,
-              },
-              plugins: ({ root }) => [
-                pluginReact({ fastRefresh: false }),
-                recorder,
-                {
-                  name: 'diagnostic-location-router',
-                  setup(api) {
-                    api.modifyRspackConfig((config) => {
-                      config.plugins.push(
-                        rspackRouter({
-                          target: 'react',
-                          autoCodeSplitting: true,
-                          routesDirectory: path.join(root, 'routes'),
-                          generatedRouteTree: path.join(
-                            root,
-                            'routeTree.gen.ts',
-                          ),
-                        }),
-                      )
-                    })
-                  },
+        const server = await closeAtEnd(() =>
+          createRsbuildDevServer({
+            dir: appsDir,
+            prefix: '.diagnostic-location-rsbuild-',
+            entry: 'main.tsx',
+            files: {
+              'main.tsx': `import { Route } from './routes/index'\n;(globalThis as any).__route = Route\n`,
+              'routes/__root.tsx': rootRoute,
+              'routes/index.tsx': route,
+            },
+            plugins: ({ root }) => [
+              pluginReact({ fastRefresh: false }),
+              recorder,
+              {
+                name: 'diagnostic-location-router',
+                setup(api) {
+                  api.modifyRspackConfig((config) => {
+                    config.plugins.push(
+                      rspackRouter({
+                        target: 'react',
+                        autoCodeSplitting: true,
+                        routesDirectory: path.join(root, 'routes'),
+                        generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
+                      }),
+                    )
+                  })
                 },
-              ],
-            }),
-          (opened) => opened.close(),
+              },
+            ],
+          }),
         )
         await server.settle()
       }

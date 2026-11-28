@@ -276,18 +276,16 @@ const devServer = (framework: StartFramework, startLast: boolean) =>
 
 /** A host building `framework`'s app, Start listed first or last. */
 const buildHost = async (framework: StartFramework, startLast: boolean) => {
-  const host = await closeAtEnd(
-    () =>
-      createStartHost({
-        framework,
-        serve: false,
-        startLast,
-        files: {
-          ...routeFiles(framework),
-          'src/routes/index.tsx': indexRoute(framework, 'home-v1'),
-        },
-      }),
-    (opened) => opened.close(),
+  const host = await closeAtEnd(() =>
+    createStartHost({
+      framework,
+      serve: false,
+      startLast,
+      files: {
+        ...routeFiles(framework),
+        'src/routes/index.tsx': indexRoute(framework, 'home-v1'),
+      },
+    }),
   )
   return host
 }

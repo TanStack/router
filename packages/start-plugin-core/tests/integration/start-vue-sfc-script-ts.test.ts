@@ -20,9 +20,8 @@ import { createStartHost } from '../regression-helpers'
  * server-only module not shipped there.
  */
 async function expectSfcServerFnBuilds(script: string) {
-  const host = await closeAtEnd(
-    () => createStartHost({ framework: 'vue', serve: false }),
-    (opened) => opened.close(),
+  const host = await closeAtEnd(() =>
+    createStartHost({ framework: 'vue', serve: false }),
   )
   const startCase = await host.case({
     'Page.vue': `<script lang="ts">

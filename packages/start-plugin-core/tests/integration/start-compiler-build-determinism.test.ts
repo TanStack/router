@@ -84,9 +84,8 @@ async function observe(startCase: StartCase) {
 }
 
 test('are deterministic for an unchanged project, whatever order its files are written in', async () => {
-  const host = await closeAtEnd(
-    () => createStartHost({ ...hostDefaults, serve: false }),
-    (opened) => opened.close(),
+  const host = await closeAtEnd(() =>
+    createStartHost({ ...hostDefaults, serve: false }),
   )
   let startCase: StartCase | undefined
   const observations = await expectDeterministic(

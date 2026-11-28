@@ -31,39 +31,37 @@ test.each([
 ])(
   'a route added to the virtual route config is served as a route (restarted first: $restart, listening: $listen)',
   async ({ restart, listen }) => {
-    const server = await closeAtEnd(
-      () =>
-        createDevServer({
-          dir: harnessDir,
-          prefix: '.router-dev-restart-',
-          listen,
-          symlinks: workspacePackageLinks(['@tanstack/virtual-file-routes']),
-          files: {
-            'routes.ts': virtualRouteConfig(`index('index.tsx')`),
-            'routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+    const server = await closeAtEnd(() =>
+      createDevServer({
+        dir: harnessDir,
+        prefix: '.router-dev-restart-',
+        listen,
+        symlinks: workspacePackageLinks(['@tanstack/virtual-file-routes']),
+        files: {
+          'routes.ts': virtualRouteConfig(`index('index.tsx')`),
+          'routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
 export const Route = createRootRoute()
 `,
-            'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
+          'routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/')({ component: () => 'MARK_INDEX' })
 `,
-            'routes/contact.tsx': `import { createFileRoute } from '@tanstack/react-router'
+          'routes/contact.tsx': `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/contact')({
   component: () => 'MARK_CONTACT',
 })
 `,
-          },
-          plugins: [
-            tanstackRouter({
-              target: 'react',
-              routesDirectory: './routes',
-              generatedRouteTree: './routeTree.gen.ts',
-              virtualRouteConfig: './routes.ts',
-              autoCodeSplitting: true,
-            }),
-            react(),
-          ],
-        }),
-      (opened) => opened.close(),
+        },
+        plugins: [
+          tanstackRouter({
+            target: 'react',
+            routesDirectory: './routes',
+            generatedRouteTree: './routeTree.gen.ts',
+            virtualRouteConfig: './routes.ts',
+            autoCodeSplitting: true,
+          }),
+          react(),
+        ],
+      }),
     )
     await server.transform('/routes/index.tsx')
     if (restart) {
