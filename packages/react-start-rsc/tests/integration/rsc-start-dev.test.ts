@@ -6,10 +6,15 @@
  * page shows, what a call by id answers, what the browser loaded. Edits
  * are in rsc-start-hmr.test.ts.
  */
-import { describe, expect } from 'vitest'
-import { waitForHydration } from './rsc-app'
+import { describe, expect, test } from 'vitest'
+import {
+  blankPage,
+  errorsOf,
+  startRscDevServer,
+  visit,
+  waitForHydration,
+} from './rsc-app'
 import { callFromPage, envMarkerPackage } from './rsc-start-page'
-import { test } from './test'
 
 describe('Vite dev: a separate RSC provider', () => {
   // J4.3, J4.16: SSR (the loader during the page render) and a client call
@@ -17,12 +22,8 @@ describe('Vite dev: a separate RSC provider', () => {
   // conditions (`react-server`), and the provider initialises the package
   // once; SSR's own code gets the `default` entry and the browser's the
   // `browser` entry, and no client script has another environment's entry.
-  test('each environment runs its own entry of a dependency; the provider runs the handler, whether SSR or the browser calls it', async ({
-    openRscPage,
-    page,
-    pageErrors,
-    startRscDevServer,
-  }) => {
+  test('each environment runs its own entry of a dependency; the provider runs the handler, whether SSR or the browser calls it', async () => {
+    const page = await blankPage()
     const server = await startRscDevServer({
       browser: true,
       config: {
@@ -79,7 +80,7 @@ function Page() {
         loaded.push(response)
       }
     })
-    const browser = await openRscPage(server, '/')
+    const browser = await visit(page, server, '/')
     await browser
       .locator('[data-testid=label]', {
         hasText: /ssr MARK_DEFAULT provider MARK_REACT_SERVER:1/,
@@ -103,6 +104,6 @@ function Page() {
       loaded.some((response) => response.url().includes('env-marker')),
     ).toBe(true)
     expect(leaks).toEqual([])
-    expect(pageErrors).toEqual([])
+    expect(errorsOf(page)).toEqual([])
   })
 })

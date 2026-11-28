@@ -7,14 +7,13 @@
  * - a custom id the browser calls reaches its handler, also a deprecated
  *   one (`:`, `'`), which builds with a warning naming the file.
  */
-import { describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import {
   expectDiagnostic,
   expectNoDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { waitForHydration } from './rsc-app'
-import { test } from './test'
+import { openRscPage, serveRscBuild, waitForHydration } from './rsc-app'
 
 const files = {
   'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
@@ -128,9 +127,7 @@ const labelStart = {
 }
 
 describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
-  test('an id that is not one URL path segment fails the build, naming the file', async ({
-    serveRscBuild,
-  }) => {
+  test('an id that is not one URL path segment fails the build, naming the file', async () => {
     const failure = await serveRscBuild({ bundler, files, start }).then(
       () => undefined,
       (error: unknown) => error,
@@ -143,10 +140,7 @@ describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
   // the client's emitted code holds answers the browser; `unused`, whose
   // custom id is also a label the page shows, is refused (c9701e2fc1: the
   // client build was scanned for the id's text, which admitted it)
-  test('a custom id that is also a label of the page admits nothing: the unused server fn is refused', async ({
-    openRscPage,
-    serveRscBuild,
-  }) => {
+  test('a custom id that is also a label of the page admits nothing: the unused server fn is refused', async () => {
     const server = await serveRscBuild({
       bundler,
       files: labelFiles,
@@ -175,10 +169,7 @@ describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
     })
   }, 60_000)
 
-  test('custom ids the browser calls reach their handlers; a deprecated one warns', async ({
-    openRscPage,
-    serveRscBuild,
-  }) => {
+  test('custom ids the browser calls reach their handlers; a deprecated one warns', async () => {
     const server = await serveRscBuild({
       bundler,
       files: calledFiles,

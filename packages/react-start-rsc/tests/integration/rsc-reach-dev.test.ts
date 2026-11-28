@@ -1,3 +1,5 @@
+import { test } from 'vitest'
+import { startRscDevServer } from './rsc-app'
 /**
  * The server-fn reach gate (`rsc-reach-app.ts`) on a Vite dev server with
  * RSC: every button clicked after a fresh start, after a restart (`vite
@@ -8,15 +10,12 @@
  * host, the restart history and the persistent cache).
  */
 import { expectReachHistory, reachFiles } from './rsc-reach-app'
-import { test } from './test'
 
 test('Vite dev with RSC: every server fn the client calls answers after a fresh start, a restart and an edit of every server fn', async ({
-  browser,
   signal,
-  startRscDevServer,
 }) => {
   const server = await startRscDevServer({ browser: true, files: reachFiles })
-  await expectReachHistory({ browser, signal }, server, async () => {
+  await expectReachHistory(signal, server, async () => {
     await server.vite.restart()
     return server
   })

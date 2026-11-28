@@ -10,14 +10,18 @@
  * Source: the reviews of the node_modules policy implementation (Gemini
  * F1 `case6a`, `rsbuild-rsc-dev`; Astra 3 `head-rsbuild-rsc-mixed`).
  */
-import { describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { diagnosticPosition } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   packageWidgetApp,
   packageWidgetMixedApp,
   summary,
 } from './rsc-use-client-app'
-import { test } from './test'
+import {
+  openRscPage,
+  startRscRsbuildDevServer,
+  startRscRsbuildPreviewServer,
+} from './rsc-app'
 import type { Violation } from './rsc-use-client-app'
 
 const timeout = 60_000
@@ -54,7 +58,7 @@ describe('Rsbuild build with RSC', () => {
   ])(
     '%s gives the widget the real module, nothing reported',
     { timeout },
-    async ([_, options], { openRscPage, startRscRsbuildPreviewServer }) => {
+    async ([_, options]) => {
       const { violations, start } = protection({
         behavior: 'error',
         ...options,
@@ -73,7 +77,7 @@ describe('Rsbuild build with RSC', () => {
 
   test(
     'mock: the widget and a route component reading the mock through a package barrel are both reported',
-    async ({ startRscRsbuildPreviewServer }) => {
+    async () => {
       const { violations, start } = protection({
         behavior: 'mock',
         mockAccess: 'off',
@@ -99,7 +103,7 @@ describe('Rsbuild build with RSC', () => {
 describe('Rsbuild build with RSC, importers that disagree', () => {
   test(
     'the conflict names the widget at its import of the marked file',
-    async ({ startRscRsbuildPreviewServer }) => {
+    async () => {
       const { start } = protection({
         behavior: 'error',
         exclude: ['src/admin.ts'],
@@ -149,7 +153,7 @@ function Page() {
 describe('Rsbuild dev with RSC', () => {
   test(
     'the widget is served the mock, and the marked file is reported',
-    async ({ openRscPage, startRscRsbuildDevServer }) => {
+    async () => {
       const { violations, start } = protection({ mockAccess: 'off' })
       const server = await startRscRsbuildDevServer({
         browser: true,

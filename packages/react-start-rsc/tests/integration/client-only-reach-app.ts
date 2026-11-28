@@ -9,7 +9,7 @@
  * (`rsc-start-build-not-provided.test.ts`). Also: an installed package
  * defining a server fn (`installedServerFnFiles`).
  */
-import { answeredText, openRscPage, waitForHydration } from './rsc-app'
+import { answeredText, visit, waitForHydration } from './rsc-app'
 import type { Page } from '@tanstack/compiler-test-utils/test'
 
 const serverFn = (
@@ -195,11 +195,7 @@ export async function clickOutcome(
   server: { url?: string },
   name: string,
 ): Promise<ClickOutcome> {
-  await openRscPage(
-    page,
-    server,
-    name === 'counter' ? '/client-ref' : '/client-only',
-  )
+  await visit(page, server, name === 'counter' ? '/client-ref' : '/client-only')
   await waitForHydration(page)
   if (name.startsWith('hydrate')) {
     await page.locator('[data-testid=to-hydrate]').click()

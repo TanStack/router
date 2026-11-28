@@ -9,8 +9,8 @@
  * Two files that each define the function fail the build, naming the
  * browser's file (main built, and the call answered 500).
  */
-import { describe, expect } from 'vitest'
-import { test } from './test'
+import { describe, expect, test } from 'vitest'
+import { failedRscBuild, openRscPage, startRscPreviewServer } from './rsc-app'
 
 const timeout = 60_000
 
@@ -79,7 +79,7 @@ export const pkgPing = createServerFn({ method: 'GET' }).handler(() => '${mark}'
 describe('Vite production build with RSC: a package whose export conditions give the browser and the server different files', () => {
   test(
     'both conditions re-export one defining module: the build succeeds and the browser call answers',
-    async ({ openRscPage, startRscPreviewServer }) => {
+    async () => {
       const server = await startRscPreviewServer({
         files: conditionalPackage({
           'fn.js': serverFn('MARK_ONE'),
@@ -105,7 +105,7 @@ describe('Vite production build with RSC: a package whose export conditions give
 
   test(
     "each condition's file defines the function: the build fails, naming the browser's file",
-    async ({ failedRscBuild }) => {
+    async () => {
       const { error } = await failedRscBuild({
         files: conditionalPackage({
           'browser.js': serverFn('MARK_BROWSER'),

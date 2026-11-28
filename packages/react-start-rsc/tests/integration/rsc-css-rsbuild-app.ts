@@ -1,13 +1,14 @@
-import { describe, expect } from 'vitest'
+import { aroundAll, describe, expect, test } from 'vitest'
 import {
+  blankPage,
   computedStyle,
-  openRscPage,
-  startRscRsbuildDevServer,
-  startRscRsbuildPreviewServer,
+  errorsOf,
+  openRscRsbuildDevServer,
+  openRscRsbuildPreviewServer,
+  visit,
   waitForHydration,
   waitForStyle,
 } from './rsc-app'
-import { test } from './test'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import type { Page } from '@tanstack/compiler-test-utils/test'
 
@@ -228,7 +229,7 @@ export async function show(
   path: string,
   marker = /MARK_CARD/,
 ): Promise<Page> {
-  await openRscPage(page, server, path)
+  await visit(page, server, path)
   await page.locator('body', { hasText: marker }).waitFor()
   await waitForHydration(page)
   return page
@@ -243,14 +244,14 @@ export function describeRscCssRows(mode: 'dev' | 'build') {
   describe(`RSC CSS through the real transport (Rsbuild ${mode})`, () => {
     let server: Pick<RsbuildDevServer, 'url' | 'errors' | 'close'>
 
-    test.aroundAll(async (runSuite, { fileRoot }) => {
+    aroundAll(async (runSuite) => {
       server =
         mode === 'dev'
-          ? await startRscRsbuildDevServer(fileRoot, {
+          ? await openRscRsbuildDevServer({
               browser: true,
               files: appFiles,
             })
-          : await startRscRsbuildPreviewServer(fileRoot, { files: appFiles })
+          : await openRscRsbuildPreviewServer({ files: appFiles })
       try {
         await runSuite()
       } finally {
@@ -258,11 +259,9 @@ export function describeRscCssRows(mode: 'dev' | 'build') {
       }
     })
 
-    test('loading only the client callers does not supply the server stylesheet', async ({
-      page,
-      pageErrors,
-    }) => {
-      await openRscPage(page, server, '/control')
+    test('loading only the client callers does not supply the server stylesheet', async () => {
+      const page = await blankPage()
+      await visit(page, server, '/control')
       await page
         .locator('[data-testid=control]', { hasText: /caller/ })
         .waitFor()
@@ -279,12 +278,13 @@ export function describeRscCssRows(mode: 'dev' | 'build') {
           .join('\n'),
       )
       expect(css).not.toMatch(/254, 243, 199|#fef3c7/i)
-      expect(pageErrors).toEqual([])
+      expect(errorsOf(page)).toEqual([])
     })
 
     test.for(rows)(
       '$api in a server function module styles the server component',
-      async ({ path }, { page, pageErrors }) => {
+      async ({ path }) => {
+        const page = await blankPage()
         expect(server.errors).toEqual([])
         await show(page, server, path)
         await waitForStyle(
@@ -297,14 +297,12 @@ export function describeRscCssRows(mode: 'dev' | 'build') {
         expect(
           await computedStyle(page, '[data-testid=card]', 'background-color'),
         ).toBe(CARD_BACKGROUND)
-        expect(pageErrors).toEqual([])
+        expect(errorsOf(page)).toEqual([])
       },
     )
 
-    test('an unexported server function the loader calls styles the server component (the control row above: not through the entry)', async ({
-      page,
-      pageErrors,
-    }) => {
+    test('an unexported server function the loader calls styles the server component (the control row above: not through the entry)', async () => {
+      const page = await blankPage()
       expect(server.errors).toEqual([])
       await show(page, server, unexportedRow.path)
       await waitForStyle(
@@ -314,12 +312,13 @@ export function describeRscCssRows(mode: 'dev' | 'build') {
         CARD_BACKGROUND,
         5_000,
       )
-      expect(pageErrors).toEqual([])
+      expect(errorsOf(page)).toEqual([])
     })
 
     test.for(cycleRows)(
       'exports that read each other, $name, keep the server component styled',
-      async ({ path }, { page, pageErrors }) => {
+      async ({ path }) => {
+        const page = await blankPage()
         expect(server.errors).toEqual([])
         await show(page, server, path, /MARK_CYCLE/)
         await waitForStyle(
@@ -329,7 +328,7 @@ export function describeRscCssRows(mode: 'dev' | 'build') {
           CARD_BACKGROUND,
           5_000,
         )
-        expect(pageErrors).toEqual([])
+        expect(errorsOf(page)).toEqual([])
       },
     )
 
@@ -341,10 +340,8 @@ export function describeRscCssRows(mode: 'dev' | 'build') {
     // (rsc-css.test.ts, "two render helpers in one module each carry their
     // component CSS").
     // Source: SPEC J7.1, J7.2 (CSS is delivered wherever the render executes).
-    test('a render call in a helper module styles the server component', async ({
-      page,
-      pageErrors,
-    }) => {
+    test('a render call in a helper module styles the server component', async () => {
+      const page = await blankPage()
       expect(server.errors).toEqual([])
       await show(page, server, helperRow.path, helperRow.marker)
       await waitForStyle(
@@ -361,7 +358,7 @@ export function describeRscCssRows(mode: 'dev' | 'build') {
           'background-color',
         ),
       ).toBe(HELPER_CARD_BACKGROUND)
-      expect(pageErrors).toEqual([])
+      expect(errorsOf(page)).toEqual([])
     })
   })
 }

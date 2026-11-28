@@ -8,7 +8,7 @@
  * (the environment of the file that has it; design-rsc-phase1-graph.md
  * §4, option B).
  */
-import { describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import {
   clientFileApp,
   expectCompClicks,
@@ -17,7 +17,7 @@ import {
   recorder,
   summary,
 } from './rsc-use-client-app'
-import { test } from './test'
+import { openRscPage, startRscPreviewServer } from './rsc-app'
 
 const timeout = 60_000
 
@@ -28,7 +28,7 @@ describe('Vite build with RSC', () => {
   ] as const)(
     'a %s component a server component renders works (mock), its import reported',
     { timeout },
-    async ([_, files, reported], { openRscPage, startRscPreviewServer }) => {
+    async ([_, files, reported]) => {
       const { violations, start } = recorder('mock')
       const server = await startRscPreviewServer({ start, files })
       await expectCompClicks(await openRscPage(server, '/c'))
@@ -38,7 +38,7 @@ describe('Vite build with RSC', () => {
 
   test(
     "a 'use client' component importing React's client-only package builds and works",
-    async ({ openRscPage, startRscPreviewServer }) => {
+    async () => {
       const { start } = recorder('error')
       const server = await startRscPreviewServer({
         start,
@@ -53,7 +53,7 @@ describe('Vite build with RSC', () => {
   // (its importer there is plugin-rsc's client-reference module)
   test(
     'a client-only-marked component a server component renders fails the build where SSR renders it (error)',
-    async ({ startRscPreviewServer }) => {
+    async () => {
       const { violations, start } = recorder('error')
       const built = await startRscPreviewServer({
         start,

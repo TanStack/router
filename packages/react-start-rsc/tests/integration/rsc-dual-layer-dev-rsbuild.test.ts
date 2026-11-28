@@ -17,7 +17,7 @@
  */
 import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { describe } from 'vitest'
+import { describe, test } from 'vitest'
 import {
   dualLayerBase,
   dualLayerStart,
@@ -25,7 +25,7 @@ import {
   ucRoute,
   ucServer,
 } from './rsc-dual-layer-app'
-import { test } from './test'
+import { startRscRsbuildDevServer } from './rsc-app'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
 const timeout = 60_000
@@ -42,7 +42,7 @@ async function page(server: RsbuildDevServer) {
 // imports, replaced the SSR layer's row of import protection's edge index).
 test(
   "Rsbuild dev with RSC: an exempt client component in both layers, through a route added while the server was stopped, its server component's use removed and restored, then the same after a fresh start",
-  async ({ startRscRsbuildDevServer }) => {
+  async () => {
     let server = await startRscRsbuildDevServer({
       browser: true,
       start: dualLayerStart,
@@ -107,7 +107,7 @@ test(
 describe('Rsbuild dev with RSC: allowImport for a client component in both layers', () => {
   test(
     'a route added while the server was stopped shows both real labels once the generator rebuilt the tree',
-    async ({ startRscRsbuildDevServer }) => {
+    async () => {
       let server = await startRscRsbuildDevServer({
         browser: true,
         start: {

@@ -9,13 +9,12 @@
  * way out …"), whose build also shows that a server fn only development
  * code imports is named by no error.
  */
-import { describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import {
   clientOnlyPositions,
   clientOnlyReachFiles,
   installedServerFnFiles,
 } from './client-only-reach-app'
-import { test } from './test'
 import { failedRscBuild } from './rsc-app'
 
 const files = {
@@ -103,8 +102,8 @@ const wayOut = {
 describe('Vite production build with RSC: server fns the client calls that the RSC build does not provide', () => {
   let error: string
 
-  test.beforeAll(async ({ fileRoot }) => {
-    ;({ error } = await failedRscBuild(fileRoot, {
+  test.beforeAll(async () => {
+    ;({ error } = await failedRscBuild({
       files,
       config: { build: { minify: false } },
     }))

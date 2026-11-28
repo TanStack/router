@@ -8,12 +8,10 @@ import packageJson from './package.json'
 // them; the compiler projects leave them out. Paths relative to `tests/`.
 import noncompilerTests from './tests/noncompiler-tests.json' with { type: 'json' }
 
-const concurrentTests = [
-  'tests/integration/rsc-start-build.test.ts',
-  'tests/integration/rsc-start-build-client-reach.test.ts',
-  'tests/integration/rsc-reach-warm-build-rsbuild.test.ts',
-  'tests/integration/rsc-reach-warm-edit-rsbuild.test.ts',
-]
+// The files whose tests run at once (`integration-concurrent`), and the
+// only ones whose tests use the context fixtures (`tests/integration/test.ts`;
+// ESLint keeps the serial openers out of them).
+import concurrentTests from './tests/concurrent-tests.json' with { type: 'json' }
 
 /** What both integration projects run with. */
 const integration = {

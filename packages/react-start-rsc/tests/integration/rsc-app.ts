@@ -18,9 +18,14 @@
  * package is linked (`workspacePackageLinks`); the `test:integration` Nx
  * target depends on its `build`.
  *
- * Each opener takes the directory it makes its app in (a test's `appRoot`,
- * a file's `fileRoot`) and returns what it opened with its `close()`; the
- * test's fixtures (`./test`) bind them to the test.
+ * The `open*` openers take the directory to make their app in (a file's
+ * `fileRoot`; none: the run's directory) and return what they opened with
+ * its `close()`, for a hook to close (`aroundAll`, a `beforeAll`'s returned
+ * close) or a concurrent file's fixtures (`./test`). The others
+ * (`startRsc*`, `serveRscBuild`, `blankPage`, `openRscPage`) are for the
+ * tests of serial files: they register their close with Vitest's
+ * `onTestFinished` once open (KNOWN-BUGS: a test that timed out may open
+ * more meanwhile, closed with the next test).
  */
 import { writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
@@ -41,9 +46,10 @@ import {
   stripAnsi,
   withBuildEnvironment,
 } from '@tanstack/compiler-test-utils/build-harness'
+import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createBuilder, mergeConfig, preview } from 'vite'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
-import { expect } from 'vitest'
+import { expect, onTestFinished } from 'vitest'
 import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import type { Page } from '@tanstack/compiler-test-utils/test'
 import type {
@@ -56,11 +62,6 @@ import type {
 } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
-
-/** The test's browser (the `browser` fixture). */
-export type Browser = NonNullable<
-  ReturnType<ReturnType<Page['context']>['browser']>
->
 
 /**
  * Node's own `import()`, outside Vitest's module runner (as
@@ -76,7 +77,7 @@ const nativeImport = createRequire(import.meta.url)(
  * layout; with `native`, loaded by Node itself (`nativeImport`).
  */
 async function tanstackStartPlugin(
-  parent: string,
+  parent: string | undefined,
   bundler: 'vite' | 'rsbuild',
   signal: AbortSignal | undefined,
   native = false,
@@ -150,9 +151,9 @@ export interface RscDevServerOptions extends Omit<
  * `settle()` waits for); the `rsc` environment is runnable
  * (`server.import(url, 'rsc')` runs a module in the provider).
  */
-export async function startRscDevServer(
-  parent: string,
+export async function openRscDevServer(
   options: RscDevServerOptions,
+  parent?: string,
 ): Promise<DevServer> {
   const { files, start, config, ...devServerOptions } = options
   const tanstackStart = await tanstackStartPlugin(
@@ -228,7 +229,7 @@ export interface RscBuildOptions {
  * environments, `buildApp()`). `built`: the build's rejection, if it
  * failed (null: it built).
  */
-async function buildRscApp(parent: string, options: RscBuildOptions) {
+async function buildRscApp(options: RscBuildOptions, parent?: string) {
   const tanstackStart = await tanstackStartPlugin(
     parent,
     'vite',
@@ -269,7 +270,7 @@ async function buildRscApp(parent: string, options: RscBuildOptions) {
     (error: unknown) => error,
   )
   const messages = reported.map(({ text }) => text)
-  return { root: app.root, config, messages, built }
+  return { app, config, messages, built }
 }
 
 /**
@@ -281,15 +282,16 @@ async function buildRscApp(parent: string, options: RscBuildOptions) {
  * counterpart: `@vitejs/plugin-rsc`'s watch build exits before its server
  * output exists (KNOWN-BUGS, "Upstream issues").
  */
-export async function startRscPreviewServer(
-  parent: string,
+export async function openRscPreviewServer(
   options: RscBuildOptions,
+  parent?: string,
 ): Promise<RscPreviewServer> {
-  const { root, config, messages, built } = await buildRscApp(parent, options)
-  if (built !== null) {
+  const { app, config, messages, built } = await buildRscApp(options, parent)
+  if (built !== null || options.signal?.aborted) {
+    await app.dispose()
+    options.signal?.throwIfAborted()
     throw built
   }
-  options.signal?.throwIfAborted()
   // (`vite preview` runs under it, for as long as the server serves)
   const { result: server, release: releaseNodeEnv } = await holdNodeEnv(
     'production',
@@ -307,6 +309,7 @@ export async function startRscPreviewServer(
       await server.close()
     } finally {
       releaseNodeEnv()
+      await app.dispose()
     }
   }
   const url = server.resolvedUrls?.local[0]
@@ -314,7 +317,7 @@ export async function startRscPreviewServer(
     await close()
     throw new Error('the preview server does not listen')
   }
-  return { root, url, messages, close }
+  return { root: app.root, url, messages, close }
 }
 
 /**
@@ -323,39 +326,35 @@ export async function startRscPreviewServer(
  * (throws if it built).
  */
 export async function failedRscBuild(
-  parent: string,
   options: RscBuildOptions,
-): Promise<{
-  root: string
-  error: string
-}> {
-  const { root, built } = await buildRscApp(parent, options)
+): Promise<{ error: string }> {
+  const { app, built } = await buildRscApp(options)
+  await app.dispose()
   if (built === null) {
     throw new Error('the build succeeded')
   }
   return {
-    root,
     error: stripAnsi(built instanceof Error ? built.message : String(built)),
   }
 }
 
 /**
- * `startRscPreviewServer` with `bundler: 'vite'`,
- * `startRscRsbuildPreviewServer` with `'rsbuild'`.
+ * `openRscPreviewServer` with `bundler: 'vite'`,
+ * `openRscRsbuildPreviewServer` with `'rsbuild'`.
  */
-export function serveRscBuild(
-  parent: string,
+export function openRscBuild(
   { bundler, ...options }: RscBuildOptions & { bundler: 'vite' | 'rsbuild' },
+  parent?: string,
 ): Promise<RscPreviewServer> {
   return bundler === 'vite'
-    ? startRscPreviewServer(parent, options)
-    : startRscRsbuildPreviewServer(parent, options)
+    ? openRscPreviewServer(options, parent)
+    : openRscRsbuildPreviewServer(options, parent)
 }
 
 /** The bound of a watch mode build's first build, and of an edit's rebuild. */
 const watchTimeout = 60_000
 
-/** What `startRscRsbuildPreviewServer` uses of Rsbuild's JavaScript API. */
+/** What `openRscRsbuildPreviewServer` uses of Rsbuild's JavaScript API. */
 interface RsbuildApi {
   createRsbuild: (options: {
     cwd: string
@@ -393,12 +392,12 @@ async function rsbuildApi(): Promise<RsbuildApi> {
  * as for `startRscRsbuildDevServer`), and serves the build as `rsbuild
  * preview` does (Start's own middleware runs the built server entry). The
  * test process runs with `NODE_ENV=production` until `close()`, as for
- * `startRscPreviewServer`. `errors`: what the build reported as errors
+ * `openRscPreviewServer`. `errors`: what the build reported as errors
  * (a failed build rejects with them, an `AggregateError`).
  */
-export async function startRscRsbuildPreviewServer(
-  parent: string,
+export async function openRscRsbuildPreviewServer(
   options: RscRsbuildBuildOptions,
+  parent?: string,
 ): Promise<RscPreviewServer & { errors: Array<string> }> {
   // Loaded by Node: Start's preview middleware imports the built server
   // bundle, which Node runs, not Vitest's module runner
@@ -551,6 +550,7 @@ export async function startRscRsbuildPreviewServer(
         await server.close()
       } finally {
         releaseNodeEnv()
+        await app.dispose()
       }
     }
     const url = urls[0]
@@ -567,12 +567,15 @@ export async function startRscRsbuildPreviewServer(
         .map(({ text }) => text),
       close,
     }
+  } catch (error) {
+    await app.dispose()
+    throw error
   } finally {
     process.chdir(cwd)
   }
 }
 
-/** What `startRscRsbuildPreviewServer` takes. */
+/** What `openRscRsbuildPreviewServer` takes. */
 export interface RscRsbuildBuildOptions {
   files: Record<string, string>
   start?: Record<string, unknown>
@@ -626,9 +629,9 @@ export interface RscRsbuildDevServerOptions extends Omit<
  * the pages (SSR) and Rsbuild's HMR client runs in the page. Its `close()`
  * also closes the server its last `restart()` started.
  */
-export async function startRscRsbuildDevServer(
-  parent: string,
+export async function openRscRsbuildDevServer(
   options: RscRsbuildDevServerOptions,
+  parent?: string,
 ): Promise<RsbuildDevServer> {
   const {
     files,
@@ -720,20 +723,25 @@ export async function startRscRsbuildDevServer(
   })
 }
 
-/** The HTTP requests of a page in flight, and when that last changed. */
+/**
+ * A page's HTTP requests in flight and when that last changed (for
+ * `settledValue`), and its uncaught errors and `console.error` messages
+ * (`errorsOf`), from its first `visit` on.
+ */
 interface Network {
   pending: Set<unknown>
   changed: number
+  errors: Array<string>
 }
 
 const networks = new WeakMap<Page, Network>()
 
 /**
  * Opens `pathname` of a server (a dev server with `browser`, a preview) in
- * `page` (the `openRscPage` fixture: the test's page). The page's requests
- * from its first open on are tracked for `settledValue`.
+ * `page`; from its first visit on, the page's requests and errors are
+ * tracked.
  */
-export async function openRscPage(
+export async function visit(
   page: Page,
   server: { url?: string },
   pathname: string,
@@ -742,7 +750,23 @@ export async function openRscPage(
     throw new Error('the dev server does not listen: start it with `browser`')
   }
   if (!networks.has(page)) {
-    const network: Network = { pending: new Set(), changed: Date.now() }
+    const network: Network = {
+      pending: new Set(),
+      changed: Date.now(),
+      errors: [],
+    }
+    page.on('pageerror', (error) => {
+      network.errors.push(error.stack ?? error.message)
+    })
+    page.on('console', (message) => {
+      // (the browser's own `/favicon.ico` request: no test app serves it)
+      if (
+        message.type() === 'error' &&
+        !message.location().url.endsWith('/favicon.ico')
+      ) {
+        network.errors.push(message.text())
+      }
+    })
     page.on('request', (request) => {
       network.pending.add(request)
       network.changed = Date.now()
@@ -760,13 +784,56 @@ export async function openRscPage(
   return page
 }
 
+/** The errors of a page since its first `visit`. */
+export const errorsOf = (page: Page) => networks.get(page)?.errors ?? []
+
+/**
+ * Closes what `open` opened (in the run's directory) when the current test
+ * finishes: an opener for the tests of serial files.
+ */
+function closedAfterTest<
+  TOptions,
+  TOpened extends { close: () => Promise<void> },
+>(open: (options: TOptions) => Promise<TOpened>) {
+  return async (options: TOptions): Promise<TOpened> => {
+    const opened = await open(options)
+    onTestFinished(() => opened.close())
+    return opened
+  }
+}
+
+export const startRscDevServer = closedAfterTest(openRscDevServer)
+export const startRscRsbuildDevServer = closedAfterTest(openRscRsbuildDevServer)
+export const startRscPreviewServer = closedAfterTest(openRscPreviewServer)
+export const startRscRsbuildPreviewServer = closedAfterTest(
+  openRscRsbuildPreviewServer,
+)
+export const serveRscBuild = closedAfterTest(openRscBuild)
+
+/**
+ * A blank page in a browser context of its own, closed when the current
+ * test finishes (serial tests).
+ */
+export async function blankPage(): Promise<Page> {
+  return (await openPage('about:blank', { registerCleanup: onTestFinished }))
+    .page
+}
+
+/** Opens `pathname` of `server` in a new page (`blankPage`). */
+export async function openRscPage(
+  server: { url?: string },
+  pathname: string,
+): Promise<Page> {
+  return visit(await blankPage(), server, pathname)
+}
+
 /**
  * Reads `read()` until `accept` takes its value, or until the page's
  * network has settled (no request in flight for `quiet` ms, default 500)
  * and one more read still does not: then whatever the page will show
  * without another request, e.g. a stylesheet that never arrives. Gives up
  * after `timeout` ms (default 15 000). Gives the last value read; the test
- * asserts on it. For pages of `openRscPage`.
+ * asserts on it. For pages opened with `visit`.
  */
 export async function settledValue<T>(
   page: Page,
@@ -776,7 +843,7 @@ export async function settledValue<T>(
 ): Promise<T> {
   const network = networks.get(page)
   if (!network) {
-    throw new Error('settledValue needs a page of openRscPage')
+    throw new Error('settledValue needs a page opened with visit')
   }
   const deadline = Date.now() + timeout
   for (;;) {

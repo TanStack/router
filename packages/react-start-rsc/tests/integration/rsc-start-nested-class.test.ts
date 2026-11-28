@@ -6,9 +6,8 @@
  * reads the class or the declaration there. Nothing may read an uninitialised
  * binding while the modules load, on the server or in the browser.
  */
-import { describe } from 'vitest'
-import { serveRscBuild, waitForHydration } from './rsc-app'
-import { test } from './test'
+import { aroundAll, describe, test } from 'vitest'
+import { openRscBuild, openRscPage, waitForHydration } from './rsc-app'
 import type { RscPreviewServer } from './rsc-app'
 
 const page = (fn: string) => `export const Route = createFileRoute(ROUTE)({
@@ -73,8 +72,8 @@ registry.add(createServerFn().middleware([auth]).handler(async () => 'MARK_HANDL
 describe.each(['vite', 'rsbuild'] as const)('a %s build', (bundler) => {
   let server: RscPreviewServer
 
-  test.aroundAll(async (runSuite, { fileRoot }) => {
-    server = await serveRscBuild(fileRoot, {
+  aroundAll(async (runSuite) => {
+    server = await openRscBuild({
       bundler,
       files,
     })
@@ -87,7 +86,7 @@ describe.each(['vite', 'rsbuild'] as const)('a %s build', (bundler) => {
 
   test.for(Object.keys(files).map((f) => f.replace(/.*\/|\.tsx/g, '')))(
     '/%s renders and its server fn answers the browser',
-    async (name, { openRscPage }) => {
+    async (name) => {
       const opened = await openRscPage(server, `/${name}`)
       await opened
         .locator('[data-testid=label]', { hasText: /MARK_PAGE/ })

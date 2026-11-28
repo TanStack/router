@@ -1,6 +1,6 @@
-import { expect } from 'vitest'
+import { expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
-import { test } from './test'
+import { startRscDevServer, startRscRsbuildDevServer } from './rsc-app'
 
 const files = {
   'src/stream.tsx': `import { createServerFn } from '@tanstack/react-start'
@@ -30,10 +30,7 @@ export const Route = createFileRoute('/')({
 // spread arguments silently. Two calls in one file require one warning naming the file.
 // G5 requires positions on errors, not on this warning; wording/channel are free.
 for (const bundler of ['vite', 'rsbuild'] as const) {
-  test(`${bundler} dev warns about the CSS limitation once per source file, naming it`, async ({
-    startRscDevServer,
-    startRscRsbuildDevServer,
-  }) => {
+  test(`${bundler} dev warns about the CSS limitation once per source file, naming it`, async () => {
     const server = await (
       bundler === 'vite' ? startRscDevServer : startRscRsbuildDevServer
     )({

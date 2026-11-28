@@ -11,9 +11,14 @@
  */
 import path from 'node:path'
 import { readFile, readdir } from 'node:fs/promises'
-import { describe, expect } from 'vitest'
-import { openRscPage, waitForHydration } from './rsc-app'
-import { test } from './test'
+import { describe, expect, test } from 'vitest'
+import {
+  blankPage,
+  startRscPreviewServer,
+  startRscRsbuildPreviewServer,
+  visit,
+  waitForHydration,
+} from './rsc-app'
 import type { RscPreviewServer } from './rsc-app'
 import type { Page } from '@tanstack/compiler-test-utils/test'
 
@@ -46,7 +51,7 @@ export const Route = createFileRoute('/label')({
 
 /** The page shows the label, and no built file holds the unused handler. */
 async function expectLabelOnly(page: Page, server: RscPreviewServer) {
-  await openRscPage(page, server, '/label')
+  await visit(page, server, '/label')
   await waitForHydration(page)
   await page
     .locator('[data-testid=label]', { hasText: /MARK_ORDINARY_LABEL/ })
@@ -67,10 +72,8 @@ async function expectLabelOnly(page: Page, server: RscPreviewServer) {
 }
 
 describe('a server fn nothing calls, beside a label the browser renders', () => {
-  test('Vite: the build serves the label and holds no copy of the handler', async ({
-    startRscPreviewServer,
-    page,
-  }) => {
+  test('Vite: the build serves the label and holds no copy of the handler', async () => {
+    const page = await blankPage()
     await expectLabelOnly(page, await startRscPreviewServer({ files }))
   })
 
@@ -78,10 +81,8 @@ describe('a server fn nothing calls, beside a label the browser renders', () => 
   // function a client compile stubbed and built its provider, whose
   // package export the production conditions do not match (main and
   // db260cf3a3 built it)
-  test('Rsbuild: the build serves the label and holds no copy of the handler', async ({
-    startRscRsbuildPreviewServer,
-    page,
-  }) => {
+  test('Rsbuild: the build serves the label and holds no copy of the handler', async () => {
+    const page = await blankPage()
     const server = await startRscRsbuildPreviewServer({ files })
     expect(server.errors).toEqual([])
     await expectLabelOnly(page, server)

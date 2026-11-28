@@ -17,17 +17,17 @@
  * Mechanism is free (SPEC §5): how the CSS travels (`loadCss`, envelopes,
  * link precedence) is never asserted, only that the component is styled.
  */
+import { openPage } from '@tanstack/compiler-test-utils/browser'
 import {
   computedStyle,
   devStylesGone,
-  openRscPage,
+  openRscDevServer,
   settledValue,
-  startRscDevServer,
+  visit,
   waitForHydration,
 } from './rsc-app'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 import type { Page } from '@tanstack/compiler-test-utils/test'
-import type { Browser } from './rsc-app'
 
 /** A row's `Card` background (its CSS module). */
 export const CARD_BACKGROUND = 'rgb(254, 243, 199)'
@@ -248,27 +248,23 @@ export interface RscCssApp {
 }
 
 /**
- * Starts the dev server of an app (in `parent`) with the page of `rows` (and
- * `files`) and opens the page in a context of its own of `browser`, once
- * every section shows something and the page hydrated.
+ * Starts the dev server of an app with the page of `rows` (and `files`) and
+ * opens the page, once every section shows something and the page hydrated:
+ * for a file's hook, which closes both.
  */
-export async function rscCssApp(
-  parent: string,
-  browser: Browser,
-  options: {
-    rows: Array<Row>
-    files?: Record<string, string>
-    config?: Record<string, unknown>
-  },
-): Promise<RscCssApp> {
-  const context = await browser.newContext()
+export async function rscCssApp(options: {
+  rows: Array<Row>
+  files?: Record<string, string>
+  config?: Record<string, unknown>
+}): Promise<RscCssApp> {
+  const opened = await openPage('about:blank')
   let server: DevServer | undefined
   const close = async () => {
-    await context.close()
+    await opened.close()
     await server?.close()
   }
   try {
-    server = await startRscDevServer(parent, {
+    server = await openRscDevServer({
       browser: true,
       files: {
         'src/global.css': `.plain { color: rgb(1, 2, 3); }\n`,
@@ -289,7 +285,7 @@ export async function rscCssApp(
       config: options.config,
     })
     const started = server
-    const page = await openRscPage(await context.newPage(), server, '/')
+    const page = await visit(opened.page, server, '/')
     await page.waitForFunction(
       () =>
         [...document.querySelectorAll('section[data-row]')].every(

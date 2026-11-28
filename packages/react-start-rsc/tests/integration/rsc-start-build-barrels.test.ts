@@ -7,10 +7,9 @@
  * barrel, and each server fn answers its own call from the page and from
  * the route's loader on the server.
  */
-import { describe } from 'vitest'
+import { describe, test } from 'vitest'
 import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
-import { waitForHydration } from './rsc-app'
-import { test } from './test'
+import { openRscPage, serveRscBuild, waitForHydration } from './rsc-app'
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`
 
@@ -83,10 +82,7 @@ function Page() {
 }
 
 describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
-  test('server fns behind an `export *` barrel build with no report about it, and each answers its own call', async ({
-    openRscPage,
-    serveRscBuild,
-  }) => {
+  test('server fns behind an `export *` barrel build with no report about it, and each answers its own call', async () => {
     const server = await serveRscBuild({ bundler, files })
     expectNoDiagnostic(server.messages, {
       file: 'src/api/index.ts',

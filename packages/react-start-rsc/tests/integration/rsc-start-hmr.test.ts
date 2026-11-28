@@ -7,12 +7,17 @@
  * call answers, whether the page reloaded. A handler edit that also changes
  * what the loader shows on Rsbuild is in rsc-start-rsbuild.test.ts.
  */
-import { describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { describeHmr } from '@tanstack/compiler-test-utils/dev-server'
-import { waitForHydration } from './rsc-app'
+import {
+  blankPage,
+  errorsOf,
+  startRscDevServer,
+  visit,
+  waitForHydration,
+} from './rsc-app'
 import { callFromPage } from './rsc-start-page'
 import { route } from './rsc-start-hmr-page'
-import { test } from './test'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
 
 /** The HMR messages telling the client to reload the page. */
@@ -30,19 +35,15 @@ describe('Vite dev: edits with a separate RSC provider (SPEC J3.6)', () => {
   // hot-updates the page, keeping its state, and the server fn still
   // answers; no full reload either way (SPEC J3.6, G10).
   // Source: #7618.
-  test('a handler edit reaches the next call and a component edit hot-updates, without a full reload', async ({
-    openRscPage,
-    pageErrors,
-    startRscDevServer,
-    page,
-  }) => {
+  test('a handler edit reaches the next call and a component edit hot-updates, without a full reload', async () => {
+    const page = await blankPage()
     const server = await startRscDevServer({
       browser: true,
       files: { 'src/routes/index.tsx': route('MARK_HANDLER_V1', 'Page v1') },
     })
     let loads = 0
     page.on('load', () => loads++)
-    const browser = await openRscPage(server, '/')
+    const browser = await visit(page, server, '/')
     await browser
       .locator('body', { hasText: /Page v1 MARK_HANDLER_V1/ })
       .waitFor()
@@ -77,6 +78,6 @@ describe('Vite dev: edits with a separate RSC provider (SPEC J3.6)', () => {
 
     expect(loads).toBe(1)
     expect(fullReloads(server)).toEqual([])
-    expect(pageErrors).toEqual([])
+    expect(errorsOf(page)).toEqual([])
   })
 })

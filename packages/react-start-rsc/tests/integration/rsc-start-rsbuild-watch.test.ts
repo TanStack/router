@@ -6,9 +6,13 @@
  */
 import path from 'node:path'
 import { readFile, readdir } from 'node:fs/promises'
-import { expect } from 'vitest'
-import { answeredText, waitForHydration } from './rsc-app'
-import { test } from './test'
+import { expect, test } from 'vitest'
+import {
+  answeredText,
+  openRscPage,
+  startRscRsbuildPreviewServer,
+  waitForHydration,
+} from './rsc-app'
 
 const timeout = 120_000
 
@@ -26,7 +30,7 @@ export const old = createServerFn().handler(() => 'MARK_OLD')
 // their previous compile, so the server's manifest still listed it.
 test(
   'a server fn an edit removes from its module leaves the rebuilt server',
-  async ({ openRscPage, startRscRsbuildPreviewServer }) => {
+  async () => {
     const server = await startRscRsbuildPreviewServer({
       start: {
         serverFns: {
@@ -120,7 +124,7 @@ function Page() {
 // follows the client build of the rebuild).
 test(
   "an edit that moves the client's call to another server fn moves what the rebuilt server answers",
-  async ({ openRscPage, startRscRsbuildPreviewServer }) => {
+  async () => {
     const server = await startRscRsbuildPreviewServer({
       files: {
         'src/moved/a.ts': `import { createServerFn } from '@tanstack/react-start'

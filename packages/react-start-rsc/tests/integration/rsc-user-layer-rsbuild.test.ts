@@ -18,7 +18,7 @@
  */
 import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import {
   environmentsFiles,
   expectPage,
@@ -26,7 +26,10 @@ import {
   rendered,
   summary,
 } from './rsc-environments-app'
-import { test } from './test'
+import {
+  startRscRsbuildDevServer,
+  startRscRsbuildPreviewServer,
+} from './rsc-app'
 
 const timeout = 60_000
 
@@ -55,7 +58,7 @@ const mocked = {
 
 test(
   "Rsbuild dev with RSC and a user layer, on the persistent cache: the layer's denied import is served its mock on a first start, after a restart with no edit and after a restart after an edit",
-  async ({ startRscRsbuildDevServer }) => {
+  async () => {
     const { violations, start } = recorder('mock')
     let server = await startRscRsbuildDevServer({
       browser: true,
@@ -144,7 +147,7 @@ describe('Rsbuild build with RSC and a user layer whose rule resolves with a con
   ])(
     'an import Start judges ($judged) renders $label',
     { timeout },
-    async ({ judged, label, resolved }, { startRscRsbuildPreviewServer }) => {
+    async ({ judged, label, resolved }) => {
       const { asked, start } = recorder('mock', () => true)
       const server = await startRscRsbuildPreviewServer({
         start: {

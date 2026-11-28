@@ -14,8 +14,8 @@ import { describe, expect } from 'vitest'
 import {
   answeredText,
   computedStyle,
+  openRscPreviewServer,
   settledValue,
-  startRscPreviewServer,
   waitForHydration,
 } from './rsc-app'
 import { HELPER_CARD_BACKGROUND, helperRow } from './rsc-css-rsbuild-app'
@@ -372,18 +372,21 @@ describe('Vite production build with RSC', () => {
   let server: RscPreviewServer
 
   test.aroundAll(async (runSuite, { fileRoot }) => {
-    server = await startRscPreviewServer(fileRoot, {
-      files: { ...files, ...privateFnFiles },
-      config: {
-        // Bundled into the provider like Start's own packages are: the
-        // `rsc` build otherwise leaves a dependency external, and Node
-        // imports it at run time with its own conditions, not
-        // `react-server` (@vitejs/plugin-rsc, upstream).
-        environments: { rsc: { resolve: { noExternal: ['env-marker'] } } },
-        // Output size is not under test
-        build: { minify: false },
+    server = await openRscPreviewServer(
+      {
+        files: { ...files, ...privateFnFiles },
+        config: {
+          // Bundled into the provider like Start's own packages are: the
+          // `rsc` build otherwise leaves a dependency external, and Node
+          // imports it at run time with its own conditions, not
+          // `react-server` (@vitejs/plugin-rsc, upstream).
+          environments: { rsc: { resolve: { noExternal: ['env-marker'] } } },
+          // Output size is not under test
+          build: { minify: false },
+        },
       },
-    })
+      fileRoot,
+    )
     try {
       await runSuite()
     } finally {

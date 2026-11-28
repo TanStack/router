@@ -8,9 +8,8 @@
  * Learned from the server-functions e2e app (its `method-not-allowed/$method`
  * route), whose builds failed the compiler's self-checks.
  */
-import { describe } from 'vitest'
-import { serveRscBuild, waitForHydration } from './rsc-app'
-import { test } from './test'
+import { aroundAll, describe, test } from 'vitest'
+import { openRscBuild, openRscPage, waitForHydration } from './rsc-app'
 import type { RscPreviewServer } from './rsc-app'
 
 const files = {
@@ -48,8 +47,8 @@ function Page() {
 describe.each(['vite', 'rsbuild'] as const)('a %s build', (bundler) => {
   let server: RscPreviewServer
 
-  test.aroundAll(async (runSuite, { fileRoot }) => {
-    server = await serveRscBuild(fileRoot, {
+  aroundAll(async (runSuite) => {
+    server = await openRscBuild({
       bundler,
       files,
     })
@@ -60,9 +59,7 @@ describe.each(['vite', 'rsbuild'] as const)('a %s build', (bundler) => {
     }
   })
 
-  test('a route exporting two server fns its component reads renders and both answer the browser', async ({
-    openRscPage,
-  }) => {
+  test('a route exporting two server fns its component reads renders and both answer the browser', async () => {
     const opened = await openRscPage(server, '/two-exported')
     await opened
       .locator('[data-testid=label]', { hasText: /MARK_PAGE/ })

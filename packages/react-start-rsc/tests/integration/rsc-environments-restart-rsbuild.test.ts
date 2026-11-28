@@ -11,7 +11,7 @@
  */
 import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { expect } from 'vitest'
+import { expect, test } from 'vitest'
 import {
   environmentsFiles,
   expectPage,
@@ -19,7 +19,7 @@ import {
   recorder,
   summary,
 } from './rsc-environments-app'
-import { test } from './test'
+import { startRscRsbuildDevServer } from './rsc-app'
 
 const timeout = 60_000
 
@@ -31,7 +31,7 @@ const whereFiles = (marker: string) => ({
 
 test(
   'Rsbuild dev with RSC, restarted on the persistent cache after offline edits: each environment shows what both read and reports its denied import, as the edits remove and restore it',
-  async ({ startRscRsbuildDevServer }) => {
+  async () => {
     const { violations, start } = recorder('mock')
     let server = await startRscRsbuildDevServer({
       browser: true,

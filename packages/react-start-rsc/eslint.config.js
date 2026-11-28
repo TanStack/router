@@ -3,6 +3,11 @@
 import pluginReact from '@eslint-react/eslint-plugin'
 import pluginReactHooks from 'eslint-plugin-react-hooks'
 import rootConfig from '../../eslint.config.js'
+import concurrentTests from './tests/concurrent-tests.json' with { type: 'json' }
+
+/** What a concurrent test must not call: closes registered on whichever test runs (Vitest's global hooks). */
+const serialOnly =
+  "Serial only: registers its close with Vitest's global onTestFinished. Concurrent files use the fixtures of ./test and the open* openers."
 
 export default [
   ...rootConfig,
@@ -45,6 +50,43 @@ export default [
             "ImportExpression[source.value='@tanstack/start-server-core']",
           message:
             'Dynamically import a dedicated @tanstack/start-server-core subpath instead of the root barrel.',
+        },
+      ],
+    },
+  },
+  {
+    name: 'react-start-rsc/concurrent-tests',
+    files: concurrentTests,
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'vitest',
+              importNames: ['onTestFinished', 'onTestFailed', 'test'],
+              message: serialOnly,
+            },
+            {
+              name: './rsc-app',
+              importNames: [
+                'blankPage',
+                'errorsOf',
+                'openRscPage',
+                'serveRscBuild',
+                'startRscDevServer',
+                'startRscPreviewServer',
+                'startRscRsbuildDevServer',
+                'startRscRsbuildPreviewServer',
+              ],
+              message: serialOnly,
+            },
+            {
+              name: './rsc-reach-app',
+              importNames: ['everyOutcome', 'expectReachHistory'],
+              message: serialOnly,
+            },
+          ],
         },
       ],
     },

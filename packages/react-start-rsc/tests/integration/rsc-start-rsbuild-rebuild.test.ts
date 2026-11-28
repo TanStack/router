@@ -7,9 +7,12 @@
  * rebuild at `finishMake` stage 10, after Rspack's RSC ServerPlugin's
  * handoff (fails when the rebuild runs before it).
  */
-import { expect } from 'vitest'
-import { waitForHydration } from './rsc-app'
-import { test } from './test'
+import { expect, test } from 'vitest'
+import {
+  openRscPage,
+  startRscRsbuildPreviewServer,
+  waitForHydration,
+} from './rsc-app'
 
 const timeout = 120_000
 
@@ -26,7 +29,7 @@ function Page() {
 
 test(
   'the second build renders documents that load its own client files',
-  async ({ openRscPage, startRscRsbuildPreviewServer }) => {
+  async () => {
     const server = await startRscRsbuildPreviewServer({
       files: { 'src/routes/index.tsx': index('MARK_BEFORE') },
       rebuildWith: { 'src/routes/index.tsx': index('MARK_AFTER') },

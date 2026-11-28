@@ -1,15 +1,16 @@
-import { expect } from 'vitest'
-import { waitForStyle } from './rsc-app'
+import { expect, test } from 'vitest'
+import {
+  blankPage,
+  errorsOf,
+  startRscRsbuildDevServer,
+  waitForStyle,
+} from './rsc-app'
 import { CARD_BACKGROUND, appFiles, rows, show } from './rsc-css-rsbuild-app'
-import { test } from './test'
 
 // SPEC J7.5 on Rsbuild: editing a server component's CSS updates the open
 // page's effective styles without a full reload.
-test("Rsbuild: editing a server component's CSS updates the page without a full reload", async ({
-  page,
-  pageErrors,
-  startRscRsbuildDevServer,
-}) => {
+test("Rsbuild: editing a server component's CSS updates the page without a full reload", async () => {
+  const page = await blankPage()
   const styles = (background: string) =>
     `.card { background: ${background}; }\n`
   const server = await startRscRsbuildDevServer({
@@ -36,5 +37,5 @@ test("Rsbuild: editing a server component's CSS updates the page without a full 
     'rgb(224, 242, 254)',
   )
   expect(loads).toBe(1)
-  expect(pageErrors).toEqual([])
+  expect(errorsOf(page)).toEqual([])
 })

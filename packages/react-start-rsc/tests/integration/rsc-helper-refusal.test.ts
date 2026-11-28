@@ -10,15 +10,22 @@
  * provider is a module derived from the file, which such a module cannot
  * have.
  */
-import { expect } from 'vitest'
+import { expect, test } from 'vitest'
 import {
   diagnosticPosition,
   expectDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
-import { waitForHydration } from './rsc-app'
-import { test } from './test'
+import {
+  errorsOf,
+  openRscPage,
+  startRscDevServer,
+  startRscPreviewServer,
+  startRscRsbuildDevServer,
+  startRscRsbuildPreviewServer,
+  waitForHydration,
+} from './rsc-app'
 
 const timeout = 120_000
 /**
@@ -60,12 +67,7 @@ export const Route = createFileRoute('/')({
 for (const bundler of ['vite', 'rsbuild'] as const) {
   test(
     `${bundler} dev: the render in an exported helper is refused at the call`,
-    async ({
-      openRscPage,
-      pageErrors,
-      startRscDevServer,
-      startRscRsbuildDevServer,
-    }) => {
+    async () => {
       const server = await (
         bundler === 'vite' ? startRscDevServer : startRscRsbuildDevServer
       )({ files: files(refused), browser: true })
@@ -91,7 +93,7 @@ for (const bundler of ['vite', 'rsbuild'] as const) {
               .locator('body')
               .textContent()
               .catch(() => '(loading)'),
-          )}, its errors: ${JSON.stringify(pageErrors)}`,
+          )}, its errors: ${JSON.stringify(errorsOf(page))}`,
       })
       expectDiagnostic(server.diagnostics, {
         ...where,
@@ -103,12 +105,7 @@ for (const bundler of ['vite', 'rsbuild'] as const) {
 
   test(
     `${bundler} build: the helper wrapped in createServerOnlyFn renders the server component`,
-    async ({
-      openRscPage,
-      pageErrors,
-      startRscPreviewServer,
-      startRscRsbuildPreviewServer,
-    }) => {
+    async () => {
       const server = await (
         bundler === 'vite'
           ? startRscPreviewServer
@@ -119,7 +116,7 @@ for (const bundler of ['vite', 'rsbuild'] as const) {
         .locator('[data-testid=part]', { hasText: /MARK_PART_RENDERED/ })
         .waitFor()
       await waitForHydration(page)
-      expect(pageErrors).toEqual([])
+      expect(errorsOf(page)).toEqual([])
     },
     timeout,
   )
@@ -136,7 +133,7 @@ const mdxLike = {
 
 test(
   'vite dev: a server fn of a module compiled from an .mdx file is refused at its chain',
-  async ({ startRscDevServer }) => {
+  async () => {
     const page = `# A page
 
 import { createServerFn } from '@tanstack/react-start'

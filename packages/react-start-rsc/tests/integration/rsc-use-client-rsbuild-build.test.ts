@@ -8,7 +8,7 @@
  * environment of the file that has it; design-rsc-phase1-graph.md §4,
  * option B).
  */
-import { describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import {
   expectCompClicks,
   markedApp,
@@ -16,14 +16,14 @@ import {
   recorder,
   summary,
 } from './rsc-use-client-app'
-import { test } from './test'
+import { openRscPage, startRscRsbuildPreviewServer } from './rsc-app'
 
 const timeout = 60_000
 
 describe('Rsbuild build with RSC', () => {
   test(
     'a client-only-marked component a server component renders works (mock), its import reported',
-    async ({ openRscPage, startRscRsbuildPreviewServer }) => {
+    async () => {
       const { violations, start } = recorder('mock')
       const server = await startRscRsbuildPreviewServer({
         start,
@@ -38,7 +38,7 @@ describe('Rsbuild build with RSC', () => {
 
   test(
     'a client-only-marked component a server component renders fails the build where SSR renders it (error)',
-    async ({ startRscRsbuildPreviewServer }) => {
+    async () => {
       const { violations, start } = recorder('error')
       const built = await startRscRsbuildPreviewServer({
         start,
@@ -63,7 +63,7 @@ describe('Rsbuild build with RSC', () => {
   // (`route-rsc-rsbuild-actual`).
   test(
     "a package 'use client' widget a server component renders, using a server-only module, fails the build at the widget (error)",
-    async ({ startRscRsbuildPreviewServer }) => {
+    async () => {
       const { violations, start } = recorder('error')
       const built = await startRscRsbuildPreviewServer({
         start,

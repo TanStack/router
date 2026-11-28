@@ -4,9 +4,8 @@
  * (named, renamed, namespace) of both module names styles the server
  * component it renders.
  */
-import { describe, expect } from 'vitest'
+import { aroundAll, describe, expect, test } from 'vitest'
 import { CARD_BACKGROUND, rscCssApp, stylesheetsOf } from './rsc-css-app'
-import { test } from './test'
 import type { Row, RscCssApp } from './rsc-css-app'
 
 const apis = [
@@ -76,8 +75,8 @@ const matrix = importForms.flatMap((form) =>
 
 describe('RSC helpers by import form (Vite dev)', () => {
   let app: RscCssApp
-  test.aroundAll(async (runSuite, { browser, fileRoot }) => {
-    app = await rscCssApp(fileRoot, browser, {
+  aroundAll(async (runSuite) => {
+    app = await rscCssApp({
       rows: matrix.map(({ row }) => row),
     })
     try {

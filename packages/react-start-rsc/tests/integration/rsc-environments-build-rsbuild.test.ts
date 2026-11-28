@@ -19,7 +19,7 @@
  * the phase 1 review gave it (Astra's report Part B: 88dded8da0 reports it
  * in `ssr`).
  */
-import { describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import {
   calls,
   environmentsFiles,
@@ -28,7 +28,7 @@ import {
   rendered,
   summary,
 } from './rsc-environments-app'
-import { test } from './test'
+import { openRscPage, startRscRsbuildPreviewServer } from './rsc-app'
 
 const timeout = 60_000
 
@@ -40,7 +40,7 @@ const secretViolations = [
 describe('Rsbuild build with RSC: a file in both compile environments', () => {
   test(
     'allowImport is asked once for each environment of an import a file of both makes',
-    async ({ startRscRsbuildPreviewServer }) => {
+    async () => {
       const { asked, start } = recorder('error', () => true)
       const server = await startRscRsbuildPreviewServer({
         start,
@@ -64,7 +64,7 @@ describe('Rsbuild build with RSC: a file in both compile environments', () => {
 
   test(
     "a denied import of the rsc environment is served its mock, and each environment's is reported",
-    async ({ startRscRsbuildPreviewServer }) => {
+    async () => {
       const { violations, start } = recorder('mock')
       const server = await startRscRsbuildPreviewServer({
         start,
@@ -136,7 +136,7 @@ export const Route = createFileRoute('/')({
 describe('Rsbuild build with RSC: the rsc environment', () => {
   test(
     'its imports are judged by the server rules, and reported as rsc of type server',
-    async ({ startRscRsbuildPreviewServer }) => {
+    async () => {
       const { violations, start } = recorder('mock')
       const server = await startRscRsbuildPreviewServer({
         start: {
@@ -233,7 +233,7 @@ const withPlugin = (environment: string, plugin: object) => ({
 describe('Rsbuild build with RSC: a worker of the client', () => {
   test(
     "a server fn the page calls is the client's stub in the worker, of the same id",
-    async ({ openRscPage, startRscRsbuildPreviewServer }) => {
+    async () => {
       const server = await startRscRsbuildPreviewServer({
         files: {
           'src/lib/fns.ts': `import { createServerFn } from '@tanstack/react-start'
@@ -292,7 +292,7 @@ describe('Rsbuild build with RSC: a child compiler of the server', () => {
   // parent's modules do: a child entry in the RSC layer is of `rsc`
   test(
     "a denied import of a child compiler's module in the RSC layer is reported in rsc and fails the build",
-    async ({ startRscRsbuildPreviewServer }) => {
+    async () => {
       const { violations, start } = recorder('error')
       const error = await startRscRsbuildPreviewServer({
         start,

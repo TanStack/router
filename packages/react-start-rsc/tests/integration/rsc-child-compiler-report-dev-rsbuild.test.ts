@@ -11,9 +11,9 @@
  * pattern import under `behavior: 'error'`, db260cf3a3 once),
  * design-rsc-phase1-settlement.md §5, S3, S3c.
  */
-import { describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { recorder, summary } from './rsc-environments-app'
-import { test } from './test'
+import { startRscRsbuildDevServer } from './rsc-app'
 
 const timeout = 60_000
 
@@ -65,10 +65,7 @@ describe('Rsbuild dev with RSC, a denied file of a child compiler only', () => {
   )(
     '$shape, $behavior: onViolation hears about it once',
     { timeout },
-    async (
-      { entry, child, reported, behavior },
-      { startRscRsbuildDevServer },
-    ) => {
+    async ({ entry, child, reported, behavior }) => {
       const { violations, start } = recorder(behavior)
       await startRscRsbuildDevServer({
         start,

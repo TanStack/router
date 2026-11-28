@@ -7,7 +7,7 @@
  * rsc-css-hmr.test.ts.
  */
 import path from 'node:path'
-import { describe, expect } from 'vitest'
+import { aroundAll, describe, expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   BADGE_BACKGROUND,
@@ -18,8 +18,13 @@ import {
   streamImport,
   stylesheetsOf,
 } from './rsc-css-app'
-import { computedStyle, settledValue, waitForHydration } from './rsc-app'
-import { test } from './test'
+import {
+  computedStyle,
+  errorsOf,
+  openRscPage,
+  settledValue,
+  waitForHydration,
+} from './rsc-app'
 import type { Row, RscCssApp } from './rsc-css-app'
 
 const rows = {
@@ -265,8 +270,8 @@ const rows = {
 
 describe('RSC CSS through the real transport (Vite dev)', () => {
   let app: RscCssApp
-  test.aroundAll(async (runSuite, { browser, fileRoot }) => {
-    app = await rscCssApp(fileRoot, browser, {
+  aroundAll(async (runSuite) => {
+    app = await rscCssApp({
       rows: Object.values(rows),
       files: {
         ...Object.fromEntries(
@@ -316,11 +321,8 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
     }
   })
 
-  test('two render helpers in one module each carry their component CSS', async ({
-    openRscPage,
-    pageErrors,
-  }) => {
-    // Separate documents and results: renderA's stylesheet must not mask
+  test('two render helpers in one module each carry their component CSS', async () => {
+    // Separate browser contexts/results: renderA's stylesheet must not mask
     // renderB missing its own delivery, even though both helpers share CSS.
     for (const [name, marker, selector, expected] of [
       ['a', /MARK_A/, '[data-testid=card]', CARD_BACKGROUND],
@@ -336,7 +338,7 @@ export const wrap = (node: React.ReactNode) => renderServerComponent(node)
           (value) => value === expected,
         ),
       ).toBe(expected)
-      expect(pageErrors).toEqual([])
+      expect(errorsOf(page)).toEqual([])
     }
   })
 

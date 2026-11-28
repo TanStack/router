@@ -1,3 +1,5 @@
+import { test } from 'vitest'
+import { startRscRsbuildDevServer } from './rsc-app'
 /**
  * The server-fn reach gate (`rsc-reach-app.ts`) on an Rsbuild dev server
  * with RSC and the persistent cache (`performance.buildCache`; without it:
@@ -11,7 +13,6 @@
  * depend on the start history and the persistent cache, in opposite ways).
  */
 import { expectReachHistory, reachFiles } from './rsc-reach-app'
-import { test } from './test'
 
 // SPEC J4.2: a server fn the client calls is callable by id, whatever the
 // start history: a restart whose route tree is up to date answers too (the
@@ -19,14 +20,12 @@ import { test } from './test'
 // the client compiled, from what it calls; db260cf3a3 and 0a261a0259
 // answered "Server function info not found").
 test('Rsbuild dev with RSC: every server fn the client calls answers after a fresh start, a restart and an edit of every server fn', async ({
-  browser,
   signal,
-  startRscRsbuildDevServer,
 }) => {
   const server = await startRscRsbuildDevServer({
     browser: true,
     config: { performance: { buildCache: true } },
     files: reachFiles,
   })
-  await expectReachHistory({ browser, signal }, server, () => server.restart())
+  await expectReachHistory(signal, server, () => server.restart())
 }, 120_000)

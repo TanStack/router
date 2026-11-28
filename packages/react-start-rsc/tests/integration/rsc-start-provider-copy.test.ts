@@ -6,9 +6,8 @@
  * still renders with the state its own exports read. One row per module of
  * `src/rows/`, each a button of the page.
  */
-import { describe, expect } from 'vitest'
-import { serveRscBuild, waitForHydration } from './rsc-app'
-import { test } from './test'
+import { aroundAll, describe, expect, test } from 'vitest'
+import { openRscBuild, openRscPage, waitForHydration } from './rsc-app'
 import type { RscPreviewServer } from './rsc-app'
 
 /** Each row: a module of `src/rows/`, what its server fn answers the page, and what its `ssr()` renders. */
@@ -184,8 +183,8 @@ function Page() {
 describe.each(['vite', 'rsbuild'] as const)('a %s build', (bundler) => {
   let server: RscPreviewServer
 
-  test.aroundAll(async (runSuite, { fileRoot }) => {
-    server = await serveRscBuild(fileRoot, {
+  aroundAll(async (runSuite) => {
+    server = await openRscBuild({
       bundler,
       files,
     })
@@ -198,7 +197,7 @@ describe.each(['vite', 'rsbuild'] as const)('a %s build', (bundler) => {
 
   test.for(rows.map((row, i) => ({ ...row, i })))(
     'a server fn reads its state: $name',
-    async ({ i, answers, renders }, { openRscPage }) => {
+    async ({ i, answers, renders }) => {
       const opened = await openRscPage(server, '/provider-copy')
       await opened
         .locator('[data-testid=label]', { hasText: /MARK_PAGE/ })

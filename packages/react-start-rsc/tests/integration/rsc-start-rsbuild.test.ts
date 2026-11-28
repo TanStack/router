@@ -8,9 +8,15 @@
  * A component edit keeping state (the other half of J3.6, with React
  * Refresh from `@rsbuild/plugin-react`) is in rsc-start-hmr.test.ts.
  */
-import { describe, expect } from 'vitest'
-import { startRscRsbuildDevServer, waitForHydration } from './rsc-app'
-import { test } from './test'
+import { aroundAll, describe, expect, test } from 'vitest'
+import {
+  blankPage,
+  errorsOf,
+  openRscPage,
+  openRscRsbuildDevServer,
+  visit,
+  waitForHydration,
+} from './rsc-app'
 import type { Page } from '@tanstack/compiler-test-utils/test'
 import type { RsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 
@@ -71,8 +77,8 @@ async function callFromPage(page: Page, expected: RegExp) {
 describe('Rsbuild dev with RSC', () => {
   let server: RsbuildDevServer
 
-  test.aroundAll(async (runSuite, { fileRoot }) => {
-    server = await startRscRsbuildDevServer(fileRoot, {
+  aroundAll(async (runSuite) => {
+    server = await openRscRsbuildDevServer({
       browser: true,
       files: {
         ...envMarkerPackage,
@@ -117,10 +123,7 @@ function Page() {
   // initialises the package once, whether SSR or the browser calls it; SSR's
   // own code gets `default`, the browser `browser`, and the client output
   // has no other environment's entry.
-  test('each environment runs its own entry of a dependency; the provider runs the handler', async ({
-    openRscPage,
-    pageErrors,
-  }) => {
+  test('each environment runs its own entry of a dependency; the provider runs the handler', async () => {
     expect(server.errors).toEqual([])
     const page = await openRscPage(server, '/env')
     await page
@@ -139,21 +142,18 @@ function Page() {
       browser: client.includes('MARK_BROWSER'),
       server: /MARK_REACT_SERVER|MARK_DEFAULT/.test(client),
     }).toEqual({ browser: true, server: false })
-    expect(pageErrors).toEqual([])
+    expect(errorsOf(page)).toEqual([])
   })
 
   // J3.6 (#7618) on Rsbuild's RSC layer: after an edit of
   // the handler of a route module's server fn, the page applies the hot
   // update (its loader runs the new handler) and the next call runs it,
   // without a full reload; the client's hot update never has the handler.
-  test('a handler edit reaches the loader and the next call, without a full reload', async ({
-    openRscPage,
-    pageErrors,
-    page,
-  }) => {
+  test('a handler edit reaches the loader and the next call, without a full reload', async () => {
+    const page = await blankPage()
     let loads = 0
     page.on('load', () => loads++)
-    await openRscPage(server, '/edit')
+    await visit(page, server, '/edit')
     await page
       .locator('[data-testid=label]', {
         hasText: /MARK_LABEL_V1 MARK_HANDLER_V1/,
@@ -174,6 +174,6 @@ function Page() {
       label: update.includes('MARK_LABEL_V2'),
       handler: update.includes('MARK_HANDLER_V2'),
     }).toEqual({ label: true, handler: false })
-    expect(pageErrors).toEqual([])
+    expect(errorsOf(page)).toEqual([])
   })
 })

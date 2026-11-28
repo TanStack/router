@@ -21,7 +21,7 @@
  * gave it (review-rsc-phase1-fable.md §4, Astra's report Part B): 88dded8da0
  * builds `label.ts` in both layers and reports `ssr`.
  */
-import { describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import {
   calls,
   environmentsFiles,
@@ -29,7 +29,7 @@ import {
   recorder,
   summary,
 } from './rsc-environments-app'
-import { test } from './test'
+import { startRscDevServer, startRscRsbuildDevServer } from './rsc-app'
 
 const timeout = 60_000
 
@@ -41,7 +41,7 @@ const secretViolations = [
 describe('Rsbuild dev with RSC: a file in both compile environments', () => {
   test(
     'a dependency only the rsc environment resolves gains a client-only marker: its importer is built again and mocks it in rsc only',
-    async ({ startRscRsbuildDevServer }) => {
+    async () => {
       const { violations, start } = recorder(
         'mock',
         (info) => info.specifier === './secret.client',
@@ -81,7 +81,7 @@ export const where = () => 'MARK_WHERE_SERVER'
 
   test(
     'allowImport is asked once for each environment of an import a file of both makes',
-    async ({ startRscRsbuildDevServer }) => {
+    async () => {
       const { asked, start } = recorder('error', () => true)
       const server = await startRscRsbuildDevServer({
         browser: true,
@@ -100,7 +100,7 @@ export const where = () => 'MARK_WHERE_SERVER'
 
   test(
     "a denied import of the rsc environment is served its mock, and each environment's is reported",
-    async ({ startRscRsbuildDevServer }) => {
+    async () => {
       const { violations, start } = recorder('mock')
       const server = await startRscRsbuildDevServer({
         browser: true,
@@ -120,7 +120,7 @@ export const where = () => 'MARK_WHERE_SERVER'
 
   test(
     'each environment judges the file its own conditions resolve',
-    async ({ startRscRsbuildDevServer }) => {
+    async () => {
       const { violations, start } = recorder('mock')
       const server = await startRscRsbuildDevServer({
         browser: true,
@@ -163,7 +163,7 @@ export const label = () => where()
 describe('Vite dev with RSC: a file in both environments', () => {
   test(
     'allowImport is asked once for each environment of an import a file of both makes',
-    async ({ startRscDevServer }) => {
+    async () => {
       const { asked, start } = recorder('error', () => true)
       const server = await startRscDevServer({
         listen: true,

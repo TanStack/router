@@ -19,11 +19,7 @@
  */
 import { describe, expect } from 'vitest'
 import { installedServerFnFiles } from './client-only-reach-app'
-import {
-  answeredText,
-  startRscPreviewServer,
-  waitForHydration,
-} from './rsc-app'
+import { answeredText, openRscPreviewServer, waitForHydration } from './rsc-app'
 import { test } from './test'
 import type { RscPreviewServer } from './rsc-app'
 
@@ -378,10 +374,13 @@ describe("Vite production build with RSC: server fns only 'use client' component
   // The build fails when the early compile follows the development-only
   // import into its provider's dependency, which has no production entry.
   test.aroundAll(async (runSuite, { fileRoot }) => {
-    server = await startRscPreviewServer(fileRoot, {
-      files,
-      config: { build: { minify: false } },
-    })
+    server = await openRscPreviewServer(
+      {
+        files,
+        config: { build: { minify: false } },
+      },
+      fileRoot,
+    )
     try {
       await runSuite()
     } finally {

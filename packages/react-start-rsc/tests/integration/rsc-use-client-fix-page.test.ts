@@ -4,7 +4,7 @@
  * report gives them, in a Vite production build with RSC
  * (rsc-use-client-fix-cases.ts).
  */
-import { describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import {
   clientOnlyApp,
   deniedApp,
@@ -15,14 +15,14 @@ import {
   reportOf,
 } from './rsc-use-client-fix-cases'
 import { recorder } from './rsc-use-client-app'
-import { test } from './test'
+import { openRscPage, startRscPreviewServer } from './rsc-app'
 
 const timeout = 120_000
 
 describe('Vite build with RSC', () => {
   test(
     "the fixes a report prints for a *.client.* 'use client' component, applied as written, build and work in the browser",
-    async ({ openRscPage, startRscPreviewServer }) => {
+    async () => {
       const build = (files: Record<string, string>) =>
         startRscPreviewServer({ start: recorder('error').start, files })
       const report = reportOf(

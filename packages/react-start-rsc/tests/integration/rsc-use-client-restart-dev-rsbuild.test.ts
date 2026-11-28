@@ -11,9 +11,9 @@
  * `ssr src/utils/ClientBox.client.tsx` once), opinion-rsc-p1-dev-reporting.md
  * (a).
  */
-import { describe, expect } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { recorder, summary } from './rsc-environments-app'
-import { test } from './test'
+import { startRscRsbuildDevServer } from './rsc-app'
 
 const timeout = 60_000
 
@@ -62,7 +62,7 @@ describe('Rsbuild dev with RSC on the persistent cache, an exempt server compone
   test.for(['mock', 'error'] as const)(
     'behavior %s: the box renders on a cold start and after a restart, nothing is reported',
     { timeout },
-    async (behavior, { startRscRsbuildDevServer }) => {
+    async (behavior) => {
       const { violations, start } = recorder(behavior)
       const cold = await startRscRsbuildDevServer({
         browser: true,

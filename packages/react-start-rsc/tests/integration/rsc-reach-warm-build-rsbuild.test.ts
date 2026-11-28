@@ -10,7 +10,7 @@
  */
 import { expect } from 'vitest'
 import { clickOutcome } from './client-only-reach-app'
-import { startRscRsbuildPreviewServer } from './rsc-app'
+import { openRscRsbuildPreviewServer } from './rsc-app'
 import {
   answer,
   counterTest,
@@ -24,11 +24,14 @@ const timeout = 120_000
 
 let server: RscPreviewServer
 test.aroundAll(async (runSuite, { fileRoot }) => {
-  server = await startRscRsbuildPreviewServer(fileRoot, {
-    performance: { buildCache: true },
-    files: reachFiles,
-    buildAgainWith: {},
-  })
+  server = await openRscRsbuildPreviewServer(
+    {
+      performance: { buildCache: true },
+      files: reachFiles,
+      buildAgainWith: {},
+    },
+    fileRoot,
+  )
   try {
     await runSuite()
   } finally {

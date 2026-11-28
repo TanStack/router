@@ -10,7 +10,7 @@
  * errors reported since the edit.
  * Source: RSC investigation (Astra, 11-19, L1 on Rsbuild; Vite passes).
  */
-import { describe } from 'vitest'
+import { describe, test } from 'vitest'
 import {
   dualLayerBase,
   dualLayerStart,
@@ -19,13 +19,13 @@ import {
   ucServer,
   ucServerWithLabel,
 } from './rsc-dual-layer-app'
-import { test } from './test'
+import { startRscDevServer } from './rsc-app'
 
 const timeout = 60_000
 
 test(
   "Vite dev with RSC: an exempt client component in the ssr and rsc environments, through a route added, its server component's use removed and restored, then a fresh start",
-  async ({ startRscDevServer }) => {
+  async () => {
     const start = (files: Record<string, string>) =>
       startRscDevServer({ listen: true, start: dualLayerStart, files })
     let server = await start(dualLayerBase)
@@ -78,7 +78,7 @@ test(
 describe('Vite dev with RSC: allowImport by environment name', () => {
   test(
     'the denied helper is real for the server component and for the client component in SSR',
-    async ({ startRscDevServer }) => {
+    async () => {
       const server = await startRscDevServer({
         listen: true,
         start: {

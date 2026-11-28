@@ -18,6 +18,7 @@
  * and rsc-start-rsbuild-build.test.ts (a Vite production build fails on
  * the client-only positions: rsc-start-build-not-provided.test.ts).
  */
+import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { expect } from 'vitest'
 import {
   clickOutcome,
@@ -25,7 +26,6 @@ import {
   clientOnlyReachFiles,
 } from './client-only-reach-app'
 import type { ClickOutcome } from './client-only-reach-app'
-import type { Browser } from './rsc-app'
 
 /** The public #7943 counter (`G4RDS/tanstack-router-7943-repro`'s shape). */
 export const publicCounterFiles = {
@@ -102,33 +102,26 @@ export function editedReach(): Record<string, string> {
 /** The test ids of the buttons: the client-only positions and the counter. */
 const buttons = [...clientOnlyPositions.map(({ name }) => name), 'counter']
 
-/** The test's browser and signal. */
-interface Actor {
-  browser: Browser
-  signal: AbortSignal
-}
-
 /**
  * What every button's click gives (`clickOutcome`), each clicked in a page
- * of its own (a new context of `browser`), by test id; a click that failed
- * is recorded as its error. Stops at the test's timeout (`signal`).
+ * of its own (a browser context closed once clicked), by test id; a click
+ * that failed is recorded as its error. Stops at the test's timeout
+ * (`signal`).
  */
 export async function everyOutcome(
-  { browser, signal }: Actor,
+  signal: AbortSignal,
   server: { url?: string },
 ): Promise<Record<string, ClickOutcome | Error>> {
   const outcomes: Record<string, ClickOutcome | Error> = {}
   for (const name of buttons) {
     signal.throwIfAborted()
-    const context = await browser.newContext()
+    const opened = await openPage('about:blank')
     try {
-      outcomes[name] = await clickOutcome(
-        await context.newPage(),
-        server,
-        name,
-      ).catch((error: Error) => error)
+      outcomes[name] = await clickOutcome(opened.page, server, name).catch(
+        (error: Error) => error,
+      )
     } finally {
-      await context.close()
+      await opened.close()
     }
   }
   return outcomes
@@ -150,22 +143,25 @@ export const answer = (name: string, edited = false): ClickOutcome => ({
  * (`everyOutcome`).
  */
 export async function expectReachHistory(
-  actor: Actor,
+  signal: AbortSignal,
   server: { url?: string; edit: (files: Record<string, string>) => unknown },
   restart: () => Promise<typeof server>,
 ) {
   const answers = (edited?: boolean) =>
     Object.fromEntries(buttons.map((name) => [name, answer(name, edited)]))
   expect
-    .soft(await everyOutcome(actor, server), 'a fresh start')
+    .soft(await everyOutcome(signal, server), 'a fresh start')
     .toEqual(answers())
   server = await restart()
   expect
-    .soft(await everyOutcome(actor, server), 'after a restart')
+    .soft(await everyOutcome(signal, server), 'after a restart')
     .toEqual(answers())
   await server.edit(editedReach())
   expect
-    .soft(await everyOutcome(actor, server), 'after an edit of every server fn')
+    .soft(
+      await everyOutcome(signal, server),
+      'after an edit of every server fn',
+    )
     .toEqual(answers(true))
 }
 

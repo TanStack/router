@@ -7,7 +7,7 @@
  * Pinned in the same build: server fns only client-only code imports
  * (`client-only-reach-app.ts`).
  */
-import { expect } from 'vitest'
+import { aroundAll, expect, test } from 'vitest'
 import {
   clickOutcome,
   clientOnlyPositions,
@@ -15,15 +15,16 @@ import {
 } from './client-only-reach-app'
 import {
   answeredText,
+  blankPage,
   openRscPage,
+  openRscRsbuildPreviewServer,
   startRscRsbuildPreviewServer,
+  visit,
   waitForHydration,
 } from './rsc-app'
-import { test } from './test'
 import { answer } from './rsc-reach-app'
 import type { RscPreviewServer } from './rsc-app'
 import type { Page } from '@tanstack/compiler-test-utils/test'
-import type { RscFixtures } from './test'
 
 /**
  * Server fns only server code calls (`internal` in another module and
@@ -81,8 +82,8 @@ function Page() {
 
 let server: RscPreviewServer & { errors: Array<string> }
 
-test.aroundAll(async (runSuite, { fileRoot }) => {
-  server = await startRscRsbuildPreviewServer(fileRoot, {
+aroundAll(async (runSuite) => {
+  server = await openRscRsbuildPreviewServer({
     files: {
       ...privateFnFiles,
       ...clientOnlyReachFiles,
@@ -148,9 +149,7 @@ function Page() {
 
 // Found by the react-start/rsc e2e app (rsbuild-ssr): the SSR output named
 // the server fn's SSR stub without importing it, so every page failed.
-test("a server fn only its route's component calls renders on the server and answers the browser", async ({
-  openRscPage,
-}) => {
+test("a server fn only its route's component calls renders on the server and answers the browser", async () => {
   expect(server.errors).toEqual([])
   const page = await openRscPage(server, '/component-fn')
   await page.locator('[data-testid=label]', { hasText: /MARK_PAGE/ }).waitFor()
@@ -165,9 +164,7 @@ test("a server fn only its route's component calls renders on the server and ans
 // server compilation's last settlement run builds the resolver again once
 // the client compiled, from what it calls (db260cf3a3 and 0a261a0259:
 // "Server function info not found").
-test("a server fn only a 'use client' component of a server component imports runs when clicked", async ({
-  openRscPage,
-}) => {
+test("a server fn only a 'use client' component of a server component imports runs when clicked", async () => {
   const page = await openRscPage(server, '/client-ref')
   await page.locator('[data-testid=counter]').waitFor()
   await waitForHydration(page)
@@ -189,7 +186,8 @@ test("a server fn only a 'use client' component of a server component imports ru
 // found").
 test.for(clientOnlyPositions)(
   'a server fn only $position of a $where imports runs when clicked',
-  async ({ name }, { page }) => {
+  async ({ name }) => {
+    const page = await blankPage()
     expect(await clickOutcome(page, server, name)).toEqual(answer(name))
   },
 )
@@ -200,9 +198,8 @@ test.for(clientOnlyPositions)(
 // from the browser is refused, while the same request to `greet` answers.
 // With a separate provider the provider builds before the client, so the
 // refusal is decided where the HTTP handler runs, after the client built.
-test('a server function only server code calls is not callable from the browser', async ({
-  page,
-}) => {
+test('a server function only server code calls is not callable from the browser', async () => {
+  const page = await blankPage()
   await expectOnlyClientCalledFnsCallable(page, server)
 })
 
@@ -215,7 +212,7 @@ async function expectOnlyClientCalledFnsCallable(
   page: Page,
   server: RscPreviewServer,
 ) {
-  await openRscPage(page, server, '/private')
+  await visit(page, server, '/private')
   await page
     .locator('[data-testid=label]', {
       hasText: /label MARK_GREET:MARK_INTERNAL/,
@@ -253,25 +250,20 @@ async function expectOnlyClientCalledFnsCallable(
 }
 
 /** A production build of `privateFnFiles` with `options`, for one test. */
-function privateFnServer(
-  serve: RscFixtures['startRscRsbuildPreviewServer'],
-  options: {
-    start?: Record<string, unknown>
-    tools?: Record<string, unknown>
-  },
-) {
-  return serve({ ...options, files: privateFnFiles })
+function privateFnServer(options: {
+  start?: Record<string, unknown>
+  tools?: Record<string, unknown>
+}) {
+  return startRscRsbuildPreviewServer({ ...options, files: privateFnFiles })
 }
 
 // Astra review 2 (B1): the gate's ids are filled into the server's JS
 // assets after the client built; a server output whose chunks are `.mjs`
 // (the resolver sits in one) kept the placeholder, so every client call
 // was refused. The entry stays `index.js`, which preview loads.
-test('the browser calls a server fn of a server build whose chunks are .mjs', async ({
-  page,
-  startRscRsbuildPreviewServer,
-}) => {
-  const built = await privateFnServer(startRscRsbuildPreviewServer, {
+test('the browser calls a server fn of a server build whose chunks are .mjs', async () => {
+  const page = await blankPage()
+  const built = await privateFnServer({
     tools: {
       rspack: (
         config: { output: Record<string, unknown> },
@@ -292,16 +284,14 @@ test('the browser calls a server fn of a server build whose chunks are .mjs', as
 // `$$` read as `$` the gate held `rv$greet` instead of `rv$$greet`: `greet`
 // was refused and `internal`, a function only server code calls, answered;
 // with `$&` the server bundle did not parse.
-test('custom ids with $ patterns gate the same functions', async ({
-  page,
-  startRscRsbuildPreviewServer,
-}) => {
+test('custom ids with $ patterns gate the same functions', async () => {
+  const page = await blankPage()
   const ids: Record<string, string> = {
     greet_createServerFn_handler: 'rv$$greet',
     internal_createServerFn_handler: 'rv$greet',
     urls_createServerFn_handler: 'rv$&urls',
   }
-  const built = await privateFnServer(startRscRsbuildPreviewServer, {
+  const built = await privateFnServer({
     start: {
       serverFns: {
         generateFunctionId: ({ functionName }: { functionName: string }) =>
@@ -316,10 +306,7 @@ test('custom ids with $ patterns gate the same functions', async ({
 // server fns answer server code (the route's server-only loader) and the
 // browser's request by id is refused, as the resolver of the client's
 // empty publication gates it.
-test('a client that calls no server fn: server code calls one, the browser is refused', async ({
-  openRscPage,
-  startRscRsbuildPreviewServer,
-}) => {
+test('a client that calls no server fn: server code calls one, the browser is refused', async () => {
   const built = await startRscRsbuildPreviewServer({
     files: {
       'src/quiet/fns.ts': `import { createServerFn } from '@tanstack/react-start'

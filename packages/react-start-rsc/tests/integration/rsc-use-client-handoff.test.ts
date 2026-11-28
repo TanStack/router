@@ -20,9 +20,8 @@
  * 407da6ddac and db260cf3a3 named the entry, or mocked silently).
  */
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
-import { describe, expect } from 'vitest'
-import { test } from './test'
-import type { RscFixtures } from './test'
+import { describe, expect, test } from 'vitest'
+import { serveRscBuild } from './rsc-app'
 
 const timeout = 120_000
 
@@ -90,12 +89,11 @@ const hosts = [
 
 /** Builds and serves the app on `host` with `importProtection` over `behavior: 'error'`; the labels of `/uc`. */
 async function labels(
-  serve: RscFixtures['serveRscBuild'],
   bundler: 'vite' | 'rsbuild',
   files: Record<string, string>,
   importProtection: Record<string, unknown>,
 ): Promise<Array<string>> {
-  const server = await serve({
+  const server = await serveRscBuild({
     bundler,
     files,
     start: { importProtection: { behavior: 'error', ...importProtection } },
@@ -109,10 +107,10 @@ async function labels(
 describe.each(hosts)('$host build with RSC', ({ bundler }) => {
   test(
     "the route and the server component import a denied 'use client' file, allowImport allows both: each is asked once, the page renders",
-    async ({ serveRscBuild }) => {
+    async () => {
       const asked: Array<Asked> = []
       expect(
-        await labels(serveRscBuild, bundler, app(true), {
+        await labels(bundler, app(true), {
           allowImport: (info: Asked) => {
             asked.push(info)
             return true
@@ -129,8 +127,8 @@ describe.each(hosts)('$host build with RSC', ({ bundler }) => {
 
   test(
     "allowImport allows the route's import only: the build fails at the server component's import",
-    async ({ serveRscBuild }) => {
-      const failed = await labels(serveRscBuild, bundler, app(true), {
+    async () => {
+      const failed = await labels(bundler, app(true), {
         allowImport: (info: Asked) => info.importer.endsWith('/uc.tsx'),
       }).then(
         () => null,
@@ -148,10 +146,10 @@ describe.each(hosts)('$host build with RSC', ({ bundler }) => {
 
   test(
     'the server component alone imports it, allowImport allows it: its import is asked about, the page renders',
-    async ({ serveRscBuild }) => {
+    async () => {
       const asked: Array<Asked> = []
       expect(
-        await labels(serveRscBuild, bundler, app(false), {
+        await labels(bundler, app(false), {
           allowImport: (info: Asked) => {
             asked.push(info)
             return true
@@ -176,7 +174,7 @@ describe.each(hosts)('$host build with RSC', ({ bundler }) => {
   ])(
     'the server component imports it twice, allowImport allows one spelling ($order): the build fails at the denied import',
     { timeout },
-    async ({ deniedFirst, line }, { serveRscBuild }) => {
+    async ({ deniedFirst, line }) => {
       const allowed = `import { ClientBox } from './ClientBox.client'`
       const denied = `import { ClientBox as Another } from './ClientBox.client.tsx'`
       const files = app(false)
@@ -186,7 +184,7 @@ describe.each(hosts)('$host build with RSC', ({ bundler }) => {
         `${allowed}\n`,
         `${deniedFirst ? `${denied}\n${allowed}` : `${allowed}\n${denied}`}\n`,
       ).replace('<ClientBox />', '<ClientBox />\n      <Another />')
-      const failed = await labels(serveRscBuild, bundler, files, {
+      const failed = await labels(bundler, files, {
         allowImport: (info: Asked) => !info.specifier.endsWith('.tsx'),
       }).then(
         () => null,
@@ -203,10 +201,10 @@ describe.each(hosts)('$host build with RSC', ({ bundler }) => {
 
   test(
     'an exempt server component alone imports it: the page renders, nothing is reported',
-    async ({ serveRscBuild }) => {
+    async () => {
       const reported: Array<unknown> = []
       expect(
-        await labels(serveRscBuild, bundler, app(false), {
+        await labels(bundler, app(false), {
           exclude: ['**/ucServer.tsx'],
           onViolation: (info: unknown) => {
             reported.push(info)
@@ -256,7 +254,7 @@ describe.each(hosts)(
     ])(
       '$layout: the build fails, reporting the import of the server component that renders it',
       { timeout },
-      async ({ routes }, { serveRscBuild }) => {
+      async ({ routes }) => {
         const reported: Array<Asked> = []
         const failed = await serveRscBuild({
           bundler,
