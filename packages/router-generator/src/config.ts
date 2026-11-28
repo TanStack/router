@@ -56,7 +56,7 @@ export const configSchema = baseConfigSchema.extend({
     .transform((v) =>
       typeof v === 'string' ? (v.startsWith('.') ? v : `.${v}`) : v,
     ),
-  enableRouteTreeFormatting: z.boolean().optional().default(true),
+  enableRouteTreeFormatting: z.boolean().optional().default(false),
   routeTreeFileFooter: z
     .union([
       z.array(z.string()).optional().default([]),
@@ -101,22 +101,42 @@ export function getConfig(
   const configFilePathJson = resolveConfigPath({ configDirectory })
   const exists = existsSync(configFilePathJson)
 
-  let config: Config
-
+  // the inline options, over those of the file when there is one (parsed
+  // once, so a file's value is not overwritten by an inline default)
+  let raw: Record<string, unknown> = inlineConfig
   if (exists) {
-    // Parse file config (allows JSON regex-object form)
-    const fileConfigRaw = JSON.parse(readFileSync(configFilePathJson, 'utf-8'))
-
-    // Merge raw configs (inline overrides file), then parse once to apply defaults
-    // This ensures file config values aren't overwritten by inline defaults
-    const merged = {
-      ...fileConfigRaw,
-      ...inlineConfig,
+    // (the file allows the JSON regex-object form)
+    // (a file that cannot be read fails with its read error)
+    const text = readFileSync(configFilePathJson, 'utf-8')
+    let fileConfigRaw: unknown
+    try {
+      fileConfigRaw = JSON.parse(text)
+    } catch (error) {
+      throw new Error(
+        `[tanstack-router] ${configFilePathJson} is not valid JSON: ${(error as Error).message}`,
+      )
     }
-    config = configSchema.parse(merged)
-  } else {
-    config = configSchema.parse(inlineConfig)
+    if (
+      typeof fileConfigRaw !== 'object' ||
+      fileConfigRaw === null ||
+      Array.isArray(fileConfigRaw)
+    ) {
+      throw new Error(
+        `[tanstack-router] ${configFilePathJson} must hold an object of options.`,
+      )
+    }
+    raw = { ...fileConfigRaw, ...inlineConfig }
   }
+  const parsed = configSchema.safeParse(raw)
+  if (!parsed.success) {
+    throw configError(
+      parsed.error.issues,
+      exists
+        ? `router generator options (the inline options and ${configFilePathJson})`
+        : 'router generator options',
+    )
+  }
+  const config = parsed.data
 
   // If typescript is disabled, make sure the generated route tree is a .js file
   if (config.disableTypes) {
@@ -174,23 +194,39 @@ export function getConfig(
   return config
 }
 
+/**
+ * The options' problems as one error naming each option
+ * (`quoteStyle: Invalid option: expected one of "single"|"double"`), its
+ * message as its stack: a user error, not ours. `subject`: the options
+ * (`router plugin options`).
+ */
+export function configError(
+  issues: ReadonlyArray<{ path: ReadonlyArray<PropertyKey>; message: string }>,
+  subject: string,
+): Error {
+  const lines = issues.map((issue) => {
+    const at = issue.path.map(String).join('.')
+    return `  ${at === '' ? '' : `${at}: `}${issue.message}`
+  })
+  const error = new Error(
+    `[tanstack-router] Invalid ${subject}:\n${lines.join('\n')}`,
+  )
+  error.stack = error.message
+  return error
+}
+
 function validateConfig(config: Config) {
   if (typeof config.experimental?.enableCodeSplitting !== 'undefined') {
-    const message = `
-------
-⚠️ ⚠️ ⚠️
-ERROR: The "experimental.enableCodeSplitting" flag has been made stable and is now "autoCodeSplitting". Please update your configuration file to use "autoCodeSplitting" instead of "experimental.enableCodeSplitting".
-------
-`
-    console.error(message)
-    throw new Error(message)
+    throw new Error(
+      '[tanstack-router] The "experimental.enableCodeSplitting" flag has been made stable and is now "autoCodeSplitting". Please update your configuration file to use "autoCodeSplitting" instead of "experimental.enableCodeSplitting".',
+    )
   }
 
   // Check that indexToken and routeToken are not identical
   // Works for strings, RegExp, and JSON regex objects
   if (areTokensEqual(config.indexToken, config.routeToken)) {
     throw new Error(
-      `The "indexToken" and "routeToken" options must be different.`,
+      `[tanstack-router] The "indexToken" and "routeToken" options must be different.`,
     )
   }
 
@@ -199,7 +235,7 @@ ERROR: The "experimental.enableCodeSplitting" flag has been made stable and is n
     config.routeFileIgnorePrefix.trim() === '_'
   ) {
     throw new Error(
-      `The "routeFileIgnorePrefix" cannot be an underscore ("_"). This is a reserved character used to denote a pathless route. Please use a different prefix.`,
+      `[tanstack-router] The "routeFileIgnorePrefix" cannot be an underscore ("_"). This is a reserved character used to denote a pathless route. Please use a different prefix.`,
     )
   }
 

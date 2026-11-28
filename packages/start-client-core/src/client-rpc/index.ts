@@ -1,4 +1,4 @@
-export { createClientRpc } from './createClientRpc'
+export { createClientRpc, createClientServerFn } from './createClientRpc'
 export {
   FRAME_HEADER_SIZE,
   FRAME_TYPE_CHUNK,

@@ -257,9 +257,9 @@ By default, this value is set to:
 
 ### `enableRouteTreeFormatting`
 
-This option turns on the formatting function on the generated route tree file, which can be time-consuming for large projects.
+The generated route tree file is always printed in the configured `quoteStyle` and `semicolons`. Set this option to `true` to also format it with Prettier (loaded only then), which can be time-consuming for large projects.
 
-By default, this value is set to `true`.
+By default, this value is set to `false`.
 
 ### `tmpDir`
 
@@ -269,3 +269,5 @@ This config option allows to configure the path of the temp directory that will 
 If it is a relative path, it will be resolved to the current working directory.
 If this value is not set, `process.env.TSR_TMP_DIR` will be used.
 If `process.env.TSR_TMP_DIR` is not set, it will default to `.tanstack/tmp` relative to the current working directory.
+
+Add this directory to your `.gitignore` (`.tanstack/` for the default): it only holds temporary files of the generator. Deleting it while the dev server runs (`git clean -fd`, say) is harmless: the generator creates it again.

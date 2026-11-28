@@ -727,6 +727,8 @@ export interface Route<
   >
   /** @internal */
   _lazy?: Promise<void> | true
+  /** @internal Development only: the lazy route `_lazy` loaded (route HMR). */
+  _lazyRoute?: object
   /** @internal */
   _branch?: ReadonlyArray<AnyRoute>
   /** @internal */
@@ -1718,6 +1720,8 @@ export class BaseRoute<
   >
   /** @internal */
   _lazy?: Promise<void> | true
+  /** @internal Development only: the lazy route `_lazy` loaded (route HMR). */
+  _lazyRoute?: object
   /** @internal */
   _branch?: ReadonlyArray<AnyRoute>
   /** @internal */

@@ -6,12 +6,6 @@ import {
 } from '../src/esbuild'
 
 describe('esbuild plugin', () => {
-  test('refuses autoCodeSplitting', () => {
-    expect(() =>
-      tanstackRouter({ target: 'react', autoCodeSplitting: true }),
-    ).toThrow(/autoCodeSplitting/)
-  })
-
   test('refuses the code splitter entry', () => {
     expect(() => TanStackRouterCodeSplitterEsbuild()).toThrow(
       /autoCodeSplitting/,

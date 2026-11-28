@@ -9,7 +9,8 @@ export function renderToReadableStream(
   _node: React.ReactNode,
 ): ReadableStream<Uint8Array> {
   throw new Error(
-    'renderToReadableStream cannot be called on the client. ' +
-      'This function should only be called inside RSC context (server functions).',
+    process.env.NODE_ENV !== 'production'
+      ? "renderToReadableStream cannot be called on the client. Call it inside a server function's `.handler()`, and call that server function where you need the result (e.g. in the route's loader)."
+      : 'renderToReadableStream cannot be called on the client',
   )
 }

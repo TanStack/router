@@ -3,6 +3,30 @@ import { tanstackViteConfig } from '@tanstack/vite-config'
 import react from '@vitejs/plugin-react'
 import { copyFilesPlugin } from '@tanstack/router-utils'
 import packageJson from './package.json'
+// Main's runtime tests (RSC components, streams, the proxy, and the types of
+// the public API), at main's paths and unchanged: `test:noncompiler` runs
+// them; the compiler projects leave them out. Paths relative to `tests/`.
+import noncompilerTests from './tests/noncompiler-tests.json' with { type: 'json' }
+
+// The files whose tests run at once (`integration-concurrent`), and the
+// only ones whose tests use the context fixtures (`tests/integration/test.ts`;
+// ESLint keeps the serial openers out of them).
+import concurrentTests from './tests/concurrent-tests.json' with { type: 'json' }
+
+/** What both integration projects run with. */
+const integration = {
+  environment: 'node',
+  // The dev servers and their module runners run in the test
+  // process, and `vite dev` runs with `development`: Vitest's `test`
+  // would be baked into the served client code (e.g. the RSC HMR
+  // client is set up under `development` only).
+  env: { NODE_ENV: 'development' },
+  // (after the root's: each file ends with the compilers' stale
+  // check, and the process environment it started with)
+  setupFiles: ['@tanstack/compiler-test-utils/test-scope-setup'],
+  testTimeout: 60_000,
+  hookTimeout: 60_000,
+}
 
 const config = defineConfig({
   resolve: {
@@ -19,11 +43,53 @@ const config = defineConfig({
     }),
   ],
   test: {
-    include: ['**/*.{test-d,test,spec}.?(c|m)[jt]s?(x)'],
     name: packageJson.name,
     watch: false,
-    environment: 'jsdom',
-    setupFiles: ['./tests/setup.ts'],
+    // At most 4 test processes per Vitest run: each
+    // runs real bundlers, dev servers and its own browser, and Nx runs several
+    // packages' tiers at once. More workers add swap and load flakes, not
+    // speed. `--maxWorkers` on the command line still overrides it.
+    maxWorkers: 4,
+    reporters: ['default', '@tanstack/compiler-test-utils/budget-reporter'],
+    globalSetup: ['@tanstack/compiler-test-utils/run-directory'],
+    setupFiles: ['@tanstack/compiler-test-utils/pins-setup'],
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'noncompiler',
+          dir: './tests',
+          include: noncompilerTests,
+          environment: 'jsdom',
+          setupFiles: ['./tests/setup.ts'],
+        },
+      },
+      {
+        // Slow tier (`test:integration`): real Start apps with RSC on Vite
+        // and Rsbuild dev servers and builds, and real browser pages. Its
+        // Nx target builds `@tanstack/react-start` first.
+        extends: true,
+        test: {
+          name: 'integration',
+          include: ['tests/integration/**/*.test.ts?(x)'],
+          exclude: concurrentTests,
+          ...integration,
+        },
+      },
+      {
+        // The files whose one build is opened by an `aroundAll` their tests
+        // run inside, each test a page of its own on it: their tests run at
+        // once.
+        extends: true,
+        test: {
+          name: 'integration-concurrent',
+          include: concurrentTests,
+          sequence: { concurrent: true },
+          maxConcurrency: 4,
+          ...integration,
+        },
+      },
+    ],
   },
 })
 
@@ -36,7 +102,6 @@ export default mergeConfig(
       './src/index.rsc.ts',
       './src/serialization.client.ts',
       './src/serialization.server.ts',
-      './src/plugin/rscCssTransform.ts',
       './src/plugin/vite.ts',
       './src/entry/rsc.tsx',
       './src/rsbuild/ssr-decode.ts',

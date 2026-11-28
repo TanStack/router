@@ -2,6 +2,7 @@
 
 import { Suspense } from 'react'
 import ReactDOM from 'react-dom'
+import { invariant } from '@tanstack/router-core'
 
 import { SlotProvider } from './SlotContext'
 import {
@@ -130,9 +131,12 @@ export function CompositeComponent<TComp extends AnyCompositeComponent>(
   const stream = src[SERVER_COMPONENT_STREAM]
 
   if (!stream) {
-    throw new Error(
-      '[tanstack/start] <CompositeComponent> missing RSC stream on src',
-    )
+    if (process.env.NODE_ENV !== 'production') {
+      throw new Error(
+        '[tanstack-start] <CompositeComponent> missing RSC stream on src',
+      )
+    }
+    invariant()
   }
 
   const cssHrefs = src[SERVER_COMPONENT_CSS_HREFS]
@@ -143,10 +147,13 @@ export function CompositeComponent<TComp extends AnyCompositeComponent>(
   const getTree = src[RSC_PROXY_GET_TREE]
 
   if (!getTree) {
-    throw new Error(
-      '[tanstack/start] <CompositeComponent> missing getTree on RSC src. ' +
-        'Make sure src comes from createCompositeComponent().',
-    )
+    if (process.env.NODE_ENV !== 'production') {
+      throw new Error(
+        '[tanstack-start] <CompositeComponent> missing getTree on RSC src. ' +
+          'Make sure src comes from createCompositeComponent().',
+      )
+    }
+    invariant()
   }
 
   return (

@@ -2,11 +2,12 @@ import { createEsbuildPlugin } from 'unplugin'
 
 import { configSchema, getConfig } from './core/config'
 import { createRouterGeneratorPlugin } from './core/router-generator-plugin'
-import { unpluginRouterComposedFactory } from './core/router-composed-plugin'
 import { createRouterPluginContext } from './core/router-plugin-context'
+import { INLINE_CSS_DEFAULT_DEFINES } from './core/inline-css-defaults'
 
 import type { CodeSplittingOptions, Config } from './core/config'
 import type { RouterPluginContext } from './core/router-plugin-context'
+import type { UnpluginOptions } from 'unplugin'
 
 type RouterPluginOptions = Partial<Config | (() => Config)> | undefined
 
@@ -46,8 +47,8 @@ const TanStackRouterGeneratorEsbuild = (
 }
 
 /**
- * Route code splitting is not available with esbuild: this entry refuses
- * clearly.
+ * Route code splitting is not available with esbuild (SPEC J2.18): this
+ * entry refuses clearly.
  */
 const TanStackRouterCodeSplitterEsbuild = (
   _options?: RouterPluginOptions,
@@ -55,6 +56,10 @@ const TanStackRouterCodeSplitterEsbuild = (
 ): never => {
   throw new Error(ESBUILD_SPLITTING_ERROR)
 }
+
+type EsbuildOptionsWithDefine = Parameters<
+  NonNullable<NonNullable<UnpluginOptions['esbuild']>['config']>
+>[0]
 
 /**
  * @example
@@ -67,7 +72,21 @@ const TanStackRouterCodeSplitterEsbuild = (
  */
 const TanStackRouterEsbuild = (options: RouterPluginOptions = {}) => {
   refuseSplitting(options)
-  return createEsbuildPlugin(unpluginRouterComposedFactory)(options)
+  const routerPluginContext = createRouterPluginContext()
+  return createEsbuildPlugin((pluginOptions: RouterPluginOptions) => [
+    {
+      name: 'tanstack:router-inline-css-defaults',
+      esbuild: {
+        config(esbuildOptions: EsbuildOptionsWithDefine) {
+          esbuildOptions.define = {
+            ...INLINE_CSS_DEFAULT_DEFINES,
+            ...esbuildOptions.define,
+          }
+        },
+      },
+    },
+    ...[createRouterGeneratorPlugin(pluginOptions, routerPluginContext)].flat(),
+  ])(options)
 }
 const tanstackRouter = TanStackRouterEsbuild
 export default TanStackRouterEsbuild

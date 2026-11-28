@@ -253,6 +253,7 @@ export {
   PathParamError,
   getInitialRouterState,
   trailingSlashOptions,
+  hmrReloadAfterCatch,
 } from './router'
 
 export type {

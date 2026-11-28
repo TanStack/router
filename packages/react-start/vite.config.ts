@@ -29,6 +29,7 @@ export default mergeConfig(
       './src/client.tsx',
       './src/hydration.ts',
       './src/client-rpc.ts',
+      './src/client-rpc-gated.ts',
       './src/server.tsx',
       './src/server.rsc.ts',
       './src/server-rpc.ts',
@@ -47,6 +48,8 @@ export default mergeConfig(
     externalDeps: [
       '@tanstack/react-start-client',
       '@tanstack/react-start-server',
+      // (the server entry's marker: kept as an import, `src/server.tsx`)
+      '@tanstack/react-start/server-only',
     ],
     cjs: false,
   }),

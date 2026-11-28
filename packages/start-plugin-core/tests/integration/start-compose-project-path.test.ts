@@ -1,0 +1,251 @@
+/**
+ * The project's path and the generated route tree's name (SPEC §2.1,
+ * J2.15, G1): a Start app whose directory carries characters a project path
+ * may (`my app (2)+`) builds, and its client route tree leaves
+ * out the server-only route like any other app's; and an app file whose
+ * name is one character away from the generated route tree's
+ * (`src/routeTree-gen.ts`) is the file it is, not the client route tree.
+ * Built with Start's Vite plugin (Rsbuild as a control: it has no client
+ * route tree of its own yet, see start-build-route-option-keys.test.ts).
+ *
+ * An app under a directory whose name carries a `#` (`C#`, `project #2`)
+ * compiles like any other (SPEC J4.12, J2.15): its server function
+ * handlers stay out of the client bundle and its routes are code-split. A
+ * `#` read as a URL fragment would leave every module of the app
+ * untransformed, silently: the client would ship the handlers.
+ */
+import { beforeAll, describe, expect, test } from 'vitest'
+import { closeAfterAll } from '../file-end'
+import {
+  buildStartShared,
+  callByIdExports,
+  callByIdPrelude,
+  startBundlers,
+} from '../build-harness'
+import { buildStart } from '../build-start'
+import type { StartBuild } from '../build-harness'
+
+const timeout = 60_000
+
+const head = `import { createFileRoute } from '@tanstack/react-router'\n`
+
+const routes = {
+  'src/routes/__root.tsx': `import { createRootRoute } from '@tanstack/react-router'
+export const Route = createRootRoute()
+`,
+  'src/routes/index.tsx': `${head}export const Route = createFileRoute('/')({ component: () => 'MARK_INDEX' })\n`,
+  'src/routes/api.tsx': `${head}export const Route = createFileRoute('/api')({ server: { handlers: { GET: () => new Response('MARK_API') } } })\n`,
+  'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+import { routeTree } from './routeTree.gen'
+export const getRouter = () => createRouter({ routeTree })
+`,
+}
+
+/** Ids of the routes of the build's client route tree. */
+const clientRouteIds = `return Object.values(entry.getRouter().routeTree.children ?? {}).map((route) => route.options.id)`
+
+describe.each(startBundlers)('%s build', (bundler) => {
+  describe('of an app whose path has characters a regular expression reads', () => {
+    let build: StartBuild
+    const openBuild = closeAfterAll()
+    beforeAll(async () => {
+      build = await openBuild(() =>
+        buildStartShared({
+          bundler,
+          prefix: `.start-build-harness-${bundler} my app (2)+-`,
+          files: {
+            ...routes,
+            'src/entry.ts': `export { getRouter } from './router'
+export { renderPath } from '../harness/render'
+`,
+          },
+          entry: 'src/entry.ts',
+        }),
+      )
+    }, timeout)
+
+    test('builds, and the page renders', async () => {
+      expect(build.client.root).toMatch(/my app \(2\)\+/)
+      expect(
+        (
+          await build.ssr.run(
+            `${clientRouteIds.replace('return ', 'const ids = ')}
+return { ids, page: await entry.renderPath(entry.getRouter().routeTree, '/') }`,
+          )
+        ).result,
+      ).toEqual({
+        ids: expect.arrayContaining(['/', '/api']),
+        page: expect.stringContaining('MARK_INDEX'),
+      })
+    })
+
+    // On main, the client bundle ships the server-only routes' entries and
+    // modules; a page can navigate to a route that has no page.
+    test('the client route tree leaves out the server-only route', async () => {
+      expect((await build.client.run(clientRouteIds)).result).toEqual(['/'])
+    })
+  })
+
+  describe('of an app with a file named one character away from the generated route tree', () => {
+    let build: StartBuild | undefined
+    let failure: unknown
+    const openBuild2 = closeAfterAll()
+    beforeAll(async () => {
+      try {
+        build = await openBuild2(() =>
+          buildStartShared({
+            bundler,
+            files: {
+              ...routes,
+              'src/routeTree-gen.ts': `export const sibling = 'MARK_SIBLING'\n`,
+              'src/entry.ts': `export { getRouter } from './router'
+export { sibling } from './routeTree-gen'
+`,
+            },
+            entry: 'src/entry.ts',
+          }),
+        )
+      } catch (error) {
+        failure = error
+      }
+    }, timeout)
+
+    // On main, the build fails (the file's exports are gone) or the app reads
+    // the wrong module.
+    test('the client gets the file, not the client route tree', async () => {
+      if (!build) {
+        throw failure
+      }
+      expect((await build.client.run(`return entry.sibling`)).result).toBe(
+        'MARK_SIBLING',
+      )
+    })
+  })
+})
+
+describe.each(startBundlers)('%s build', (bundler) => {
+  describe('of an app whose path has a #', () => {
+    let build: StartBuild
+    const openBuild3 = closeAfterAll()
+    beforeAll(async () => {
+      build = await openBuild3(() =>
+        buildStartShared({
+          bundler,
+          prefix: `.start-build-harness-${bundler} C# project #2-`,
+          files: {
+            ...routes,
+            'src/routes/index.tsx': `${head}import { greet } from '../fns'
+export const Route = createFileRoute('/')({
+  loader: () => greet(),
+  component: () => 'MARK_INDEX',
+})
+`,
+            // the handler of `readLabel` reads a binding its module writes:
+            // its lazy handler module imports the module itself
+            'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+let label = 'MARK_LABEL_INITIAL'
+export function setLabel(value: string) {
+  label = value
+}
+export const greet = createServerFn().handler(async () => 'MARK_SERVER_SECRET')
+export const readLabel = createServerFn().handler(async () => label)
+`,
+            'src/entry.ts': `export { getRouter } from './router'
+export { greet, readLabel, setLabel } from './fns'
+export { renderPath } from '../harness/render'
+`,
+          },
+          entry: 'src/entry.ts',
+        }),
+      )
+    }, timeout)
+
+    test('builds under the directory, and the page renders', async () => {
+      expect(build.client.root).toMatch(/C# project #2/)
+      expect(
+        (
+          await build.ssr.run(
+            `return await entry.renderPath(entry.getRouter().routeTree, '/')`,
+          )
+        ).result,
+      ).toContain('MARK_INDEX')
+    })
+
+    test('the server function handler is not in the client bundle', () => {
+      expect(build.client.where('MARK_SERVER_SECRET')).toBe('nowhere')
+      expect(build.ssr.where('MARK_SERVER_SECRET')).not.toBe('nowhere')
+    })
+
+    test('the route component is code-split', () => {
+      expect(build.client.where('MARK_INDEX')).toBe('lazy')
+    })
+
+    test("a server function handler reads its module's one instance", async () => {
+      expect(
+        (
+          await build.ssr.run(
+            `entry.setLabel('MARK_LABEL_SET')\nreturn await entry.readLabel()`,
+          )
+        ).result,
+      ).toBe('MARK_LABEL_SET')
+    })
+  })
+})
+
+/** `path` with its drive letter in the other case (`C:\app` → `c:\app`). */
+const flipDriveLetter = (path: string) =>
+  path.replace(/^[a-zA-Z](?=:)/, (letter) =>
+    letter === letter.toUpperCase()
+      ? letter.toLowerCase()
+      : letter.toUpperCase(),
+  )
+
+// Windows: the app's root (Vite's `root`, `process.cwd()`) can carry a
+// lowercase drive letter while the bundler's module ids carry the file
+// system's (`C:`). Server fn default ids hash the file's path relative to the
+// root, so the root must be read as the same directory whatever the case of
+// its drive letter.
+describe.each(startBundlers)('%s build', (bundler) => {
+  describe.runIf(process.platform === 'win32')(
+    'of an app whose path is configured with the drive letter in the other case',
+    () => {
+      const files = {
+        ...routes,
+        'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+export const greet = createServerFn().handler(async () => 'MARK_GREETING')
+`,
+        'src/client-entry.ts': `export { greet } from './fns'\n`,
+        'src/ssr-entry.ts': `export { greet } from './fns'
+${callByIdExports}`,
+      }
+      /** The server fn's id in the SSR build, what a call by that id answers, and whether the client build holds it. */
+      const ids = async (root?: (appDirectory: string) => string) => {
+        const build = await buildStart({
+          bundler,
+          files,
+          entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+          root,
+        })
+        const { result } = await build.ssr.run(`${callByIdPrelude}
+const id = serverFnId(entry.greet)
+return { id, answer: await callById(id) }`)
+        const { id, answer } = result as { id: string; answer: unknown }
+        return { id, answer, inClient: build.client.where(id) !== 'nowhere' }
+      }
+
+      test(
+        'server fn default ids are those of the root as the file system spells it',
+        async () => {
+          const spelled = await ids()
+          expect(spelled).toEqual({
+            id: expect.any(String),
+            answer: 'MARK_GREETING',
+            inClient: true,
+          })
+          expect(await ids(flipDriveLetter)).toEqual(spelled)
+        },
+        timeout,
+      )
+    },
+  )
+})

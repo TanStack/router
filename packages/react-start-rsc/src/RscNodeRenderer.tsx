@@ -2,6 +2,7 @@
 
 import { Suspense } from 'react'
 import ReactDOM from 'react-dom'
+import { invariant } from '@tanstack/router-core'
 
 import {
   RSC_PROXY_GET_TREE,
@@ -51,9 +52,12 @@ export function RscNodeRenderer({ data }: { data: any }): React.ReactNode {
 
   const getTree = data[RSC_PROXY_GET_TREE] as (() => unknown) | undefined
   if (!getTree) {
-    throw new Error(
-      '[tanstack/start] RscNodeRenderer missing getTree on RSC data.',
-    )
+    if (process.env.NODE_ENV !== 'production') {
+      throw new Error(
+        '[tanstack-start] RscNodeRenderer missing getTree on RSC data.',
+      )
+    }
+    invariant()
   }
 
   for (const href of cssHrefs ?? []) {

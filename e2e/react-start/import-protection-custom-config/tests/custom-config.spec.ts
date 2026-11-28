@@ -15,7 +15,10 @@ async function readViolations(
 }
 
 test.use({
-  whitelistErrors: [/mock/i, /Cannot read properties/i, /undefined/i],
+  // Mock mode: calling a mock logs the `mockAccess` runtime diagnostic in
+  // dev and production. (A list whose second item is an object would be
+  // read by Playwright as a `[value, options]` fixture tuple.)
+  whitelistErrors: [/^Error: \[import-protection\] Mocked import used/],
 })
 
 // -----------------------------------------------------------------------

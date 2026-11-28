@@ -1,4 +1,5 @@
 import { expectTypeOf, test } from 'vitest'
+import type { SerializationError } from '@tanstack/router-core'
 import type {
   CompositeComponentResult,
   ValidateCompositeComponent,
@@ -85,7 +86,7 @@ test('when a server component is created with slots with not serializable props'
   expectTypeOf<ValidateCompositeComponent<Post>>().toEqualTypeOf<
     (props: {
       render: (props: {
-        func: 'Function is not serializable'
+        func: SerializationError<'Function may not be serializable'>
       }) => React.ReactNode
     }) => React.ReactNode
   >()

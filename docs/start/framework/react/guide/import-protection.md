@@ -23,6 +23,7 @@ Import protection is enabled out of the box with these defaults:
 | `behavior` (dev)   | `'mock'` -- warn and replace with a mock module |
 | `behavior` (build) | `'error'` -- fail the build                     |
 | `log`              | `'once'` -- deduplicate repeated violations     |
+| `mockAccess`       | `'error'` -- a used mock is logged as an error  |
 | Scope              | Files inside Start's `srcDirectory`             |
 
 **Client environment denials:**
@@ -36,9 +37,36 @@ Import protection is enabled out of the box with these defaults:
 - Files matching `**/*.client.*`
 - Excluded from file checks: `**/node_modules/**`
 
-By default, files inside `node_modules` are excluded from resolved-target deny checks via the `excludeFiles` option. This prevents false positives from third-party packages whose resolved filenames contain `.client.` or `.server.`. If you need to check third-party files, set `excludeFiles: []` on the relevant environment — see [Configuring Deny Rules](#configuring-deny-rules).
+By default, files inside `node_modules` are excluded from the file-name checks via the `excludeFiles` option. This prevents false positives from third-party packages whose resolved filenames contain `.client.` or `.server.`. If you need to check third-party file names, set `excludeFiles: []` on the relevant environment — see [Configuring Deny Rules](#configuring-deny-rules). [File markers](#file-markers) are not file names: a marker is honoured in every file, a package's included, whatever `excludeFiles` says.
+
+`@tanstack/react-start/server` is also a server-only-marked module (see [The server entry](#the-server-entry)): the specifier rule reports an import of it in your own files, and the marker denies it to every other module the client keeps, a package's or a workspace package's included.
 
 These defaults mean you can use the `.server.ts` / `.client.ts` naming convention to restrict files to a single environment without any configuration. To also deny entire directories (e.g. `server/` or `client/`), add them via `files` in your [deny rules configuration](#configuring-deny-rules) — for example `files: ['**/*.server.*', '**/server/**']` for the client environment.
+
+## Pattern Imports
+
+Imports your bundler expands from a pattern, such as `import.meta.glob`, a template literal `import()` or Rsbuild's `import.meta.webpackContext`, are not covered: import protection reads no import in them. A denied file one of them reaches is still judged by itself, as one module for every importer. It is replaced by its mock and reported: a build names each checked module importing it; in dev the report names the denied file, which the dev server compiles before it knows what imports it. When an exempt importer (see [Scoping and Exclusions](#scoping-and-exclusions)) imports the file with a plain import, or [`allowImport`](#the-allowimport-callback) allows an import of it, the file is kept as it is for every importer instead. A pattern import from an exempt importer then gets the real module too (a Vite build reports it, see below); a pattern import from an exempt importer alone gets the mock (see [Limitations](#limitations)).
+
+One file can't be both. When an importer needs the denied file as it is and a checked module reaches the file itself, through a pattern import or an import another plugin's transform added, the build fails on Vite and Rsbuild, under both behaviors and whichever way the bundler happened to serve it: one of the two imports is a mistake, a too-broad exemption that ships server code or a pattern that reaches a file you didn't mean to load. The error names the file, the importer that needs it and the checked one, with the pattern import's position. Fix whichever is wrong: leave the file out of the pattern (`import.meta.glob(['../lib/*.server.ts', '!../lib/db.server.ts'])`), or narrow `exclude`/`ignoreImporters` or `allowImport` so they no longer cover the plain import. A dev server prints the same error and keeps serving the file as it is until you fix it.
+
+A Vite build compiles each module once and serves it to every importer as it compiled it first. So when the other importer is exempt too, every importer gets the mock if the build compiled the file for the pattern import first, and the real module if it compiled it for the plain import first. Since that depends on the order, a Vite build reports the case whichever way it went: it fails under `behavior: 'error'` and warns under `'mock'`, naming the file, the importer that needs it and the pattern import (when nothing of the file is kept after tree-shaking, it says nothing). Leave the file out of the pattern, or narrow the exemption, to fix it. Rsbuild builds the file again once it knows every importer, so there both get the real module and nothing is reported. In the other direction, a `vite build --watch` rebuild can compile the file before an edited importer that no longer imports it: the file is kept as it is in that rebuild, which says so the same way, and the next rebuild mocks it. An importer the app no longer imports at all, or a removed import `allowImport` allowed, asks for nothing either: Rsbuild serves the file as its mock in the compilation of the edit, a `vite build --watch` rebuild reports it and the next rebuild mocks it. Rsbuild and the dev servers compile the file again instead (a Vite dev server reloads the page).
+
+On the client, a file rule judges the denied file itself, wherever it lives in your project: a pattern that reaches `../lib/*.server.ts`, or a file `exclude` matches, gets the mock and is reported. `srcDirectory`, `include` and `exclude` decide which importers are checked, not which files can be denied. On Vite this covers non-code files too (`./*.server.json`); on Rsbuild, `new URL` of a non-code file and asset queries. A package's own files in `node_modules` are not judged this way.
+
+Asset queries are checked the same way: `?raw`, `?url`, `?inline`, `?worker` and `?sharedworker` of a denied file, in a plain import or through a pattern (`import.meta.glob('./*.ts', { query: '?raw' })`), give the client the mock, never the file's text. A query your bundler ignores on a script (`./session.ts?inline`; on Rsbuild also `?url` and `?sharedworker`) imports the module itself, which is compiled and checked like the file. On the server, only a plain import of a file a server rule denies is checked: a text or a URL runs nothing of a client-only file there.
+
+```ts
+// src/routes/admin.tsx: reported, and the client gets a mock of db.server.ts
+const modules = import.meta.glob('../lib/*.ts')
+```
+
+The report names the pattern import and the denied file. To leave the file out, add a negative pattern:
+
+```ts
+const modules = import.meta.glob(['../lib/*.ts', '!../lib/db.server.ts'])
+```
+
+For `import.meta.webpackContext`, narrow its `regExp` so it does not match the file; for a template literal `import()`, move the file out of the directory it reads.
 
 ## Type-Only Imports
 
@@ -56,6 +84,14 @@ Mixed imports still count when they include at least one runtime value. Split th
 ```ts
 // This is still checked because `getUsers` is a runtime value.
 import { type User, getUsers } from './db.server'
+```
+
+A value import whose bindings are only used as types (or not at all) is judged by what your bundler keeps. Its TypeScript transform erases such an import unless `verbatimModuleSyntax` applies: Vite reads it from the tsconfig that covers the file, Rsbuild from `tools.swc`. Import protection does not read tsconfig itself. It reports the import only when the bundler loads it, and an erased import is never a violation. An import whose specifiers are all written `type` (`import { type User }`) is ignored like `import type` when the module imports that file nowhere else, unless `verbatimModuleSyntax` keeps it as a bare import, which runs the file. Next to another import of the same file, it counts as an import that runs the file whatever your `verbatimModuleSyntax` setting: it is a violation wherever the module is kept, even when the other import's bindings are unused and dropped. `import type` never counts: write `import type` when only the type should cross the boundary.
+
+```ts
+// Reported only if the bundler keeps the import (verbatimModuleSyntax).
+import { User } from './db.server'
+export type Props = { user: User }
 ```
 
 ## File Markers
@@ -81,6 +117,31 @@ export function savePreferences(prefs: Record<string, string>) {
 When the plugin sees a marker import, it records the file as restricted. If that file is later imported from the wrong environment, the import is denied. Both markers in the same file is always an error.
 
 Markers are useful when a file doesn't follow the `.server.*` / `.client.*` naming convention but still contains environment-specific code.
+
+A marker is a static import (`import '@tanstack/react-start/server-only'`); a dynamic `import()` or `require()` of a marker is an ordinary import and is not checked (a client entry's own marker import is judged at its import whatever its form).
+
+A marker is a statement of its file, so it holds wherever the file is and whoever imports it:
+
+- It is honoured in every package: your app, a workspace package, an installed package (`excludeFiles` skips file-name rules only).
+- It denies the file to every importer that `exclude` or `ignoreImporters` does not exempt and [`allowImport`](#the-allowimport-callback) does not allow, including a module outside `srcDirectory` and a module of an installed package. A package module the compiler does not compile (a barrel that re-exports the marked file, say) is reported at its import of the file, and a build with the `error` behavior fails. File names (`*.server.*`) keep their scope: see [Limitations](#limitations).
+- A bare import of a marked file (`import './secrets'`) says that its code runs: it is a violation wherever its importer runs, even if your app declares `"sideEffects": false`. In a package that declares the file free of side effects, the bundler drops the import as it would the real file, and nothing is reported. A marked barrel that only re-exports is judged by what the client uses of it.
+- A `?raw` import of a marked file is denied like any other import of it.
+
+To take a marked file of a package as it is, list the package's module that imports it in `ignoreImporters`, or allow the file in `allowImport` (asked about the file itself, see [The `allowImport` Callback](#the-allowimport-callback)). In dev, a package barrel that re-exports a marked file is served with the file's mock and one warning, even when a build would drop the re-export: the dev server does not tree-shake, as for your own barrels ([Mixed Barrels](#mixed-barrels-and-split-entry-points)).
+
+### The server entry
+
+`@tanstack/react-start/server` (Start's request helpers: `getRequest`, `getRequestHeaders`, `setResponseHeader`, …) imports `@tanstack/react-start/server-only`. A client import of it is a violation wherever it is written, when the client keeps the import after the compiler's removals and tree-shaking. What builds:
+
+- a use inside `createServerFn().handler()`, `createMiddleware().server()`, `createServerOnlyFn()` or `createIsomorphicFn().server()`: the client compile removes it;
+- a dynamic `import()` inside `if (import.meta.env.SSR)`;
+- an import of a module the client never uses (an unused export of a package barrel), and an `import type`.
+
+What fails the build, at the import of the module that keeps it: any value of the entry the client keeps, a constant such as `HEADERS.TSS_SHELL` included (the entry is server-only as a module, not per export), and on Vite a dynamic `import()` guarded by a runtime test the build does not remove, such as `typeof window === 'undefined'` or `isServer` from `@tanstack/router-core/isServer` (Vite keeps the server chunk). Guard it with `import.meta.env.SSR`, or move the use into one of the functions above. To take the entry as it is in a package's module, list that module in `ignoreImporters`, or allow the entry in `allowImport`. `@tanstack/react-start-server` and `@tanstack/start-server-core`, which the entry re-exports, are not marked: import the public entry.
+
+With React Server Components, server components render in the `rsc` environment: Vite's environment of that name, and on Rsbuild the server compiler's RSC layer, which `onViolation` and `allowImport` also call `rsc` (`info.env`). It is a server environment: the server rules apply, and `info.envType === 'server'` matches it and `ssr`. A `'use client'` module that a server component imports is a client reference there: none of its code runs there, and its own imports are not checked there (they are where it runs, in SSR and on the client). The server component's import of it is how SSR, which renders the component for the page's HTML, gets the module, and it is checked like any import of the `rsc` environment: when a server rule denies the file (`**/*.client.*`, a `client-only` marker), `allowImport` and `onViolation` get `info.env === 'rsc'`, the server component as `importer`, the specifier as written and its position (`importerLoc`). An import `allowImport` allows gives SSR the real component; otherwise SSR gets its mock and the import is reported (an `'error'` build fails), and an importer that `exclude` or `ignoreImporters` exempts gives SSR the real component. When nothing else gives the file to SSR yet, `allowImport` may also be asked about the file itself (`importer` is the file), as for a file that only a pattern import loads.
+
+On Rsbuild, a module rule of your own that sets a `layer` (an Rspack layer other than the RSC ones) keeps that layer's import-protection state apart, like a separate environment of its compiler: `onViolation` and `allowImport` call it by the compiler's name (`info.env`: `ssr` or `client`), and the rules of that environment type apply. Start resolves the imports it reads in such a layer with the compiler's own `resolve` options: a `resolve` set on the layer's rule (other conditions or aliases) does not reach it. So an import Start judges there (a specifier pattern, a denied file) is checked, and served when allowed, as the compiler's own options resolve it, while Rspack resolves the layer's other imports with the rule's options.
 
 ## Behavior Modes
 
@@ -141,6 +202,23 @@ importProtection: {
     dev: 'mock',
     build: 'error',
   },
+}
+```
+
+### Reports from a mock at runtime (`mockAccess`)
+
+A mock never throws, but using one usually means code that should not run there does. `mockAccess` decides what a mock reports when it is used: the first call, `new`, conversion to a string or primitive, or property write of each mocked import (reading a property reports nothing). It applies wherever a mock is served, in dev and in production builds:
+
+- **`'error'`** (default) -- the use is reported with `console.error`.
+- **`'warn'`** -- the use is reported with `console.warn`.
+- **`'off'`** -- nothing is reported.
+
+In dev, the report names the denied import, the denied file, the importer, how the mock was used and the suggested fixes. A production build's report is one line naming the environment and the denied import: the denied file relative to the project root (`../packages/shared/db.server.ts` for a file outside it), or the specifier for a denied package. It never names the importer, and the mocks of one denied file report once. With `'off'`, a production mock carries no name at all.
+
+```ts
+importProtection: {
+  behavior: 'mock',
+  mockAccess: 'warn',
 }
 ```
 
@@ -206,7 +284,7 @@ export default defineConfig({
 
 ### Checking third-party packages
 
-By default, resolved files inside `node_modules` are excluded from resolved-target deny checks (file-pattern and marker checks). This avoids false positives from packages that happen to use `.client.` or `.server.` in their distribution filenames. If you want to re-enable checking for a specific environment, set `excludeFiles` to an empty array:
+By default, resolved files inside `node_modules` are excluded from the file-pattern checks. This avoids false positives from packages that happen to use `.client.` or `.server.` in their distribution filenames. A package's [file markers](#file-markers) are always checked. If you want to check file names in `node_modules` too for a specific environment, set `excludeFiles` to an empty array:
 
 ```ts
 importProtection: {
@@ -242,6 +320,86 @@ importProtection: {
 }
 ```
 
+## What the Compiler Guarantees
+
+Server code stays out of the client when it is written with these primitives:
+
+- **Server functions** (`createServerFn`): the client gets a call to the server, never the handler.
+- **`createServerOnlyFn`** and the `.server()` of `createIsomorphicFn` and `createMiddleware`: the client never gets the implementation.
+- **`.server` files and `server-only` markers**, through import protection: the client build fails, or gets a mock.
+- **A route's `server` option**: removed from the client.
+
+A use of these the compiler cannot follow (a builder passed to another function, stored in an object, a namespace object holding one passed around) fails the client build.
+
+The compiler reads your code statically, which limits this guarantee:
+
+- `import()`, `require()` and `import.meta.glob` of a builder are not followed, and nothing reports them. Attach server code to a builder you imported statically.
+- Modules other plugins generate or rewrite (virtual modules, auto-imports, `ProvidePlugin`) are not followed either. In a Vite build, a virtual module with a `server-only` marker, or virtual modules importing each other, fail the build: put that code in a file of your project.
+- Imports other plugins add to your modules (auto-imports, `ProvidePlugin`) are not judged by import protection: such an import of `@tanstack/react-start/server` ships to the client. A `.server` file one of them imports is still replaced by its mock, as a file no import the compiler read brought in.
+- A builder call the types don't allow, made through `as any` or plain JavaScript, isn't followed. For example, a second `.server()` on a middleware that already has one, a second `.handler()` (or `.validator()`) on a server function that is already finished, or a second argument to `.handler()`: its code can ship to the client.
+- A `.server` file behind a neutral module outside the protected scope (`srcDirectory`, `include`) isn't caught: the scope is about importers.
+- Only the route factory call bound to a file's `Route` export has its `server`, `ssr` and `headers` removed. A second call of the same `createFileRoute` fails the build, whatever its options hold: write one `createFileRoute` call per file, bound to `Route`, with everything on that route. Other calls (through another name, wrapped or stored) aren't checked, and what they hold ships to the client. Code-based `createRoute` isn't supported by Start, and nothing removes its `server`.
+- Route options the compiler can't read build with a warning: a spread (`{ ...shared, component }`), options from a call or an import (`createFileRoute('/x')(makeOptions())`) written to after their declaration, or whose object other code in the file also uses (`const z = options; z.server = …`, `export const defaults = options`), and a computed key. What they hold isn't code-split or removed, so any server code in them ships to the client. Write `server`, `ssr` and `headers` as properties of the options object in the route file, outside the spread. No warning: a spread of a local object literal only that spread reads, naming none of them, and a computed key naming a local string const (it stays unsplit). An edit of a route with options from a call or an import reloads the page.
+
+Everything else is ordinary code. A plain call in a declaration that client code also reads ships to the client, with its import:
+
+```ts
+import { readSecret } from './secrets' // not a .server file, so not denied
+
+const config = { name: 'app', secret: readSecret() }
+
+export const appName = () => config.name // the client reads config, so readSecret() ships
+```
+
+Arguments ship too. A parameter only server code reads gets a build warning, because its calls keep their arguments on the client:
+
+```ts
+// warns: 'admin' still ships to the client
+const requireRole = (role: string) =>
+  createMiddleware().server(({ next }) => check(role, next))
+
+export const adminOnly = requireRole('admin')
+```
+
+A parameter passed directly as the server code, as in `(fn) => createServerOnlyFn(fn)` or `(schema) => createServerFn().validator(schema)`, fails the build: the wrapper's argument would ship.
+
+To write safe code:
+
+- Call server-only code inside a server function, `createServerOnlyFn` or `.server()`.
+- Keep modules that hold secrets in `.server` files, so import protection catches any import that survives.
+- Read secrets inside the server code, not through parameters.
+
+## Limitations
+
+A file denied by its name (`*.server.*`, a `files` pattern) is judged from the plain imports of it that import protection reads. Some importers are not honored there, so the file is replaced by its mock even though its importer is not checked. (A [marked](#file-markers) file is denied to these importers too, as a violation.) Both err on the safe side: server code never reaches the client. A dev server warns about the denied file. A build prints one warning per denied file whose every importer is unchecked, naming the file, its importers and the fix below. These warnings are not violations: `onViolation` is not called, and the `error` behavior does not fail the build.
+
+An exempt importer that reaches a denied file only through a pattern import:
+
+```ts
+// src/generated/registry.ts, with exclude: ['src/generated/**']
+// the client gets mocks of the matched *.server.ts files
+const modules = import.meta.glob('../lib/*.server.ts', { eager: true })
+```
+
+An importer outside the scope (`srcDirectory` or `include`) that imports a denied file inside it:
+
+```ts
+// lib/env.ts, outside srcDirectory: the client gets a mock of db.server.ts
+import { db } from '../src/lib/db.server'
+```
+
+An importer outside the scope, or a package in `node_modules`, that reaches a denied file outside the scope only through a pattern import, or a `new URL` from an exempt or out-of-scope module on Rsbuild. A plain `import` from a module outside the scope keeps the real module of a denied file outside the scope.
+
+To get the real module, write the import statically (a plain `import`), in a module inside the scope that `exclude` or `ignoreImporters` exempts.
+
+In the Vite dev server, a denied file stays the real module after an edit removes the last import of the exempt module that needed it (the exempt module is still on disk, nothing imports it), or removes an import `allowImport` allowed: a pattern import of it gets the real module until you restart the dev server. The dev server keeps every module it served and can't tell when one is no longer reachable. Builds, `build --watch` and the Rsbuild dev server serve the file as its mock again.
+
+On Rsbuild, a module that a worker or service-worker plugin builds (a child compiler of the client build, such as `worker-rspack-loader` or workbox's `InjectManifest`) is checked like the client's own, but a child compiler cannot load a mock: a denied import there fails the build whatever `behavior` is, and `allowImport` is not asked. Call a server function from the worker instead.
+
+Not covered, as in earlier versions: a `?worker`'s own imports and `new URL` of a denied file on Vite, a marked non-script file (`.mdx`, `.vue`) or a marked file that does not parse with an asset query, and a plain pattern of a non-code file on Rsbuild.
+
+A dev server also warns about a denied file it compiles without any importer, for example when a `server.warmup` glob matches `*.server.ts` files. This is a warning, not a leak: the client gets the file's mock.
+
 ## Reading Violation Traces
 
 When a violation is detected, the plugin shows a diagnostic message with the full import chain that led to the violation, a code snippet highlighting the offending line, and actionable suggestions.
@@ -254,75 +412,97 @@ This example shows a `*.server.*` file being imported transitively in the client
 [import-protection] Import denied in client environment
 
   Denied by file pattern: **/*.server.*
-  Importer: src/features/auth/session.ts:5:27
-  Import: "../db/queries.server"
+  Importer: src/features/auth/session.ts:3:26
+  Import: "../../db/queries.server"
   Resolved: src/db/queries.server.ts
 
   Trace:
-    1. src/routes/index.tsx:2:34 (entry) (import "../features/auth/session")
-    2. src/features/auth/session.ts:5:27 (import "../db/queries.server")
+    1. src/router.tsx:2:27 (entry) (import "./routeTree.gen")
+    2. src/routeTree.gen.ts (import "./routes/index")
+    3. src/routes/index.tsx:2:26 (import "../features/auth/session")
+    4. src/features/auth/session.ts:3:26 (import "../../db/queries.server")
 
   Code:
-     3 | import { logger } from '../utils/logger'
-     4 |
-  >  5 | import { getUsers } from '../db/queries.server'
-       |                           ^
-     6 |
-     7 | export function loadAuth() {
+    1 | import { logger } from '../../utils/logger'
+    2 |
+  > 3 | import { getUsers } from '../../db/queries.server'
+      |                          ^
+    4 |
+    5 | export function loadAuth() {
 
-  src/features/auth/session.ts:5:27
+  src/features/auth/session.ts:3:26
 
   Suggestions:
-    - Wrap in createServerFn().handler(() => ...) to make it callable from the client via RPC
-    - Wrap in createServerOnlyFn(() => ...) if it should not be callable from the client
-    - Use createIsomorphicFn().client(() => ...).server(() => ...) for environment-specific implementations
-    - Split the file so client-safe exports are separate
+    - Use createServerFn().handler(() => ...) to keep the logic on the server and call it from the client via an RPC bridge
+    - Use createServerOnlyFn(() => ...) to mark it as server-only (it will throw if accidentally called from the client)
+    - Use createIsomorphicFn().client(() => ...).server(() => ...) to provide separate client and server implementations
+    - Split the file: move the code that uses this import into a .server.ts module, and import that module only from server code (server functions, server routes, middleware .server())
 ```
+
+With `behavior: 'mock'` the header says `Import mocked` instead: the build or dev server goes on, and the importer gets the mock.
 
 ### Client-only code on the server
 
-This example shows a `*.client.*` file imported in the SSR environment. Because the code snippet contains JSX, the `<ClientOnly>` suggestion is shown first:
+This example shows a `*.client.*` component imported in the SSR environment. The importer renders it as a component (`<BrowserWidget />`), so the suggestion is `<ClientOnly>`, which keeps it out of the server render. `createClientOnlyFn` would throw there: it is suggested only for imports used as functions (an effect, an event handler).
 
 ```text
 [import-protection] Import denied in server environment
 
   Denied by file pattern: **/*.client.*
-  Importer: src/components/dashboard.tsx:3:30
+  Importer: src/components/dashboard.tsx:1:31
   Import: "./browser-widget.client"
   Resolved: src/components/browser-widget.client.tsx
 
   Trace:
-    1. src/routes/dashboard.tsx:1:32 (entry) (import "../components/dashboard")
-    2. src/components/dashboard.tsx:3:30 (import "./browser-widget.client")
+    1. src/router.tsx:2:27 (entry) (import "./routeTree.gen")
+    2. src/routeTree.gen.ts:10:47 (import "./routes/dashboard")
+    3. src/routes/dashboard.tsx:2:27 (import "../components/dashboard")
+    4. src/components/dashboard.tsx:1:31 (import "./browser-widget.client")
 
   Code:
-     1 | import { BrowserWidget } from './browser-widget.client'
-     2 |
-  >  3 | export function Dashboard() { return <BrowserWidget /> }
-       |                              ^
-     4 |
+  > 1 | import { BrowserWidget } from './browser-widget.client'
+      |                               ^
+    2 |
+    3 | export function Dashboard() {
 
-  src/components/dashboard.tsx:3:30
+  src/components/dashboard.tsx:1:31
 
   Suggestions:
-    - Wrap in <ClientOnly fallback={...}>...</ClientOnly> to render only after hydration
-    - Wrap in createClientOnlyFn(() => ...) if it should only run in the browser
-    - Use createIsomorphicFn().client(() => ...).server(() => ...) for environment-specific implementations
-    - Split the file so server-safe exports are separate
+    - <BrowserWidget> renders it on the server (src/components/dashboard.tsx:4:11): render it inside <ClientOnly fallback={...}><BrowserWidget /></ClientOnly> (ClientOnly from @tanstack/react-router), so the server renders the fallback and the browser the component after hydration
 ```
+
+In a Vue SFC, a component the template renders stays imported on the server even inside `<ClientOnly>`. Load it in the browser only, and render it inside `<ClientOnly>`:
+
+```vue
+<script setup lang="ts">
+import { defineAsyncComponent } from 'vue'
+import { ClientOnly } from '@tanstack/vue-router'
+import { createClientOnlyFn } from '@tanstack/vue-start'
+
+const BrowserWidget = defineAsyncComponent(
+  createClientOnlyFn(() => import('./BrowserWidget.client.vue')),
+)
+</script>
+
+<template>
+  <ClientOnly><BrowserWidget /></ClientOnly>
+</template>
+```
+
+`defineAsyncComponent` takes the module's default export. For a named export, pick it from the module: `import('./widgets.client').then((m) => m.Chart)`.
 
 ### How to read the output
 
 Each violation message has these sections:
 
-| Section                          | Description                                                                                                                                                      |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Header**                       | Environment type where the violation occurred (`"client"` or `"server"`)                                                                                         |
-| **Denied by**                    | The rule that matched: file pattern, specifier pattern, or marker                                                                                                |
-| **Importer / Import / Resolved** | The importing file (with `file:line:col`), the raw import string, and the resolved target path                                                                   |
-| **Trace**                        | The full import chain from the entry point to the denied import. Each step shows `file:line:col` and the import specifier used. Step 1 is always the entry point |
-| **Code**                         | A source code snippet with a `>` marker on the offending line and a `^` caret pointing to the exact column                                                       |
-| **Suggestions**                  | Actionable steps to fix the violation, tailored to the direction (server-in-client vs client-in-server)                                                          |
+| Section                          | Description                                                                                                                                                                                                                                                                                                                                 |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Header**                       | Environment type where the violation occurred (`"client"` or `"server"`)                                                                                                                                                                                                                                                                    |
+| **Denied by**                    | The rule that matched: file pattern, specifier pattern, or marker                                                                                                                                                                                                                                                                           |
+| **Importer / Import / Resolved** | The importing file (with `file:line:col`), the raw import string, and the resolved target path                                                                                                                                                                                                                                              |
+| **Trace**                        | The import chain from the app's first module (your router or entry; the framework's own entry modules are left out) to the denied import. Each step shows `file:line:col` and the import specifier used. Step 1 is tagged `(entry)` when it is an entry; a chain longer than `maxTraceDepth` starts with a line counting the steps left out |
+| **Code**                         | A source code snippet with a `>` marker on the offending line and a `^` caret pointing to the exact column                                                                                                                                                                                                                                  |
+| **Suggestions**                  | Actionable steps to fix the violation, tailored to the direction (server-in-client vs client-in-server)                                                                                                                                                                                                                                     |
 
 The trace reads top-to-bottom, from the entry point to the denied module. This helps you find where the chain starts so you can restructure your code.
 
@@ -349,14 +529,15 @@ export const fetchUsers = createServerFn().handler(async () => {
 Conceptually, the client build output becomes something like (simplified):
 
 ```ts
-import { createClientRpc } from '@tanstack/react-start/client-rpc'
+import { createClientServerFn } from '@tanstack/react-start/client-rpc'
 import { createServerFn } from '@tanstack/react-start'
 
 // Compiler replaces the handler with a client RPC stub.
 // (The id is generated by the compiler; treat it as an opaque identifier.)
-export const fetchUsers = TanStackStart.createServerFn({
-  method: 'GET',
-}).handler(createClientRpc('sha256:deadbeef...'))
+export const fetchUsers = /* @__PURE__ */ createClientServerFn(
+  'sha256:deadbeef...',
+  createServerFn(),
+)
 
 // The server-only import is removed by the compiler.
 ```
@@ -383,7 +564,7 @@ When this happens, you have a few options depending on what you want `leakyHelpe
 Option A: split the file so client code cannot accidentally import the leak
 
 ```ts
-// src/users.server.ts
+// src/users.ts (not `.server`: client code imports it)
 import { getUsers } from './db/queries.server'
 import { createServerFn } from '@tanstack/react-start'
 
@@ -434,11 +615,11 @@ If you see an import-protection violation for a file you expected to be "compile
 
 ## False Positives: Dev vs Build
 
-In **build mode**, import protection defers violation checks until after tree-shaking. If an import is eliminated from the final bundle, no violation is reported. Build-time violations are definitive: if the build flags it, the import truly survived.
+In **build mode**, import protection reports only what is in the final client bundle. A denied import is replaced by its mock, and it is a violation when the mock is in one of the bundle's chunks; a mock the bundler dropped reports nothing, and the build does not fail. What the denied module itself would do does not count: it never ships. A named import's mock is kept where the bundle uses what it stands in for. A bare import (`import './secrets.server'`, `import {} from`, `export {} from`) runs the module, so its mock is kept wherever the build keeps its importer, whatever your tree-shaking options say. So is an `import()` or `require()` the build keeps, whatever it reads; one in a branch the build drops (`if (import.meta.env.SSR)`) is not. A denied file imported by code the compiler does not read (a package module, another plugin's import) is mocked as a whole: an import of it there, used or not, is a violation where the build keeps that code, unless the package declares the file free of side effects. The build reads its chunks before its last passes over the code (dead-code removal across a chunk, minification), so a mock read only in a branch that a constant from another module rules out can still be reported.
 
 In **dev mode**, tree-shaking may be incomplete or unavailable, so import protection can report false positives for imports that would later be compiled away.
 
-If a warning appears in dev but not build, that usually means the unsafe edge existed before tree-shaking but did not survive the final bundle. Even so, prefer changing the import structure so that edge does not exist in the first place.
+If dev reports a violation that the build does not, the unsafe edge existed before tree-shaking but did not survive the final bundle. Even so, prefer changing the import structure so that edge does not exist in the first place.
 
 ## Mixed Barrels and Split Entry Points
 
@@ -483,16 +664,18 @@ import { fetchUsers } from '../lib'
 import { getDb } from '../lib/server'
 ```
 
-The same applies to marker-protected files (`import '@tanstack/react-start/server-only'`). If a marked file is re-exported through a mixed barrel but never consumed by client code, production may suppress the warning after tree-shaking, but the better fix is still to avoid exposing that server-only edge to client-reachable code at all.
+The same applies to marker-protected files (`import '@tanstack/react-start/server-only'`). If a marked file is re-exported through a mixed barrel but never consumed by client code, a build reports nothing after tree-shaking, but the better fix is still to avoid exposing that server-only edge to client-reachable code at all.
+
+A re-export that nothing uses in your code never fails the build, whatever the denied file runs at its top level: the client gets the mock, which the bundler drops.
 
 ## The `onViolation` Callback
 
-You can hook into violations for custom reporting or to override the verdict:
+`onViolation` tells you about violations, for custom reporting. It does not change the outcome: to give an import the real module, use [`allowImport`](#the-allowimport-callback).
 
 ```ts
 importProtection: {
   onViolation: async (info) => {
-    // info.env -- environment name (e.g. 'client', 'ssr', ...)
+    // info.env -- environment name (e.g. 'client', 'ssr', 'rsc', ...)
     // info.envType -- 'client' or 'server'
     // info.type -- 'specifier', 'file', or 'marker'
     // info.specifier -- the raw import string
@@ -500,14 +683,42 @@ importProtection: {
     // info.resolved -- absolute path of the resolved target (if available)
     // info.trace -- array of { file, line?, column?, specifier? } objects
     // info.snippet -- { lines, highlightLine, location } with the source code snippet (if available)
+    await report(info)
+  },
+}
+```
 
-    // Return false (or Promise<false>) to allow this specific import (override the denial)
-    if (info.specifier === 'some-special-case') {
-      return false
+In builds, `onViolation` is called during the build, after tree-shaking of the importing environment (before its bundle is written), once per denied import that survives tree-shaking and that `allowImport` did not allow. In dev, it is called when the importing module is compiled, or, for an import the TypeScript transform may erase (see [Type-Only Imports](#type-only-imports)), when the bundler loads the import. With `log: 'once'` (the default) it is called once per denied import for the dev session; with `'always'`, each time the import is compiled or loaded again.
+
+Returning `false` from `onViolation` used to allow the import. It no longer does anything: Start prints a message pointing here, and the import gets the normal outcome. If you returned `false`, move that decision to `allowImport` and return `true` there. Your `allowImport` runs for more imports than your `onViolation` did, and has no `trace` or `snippet` to read.
+
+## The `allowImport` Callback
+
+`allowImport` decides, during the build and before an import is replaced by its mock, that a denied import gets the real module. It runs in dev and in builds:
+
+```ts
+importProtection: {
+  allowImport: async (info) => {
+    // info.env, info.envType, info.type, info.pattern, info.behavior, info.specifier,
+    // info.importer, info.importerLoc, info.resolved: as in onViolation
+
+    if (info.importer.endsWith('/src/lib/analytics.ts') && info.type === 'specifier') {
+      return true
     }
   },
 }
 ```
+
+- `true` gives the import the real module, from the first pass: the import is not a violation, nothing is reported for it, and `onViolation` is not called for it.
+- `false` or nothing means no override: the normal outcome under `behavior`, so a build failure with `error`, a mock and a warning with `mock`.
+
+It is called once per denied import for a build or a dev session, and the answer is remembered. An import is a file's request of a specifier in an environment (`info.env`), resolved to one file: two import declarations of the same specifier in one file are one import, and so are a static and a dynamic import of it. `info.importerLoc` is where the first of them is, and the answer is for all of them (a report names the first).
+
+`allowImport` runs before tree-shaking, so it also sees imports tree-shaking removes later. Use it to decide, not to report: `onViolation` is the one that hears only about what stays. For the same reason its `info` has no `trace` (the import graph is not finished) and no `snippet` (source rendered for a report).
+
+Its answers must be stable: the same answer for the same import, whatever the order of the calls or the environment build it runs in.
+
+A denied file that no import the compiler can read brings into an environment (a [pattern import](#pattern-imports)) is asked about itself: `info.importer` is the file, as `info.resolved` is. So is a [marked](#file-markers) file a module the compiler does not compile imports (a package's barrel that names no Start API): a build decides the marked file's fate when it loads it, before it knows who imports it, so `allowImport` cannot be asked per importer there. Allow the file (`info.resolved`) to take it as it is, or list the importer in `ignoreImporters`. A file you allow also comes along where nothing checked imports it, in every environment of the same kind.
 
 ## Disabling Import Protection
 
@@ -529,6 +740,7 @@ interface ImportProtectionOptions {
     | 'mock'
     | { dev?: 'error' | 'mock'; build?: 'error' | 'mock' }
   log?: 'once' | 'always'
+  mockAccess?: 'error' | 'warn' | 'off'
   include?: Array<string | RegExp>
   exclude?: Array<string | RegExp>
   ignoreImporters?: Array<string | RegExp>
@@ -543,27 +755,30 @@ interface ImportProtectionOptions {
     files?: Array<string | RegExp>
     excludeFiles?: Array<string | RegExp>
   }
-  onViolation?: (
-    info: ViolationInfo,
-  ) => boolean | void | Promise<boolean | void>
+  onViolation?: (info: ViolationInfo) => void | Promise<void>
+  allowImport?: (
+    info: Omit<ViolationInfo, 'trace' | 'snippet'>,
+  ) => void | boolean | Promise<void | boolean>
 }
 ```
 
-| Option                | Type                 | Default                           | Description                                                                                                                                                           |
-| --------------------- | -------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `enabled`             | `boolean`            | `true`                            | Set to `false` to disable the plugin                                                                                                                                  |
-| `behavior`            | `string \| object`   | `{ dev: 'mock', build: 'error' }` | What to do on violation                                                                                                                                               |
-| `log`                 | `'once' \| 'always'` | `'once'`                          | Whether to deduplicate repeated violations                                                                                                                            |
-| `include`             | `Pattern[]`          | Start's `srcDirectory`            | Only check importers matching these patterns                                                                                                                          |
-| `exclude`             | `Pattern[]`          | `[]`                              | Skip importers matching these patterns                                                                                                                                |
-| `ignoreImporters`     | `Pattern[]`          | `[]`                              | Ignore violations from these importers                                                                                                                                |
-| `maxTraceDepth`       | `number`             | `20`                              | Maximum depth for import traces                                                                                                                                       |
-| `client`              | `object`             | See defaults above                | Additional deny rules for the client environment                                                                                                                      |
-| `client.specifiers`   | `Pattern[]`          | Framework server specifiers       | Specifier patterns denied in the client environment (additive with defaults)                                                                                          |
-| `client.files`        | `Pattern[]`          | `['**/*.server.*']`               | File patterns denied in the client environment (replaces defaults)                                                                                                    |
-| `client.excludeFiles` | `Pattern[]`          | `['**/node_modules/**']`          | Resolved files matching these patterns skip resolved-target checks (file-pattern + marker) (replaces defaults)                                                        |
-| `server`              | `object`             | See defaults above                | Additional deny rules for the server environment                                                                                                                      |
-| `server.specifiers`   | `Pattern[]`          | `[]`                              | Specifier patterns denied in the server environment (replaces defaults; defaults for `server.specifiers` are `[]`, so unlike `client.specifiers` this isn't additive) |
-| `server.files`        | `Pattern[]`          | `['**/*.client.*']`               | File patterns denied in the server environment (replaces defaults)                                                                                                    |
-| `server.excludeFiles` | `Pattern[]`          | `['**/node_modules/**']`          | Resolved files matching these patterns skip resolved-target checks (file-pattern + marker) (replaces defaults)                                                        |
-| `onViolation`         | `function`           | `undefined`                       | Callback invoked on every violation                                                                                                                                   |
+| Option                | Type                         | Default                           | Description                                                                                                                                                           |
+| --------------------- | ---------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`             | `boolean`                    | `true`                            | Set to `false` to disable the plugin                                                                                                                                  |
+| `behavior`            | `string \| object`           | `{ dev: 'mock', build: 'error' }` | What to do on violation                                                                                                                                               |
+| `log`                 | `'once' \| 'always'`         | `'once'`                          | Whether to deduplicate repeated violations                                                                                                                            |
+| `mockAccess`          | `'error' \| 'warn' \| 'off'` | `'error'`                         | How a mock reports its use at runtime (see [`mockAccess`](#reports-from-a-mock-at-runtime-mockaccess))                                                                |
+| `include`             | `Pattern[]`                  | Start's `srcDirectory`            | Only check importers matching these patterns                                                                                                                          |
+| `exclude`             | `Pattern[]`                  | `[]`                              | Skip importers matching these patterns                                                                                                                                |
+| `ignoreImporters`     | `Pattern[]`                  | `[]`                              | Ignore violations from these importers                                                                                                                                |
+| `maxTraceDepth`       | `number`                     | `20`                              | Maximum depth for import traces                                                                                                                                       |
+| `client`              | `object`                     | See defaults above                | Additional deny rules for the client environment                                                                                                                      |
+| `client.specifiers`   | `Pattern[]`                  | Framework server specifiers       | Specifier patterns denied in the client environment (additive with defaults)                                                                                          |
+| `client.files`        | `Pattern[]`                  | `['**/*.server.*']`               | File patterns denied in the client environment (replaces defaults)                                                                                                    |
+| `client.excludeFiles` | `Pattern[]`                  | `['**/node_modules/**']`          | Resolved files matching these patterns skip the file-pattern checks; markers are always checked (replaces defaults)                                                   |
+| `server`              | `object`                     | See defaults above                | Additional deny rules for the server environment                                                                                                                      |
+| `server.specifiers`   | `Pattern[]`                  | `[]`                              | Specifier patterns denied in the server environment (replaces defaults; defaults for `server.specifiers` are `[]`, so unlike `client.specifiers` this isn't additive) |
+| `server.files`        | `Pattern[]`                  | `['**/*.client.*']`               | File patterns denied in the server environment (replaces defaults)                                                                                                    |
+| `server.excludeFiles` | `Pattern[]`                  | `['**/node_modules/**']`          | Resolved files matching these patterns skip the file-pattern checks; markers are always checked (replaces defaults)                                                   |
+| `onViolation`         | `function`                   | `undefined`                       | Told about each violation that stays (after tree-shaking in a build); reports only                                                                                    |
+| `allowImport`         | `function`                   | `undefined`                       | Decides, before the mock, that a denied import gets the real module (`true`)                                                                                          |

@@ -1,0 +1,24 @@
+---
+'@tanstack/router-generator': minor
+'@tanstack/router-cli': patch
+'@tanstack/router-plugin': patch
+'@tanstack/start-plugin-core': patch
+---
+
+The route generator is rebuilt without Babel.
+
+**`routeTree.gen.ts` formatting changes.** The route tree is printed directly in your `quoteStyle` and `semicolons`, and `enableRouteTreeFormatting` now defaults to `false`: Prettier is loaded only when you set it to `true`. If your formatter ignores the file, as the installation guides recommend, commit the one-time diff. If a formatter runs over it, ignore the file or set `enableRouteTreeFormatting: true`: otherwise the generator and the formatter rewrite each other's output on every run. Custom scaffolding templates are inserted as written, and Start's route tree footer follows `quoteStyle` and `semicolons` too.
+
+- Route files are recognised by binding: an aliased `createFileRoute` import gets its id fixed; a `createFileRoute` the app declares itself is left alone; a plain template literal path (``createFileRoute(`/posts`)``) that doesn't match the file is rewritten to a string literal in your `quoteStyle`; a computed path (`${…}`, a variable) is reported, not rewritten (#7216).
+- The tree is rebuilt from the files on every change: deleting a layout keeps its children, a deleted `routeTree.gen.ts` is written again, and edits of a TypeScript virtual route config and of `__virtual.ts` files are picked up (a JavaScript config, `.js`, `.mjs` or `.cjs`, still needs a restart).
+- Empty `.ts` route files get a scaffold without JSX (#8480); `.lazy.vue` files (the route's component; next to a `.component.vue` piece, the route's lazy route as before) and `route.component.vue` pieces belong to their route; `importRoutesUsingAbsolutePaths` applies to lazy imports; unusual file names give valid trees.
+- A route file named `root` with child routes no longer breaks the types of the root route's children: its names in `routeTree.gen.ts` took the tree's own `RootRouteChildren`, which was then declared twice. A route named `root` is now `Root2Route` in the tree (`routeTree.children.Root2Route`).
+- Router-only builds fail on a route tree error (two files for one route, two routes with one id, conflicting paths, a missing root route) or a route file that doesn't parse, naming the files; they built with the route tree on disk, without the route. `tsr generate` also fails on a root route file that doesn't parse. A dev server or watch session prints the error and keeps the last good tree.
+- A route file the generator adds the router import to keeps a leading `// @ts-nocheck`, `// @ts-check` (in any case, as TypeScript reads them) or `/// <reference …/>` above it; the import went above the directive, which TypeScript then ignored.
+- Writes work when `tmpDir` is on another filesystem than the project; they failed with `EXDEV`. A dev server or `tsr watch` keeps writing the route tree after its temporary directory (`.tanstack/tmp` by default) is deleted under it (`git stash -u`, `git clean -fd`); every later route change failed until a restart.
+- `tsr watch` and the Rspack and webpack plugins watch every route root, including `physical()` mounts, and every route file a virtual route config names outside them. `vite build --watch` picks up route files created while it watches.
+- The Rspack and webpack plugins apply a route config edit after a watching was closed and another opened on the same compiler (a tool that pauses and resumes a compiler): the route tree and the route modules' splitting followed it only after a restart.
+- The esbuild plugin (`@tanstack/router-plugin/esbuild`) generates the route tree at the start of every build and rebuild; an app without a committed route tree failed to build. esbuild watches only the files of the bundle, so a route file created in watch mode joins the tree at the next rebuild (or run `tsr watch` beside it).
+- A Vite build whose environments share the plugins from a config file (`builder.sharedPlugins`, as TanStack Start sets it) runs the generator once instead of once per config resolution, so a generator plugin's `onRouteTreeChanged` runs once.
+
+**API:** removed `format`, `inferFullPath`, `checkRouteFullPathUniqueness`, `writeIfDifferent` and the `ImportDeclaration`, `ImportSpecifier`, `HandleNodeAccumulator`, `TransformContext` and `TransformOptions` types. A generator plugin's `onRouteTreeChanged` receives `{ model, generator }`, and `afterTransform` is gone. The `Generator` no longer takes an `fs` option (an undocumented file-system override): it reads and writes route files directly. It takes an optional `logger`. The `Generator`'s `buildRouteTree()`, `getCrawlingResult()` and `targetTemplate` are removed, and so is `RouteNode.createFileRouteProps`; `getRoutesByFileMap()` returns a `ReadonlyMap` (`GetRoutesByFileMapResult`), and `GetRouteNodesResult` has a required `subtreeDirectories`.

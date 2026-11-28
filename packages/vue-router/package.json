@@ -59,6 +59,12 @@
         "default": "./dist/esm/ssr/client.js"
       }
     },
+    "./hmr": {
+      "import": {
+        "types": "./dist/esm/hmr.d.ts",
+        "default": "./dist/esm/hmr.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,

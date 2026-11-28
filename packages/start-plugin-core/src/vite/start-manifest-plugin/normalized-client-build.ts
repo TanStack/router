@@ -1,6 +1,6 @@
-import { tsrSplit } from '@tanstack/router-plugin'
 import { tssHydrate } from '../../hydration-constants'
 import { getCssAssetSource } from '../../start-manifest-plugin/inlineCss'
+import { isRouteSplitQuery } from '../../start-manifest-plugin/routeChunks'
 import type { Rollup } from 'vite'
 import type { NormalizedClientBuild, NormalizedClientChunk } from '../../types'
 
@@ -36,24 +36,37 @@ export function normalizeViteClientChunks(
   return chunksByFileName
 }
 
+/**
+ * The client bundle's one entry chunk: a bundle with none, or several (a
+ * second input or output of the client), is not a client build Start can
+ * describe. Asked before the bundle is written too: a rejected build writes
+ * nothing.
+ */
+export function clientEntryOf(clientBundle: Rollup.OutputBundle): string {
+  let entryChunkFileName: string | undefined
+  for (const output of Object.values(clientBundle)) {
+    if (output.type === 'chunk' && output.isEntry) {
+      if (entryChunkFileName) {
+        throw new Error(
+          `multiple entries detected: ${entryChunkFileName} ${output.fileName}`,
+        )
+      }
+      entryChunkFileName = output.fileName
+    }
+  }
+  if (!entryChunkFileName) {
+    throw new Error('No entry file found')
+  }
+  return entryChunkFileName
+}
+
 export function normalizeViteClientBuild(
   clientBundle: Rollup.OutputBundle,
   inlineCssEnabled = false,
 ): NormalizedClientBuild {
-  let entryChunkFileName: string | undefined
+  const entryChunkFileName = clientEntryOf(clientBundle)
   const chunksByFileName = normalizeViteClientChunks(clientBundle)
   let cssContentByFileName: Map<string, string> | undefined
-
-  for (const chunk of chunksByFileName.values()) {
-    if (chunk.isEntry) {
-      if (entryChunkFileName) {
-        throw new Error(
-          `multiple entries detected: ${entryChunkFileName} ${chunk.fileName}`,
-        )
-      }
-      entryChunkFileName = chunk.fileName
-    }
-  }
 
   if (inlineCssEnabled) {
     cssContentByFileName = new Map()
@@ -74,10 +87,6 @@ export function normalizeViteClientBuild(
     }
   }
 
-  if (!entryChunkFileName) {
-    throw new Error('No entry file found')
-  }
-
   return {
     entryChunkFileName,
     chunksByFileName,
@@ -96,13 +105,7 @@ export function getRouteFilePathsFromModuleIds(moduleIds: Array<string>) {
       continue
     }
 
-    const query = moduleId.slice(queryIndex + 1)
-
-    if (!query.includes(tsrSplit)) {
-      continue
-    }
-
-    if (!new URLSearchParams(query).has(tsrSplit)) {
+    if (!isRouteSplitQuery(moduleId.slice(queryIndex + 1))) {
       continue
     }
 

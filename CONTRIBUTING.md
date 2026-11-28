@@ -65,6 +65,7 @@ Run the checks relevant to your changes while developing:
 - `pnpm test:eslint` checks linting for affected packages.
 - `pnpm test:types` checks types for affected packages.
 - `pnpm test:unit` runs unit tests for affected packages.
+- `pnpm test:integration` runs the slow tier of the compiler packages (`router-plugin`, `start-plugin-core`, `compiler-test-utils`): tests that start real builds, dev servers or browsers.
 - `pnpm test:build` checks builds for affected packages.
 - `pnpm test:e2e` runs end-to-end tests and requires the Playwright browsers.
 

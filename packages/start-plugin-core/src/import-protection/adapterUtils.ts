@@ -2,63 +2,23 @@ import { matchesAny } from './matchers'
 import { isInsideDirectory, normalizeFilePath, relativizePath } from './utils'
 import type { CompiledMatcher } from './matchers'
 
-export type ImportProtectionEnvType = 'client' | 'server'
-
 export interface ImportProtectionEnvRules {
   specifiers: Array<CompiledMatcher>
   files: Array<CompiledMatcher>
   excludeFiles: Array<CompiledMatcher>
 }
 
-/**
- * Shared subset of adapter config used to decide which environment rules apply
- * and whether an importer should be checked at all.
- */
-export interface ImportProtectionAdapterConfig {
+/** The subset of the config that decides whether an importer is checked at all. */
+interface ImporterScopeConfig {
   root: string
   srcDirectory: string
-  compiledRules: {
-    client: ImportProtectionEnvRules
-    server: ImportProtectionEnvRules
-  }
   includeMatchers: Array<CompiledMatcher>
   excludeMatchers: Array<CompiledMatcher>
   ignoreImporterMatchers: Array<CompiledMatcher>
-  envTypeMap: Map<string, ImportProtectionEnvType>
-}
-
-export function getImportProtectionRelativePath(
-  root: string,
-  absolutePath: string,
-): string {
-  return relativizePath(normalizeFilePath(absolutePath), root)
-}
-
-export function getImportProtectionEnvType(
-  config: Pick<ImportProtectionAdapterConfig, 'envTypeMap'>,
-  envName: string,
-): ImportProtectionEnvType {
-  return config.envTypeMap.get(envName) ?? 'server'
-}
-
-export function getImportProtectionRulesForEnvironment(
-  config: Pick<ImportProtectionAdapterConfig, 'compiledRules' | 'envTypeMap'>,
-  envName: string,
-): ImportProtectionEnvRules {
-  return getImportProtectionEnvType(config, envName) === 'client'
-    ? config.compiledRules.client
-    : config.compiledRules.server
 }
 
 export function shouldCheckImportProtectionImporter(
-  config: Pick<
-    ImportProtectionAdapterConfig,
-    | 'root'
-    | 'srcDirectory'
-    | 'includeMatchers'
-    | 'excludeMatchers'
-    | 'ignoreImporterMatchers'
-  >,
+  config: ImporterScopeConfig,
   importer: string,
   cache?: Map<string, boolean>,
 ): boolean {

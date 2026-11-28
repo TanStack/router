@@ -6,7 +6,7 @@ import {
   resolveManifestAssetLink,
   resolveManifestCssLink,
   rootRouteId,
-} from '@tanstack/router-core'
+} from '@tanstack/router-core/tooling'
 import { processInlineCssUrls } from './inlineCss'
 import type {
   ManifestAssetLink,
@@ -19,6 +19,8 @@ import type { NormalizedClientBuild, NormalizedClientChunk } from '../types'
 
 type RouteTreeRoute = {
   filePath?: string
+  /** The real path of a symlinked route file: its modules' id (the bundler's default). */
+  realFilePath?: string
   preloads?: Array<string>
   scripts?: Array<ManifestScript>
   css?: Array<ManifestCssLink>
@@ -583,7 +585,7 @@ export function buildRouteManifestRoutes(options: {
       throw new Error(`expected filePath to be set for ${routeId}`)
     }
 
-    const chunks = options.routeChunksByFilePath.get(route.filePath)
+    const chunks = routeChunksOf(options.routeChunksByFilePath, route)
     if (!chunks) {
       routes[routeId] = { ...route }
       continue
@@ -613,8 +615,8 @@ export function buildRouteManifestRoutes(options: {
 
   const rootRoute = (routes[rootRouteId] = routes[rootRouteId] || {})
   const rootRouteTreeRoute = options.routeTreeRoutes[rootRouteId]
-  const rootRouteChunks = rootRouteTreeRoute?.filePath
-    ? options.routeChunksByFilePath.get(rootRouteTreeRoute.filePath)
+  const rootRouteChunks = rootRouteTreeRoute
+    ? routeChunksOf(options.routeChunksByFilePath, rootRouteTreeRoute)
     : undefined
 
   if (rootRouteChunks) {
@@ -657,6 +659,21 @@ export function buildRouteManifestRoutes(options: {
   return routes
 }
 
+/** The chunks of a route's file, by its scanned path or, for a symlink, its real path. */
+function routeChunksOf(
+  routeChunksByFilePath: ReadonlyMap<
+    string,
+    ReadonlyArray<NormalizedClientChunk>
+  >,
+  route: RouteTreeRoute,
+) {
+  return (
+    (route.filePath && routeChunksByFilePath.get(route.filePath)) ||
+    (route.realFilePath && routeChunksByFilePath.get(route.realFilePath)) ||
+    undefined
+  )
+}
+
 function mergeReachableHydrationChunkData(options: {
   route: RouteTreeRoute
   chunk: NormalizedClientChunk
@@ -673,13 +690,9 @@ function mergeReachableHydrationChunkData(options: {
     mergedHydrationChunks.add(chunk.fileName)
 
     appendRouteStylesheets(options.route, options.getChunkCssAssets(chunk))
-
-    for (const dynamicImport of chunk.dynamicImports) {
-      const dynamicChunk = options.chunksByFileName.get(dynamicImport)
-      if (dynamicChunk?.hydrationIds.length) {
-        mergeHydrationChunk(dynamicChunk)
-      }
-    }
+    // the boundaries it reaches, also through a module it imports (a helper
+    // two boundaries share, holding another boundary)
+    visitStaticChunk(chunk)
   }
 
   const visitStaticChunk = (chunk: NormalizedClientChunk) => {

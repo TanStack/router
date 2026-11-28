@@ -30,6 +30,7 @@ export default mergeConfig(
       './src/index.ts',
       './src/client.tsx',
       './src/client-rpc.ts',
+      './src/client-rpc-gated.ts',
       './src/ssr-rpc.ts',
       './src/server-rpc.ts',
       './src/server.tsx',
@@ -38,7 +39,12 @@ export default mergeConfig(
       './src/server-only.ts',
       './src/client-only.ts',
     ],
-    externalDeps: ['@tanstack/vue-start-client', '@tanstack/vue-start-server'],
+    externalDeps: [
+      '@tanstack/vue-start-client',
+      '@tanstack/vue-start-server',
+      // (the server entry's marker: kept as an import, `src/server.tsx`)
+      '@tanstack/vue-start/server-only',
+    ],
     cjs: false,
   }),
 )

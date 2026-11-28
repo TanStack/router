@@ -12,3 +12,4 @@ yarn.lock
 /api/
 /server/build
 /public/build
+.tanstack/

@@ -41,7 +41,7 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.29.0",
     "@playwright/test": "^1.61.0",
-    "@rsbuild/core": "^2.3.1",
+    "@rsbuild/core": "catalog:",
     "@rsbuild/plugin-react": "^2.0.0",
     "@rsbuild/plugin-sass": "^2.0.1",
     "@tanstack/router-e2e-utils": "workspace:*",
@@ -53,7 +53,7 @@
     "cf": "1.0.0-beta.28",
     "nitro": "^3.0.260903-beta",
     "rsbuild-plugin-cloudflare": "^0.0.4",
-    "sass": "^1.97.2",
+    "sass": "^1.105.1",
     "srvx": "^1.0.0",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",

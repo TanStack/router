@@ -14,7 +14,8 @@ export function createCompositeComponent<TComp>(
   _component: ValidateCompositeComponent<TComp>,
 ): Promise<CompositeComponentResult<TComp>> {
   throw new Error(
-    'createCompositeComponent cannot be called on the client. ' +
-      'This function should only be called inside a server function or route loader.',
+    process.env.NODE_ENV !== 'production'
+      ? "createCompositeComponent cannot be called on the client. Call it inside a server function's `.handler()`, and call that server function where you need the result (e.g. in the route's loader)."
+      : 'createCompositeComponent cannot be called on the client',
   )
 }

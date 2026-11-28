@@ -30,6 +30,39 @@ function createEntryNode(
   } as EnvironmentModuleNode
 }
 
+/** The stylesheets of collected CSS in order: each file's URL and its CSS. */
+function stylesheets(css: string | undefined) {
+  return [...(css ?? '').matchAll(/\/\* (\S+) \*\/\n([^\n]*)/g)].map(
+    ([, url, body]) => [url, body],
+  )
+}
+
+/**
+ * A gate: `open()` releases every `reached()` waiter. `reached()` also
+ * resolves after a second (giving `false`), so an implementation that never
+ * opens it fails the test's overlap check instead of hanging.
+ */
+function gate() {
+  let open!: () => void
+  const opened = new Promise<true>((resolve) => {
+    open = () => resolve(true)
+  })
+  return {
+    open,
+    reached: async () => {
+      let timer: ReturnType<typeof setTimeout> | undefined
+      const late = new Promise<false>((resolve) => {
+        timer = setTimeout(() => resolve(false), 1000)
+      })
+      try {
+        return await Promise.race([opened, late])
+      } finally {
+        clearTimeout(timer)
+      }
+    },
+  }
+}
+
 describe('collectDevStyles', () => {
   test('recognizes virtual Vue style blocks by URL', async () => {
     const styleUrl = '/src/App.vue?vue&type=style&index=0&lang.css'
@@ -204,10 +237,16 @@ describe('collectDevStyles', () => {
         node,
       ]),
     )
+    // The root entry's lookup finishes after the route entry's
+    const routeLookedUp = gate()
+    let outOfOrder = false
     const moduleGraph = {
       async getModuleByUrl(url: string) {
         if (url === rootEntry.url) {
-          await new Promise((resolve) => setTimeout(resolve, 20))
+          outOfOrder = await routeLookedUp.reached()
+        }
+        if (url === routeEntry.url) {
+          routeLookedUp.open()
         }
         return modules.get(url)
       },
@@ -225,10 +264,11 @@ describe('collectDevStyles', () => {
       loadCssContents: (url) => fetchCssFromModule(environment, url),
     })
 
-    expect(css).toBeDefined()
-    expect(css!.indexOf('/* /src/root.css */')).toBeLessThan(
-      css!.indexOf('/* /src/route.css */'),
-    )
+    expect(outOfOrder).toBe(true)
+    expect(stylesheets(css)).toEqual([
+      ['/src/root.css', '.root {}'],
+      ['/src/route.css', '.route {}'],
+    ])
   })
 
   test('preserves dependency order while resolving dependencies in parallel', async () => {
@@ -242,16 +282,18 @@ describe('collectDevStyles', () => {
       [entry, firstCss, secondCss].map((node) => [node.url, node]),
     )
 
-    let firstLookupFinished = false
+    // The first lookup finishes only once the second one started
+    const secondStarted = gate()
+    let firstLookups = 0
     let secondStartedBeforeFirstFinished = false
     const moduleGraph = {
       async getModuleByUrl(url: string) {
-        if (url === firstCss.url && !firstLookupFinished) {
-          await new Promise((resolve) => setTimeout(resolve, 20))
-          firstLookupFinished = true
+        // (the first lookup: reading the stylesheet looks it up again)
+        if (url === firstCss.url && firstLookups++ === 0) {
+          secondStartedBeforeFirstFinished = await secondStarted.reached()
         }
-        if (url === secondCss.url && !firstLookupFinished) {
-          secondStartedBeforeFirstFinished = true
+        if (url === secondCss.url) {
+          secondStarted.open()
         }
         return modules.get(url)
       },
@@ -270,11 +312,10 @@ describe('collectDevStyles', () => {
     })
 
     expect(secondStartedBeforeFirstFinished).toBe(true)
-    expect(css).toContain('/* /src/first.css */')
-    expect(css).toContain('/* /src/second.css */')
-    expect(css!.indexOf('/* /src/first.css */')).toBeLessThan(
-      css!.indexOf('/* /src/second.css */'),
-    )
+    expect(stylesheets(css)).toEqual([
+      ['/src/first.css', '.first {}'],
+      ['/src/second.css', '.second {}'],
+    ])
   })
 
   test('preserves CSS order while loading regular and module CSS in parallel', async () => {
@@ -297,7 +338,8 @@ describe('collectDevStyles', () => {
         return null
       },
     }
-    let rootFinished = false
+    // The root stylesheet's read finishes only once the route's started
+    const routeStarted = gate()
     let routeStartedBeforeRootFinished = false
 
     const css = await collectDevStyles({
@@ -306,21 +348,19 @@ describe('collectDevStyles', () => {
       entries: ['/app/src/entry.tsx'],
       loadCssContents: async (url) => {
         if (url === rootCss.url) {
-          await new Promise((resolve) => setTimeout(resolve, 20))
-          rootFinished = true
+          routeStartedBeforeRootFinished = await routeStarted.reached()
           return '.root {}'
         }
-        if (!rootFinished) {
-          routeStartedBeforeRootFinished = true
-        }
+        routeStarted.open()
         return '.route {}'
       },
     })
 
     expect(routeStartedBeforeRootFinished).toBe(true)
-    expect(css!.indexOf('/* /src/root.css */')).toBeLessThan(
-      css!.indexOf('/* /src/route.module.css */'),
-    )
+    expect(stylesheets(css)).toEqual([
+      ['/src/root.css', '.root {}'],
+      ['/src/route.module.css', '.route {}'],
+    ])
   })
 
   test('handles cycles and coalesces shared dependency lookups', async () => {

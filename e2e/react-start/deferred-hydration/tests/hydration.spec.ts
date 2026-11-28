@@ -1,12 +1,9 @@
 import { expect } from '@playwright/test'
 import { createHmrFileEditor, test } from '@tanstack/router-e2e-utils'
-import crypto from 'node:crypto'
 import path from 'node:path'
 import type { APIRequestContext, Page } from '@playwright/test'
 
 const isDev = process.env.MODE === 'dev'
-const toolchain = process.env.E2E_TOOLCHAIN ?? 'vite'
-const isVite = toolchain === 'vite'
 const hmrExpect = expect.configure({ timeout: 20_000 })
 const componentsRouteFile = path.join(
   process.cwd(),
@@ -29,45 +26,6 @@ const componentsRouteEditor = createHmrFileEditor({
   },
   normalizeSource: (_fileKey, source) => normalizeComponentsRouteSource(source),
 })
-
-function getVisibleHydrateVirtualPath() {
-  const normalizedSourcePath = path
-    .relative(process.cwd(), componentsRouteFile)
-    .replaceAll('\\', '/')
-  const sourceHash = crypto
-    .createHash('sha1')
-    .update(normalizedSourcePath)
-    .digest('hex')
-    .slice(0, 10)
-  const params = new URLSearchParams()
-  params.set('tss-hydrate', `0_${sourceHash}`)
-
-  return `${componentsRouteFile}?${params.toString()}`
-}
-
-async function waitForVisibleHydrateVirtualModule(page: Page, marker: string) {
-  const virtualPath = getVisibleHydrateVirtualPath()
-
-  await expect
-    .poll(
-      async () => {
-        try {
-          const response = await page.request.get(virtualPath)
-          const text = await response.text()
-
-          if (response.ok() && text.includes(marker)) {
-            return 'ready'
-          }
-
-          return `${response.status()} ${text.slice(0, 240)}`
-        } catch (error) {
-          return String(error)
-        }
-      },
-      { timeout: 20_000 },
-    )
-    .toBe('ready')
-}
 
 async function clickAndExpectCount(
   page: Page,
@@ -113,9 +71,9 @@ async function clickToHydrateThenClickAndExpectIncrement(
     await page.getByTestId(countTestId).textContent(),
   )
   await page.getByTestId(buttonTestId).click()
-  await expect
-    .poll(async () => Number(await page.getByTestId(countTestId).textContent()))
-    .toBe(previousCount + 1)
+  await expect(page.getByTestId(countTestId)).toHaveText(
+    String(previousCount + 1),
+  )
 }
 
 async function hoverIntentAndExpectCount(
@@ -166,64 +124,17 @@ async function expectRouteToStayUnhydrated(
 
 async function scrollToBoundary(page: Page, buttonTestId: string) {
   const button = page.getByTestId(buttonTestId)
-  for (let attempt = 0; attempt < 3; attempt++) {
-    await button.evaluate((element) => {
-      element.scrollIntoView({ block: 'center', inline: 'nearest' })
-    })
-
-    await page.waitForTimeout(100)
-    const isVisible = await button.evaluate((element) => {
-      const rect = element.getBoundingClientRect()
-      return rect.bottom > 0 && rect.top < window.innerHeight
-    })
-
-    if (isVisible) return
-  }
-
+  await button.scrollIntoViewIfNeeded()
   await expect(button).toBeInViewport()
 }
 
-async function expectCssProperty(
-  page: Page,
-  testId: string,
-  property: string,
-  value: string,
-) {
-  await expect
-    .poll(() =>
-      page.getByTestId(testId).evaluate((element, propertyName) => {
-        return getComputedStyle(element).getPropertyValue(propertyName)
-      }, property),
-    )
-    .toBe(value)
+// the text in SSR HTML, where React may split it with `<!-- -->`
+function htmlText(text: string) {
+  return new RegExp(text.split(' ').join('(?:\\s|<!-- -->)+'))
 }
 
 function htmlContainsText(html: string, text: string) {
-  const pattern = text.split(' ').join('(?:\\s|<!-- -->)+')
-  expect(html).toMatch(new RegExp(pattern))
-}
-
-async function waitForComponentsServerHtmlText(page: Page, text: string) {
-  await expect
-    .poll(
-      async () => {
-        const response = await page.request.get('/components')
-        const html = await response.text()
-
-        if (!response.ok()) {
-          return `${response.status()} ${html.slice(0, 240)}`
-        }
-
-        try {
-          htmlContainsText(html, text)
-          return 'ready'
-        } catch {
-          return html.slice(0, 240)
-        }
-      },
-      { timeout: 20_000 },
-    )
-    .toBe('ready')
+  expect(html).toMatch(htmlText(text))
 }
 
 function getModulePreloadHrefs(html: string) {
@@ -292,19 +203,7 @@ function isClientJavaScriptResource(url: string) {
 }
 
 async function expectClientRouterReady(page: Page) {
-  await expect
-    .poll(() =>
-      page.evaluate(() =>
-        Boolean(
-          (
-            globalThis as typeof globalThis & {
-              __TSR_ROUTER__?: unknown
-            }
-          ).__TSR_ROUTER__,
-        ),
-      ),
-    )
-    .toBe(true)
+  await page.waitForFunction(() => '__TSR_ROUTER__' in globalThis)
 }
 
 async function gotoEnhanced(page: Page, search = '') {
@@ -347,10 +246,11 @@ test.describe('Hydrate HMR', () => {
       interactiveBoxHmrLabelSource,
     )
 
-    await waitForComponentsServerHtmlText(page, 'hmr visible')
-    if (isVite) {
-      await waitForVisibleHydrateVirtualModule(page, 'hmr ')
-    }
+    await expect
+      .poll(async () => (await page.request.get('/components')).text(), {
+        timeout: 20_000,
+      })
+      .toMatch(htmlText('hmr visible'))
 
     await page.goto('/components')
     await expectClientRouterReady(page)
@@ -364,6 +264,10 @@ test.describe('Hydrate HMR', () => {
       'component-visible-button',
       'component-visible-count',
       '1',
+    )
+    // rendered by the hydrated child: a stale child module shows the old label
+    await expect(page.getByTestId('component-visible-button')).toContainText(
+      'hmr visible',
     )
     expect(pageErrors).toEqual([])
   })
@@ -871,33 +775,34 @@ test.describe('Hydrate CSS delivery', () => {
       await expect(page.getByTestId('css-never')).toHaveText('Never CSS')
       await expect(page.getByTestId('css-nested')).toHaveText('Nested CSS')
 
-      await expectCssProperty(page, 'css-outer', 'color', 'rgb(12, 34, 56)')
-      await expectCssProperty(
-        page,
-        'css-deferred',
+      await expect(page.getByTestId('css-outer')).toHaveCSS(
+        'color',
+        'rgb(12, 34, 56)',
+      )
+      await expect(page.getByTestId('css-deferred')).toHaveCSS(
         'background-color',
         'rgb(23, 45, 67)',
       )
-      await expectCssProperty(page, 'css-never', 'color', 'rgb(45, 67, 89)')
-      await expectCssProperty(
-        page,
-        'css-shared-outer',
+      await expect(page.getByTestId('css-never')).toHaveCSS(
+        'color',
+        'rgb(45, 67, 89)',
+      )
+      await expect(page.getByTestId('css-shared-outer')).toHaveCSS(
         'border-top-color',
         'rgb(98, 76, 54)',
       )
-      await expectCssProperty(
-        page,
-        'css-deferred',
+      await expect(page.getByTestId('css-deferred')).toHaveCSS(
         'border-top-color',
         'rgb(98, 76, 54)',
       )
-      await expectCssProperty(
-        page,
-        'css-nested',
+      await expect(page.getByTestId('css-nested')).toHaveCSS(
         'border-left-color',
         'rgb(67, 89, 123)',
       )
-      await expectCssProperty(page, 'css-nested', 'border-left-width', '5px')
+      await expect(page.getByTestId('css-nested')).toHaveCSS(
+        'border-left-width',
+        '5px',
+      )
     } finally {
       await context.close()
     }
@@ -918,9 +823,7 @@ test.describe('Hydrate CSS delivery', () => {
     await expect(page.getByTestId('css-never')).toHaveCount(0)
     await expect(page.getByTestId('css-nested')).toHaveCount(0)
 
-    await expectCssProperty(
-      page,
-      'css-deferred',
+    await expect(page.getByTestId('css-deferred')).toHaveCSS(
       'background-color',
       'rgb(23, 45, 67)',
     )

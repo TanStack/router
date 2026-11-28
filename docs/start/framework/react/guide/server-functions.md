@@ -67,6 +67,30 @@ export const saveData = createServerFn({ method: 'POST' }).handler(async () => {
 })
 ```
 
+## Where to Define Server Functions
+
+A server function must be created exactly once, when its module loads, because the server needs that one instance before any of your code runs. Define it as a top-level `const`, or in an expression the module evaluates once when it loads: an object or array literal, a call argument, `export default`, or a class's static field.
+
+The build fails at a server function created anywhere else: inside a function or a component, a condition, a loop, or a block. Define it at the top level instead, and pass what it needs as its input:
+
+```tsx
+// ❌ created each time the component renders: a build error
+function Profile({ id }: { id: string }) {
+  const getUser = createServerFn().handler(async () => findUser(id))
+  // ...
+}
+
+// ✅ created once, called with its input
+const getUser = createServerFn()
+  .validator((id: string) => id)
+  .handler(async ({ data }) => findUser(data))
+
+function Profile({ id }: { id: string }) {
+  const user = getUser({ data: id })
+  // ...
+}
+```
+
 ## Where to Call Server Functions
 
 Call server functions from:
@@ -75,6 +99,9 @@ Call server functions from:
 - **Components** - Use with `useServerFn()` hook
 - **Other server functions** - Compose server logic
 - **Event handlers** - Handle form submissions, clicks, etc.
+
+> [!NOTE]
+> In production builds, only server functions that the built client code still references can be called over HTTP. A server function that only server code calls (for example another server function's handler or a server route) is not exposed as an endpoint, and neither is one that is only returned to the client as data, nor an exported one that no client code uses: production answers a call to it with HTTP 500 and `Server function info not found for <id>`. A build that keeps unused client code (Vite with `build.minify: 'esbuild'`, Rsbuild with `output.minify: false`) also keeps the endpoints of unused exports. This is not access control: protect data in the function itself. The dev server still answers such calls. It may log a warning when it has seen no client code for the function yet; the warning is a hint, not the production check.
 
 ```tsx
 // In a route loader
@@ -149,6 +176,8 @@ function UserProfile({ id }) {
 
 The build process replaces server function implementations with RPC stubs in client bundles. The actual server code never reaches the browser.
 
+An import that asks the bundler to skip its configured processing is the exception, on purpose: a text import (`'./users.functions?raw'`) gives the file's text, and on Rsbuild a webpack inline-loader prefix that disables the configured loaders (`'!!./users.functions'`, `'-!./users.functions'`) loads the module uncompiled, its handlers included. Use them only on files that hold nothing server-only. Import protection still checks such imports of a `.server` file.
+
 > [!WARNING]
 > Avoid dynamic imports for server functions:
 >
@@ -156,6 +185,16 @@ The build process replaces server function implementations with RPC stubs in cli
 > // ❌ Can cause bundler issues
 > const { getUser } = await import('~/utils/users.functions')
 > ```
+
+### Server Functions in Packages
+
+A package of your app (a workspace package or an installed one) can export server functions: the build compiles it like your own code. List `@tanstack/react-start` in the package's `peerDependencies`, so that the app installs one copy of Start, the version it chose. A package that lists Start (or `@tanstack/start-client-core`, `@tanstack/start-server-core`, `@tanstack/start-fn-stubs`) under `peerDependencies`, `dependencies` or `optionalDependencies` declares Start: Start reads its modules as it reads yours, so a builder one of its modules hands to another under a new name is followed. A `peerDependenciesMeta` entry alone declares nothing.
+
+A package that uses Start without declaring it is compiled only where a module names a Start API, and Start warns once for it. A builder its modules hand on is followed as in a package that declares Start (`export { base } from './base.js'`, `export *`, the `import { base } from './chunk.js'; export { base }` entry that esbuild, tsup, Rolldown and tsdown print, `export const authed = base`), except where Vite's dependency optimizer pre-bundles the package (the development server): there it is not, so the app's handlers built on it would ship to the client. Ask the package to declare Start as a peer dependency.
+
+On Vite, Start bundles the packages that declare Start for the server and keeps them out of the dependency optimizer. It finds them from your app's `package.json`, through workspace packages and packages that declare Start (npm aliases included). A Start package that the app reaches only through an installed package that does not declare Start stays behind that package, which Vite keeps external on the server: add that package to `ssr.noExternal` and `optimizeDeps.exclude`. Restart the dev server after you install a package or edit a manifest.
+
+With React Server Components on Vite, a package whose export conditions give the browser and the server different files must re-export one module that defines its server functions from both: a server function defined in each file fails the production build, naming the browser's file (the development server answers each caller with its own file).
 
 ## Parameters & Validation
 
@@ -418,16 +457,23 @@ Handle request cancellation with `AbortSignal` for long-running operations.
 
 Server functions are addressed by a generated, stable function ID under the hood. These IDs are embedded into the client/SSR builds and used by the server to locate and import the correct module at runtime.
 
-By default, IDs are SHA256 hashes of the same seed to keep bundles compact and avoid leaking file paths.
-If two server functions end up with the same ID (including when using a custom generator), the system de-duplicates by appending an incrementing suffix like `_1`, `_2`, etc.
+By default, IDs are SHA256 hashes (64 hex digits) of the file and function name, to avoid leaking file paths.
+If two server functions end up with the same ID (including when using a custom generator), the system de-duplicates by appending an incrementing suffix like `_1`, `_2`, etc., numbered in build order: the functions client code references first, then server-only ones (with RSC, the server build comes first), each group by file path, then by source order within a file.
 
 Customization:
 
 You can customize function ID generation for the production build by providing a `generateFunctionId` function when configuring the TanStack Start build tool plugin.
 
+The generator receives:
+
+- `filename`: the file's path relative to the project root, e.g. `src/routes/users.tsx`.
+- `functionName`: the server function's variable name followed by `_createServerFn_handler`, e.g. `getUser_createServerFn_handler`. When a file uses the same name for more than one server function, the later ones, in source order, get `_1`, `_2`, … (as before, a numbered name keeps only ASCII letters, digits, `_` and `$` and loses a leading or trailing `_`: a second `_under` gets `under_createServerFn_handler_1`). A server function that isn't declared as a variable takes the name it's assigned to (an object property, a class field), `default` for `export default`, and `fn` otherwise. A name that isn't a JavaScript identifier (a string property key) has `_` for each character other than ASCII letters, digits, `_` and `$`. A non-ASCII identifier is kept as is, so replace its characters before embedding `functionName` in an ID.
+
 Return `undefined` (or an empty string) to use the default ID. Prefer deterministic inputs (filename + functionName) so IDs remain stable between builds.
 
-The ID becomes one segment of the server function's URL (`/_serverFn/<id>`), unencoded, so use only ASCII letters, digits, `-`, `.`, `_`, `~` and `$`, and not `.` or `..`. An ID with whitespace, a control or non-ASCII character, or any of `"`, `#`, `/`, `<`, `>`, `?`, `\`, `^`, `` ` ``, `{` and `}`, an ID that is `.` or `..`, or one with a percent-encoding the server reads as another ID (`%41` for `A`, lowercase hex, `%2E`) or rejects, fails the build with an error naming the file, the function and the ID: the request would reach another function or none. Other characters (`%`, `+`, `:`, `;`, `@`, `'`, `|`, `[`, `]`, …) still work, with a deprecation warning: the next major version rejects them, since proxies and servers may encode or normalise them in the URL. `filename` contains `/`, so hash it (as in the example below) rather than embedding it as is.
+A production build answers HTTP calls only for the server functions its client code calls (see above). With `generateFunctionId` set, it tells them apart by a build token each client stub passes to the client RPC (`#` and 16 hex digits, 13 to 14 bytes gzipped per server function the client keeps), not by the ID: a custom ID is any text, and a string of your app equal to an unused function's ID does not make that function callable. The token is never sent; like a default ID, it is a hash of the file's path and the function's name, so it hides neither. Client middleware can still find it by reflection on the function it is given (a non-enumerable symbol property): it is not a secret, only a spelling the build looks for in the compiled client code. A custom minifier must keep the string arguments of the client RPC calls; one that drops them makes the client's calls answer `Server function info not found`. With `generateFunctionId` set, the client stubs import the client RPC from `@tanstack/react-start/client-rpc-gated` instead of `@tanstack/react-start/client-rpc`, so a `resolve.alias` of the exact `client-rpc` subpath (to wrap the client RPC) must also alias `client-rpc-gated` (its `createGatedClientServerFn`).
+
+The ID becomes one segment of the server function's URL (`/_serverFn/<id>`), unencoded, so use only ASCII letters, digits, `-`, `.`, `_`, `~` and `$`, and not `.` or `..`. An ID with whitespace, a control or non-ASCII character, or any of `"`, `#`, `/`, `<`, `>`, `?`, `\`, `^`, `` ` ``, `{` and `}`, an ID that is `.` or `..`, or one with a percent-encoding the server reads as another ID (`%41`, read as `A`; `%2E`, read as `.`; `%3c`, read as `%3C`) or rejects, fails the build with an error naming the file, the function and the ID: the request would reach another function or none. Other characters (`%`, `+`, `:`, `;`, `@`, `'`, `|`, `[`, `]`, …) still work, with a deprecation warning: the next major version rejects them, since proxies and servers may encode or normalise them in the URL. `filename` contains `/`, so hash it (as in the example below) rather than embedding it as is.
 
 Please note that this customization is **experimental** and subject to change.
 

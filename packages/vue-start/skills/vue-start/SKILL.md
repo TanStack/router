@@ -86,7 +86,7 @@ import vueJsx from '@vitejs/plugin-vue-jsx'
 
 export default defineConfig({
   plugins: [
-    tanstackStart(), // MUST come before vue plugin
+    tanstackStart(),
     vuePlugin(),
     vueJsx(), // Required for JSX/TSX route files
   ],
@@ -259,17 +259,7 @@ console.log(data.value.message)
 
 Without `<Scripts />` in the root route's `<body>`, client JavaScript doesn't load and the app won't hydrate.
 
-### 4. HIGH: Vue plugin before Start plugin in Vite config
-
-```ts
-// WRONG
-plugins: [vuePlugin(), tanstackStart()]
-
-// CORRECT
-plugins: [tanstackStart(), vuePlugin()]
-```
-
-### 5. HIGH: Using Html/Body incorrectly
+### 4. HIGH: Using Html/Body incorrectly
 
 Vue Start uses `<Html>` and `<Body>` components for the SSR document shell. On the server they render `<html>` and `<body>` tags; on the client they handle hydration properly.
 
@@ -300,6 +290,74 @@ function RootComponent() {
   )
 }
 ```
+
+### 5. HIGH: Server functions in a `<script setup>` block
+
+A `<script setup>` block runs once per component instance, not once when the module loads, so the compiler refuses a server function defined there, in every mode: the component does not compile and the error says to define it at the top level. Define server functions, builders and middleware in a plain `<script lang="ts">` block of the component or in a separate `.ts` module, and call them from `<script setup>`.
+
+On the dev server (Vite and Rsbuild), and in builds with Vue's devtools on (Vite: `vue({ features: { prodDevtools: true } })`, `define: { __VUE_PROD_DEVTOOLS__: true }` or `NODE_ENV=development vite build`; Rsbuild: `NODE_ENV=development`), Vue also hands every binding a `<script setup>` block declares to its template, and in a JavaScript block every import too. A JavaScript `<script setup>` block importing a builder or factory, or a local holding an open builder, is refused there too.
+
+```vue
+<!-- WRONG: a server function defined in <script setup> -->
+<script setup lang="ts">
+import { createServerFn } from '@tanstack/vue-start'
+const getGreeting = createServerFn().handler(async () => 'Hello')
+</script>
+
+<!-- WRONG in development: a JavaScript block importing a factory -->
+<script setup>
+import { createServerFn } from '@tanstack/vue-start'
+</script>
+
+<!-- WRONG in development: a local holding an open builder -->
+<script setup lang="ts">
+import { createMiddleware } from '@tanstack/vue-start'
+const logged = createMiddleware({ type: 'function' })
+</script>
+```
+
+```vue
+<!-- CORRECT: server functions and middleware in a plain <script> block,
+     called from <script setup> -->
+<script lang="ts">
+import { createMiddleware, createServerFn } from '@tanstack/vue-start'
+const logged = createMiddleware({ type: 'function' }).server(({ next }) =>
+  next(),
+)
+export const getGreeting = createServerFn()
+  .middleware([logged])
+  .handler(async () => 'Hello')
+</script>
+
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
+const greeting = ref('')
+onMounted(async () => {
+  greeting.value = await getGreeting()
+})
+</script>
+```
+
+```ts
+// CORRECT: server functions in a separate module (src/greeting.ts) ...
+import { createServerFn } from '@tanstack/vue-start'
+
+export const getGreeting = createServerFn().handler(async () => 'Hello')
+```
+
+```vue
+<!-- ... imported by the component -->
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
+import { getGreeting } from '../greeting'
+const greeting = ref('')
+onMounted(async () => {
+  greeting.value = await getGreeting()
+})
+</script>
+```
+
+Never attach server code in the template (`{{ base.handler(...) }}`): it is refused in every mode.
 
 ## Cross-References
 

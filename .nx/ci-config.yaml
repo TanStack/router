@@ -3,3 +3,9 @@ dte:
     small-changeset: 6 linux-medium-js
     medium-changeset: 12 linux-medium-js
     large-changeset: 18 linux-medium-js
+# Nx Cloud forwards only NX_* variables from the main job to the workers, so
+# list the others the tasks need. TSR_COMPILER_VERIFY: the e2e apps compile
+# with the compiler's self-checks on (set in .github/workflows/pr.yml).
+workers:
+  with-env-vars:
+    - TSR_COMPILER_VERIFY

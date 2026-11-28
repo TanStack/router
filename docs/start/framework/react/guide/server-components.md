@@ -86,7 +86,7 @@ export default defineConfig({
 
 <!-- ::end:tabs -->
 
-**Requirements:** React 19+, Vite 8+ or Rsbuild 2+
+**Requirements:** React 19+, and Vite 8.1+ or Rsbuild (`@rsbuild/core` ^2.2.13 with `@rspack/core` 2.2.9+)
 
 ## Quick Start
 
@@ -1069,6 +1069,13 @@ createCompositeComponent<{
 ### Render prop arguments must be serializable
 
 Arguments passed to slots via render props and or components travel through React's Flight protocol. Use serializable values only: strings, numbers, booleans, null, plain objects, and arrays.
+
+### Server functions only client code reaches
+
+A production build with server components builds the server side first and finds the server functions from server code. Two arrangements are not fully supported yet:
+
+- **Vite**: a server function whose module only client-only code imports (a `<ClientOnly>` child, a `createClientOnlyFn` body, a `<Hydrate>` fallback) or that a `'use client'` component imports lazily (`import('./fns')`) is called by the browser but not provided by the server build, and so is a server function of an installed package that only client components or server function handlers import. The build fails, naming each such function and its file: its calls would answer `Server function info not found`. For a file of your app, import the server function in a server function's module as well and use it in that function's handler. For a file of an installed package, import it in a route file as well and call it from that route's `loader`. A server function of an installed package that only server function handlers call is not provided either, and the build cannot tell: the call answers `Server function info not found`. Call it from a route's `loader` as well.
+- **Rsbuild**: such server functions work, but a client component that only their handlers render (a `'use client'` file of the app or of an installed package) is missing from the client manifest the build delivers (Rspack hands the client build its client components before the server build reaches those handlers): the browser cannot show the server function's result (React reports `Could not find the module … in the React Client Manifest`). The build succeeds without a warning. Render the component from server code the build reaches first: a server component of a route, or a server function a route's loader calls. Rspack tracks this in [rspack#16786](https://github.com/web-infra-dev/rspack/issues/16786).
 
 ## How It Works
 

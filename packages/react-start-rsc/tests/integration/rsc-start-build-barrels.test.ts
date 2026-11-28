@@ -1,0 +1,106 @@
+/**
+ * With RSC, on Vite and on Rsbuild: server fns of several modules behind
+ * one `export *` barrel (SPEC J4.2, J4.4), as API objects whose server fns
+ * share property names across modules (their handlers reading module state
+ * of the same name) and as unexported server fns of the
+ * same name in two modules. The production build reports nothing about the
+ * barrel, and each server fn answers its own call from the page and from
+ * the route's loader on the server.
+ */
+import { describe, test } from 'vitest'
+import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
+import { waitForHydration } from './rsc-app'
+import { openRscPage, serveRscBuild } from './rsc-serial'
+
+const head = `import { createServerFn } from '@tanstack/react-start'\n`
+
+/**
+ * An API object of server fns, as apps group them by resource, whose
+ * handlers read module state (the same name in every such module).
+ */
+const api = (
+  resource: string,
+) => `${head}const store = new Map([['get', 'MARK_${resource}_get'], ['list', 'MARK_${resource}_list']])
+export const ${resource}Api = {
+  get: createServerFn().handler(async () => store.get('get')),
+  list: createServerFn().handler(async () => store.get('list')),
+}
+`
+
+/** A module whose exported loader calls an unexported server fn named `fetchData`. */
+const loader = (
+  name: string,
+) => `${head}const fetchData = createServerFn().handler(async () => 'MARK_${name}')
+export const ${name} = () => fetchData()
+`
+
+const all = `[usersApi.get, usersApi.list, postsApi.get, postsApi.list, loadA, loadB]`
+const results = [
+  'MARK_users_get',
+  'MARK_users_list',
+  'MARK_posts_get',
+  'MARK_posts_list',
+  'MARK_loadA',
+  'MARK_loadB',
+].join(' ')
+
+const files = {
+  'src/api/users.ts': api('users'),
+  'src/api/posts.ts': api('posts'),
+  'src/api/loadA.ts': loader('loadA'),
+  'src/api/loadB.ts': loader('loadB'),
+  'src/api/index.ts': `export * from './users'
+export * from './posts'
+export * from './loadA'
+export * from './loadB'
+`,
+  'src/routes/barrels.tsx': `import { createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
+import { usersApi, postsApi, loadA, loadB } from '../api'
+const callAll = async () => {
+  const values = []
+  for (const fn of ${all}) {
+    values.push(await fn())
+  }
+  return values.join(' ')
+}
+export const Route = createFileRoute('/barrels')({
+  loader: () => callAll(),
+  component: Page,
+})
+function Page() {
+  const loaded = Route.useLoaderData()
+  const [called, setCalled] = useState('')
+  return (
+    <main>
+      <p data-testid="loaded">loaded {loaded}</p>
+      <p data-testid="called">called {called}</p>
+      <button data-testid="call" onClick={() => callAll().then(setCalled)}>call</button>
+    </main>
+  )
+}
+`,
+}
+
+describe.each(['vite', 'rsbuild'] as const)('%s', (bundler) => {
+  test('server fns behind an `export *` barrel build with no report about it, and each answers its own call', async () => {
+    const server = await serveRscBuild({ bundler, files })
+    expectNoDiagnostic(server.messages, {
+      file: 'src/api/index.ts',
+      root: server.root,
+    })
+    const page = await openRscPage(server, '/barrels')
+    await waitForHydration(page)
+    await page
+      .locator('[data-testid=loaded]', {
+        hasText: new RegExp(`^loaded ${results}$`),
+      })
+      .waitFor()
+    await page.locator('[data-testid=call]').click()
+    await page
+      .locator('[data-testid=called]', {
+        hasText: new RegExp(`^called ${results}$`),
+      })
+      .waitFor()
+  }, 90_000)
+})

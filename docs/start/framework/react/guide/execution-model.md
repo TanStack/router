@@ -215,6 +215,39 @@ const fetchData = createServerFn().handler(async () => {
 })
 ```
 
+### Top-Level Setup Statements
+
+The compiler removes server code (server function handlers, `.server()` bodies, `createServerOnlyFn` implementations) from the client bundle, together with the imports only that code uses. Start's transform keeps every statement at the top level of a module in client code, so setup written as a statement (`if`, `try`, an assignment, `??=`) keeps its imports in the client bundle and runs in the browser when the module loads (a production bundler may still drop a branch whose condition it can tell is false). This is true in development and in production builds.
+
+```tsx
+// ❌ The `try` stays in client code: `./redis` is bundled and `connect()` runs in the browser
+import { connect } from './redis'
+
+let redis
+try {
+  redis = connect()
+} catch {}
+
+export const getCount = createServerFn().handler(() => redis.get('count'))
+```
+
+```tsx
+// ✅ Put the setup in its own module, imported only by server code
+// redis.server.ts
+import { connect } from './redis'
+export const redis = connect()
+
+// count.ts
+import { redis } from './redis.server'
+export const getCount = createServerFn().handler(() => redis.get('count'))
+```
+
+A single `const` declaration also works: `const redis = connect()` leaves the client bundle with its import when only server code reads it. Naming the module `*.server.ts` lets [import protection](./import-protection.md) report it if client code ever imports it (a production build fails); for a package, add it to `importProtection.client.specifiers`.
+
+A type never keeps a value: a declaration that only types name (`const db = connect()` with `type Db = typeof db`, an annotation, a cast, an overload signature) leaves the module with its initializer in every environment, as one only server code reads does, so its call no longer runs, and a class only types name is removed with its static blocks. Read it from code that runs to keep it. An import that only the types of code that runs name, directly, through type aliases or through a `declare`, is left to your TypeScript settings (`verbatimModuleSyntax` keeps it); an exported type still takes what only it names with it. The factory of a classic JSX pragma (`/** @jsx h */`) is a read. A module with decorators, or with a `React` of its own, keeps what types name, as before: decorator metadata and a classic JSX runtime read names at run time that only types mention.
+
+The one shape the compiler refuses is server code passed by a name that a statement of the module assigns again: the implementation itself, given to `.handler()`, `.validator()`, `.server()`, `createServerOnlyFn()` or a route's `server`, `headers` or `ssr` option (`let impl = a; impl = b; createServerOnlyFn(impl)`, `if (!impl) impl = …`). The build fails at that argument, because the client would keep the assignments and the implementations they hold, whatever else reads or exports the binding. Define it once with a `const` (`const impl = condition ? a : b`). The setup above, where server code reads a value a statement sets up, is not refused: move it as shown.
+
 ### Incorrect Loader Assumptions
 
 ```tsx

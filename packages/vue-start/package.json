@@ -50,6 +50,12 @@
         "default": "./dist/esm/client-rpc.js"
       }
     },
+    "./client-rpc-gated": {
+      "import": {
+        "types": "./dist/esm/client-rpc-gated.d.ts",
+        "default": "./dist/esm/client-rpc-gated.js"
+      }
+    },
     "./server-rpc": {
       "import": {
         "types": "./dist/esm/server-rpc.d.ts",
@@ -109,7 +115,7 @@
     "!skills/_artifacts"
   ],
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.22.0"
   },
   "dependencies": {
     "@tanstack/start-client-core": "workspace:*",
@@ -135,8 +141,8 @@
     "rimraf": "catalog:"
   },
   "peerDependencies": {
-    "@rsbuild/core": "^2.0.5",
-    "vite": ">=8.0.0",
+    "@rsbuild/core": "^2.2.13",
+    "vite": ">=8.1.0",
     "vue": "^3.3.0"
   },
   "peerDependenciesMeta": {

@@ -19,6 +19,11 @@
       "{workspaceRoot}/package.json",
       "{workspaceRoot}/tsconfig.json"
     ],
+    "compilerSelfChecks": [
+      {
+        "env": "TSR_COMPILER_VERIFY"
+      }
+    ],
     "dependentTaskOutputs": [
       {
         "dependentTasksOutputFiles": "**/*",
@@ -62,35 +67,90 @@
       "dependsOn": ["^build"],
       "inputs": [
         "default",
+        "!{projectRoot}/tests/integration/**/*",
         "^production",
         "{workspaceRoot}/eslint.config.js",
         "dependentTaskOutputs"
       ],
       "outputs": ["{projectRoot}/coverage"]
     },
+    "test:integration": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/eslint.config.js",
+        "dependentTaskOutputs"
+      ],
+      "outputs": ["{projectRoot}/coverage"]
+    },
+    "test:integration--shard-*": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/eslint.config.js",
+        "dependentTaskOutputs"
+      ],
+      "options": {
+        "cwd": "{projectRoot}"
+      },
+      "parallelism": false
+    },
+    "test:integration:whole": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/eslint.config.js",
+        "dependentTaskOutputs"
+      ],
+      "options": {
+        "cwd": "{projectRoot}"
+      },
+      "parallelism": false
+    },
+    "test:integration:smoke": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/eslint.config.js",
+        "dependentTaskOutputs"
+      ]
+    },
     "test:e2e": {
       "cache": true,
       "dependsOn": ["^build", "test:e2e--*"],
-      "inputs": ["buildProduction", "^production", "dependentTaskOutputs"],
+      "inputs": [
+        "buildProduction",
+        "^production",
+        "dependentTaskOutputs",
+        "compilerSelfChecks"
+      ],
       "outputs": ["{projectRoot}/dist", "{projectRoot}/test-results"],
       "parallelism": false
     },
     "test:e2e:nitro": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production"],
+      "inputs": ["default", "^production", "compilerSelfChecks"],
       "parallelism": false
     },
     "test:e2e:basepath": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production"],
+      "inputs": ["default", "^production", "compilerSelfChecks"],
       "parallelism": false
     },
     "test:e2e:preview": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production"],
+      "inputs": ["default", "^production", "compilerSelfChecks"],
       "parallelism": false
     },
     "test:types": {
@@ -133,18 +193,42 @@
         "dependentTaskOutputs"
       ]
     },
-    "build": {
-      "cache": true,
-      "dependsOn": ["^build"],
-      "inputs": ["buildProduction", "^buildProduction", "dependentTaskOutputs"],
-      "outputs": [
-        "{projectRoot}/.netlify",
-        "{projectRoot}/.wrangler",
-        "{projectRoot}/.output",
-        "{projectRoot}/build",
-        "{projectRoot}/dist"
-      ]
-    },
+    "build": [
+      {
+        "cache": true,
+        "dependsOn": ["^build"],
+        "inputs": [
+          "buildProduction",
+          "^buildProduction",
+          "dependentTaskOutputs"
+        ],
+        "outputs": [
+          "{projectRoot}/.netlify",
+          "{projectRoot}/.wrangler",
+          "{projectRoot}/.output",
+          "{projectRoot}/build",
+          "{projectRoot}/dist"
+        ]
+      },
+      {
+        "filter": { "projects": ["e2e/**", "examples/**"] },
+        "cache": true,
+        "dependsOn": ["^build"],
+        "inputs": [
+          "buildProduction",
+          "^buildProduction",
+          "dependentTaskOutputs",
+          "compilerSelfChecks"
+        ],
+        "outputs": [
+          "{projectRoot}/.netlify",
+          "{projectRoot}/.wrangler",
+          "{projectRoot}/.output",
+          "{projectRoot}/build",
+          "{projectRoot}/dist"
+        ]
+      }
+    ],
     "test:build": {
       "cache": true,
       "dependsOn": ["build"],
@@ -152,6 +236,18 @@
     },
     "test:e2e*": {
       "parallelism": false
+    },
+    "test:noncompiler": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": [
+        "default",
+        "!{projectRoot}/tests/integration/**/*",
+        "^production",
+        "{workspaceRoot}/eslint.config.js",
+        "dependentTaskOutputs"
+      ],
+      "outputs": ["{projectRoot}/coverage"]
     }
   },
   "plugins": [

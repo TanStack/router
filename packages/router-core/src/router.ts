@@ -909,6 +909,29 @@ export interface ViewTransitionOptions {
       }) => Array<string> | false)
 }
 
+/**
+ * @private Development-only: a router catch boundary of the framework
+ * adapters caught `error`. A render error makes route hot updates reload the
+ * page (`_hmrReload`); an error the router holds on a current match (its
+ * loader's or `beforeLoad`'s) is the router's state, not a render error: the
+ * boundary resets when the match loads again. (Solid's boundary hands over a
+ * thrown value that is no `Error` wrapped in one, as its `cause`.)
+ */
+export function hmrReloadAfterCatch(router: AnyRouter, error: unknown) {
+  const cause = error instanceof Error ? error.cause : undefined
+  if (
+    !router.stores.matches
+      .get()
+      .some(
+        (match) =>
+          match.error !== undefined &&
+          (match.error === error || match.error === cause),
+      )
+  ) {
+    router._hmrReload = true
+  }
+}
+
 // TODO where is this used? can we remove this?
 /**
  * Convert an unknown error into a minimal, serializable object.
@@ -1118,6 +1141,13 @@ export interface RouterCore<
   _replaceRouteChunk:
     | ((route: AnyRoute, lazyFn: AnyRoute['lazyFn']) => void)
     | undefined
+  /**
+   * @private Development-only: a router catch boundary caught a render
+   * error that route HMR cannot recover from in place, so route hot updates
+   * reload the page (`hmrReloadAfterCatch`, called by the framework
+   * adapters).
+   */
+  _hmrReload?: true
 }
 
 export type HydrationHandoff = [
@@ -1253,6 +1283,11 @@ export class RouterCore<
     TDehydrated
   > = (newOptions) => {
     if (process.env.NODE_ENV !== 'production') {
+      // the router's first update, from its constructor: route HMR updates
+      // the routers that hold a route, not the last one created
+      if (!this.options && !(isServer ?? typeof document === 'undefined')) {
+        ;(self.__TSR_ROUTERS__ ??= []).push(new WeakRef(this as AnyRouter))
+      }
       if (newOptions.notFoundRoute) {
         console.warn(
           'The notFoundRoute API is deprecated and will be removed in the next major version. See https://tanstack.com/router/v1/docs/framework/react/guide/not-found-errors#migrating-from-notfoundroute for more info.',

@@ -25,8 +25,6 @@ export const ENTRY_POINTS = {
 
 export const DEV_CLIENT_ENTRY = 'virtual:tanstack-start-dev-client-entry'
 
-export const SERVER_FN_LOOKUP = 'server-fn-module-lookup'
-
 // matches
 // .ts, .tsx, .cts, .mts, .js, .jsx, .cjs, .mjs
 // with optional query params after

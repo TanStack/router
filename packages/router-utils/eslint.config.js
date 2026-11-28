@@ -1,5 +1,5 @@
 // @ts-check
 
-import rootConfig from '../../eslint.config.js'
+import rootConfig, { compilerSourceConfig } from '../../eslint.config.js'
 
-export default [...rootConfig]
+export default [...rootConfig, ...compilerSourceConfig]

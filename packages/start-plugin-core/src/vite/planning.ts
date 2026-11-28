@@ -69,6 +69,15 @@ export function createViteConfigPlan(opts: {
         },
         optimizeDeps: {
           exclude: opts.optimizeDepsExclude,
+          // The compiler's dev-only route HMR block imports
+          // `@tanstack/<framework>-router/hmr`. The framework plugins exclude
+          // the router package from optimization, so the subpath is served
+          // from source with the rest of the package (one instance of the
+          // HMR state); it must not be pre-bundled on its own: route modules
+          // import an optimized chunk late in the client entry's graph, and
+          // a post-scan re-optimization invalidates its URL before the
+          // browser fetches it (504, the graph never evaluates, the dev
+          // client never connects, the buffered reload is lost).
           entries: escapeEntries([
             opts.entryAliases.client,
             opts.entryAliases.router,
@@ -115,6 +124,7 @@ export function createViteConfigPlan(opts: {
     },
     resolve: {
       noExternal: [
+        // Start's own packages (`isStartPackage` of `compiler/package-class`)
         '@tanstack/start**',
         `@tanstack/${opts.framework}-start**`,
         ...opts.noExternal,
@@ -177,7 +187,11 @@ export function createViteDefineConfig(opts: {
 export async function buildStartViteEnvironments(opts: {
   builder: vite.ViteBuilder
   providerEnvironmentName: string
-  ssrIsProvider: boolean
+  /** `build --watch`: an environment's watcher, to follow its builds. */
+  followWatcher: (
+    environment: vite.BuildEnvironment,
+    watcher: vite.Rolldown.RolldownWatcher,
+  ) => void
 }) {
   const client = getRequiredBuilderEnvironment(
     opts.builder,
@@ -191,14 +205,30 @@ export async function buildStartViteEnvironments(opts: {
   )
 
   if (!client.isBuilt) {
-    await opts.builder.build(client)
+    // `build --watch`: the build returns the client's watcher at once; the
+    // server embeds the client's build (its files, the functions it
+    // references), so the server builds once the client's first build
+    // ended. The client's later builds, and a first one that failed, reach
+    // the server by cause (`ViteCompilerState.setClientBuild`)
+    const output = await opts.builder.build(client)
+    if ('on' in output) {
+      opts.followWatcher(client, output)
+    }
+    if (!(await firstBuildEnd(output))) {
+      // the watcher was closed before its first build ended: nothing else builds
+      return
+    }
   }
 
   if (!server.isBuilt) {
-    await opts.builder.build(server)
+    const output = await opts.builder.build(server)
+    if ('on' in output) {
+      opts.followWatcher(server, output)
+    }
   }
 
-  if (opts.ssrIsProvider) {
+  // the SSR environment is the provider unless an RSC environment is
+  if (opts.providerEnvironmentName === START_ENVIRONMENT_NAMES.server) {
     return
   }
 
@@ -209,8 +239,39 @@ export async function buildStartViteEnvironments(opts: {
   )
 
   if (!providerEnv.isBuilt) {
-    await opts.builder.build(providerEnv)
+    const output = await opts.builder.build(providerEnv)
+    if ('on' in output) {
+      opts.followWatcher(providerEnv, output)
+    }
   }
+}
+
+/**
+ * Resolves `true` once a watch mode build's first build ended (an output: at
+ * once), `false` when its watcher was closed first (a closed watcher reports
+ * no end of the build it ran).
+ */
+function firstBuildEnd(
+  output: Awaited<ReturnType<vite.ViteBuilder['build']>>,
+): Promise<boolean> {
+  if (!('on' in output)) {
+    return Promise.resolve(true)
+  }
+  return new Promise((resolve) => {
+    const settle = (built: boolean) => {
+      output.off('event', ended)
+      output.off('close', closed)
+      resolve(built)
+    }
+    const ended = (event: vite.Rolldown.RolldownWatcherEvent) => {
+      if (event.code === 'END' || event.code === 'ERROR') {
+        settle(true)
+      }
+    }
+    const closed = () => settle(false)
+    output.on('event', ended)
+    output.on('close', closed)
+  })
 }
 
 function escapeEntries(entries: Array<string>) {

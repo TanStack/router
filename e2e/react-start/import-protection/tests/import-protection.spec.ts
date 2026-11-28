@@ -14,6 +14,14 @@ function stripLocation(value: string): string {
   return value.replace(/:\d+:\d+$/, '')
 }
 
+// Traces follow the bundler graph from the real entry, through framework
+// package modules. Their steps may carry no line (SPEC J6.5: optional fields).
+function isFrameworkDistFile(file: string): boolean {
+  return /\/(node_modules|packages\/[^/]+\/dist)\//.test(
+    file.replace(/\\/g, '/'),
+  )
+}
+
 function normalizeKeyPath(value: string): string {
   let normalized = stripLocation(value).replace(/\\/g, '/')
   const normalizedFixtureRoot = fixtureRoot.replace(/\\/g, '/')
@@ -123,9 +131,10 @@ function findTypeOnlyProtectedImportHits(
 }
 
 test.use({
-  // The mock proxy returns undefined-ish values, which may cause
-  // React rendering warnings — whitelist those
-  whitelistErrors: [/mock/i, /Cannot read properties/i, /undefined/i],
+  // Mock mode: calling a mock logs the `mockAccess` runtime diagnostic in
+  // dev and production. (A list whose second item is an object would be
+  // read by Playwright as a `[value, options]` fixture tuple.)
+  whitelistErrors: [/^Error: \[import-protection\] Mocked import used/],
 })
 
 test.beforeEach(({}, testInfo) => {
@@ -270,6 +279,7 @@ for (const mode of ['build', 'dev'] as const) {
       const step = v!.trace[i]
       if (step.specifier?.includes('?tsr-split=')) continue
       if (step.file.includes('routeTree.gen')) continue
+      if (step.line == null && isFrameworkDistFile(step.file)) continue
       // In dev mode, the step right after a ?tsr-split= virtual step
       // re-enters the same file — its import may not be locatable.
       const prev = v!.trace[i - 1]
@@ -337,19 +347,19 @@ for (const mode of ['build', 'dev'] as const) {
   })
 }
 
-for (const mode of ['build', 'dev'] as const) {
-  test(`compiler leak violation includes line/col in importer in ${mode}`, async () => {
-    const violations = await readViolations(mode)
-    const v = violations.find(
-      (x) =>
-        x.importer.includes('compiler-leak') &&
-        x.type === 'file' &&
-        /:\d+:\d+$/.test(x.importer),
-    )
-    expect(v).toBeDefined()
-    expect(v!.importer).toMatch(/:\d+:\d+$/)
-  })
-}
+// Dev only: builds decide violations after tree-shaking, and compiler-leak's
+// `secret.server` edge is dead in the client build (SPEC J6.4).
+test('compiler leak violation includes line/col in importer in dev', async () => {
+  const violations = await readViolations('dev')
+  const v = violations.find(
+    (x) =>
+      x.importer.includes('compiler-leak') &&
+      x.type === 'file' &&
+      /:\d+:\d+$/.test(x.importer),
+  )
+  expect(v).toBeDefined()
+  expect(v!.importer).toMatch(/:\d+:\d+$/)
+})
 
 for (const mode of ['build', 'dev'] as const) {
   test(`leaky @tanstack/react-start/server import points to usage site in ${mode}`, async () => {
@@ -395,28 +405,27 @@ for (const mode of ['build', 'dev', 'dev.warm'] as const) {
   })
 }
 
-for (const mode of ['build', 'dev'] as const) {
-  test(`compiler-processed module has code snippet in ${mode}`, async () => {
-    const violations = await readViolations(mode)
+// Dev only, as above.
+test('compiler-processed module has code snippet in dev', async () => {
+  const violations = await readViolations('dev')
 
-    // compiler-leak.ts is processed by the Start compiler (createServerFn),
-    // which shortens the output.  The snippet must still show the original
-    // source lines (mapped via sourcesContent in the compiler's sourcemap).
-    const compilerViolation = violations.find(
-      (v) =>
-        v.envType === 'client' &&
-        v.importer.includes('compiler-leak') &&
-        !!v.snippet,
-    )
+  // compiler-leak.ts is processed by the Start compiler (createServerFn),
+  // which shortens the output.  The snippet must still show the original
+  // source lines (mapped via sourcesContent in the compiler's sourcemap).
+  const compilerViolation = violations.find(
+    (v) =>
+      v.envType === 'client' &&
+      v.importer.includes('compiler-leak') &&
+      !!v.snippet,
+  )
 
-    expect(compilerViolation).toBeDefined()
-    expect(compilerViolation!.snippet).toBeDefined()
-    expect(compilerViolation!.snippet!.lines.length).toBeGreaterThan(0)
+  expect(compilerViolation).toBeDefined()
+  expect(compilerViolation!.snippet).toBeDefined()
+  expect(compilerViolation!.snippet!.lines.length).toBeGreaterThan(0)
 
-    const snippetText = compilerViolation!.snippet!.lines.join('\n')
-    expect(snippetText).toContain('getSecret')
-  })
-}
+  const snippetText = compilerViolation!.snippet!.lines.join('\n')
+  expect(snippetText).toContain('getSecret')
+})
 
 test('file-based violation: SSR importing .client. file', async () => {
   const violations = await readViolations('build')
@@ -668,6 +677,7 @@ test('warm run traces include line numbers', async () => {
     const step = v!.trace[i]
     if (step.specifier?.includes('?tsr-split=')) continue
     if (step.file.includes('routeTree.gen')) continue
+    if (step.line == null && isFrameworkDistFile(step.file)) continue
     const prev = v!.trace[i - 1]
     if (prev.specifier?.includes('?tsr-split=')) continue
     if (

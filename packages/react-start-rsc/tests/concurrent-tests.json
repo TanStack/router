@@ -1,0 +1,6 @@
+[
+  "tests/integration/rsc-start-build.test.ts",
+  "tests/integration/rsc-start-build-client-reach.test.ts",
+  "tests/integration/rsc-reach-warm-build-rsbuild.test.ts",
+  "tests/integration/rsc-reach-warm-edit-rsbuild.test.ts"
+]

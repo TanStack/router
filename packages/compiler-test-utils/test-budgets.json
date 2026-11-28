@@ -1,0 +1,6 @@
+{
+  "$comment": "Local iteration limits of the compiler tests, in seconds of Vitest duration at `workers` (--maxWorkers): `slowFileHard`: any slow-tier file; `editToResultHard`: edit to result of one fast-tier file, Nx included. Whole tiers have no budget: CI's shard times are the number that costs. Runs at other worker counts (CI, one worker) are reported, never enforced. Read by src/budget-reporter.ts: report-only, except with COMPILER_TEST_BUDGETS=strict on a quiet machine.",
+  "workers": 4,
+  "slowFileHard": 15,
+  "editToResultHard": 10
+}

@@ -80,10 +80,10 @@ For automatic code splitting to work, there are some rules in place to make sure
 
 #### Do not export route properties
 
-Route properties like `component`, `loader`, etc., should not be exported from the route file. Exporting these properties results in them being bundled into the main application bundle, which means that they will not be code-split.
+Route properties like `component`, `loader`, etc., should not be exported from the route file. Exporting these properties results in them being bundled into the main application bundle, which means that they will not be code-split. The build warns once, at the first such export, naming the file and the exports.
 
 ```tsx
-export const Route = createRoute('/posts')({
+export const Route = createFileRoute('/posts')({
   // ...
   notFoundComponent: PostsNotFoundComponent,
 })
@@ -100,6 +100,47 @@ function PostsNotFoundComponent() {
   // ✅
   // ...
 }
+```
+
+#### Where top-level code goes
+
+- Code only a split property uses (a helper, a constant, an import) moves into that property's chunk, and its initialiser runs when the chunk loads.
+- Code several properties read (two split properties, or a split one and one that stays, such as the `loader`) exists once, in one shared module the route file and the chunks import, unless it reads `Route`: then each chunk has its own copy. `Route` and what `export const` declares exist once too: chunks import them from the route file.
+- Top-level statements (`Sentry.init()`, `registry.set(…)`, an `if` block) stay in the route file and run when it loads. A declaration or import that only moved code used (in a type too) is removed when nothing left in the route file reads it. Code nothing used to begin with stays in the route file, and runs once.
+- Other code a split chunk shares with the route file (a value an exported function or a top-level statement also uses, an exported function or class) is copied into the chunk, with the top-level statements that use it: the chunk has its own instance, and those statements run again when it loads. Assigning a variable is not reading it: a `let` a property that stays only assigns (`beforeLoad: () => { user = … }`) and a split property reads is two variables, and the split one never sees the assignment. To keep one instance, read it from an option that stays or export it with `export const`.
+
+```tsx
+import { createFileRoute } from '@tanstack/react-router'
+import { createStore } from '../store'
+
+// the loader and the component read it: one shared module both import
+const store = createStore()
+
+// moves into the component's chunk
+function PostList() {
+  return (
+    <ul>
+      {store.posts.map((p) => (
+        <li key={p.id}>{p.title}</li>
+      ))}
+    </ul>
+  )
+}
+
+export const Route = createFileRoute('/posts')({
+  loader: () => store.load(),
+  component: PostList,
+})
+```
+
+#### What stays in the route file
+
+A property is not split when its value is `true`, `false`, `null` or `undefined` (the parent's applies), when it is an exported binding (see above), or when it is written as a getter or setter, a spread or a computed key. A method (`loader() {}`, `async loader() {}`) is split as a function would be. Some values cannot be split and keep working in the route file: a member of an object or of a namespace import (`pages.Home`), a value in `satisfies` or with a `!`, a class, an array-pattern binding, a sequence, and a call whose arguments hold JSX or TypeScript syntax (`memo(() => <p />)`; `memo(Page)` is split). A loader object written in the route options (`loader: { handler, staleReloadMode }`) splits its `handler` the way a function loader is split, and the object with its other options stays in the route file; it stays whole when its `handler` is a getter or followed by a spread. A loader object held by a local `const` (`const loader = { handler, staleReloadMode }`, then `loader` in the options) stays whole in the route file. Any other object is not supported when the loader is split: one that is imported, returned by a call (`Object.freeze({ … })`) or chosen by a condition. Write it in the route options or in a local `const`. A split property whose code would assign a variable the route file or another split property also uses (`count++` on a module `let` the `loader` or the split `component` reads) stays in the route file too, so there is one variable.
+
+A function or method that uses its own `this` or `super` stays in the route file as written, because splitting can change what `this` refers to. `this` inside an arrow function counts; inside a nested `function`, method or class it is that function's own and does not. The build warns at the property, for example:
+
+```txt
+[tanstack-router] The `loader` option of src/routes/posts.tsx uses `this`, so it is not code-split (splitting can change what `this` refers to). Use an arrow function or avoid `this` to split it.
 ```
 
 **That's it!** There are no other restrictions. You can use any other JavaScript or TypeScript features in your route files as you normally would. If you run into any issues, please [open an issue](https://github.com/tanstack/router/issues) on GitHub.
@@ -181,6 +222,8 @@ function PostsComponent() {
   // ...
 }
 ```
+
+Write the groupings in the route file, as an array literal or a `const` declared there: the compiler reads them from the file and cannot read an imported value. Each group lists options that can be split (`loader`, `component`, `pendingComponent`, `errorComponent`, `notFoundComponent`), each option in one group at most. Groupings that break these rules fail the build, positioned at the value, and so do invalid ones returned by `splitBehavior` or set as `defaultBehavior`.
 
 This will create a single chunk that includes both the `loader` and the `component` for this specific route, overriding both the default behavior and any programmatic split behavior defined in your bundler config.
 

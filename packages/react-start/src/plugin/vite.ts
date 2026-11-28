@@ -27,7 +27,6 @@ export function tanstackStart(
     framework: 'react',
     defaultEntryPaths: reactStartDefaultEntryPaths,
     providerEnvironmentName: START_ENVIRONMENT_NAMES.server,
-    ssrIsProvider: true,
     ssrResolverStrategy: {
       type: 'default',
     },
@@ -42,10 +41,9 @@ export function tanstackStart(
     corePluginOpts = {
       ...corePluginOpts,
       providerEnvironmentName: rscConfig.providerEnvironmentName,
-      ssrIsProvider: false,
       ssrResolverStrategy: rscConfig.ssrResolverStrategy,
       serializationAdapters: rscConfig.serializationAdapters,
-      compilerTransforms: rscConfig.compilerTransforms,
+      rsc: rscConfig.rsc,
     }
   }
   return [

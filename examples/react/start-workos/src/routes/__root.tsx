@@ -2,7 +2,6 @@ import { Box, Button, Card, Container, Flex, Theme } from '@radix-ui/themes';
 import { HeadContent, Link, Outlet, Scripts, createRootRoute } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { Suspense } from 'react';
-import { getSignInUrl } from '@workos/authkit-tanstack-react-start';
 import { AuthKitProvider, getAuthAction } from '@workos/authkit-tanstack-react-start/client';
 import Footer from '../components/footer';
 import SignInButton from '../components/sign-in-button';
@@ -29,18 +28,14 @@ export const Route = createRootRoute({
     // getAuthAction() returns auth state without accessToken, safe for client
     // Pass to AuthKitProvider as initialAuth to avoid loading flicker
     const auth = await getAuthAction();
-    const url = await getSignInUrl();
-    return {
-      auth,
-      url,
-    };
+    return { auth };
   },
   component: RootComponent,
   notFoundComponent: () => <div>Not Found</div>,
 });
 
 function RootComponent() {
-  const { auth, url } = Route.useLoaderData();
+  const { auth } = Route.useLoaderData();
   return (
     <RootDocument>
       <AuthKitProvider initialAuth={auth}>
@@ -67,7 +62,7 @@ function RootComponent() {
                         </Flex>
 
                         <Suspense fallback={<div>Loading...</div>}>
-                          <SignInButton user={auth.user} url={url} />
+                          <SignInButton user={auth.user} />
                         </Suspense>
                       </header>
                     </Flex>

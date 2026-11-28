@@ -7,7 +7,15 @@ function buildRouteTreeFileFooter(opts: {
   routerFilePath: string
   framework: TanStackStartCoreOptions['framework']
   userFooter?: Array<string> | (() => Array<string>)
+  quoteStyle: 'single' | 'double'
+  semicolons: boolean
 }): Array<string> {
+  // (in the route tree's code style, like the generator's own output)
+  const q = opts.quoteStyle === 'double' ? '"' : "'"
+  const semi = opts.semicolons ? ';' : ''
+  const quoted = (value: string) =>
+    `${q}${value.replaceAll('\\', '\\\\').replaceAll(q, `\\${q}`)}${q}`
+
   function getImportPath(absolutePath: string) {
     let relativePath = path.relative(
       path.dirname(opts.generatedRouteTreePath),
@@ -38,24 +46,24 @@ function buildRouteTreeFileFooter(opts: {
 
   appendFooterBlock(
     footer,
-    `import type { getRouter } from '${getImportPath(opts.routerFilePath)}'`,
+    `import type { getRouter } from ${quoted(getImportPath(opts.routerFilePath))}${semi}`,
   )
 
   if (opts.startFilePath) {
     appendFooterBlock(
       footer,
-      `import type { startInstance } from '${getImportPath(opts.startFilePath)}'`,
+      `import type { startInstance } from ${quoted(getImportPath(opts.startFilePath))}${semi}`,
     )
   } else {
     appendFooterBlock(
       footer,
-      `import type { createStart } from '@tanstack/${opts.framework}-start'`,
+      `import type { createStart } from ${quoted(`@tanstack/${opts.framework}-start`)}${semi}`,
     )
   }
 
   appendFooterBlock(
     footer,
-    `declare module '@tanstack/${opts.framework}-start' {
+    `declare module ${quoted(`@tanstack/${opts.framework}-start`)} {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>`,
@@ -95,5 +103,7 @@ export function buildRouteTreeFileFooterFromConfig(opts: {
     routerFilePath: resolvedStartConfig.routerFilePath,
     framework: opts.corePluginOpts.framework,
     userFooter: startConfig.router.routeTreeFileFooter,
+    quoteStyle: startConfig.router.quoteStyle,
+    semicolons: startConfig.router.semicolons,
   })
 }
