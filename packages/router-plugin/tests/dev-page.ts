@@ -9,8 +9,8 @@
  * (`importServer`).
  */
 import react from '@vitejs/plugin-react'
-import { onTestFinished } from 'vitest'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
+import { closeAtEnd } from './test-end'
 import type {
   PluginHost,
   PluginHostApp,
@@ -60,19 +60,16 @@ export function createReactDevPage(options: {
   files: Record<string, string>
   plugins: (app: PluginHostApp) => Array<PluginOption>
 }): Promise<PluginHost> {
-  const starting = createPluginHost({
-    dir: import.meta.dirname,
-    prefix: '.dev-page-',
-    files: { ...options.files, [renderProbe.slice(1)]: renderProbeSource },
-    client: true,
-    config: { optimizeDeps: { noDiscovery: true, include: prebundled } },
-    plugins: (app) => [...options.plugins(app), react()],
-  })
-  onTestFinished(() =>
-    starting.then(
-      (host) => host.close(),
-      () => {},
-    ),
+  return closeAtEnd(
+    () =>
+      createPluginHost({
+        dir: import.meta.dirname,
+        prefix: '.dev-page-',
+        files: { ...options.files, [renderProbe.slice(1)]: renderProbeSource },
+        client: true,
+        config: { optimizeDeps: { noDiscovery: true, include: prebundled } },
+        plugins: (app) => [...options.plugins(app), react()],
+      }),
+    (host) => host.close(),
   )
-  return starting
 }

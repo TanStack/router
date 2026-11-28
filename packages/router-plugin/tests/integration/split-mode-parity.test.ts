@@ -24,7 +24,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { pluginReact } from '@rsbuild/plugin-react'
 import react from '@vitejs/plugin-react'
-import { beforeAll, describe, expect, test } from 'vitest'
+import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import {
@@ -40,6 +40,7 @@ import {
 import { startRouterDevServer } from '../dev-server'
 import type { CodeSplitGroupings, RouterPluginOptions } from '../build-harness'
 import type { RsbuildPlugin } from '@rsbuild/core'
+import type { BuildResult } from '@tanstack/compiler-test-utils/build-harness'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 const timeout = 90_000
@@ -345,6 +346,26 @@ describe('the split decision in dev and in a production build', () => {
   const deletedCode: Record<string, string> = {}
 
   // (what the tests read, taken once; each server closes once observed)
+  let viteDev: Promise<{ url?: string; close: () => Promise<void> }> | undefined
+  let rsbuildDev:
+    | Promise<{ url?: string; close: () => Promise<void> }>
+    | undefined
+  let viteBuild: Promise<BuildResult> | undefined
+  let rsbuildBuild: Promise<BuildResult> | undefined
+  afterAll(async () => {
+    for (const server of [viteDev, rsbuildDev]) {
+      await server?.then(
+        (opened) => opened.close(),
+        () => {},
+      )
+    }
+    for (const built of [viteBuild, rsbuildBuild]) {
+      await built?.then(
+        (app) => app.dispose(),
+        () => {},
+      )
+    }
+  })
   beforeAll(async () => {
     const files = appFiles()
     const entry = `export * from './app'\n`
@@ -352,7 +373,7 @@ describe('the split decision in dev and in a production build', () => {
     // build sets the process's `NODE_ENV` to `production` while it runs
     // (as a build command does), and a dev server starting meanwhile would
     // be configured from it.
-    const viteServer = await startRouterDevServer({
+    viteDev = startRouterDevServer({
       browser: true,
       files: { ...files, ...vitePageFiles },
       pluginOptions,
@@ -369,6 +390,7 @@ describe('the split decision in dev and in a production build', () => {
         },
       },
     })
+    const viteServer = await viteDev
     try {
       observations.viteDev = await observeDevPage(viteServer.url!)
     } finally {
@@ -376,7 +398,7 @@ describe('the split decision in dev and in a production build', () => {
     }
     // One dev server at a time: a second one starting meanwhile changes
     // the process's environment the first one is configured from.
-    const rsbuildServer = await createRsbuildDevServer({
+    rsbuildDev = createRsbuildDevServer({
       dir: harnessDir,
       prefix: '.split-mode-parity-rsbuild-',
       browser: true,
@@ -405,6 +427,7 @@ describe('the split decision in dev and in a production build', () => {
         } satisfies RsbuildPlugin,
       ],
     })
+    const rsbuildServer = await rsbuildDev
     try {
       observations.rsbuildDev = await observeDevPage(rsbuildServer.url!)
     } finally {
@@ -412,24 +435,22 @@ describe('the split decision in dev and in a production build', () => {
     }
     await Promise.all([
       (async () => {
-        const app = await buildShared({
+        const app = await (viteBuild = buildShared({
           bundler: 'vite',
           env: 'client',
           files: { ...files, 'entry.ts': entry },
           pluginOptions,
-        })
+        }))
         observations.viteBuild = await observeBuild(app)
         deletedCode.vite = app.where('MARK_DELETED_HEADER')
-        await app.dispose()
       })(),
       (async () => {
-        const app = await buildSharedWithRsbuild({
+        const app = await (rsbuildBuild = buildSharedWithRsbuild({
           files: { ...files, 'entry.ts': entry },
           pluginOptions,
-        })
+        }))
         observations.rsbuildBuild = await observeBuild(app)
         deletedCode.rsbuild = app.where('MARK_DELETED_HEADER')
-        await app.dispose()
       })(),
     ])
   }, timeout)

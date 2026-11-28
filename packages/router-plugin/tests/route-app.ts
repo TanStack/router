@@ -10,7 +10,7 @@
  * query or registration.
  *
  * Client semantics run in a real browser: every check is a script run in
- * the file's page (`runInPage`: a fresh document of the app per run), which
+ * a page of its own in the file's browser context (`runInPage`), which
  * imports the route module from the dev server
  * with real ES module linking, the real Vite client and the framework's
  * refresh runtime, and renders with the real framework's client renderer
@@ -45,13 +45,14 @@ import react from '@vitejs/plugin-react'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import solid from 'vite-plugin-solid'
 import { parseSync, transformWithOxc } from 'vite'
-import { expect, onTestFinished } from 'vitest'
+import { expect } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import { DanglingNameError } from '@tanstack/compiler-test-utils/build-harness'
 import { readNames } from '@tanstack/compiler-test-utils/free-names'
 import { clientGlobals } from '@tanstack/compiler-test-utils/known-globals'
 import { tanstackRouter } from '../src/vite'
+import { closeAtEnd } from './test-end'
 import type { ChannelDiagnostic } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import type {
   BrowserPage,
@@ -685,16 +686,22 @@ interface HostState {
 /** The shared hosts of the running file, by configuration (`hostKey`). */
 const hosts = new Map<string, Promise<HostState>>()
 
-/** The page the running file's routes run in (a browser context of its own). */
+/**
+ * A page of the running file's browser context, and the pages of that
+ * context no run holds now (each run takes one, or a new one when another
+ * run holds them all).
+ */
 let filePage: Promise<BrowserPage> | undefined
+const idlePages: Array<Page> = []
 
 /**
- * Closes the running file's page, then its shared hosts, one at a time,
+ * Closes the running file's browser context, then its shared hosts, one at a time,
  * the last started first: when a file ends (`route-hosts-setup.ts`).
  */
 export async function closeRouteHosts() {
   const page = filePage
   filePage = undefined
+  idlePages.length = 0
   await page?.then(
     (opened) => opened.close(),
     () => {},
@@ -730,14 +737,14 @@ export const pageHtml = `<!doctype html>
  * imports a module of the page (real ES module linking), and runs `script`:
  * an async function body with the module's namespace as `module`; its JSON
  * value is the result, with the run's errors and console. The page leaves
- * the document when the run ends.
+ * the document when the run ends (a page that cannot fails the run).
  */
 export async function runInPage<T = unknown>(
   page: Page,
   host: PluginHost,
   url: string,
   script = '',
-  /** Clears the origin's `localStorage` and `sessionStorage` first. */
+  /** Clears the origin's `localStorage` first (`sessionStorage` always). */
   clearStorage = false,
 ): Promise<PageRun<T>> {
   const errors: Array<string> = []
@@ -750,21 +757,40 @@ export async function runInPage<T = unknown>(
     // (the browser's own `/favicon.ico` request, which no app serves)
     if (
       message.type() === 'error' &&
-      !message.location().url.endsWith('/favicon.ico')
+      new URL(message.location().url || 'about:blank').pathname !==
+        '/favicon.ico'
     ) {
       errors.push(message.text())
     }
   }
   page.on('pageerror', onError)
   page.on('console', onConsole)
+  let timer: ReturnType<typeof setTimeout> | undefined
   let run: PageRun<T>
   try {
-    await page.goto(host.dev.url!)
+    await page.goto(host.dev.url!, { timeout: pageRunLimit })
     // A string, run as the page's own code: a function would be serialised
     // from this module as the test runner transformed it
-    const result = (await page.evaluate(
-      `(async () => {\n${clearStorage ? 'localStorage.clear(); sessionStorage.clear()\n' : ''}const module = await import(${JSON.stringify(new URL(url, host.dev.url).href)})\n${script}\n})()`,
-    )) as T
+    const evaluated = page.evaluate(
+      `(async () => {\nsessionStorage.clear()\n${clearStorage ? 'localStorage.clear()\n' : ''}const module = await import(${JSON.stringify(new URL(url, host.dev.url).href)})\n${script}\n})()`,
+    )
+    evaluated.catch(() => {})
+    // (an import or a script that never settles fails the run, as the run
+    // pages of compiler-test-utils/browser bounded it)
+    const result = (await Promise.race([
+      evaluated,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () =>
+            reject(
+              new Error(
+                `the import and script did not settle within ${pageRunLimit} ms`,
+              ),
+            ),
+          pageRunLimit,
+        )
+      }),
+    ])) as T
     run = { result, errors, console: messages }
   } catch (error) {
     throw new Error(
@@ -776,6 +802,7 @@ export async function runInPage<T = unknown>(
       { cause: error },
     )
   } finally {
+    clearTimeout(timer)
     page.off('pageerror', onError)
     page.off('console', onConsole)
   }
@@ -784,6 +811,9 @@ export async function runInPage<T = unknown>(
   await page.goto('about:blank')
   return run
 }
+
+/** How long a page run's load, and then its import and script, may take each. */
+const pageRunLimit = 15_000
 
 function hostKey(options: RouteAppOptions, root: boolean) {
   return JSON.stringify(
@@ -994,8 +1024,8 @@ export interface RouteApp {
   /** The route file as written. */
   code: string
   /**
-   * Runs `body` (an async function body) in a fresh document of the file's
-   * page and returns its JSON value. In scope: `exports` and `Route` (the
+   * Runs `body` (an async function body) in a page of its own in the file's
+   * browser context and returns its JSON value. In scope: `exports` and `Route` (the
    * route module and its route, imported from the dev server), `options`,
    * `trigger(option)`, `load(option)` (a component after `preload()`),
    * `render(option, props?)` and `renderComponent(component, props?)` (the
@@ -1093,15 +1123,13 @@ export async function loadRoute(
   const key = hostKey(options, root)
   const shared = custom ? undefined : hosts.get(key)
   const created = shared === undefined
-  const starting = shared ?? startHost(options, root, files)
-  if (custom) {
-    onTestFinished(() =>
-      starting.then(
+  const starting = custom
+    ? closeAtEnd(
+        () => startHost(options, root, files),
         ({ host }) => host.close(),
-        () => {},
-      ),
-    )
-  } else if (created) {
+      )
+    : (shared ?? startHost(options, root, files))
+  if (!custom && created) {
     hosts.set(key, starting)
     // (a start that failed is not reused)
     starting.catch(() => hosts.delete(key))
@@ -1117,17 +1145,10 @@ export async function loadRoute(
   }
 
   /**
-   * The file's page (a browser context of its own); a route's first run
-   * starts without the cookies and the origin's storage of an earlier test.
+   * A route's first run starts without the cookies and the origin's
+   * storage of an earlier test.
    */
   let fresh = true
-  const pageOf = async (clear: boolean) => {
-    const { page } = await (filePage ??= openPage('about:blank'))
-    if (clear) {
-      await page.context().clearCookies()
-    }
-    return page
-  }
   const runPage = async <T>(
     body: string,
     runOptions: { before?: string } = {},
@@ -1136,9 +1157,17 @@ export async function loadRoute(
     const hmr = state.host.dev.hmr.length
     const clear = fresh
     fresh = false
+    // A page no other run holds, of the file's browser context
+    const context = (
+      await (filePage ??= openPage('about:blank'))
+    ).page.context()
+    if (clear) {
+      await context.clearCookies()
+    }
+    const page = idlePages.pop() ?? (await context.newPage())
     try {
-      return await runInPage<T>(
-        await pageOf(clear),
+      const run = await runInPage<T>(
+        page,
         state.host,
         appUrl(probeFile),
         `${prelude(url, [...own], at, `${options.pageScript ?? ''}\n${runOptions.before ?? ''}`)}
@@ -1152,7 +1181,11 @@ ${body}
 ])`,
         clear,
       )
+      idlePages.push(page)
+      return run
     } catch (error) {
+      // (a page whose run failed goes: it may not have left the document)
+      await page.close().catch(() => {})
       const sent = state.host.dev.hmr
         .slice(hmr)
         .map((message) => `${message.type} ${message.paths.join(', ')}`)

@@ -39,8 +39,8 @@ import {
   withBuildEnvironment,
 } from '@tanstack/compiler-test-utils/build-harness'
 import { mergeRsbuildConfig } from '@rsbuild/core'
-import { onTestFinished } from 'vitest'
 import { pluginReact } from '@rsbuild/plugin-react'
+import { closeAtEnd } from './test-end'
 import type {
   App,
   AppInfo,
@@ -185,9 +185,7 @@ export function routeApp(
  * app is removed when the test ends.
  */
 export function build(options: BuildOptions): Promise<BuildResult> {
-  const building = buildShared(options)
-  onTestFinished(() => building.then(disposeApp, () => {}))
-  return building
+  return closeAtEnd(() => buildShared(options), disposeApp)
 }
 
 const disposeApp = (app: BuildResult) => app.dispose()
@@ -395,9 +393,7 @@ const rsbuildEntryGlobal = '__routerBuildHarnessEntry'
 export function buildWithRsbuild(
   options: RsbuildBuildOptions,
 ): Promise<BuildResult> {
-  const building = buildSharedWithRsbuild(options)
-  onTestFinished(() => building.then(disposeApp, () => {}))
-  return building
+  return closeAtEnd(() => buildSharedWithRsbuild(options), disposeApp)
 }
 
 type RsbuildBuildOptions = Pick<

@@ -21,6 +21,7 @@ const serialModules = [
   'production-bundle',
   'route-hosts-setup',
   'serial',
+  'test-end',
 ]
 const serialExports = {
   'route-app': ['loadRoute', 'closeRouteHosts'],
@@ -57,6 +58,24 @@ const serialImportExpression = {
   selector: `ImportExpression[source.value=/^(?:vitest|@tanstack.compiler-test-utils.test-scope|(?:\\.\\.?.)+(?:${[...serialModules, ...Object.keys(serialExports)].join('|')})(?:\\.[cm]?[jt]s)?)$/]`,
   message,
 }
+/**
+ * No test of a file runs at once with another but in `integration-concurrent`
+ * (a project setting, not a test's): a serial file's openers register on
+ * whichever test runs.
+ */
+const noConcurrentTests = [
+  {
+    selector: "MemberExpression[property.name='concurrent']",
+    message:
+      'Tests run concurrently only in integration-concurrent (concurrent-tests.js), as a project.',
+  },
+  {
+    selector:
+      "CallExpression > ObjectExpression > Property[key.name='concurrent']",
+    message:
+      'Tests run concurrently only in integration-concurrent (concurrent-tests.js), as a project.',
+  },
+]
 const tests = (/** @type {Array<string>} */ names) =>
   names.map((name) => `tests/${name}.ts`)
 
@@ -69,12 +88,21 @@ export default [
     ignores: ['tests/**/test-files/**'],
   },
   {
+    name: 'router-plugin/no-concurrent-tests',
+    files: ['tests/**/*.ts'],
+    rules: { 'no-restricted-syntax': ['error', ...noConcurrentTests] },
+  },
+  {
     name: 'router-plugin/no-serial-openers',
     files: ['tests/**/!(*.test).ts'],
     ignores: tests([...serialModules, ...Object.keys(serialExports)]),
     rules: {
       'no-restricted-imports': noSerialImports,
-      'no-restricted-syntax': ['error', serialImportExpression],
+      'no-restricted-syntax': [
+        'error',
+        serialImportExpression,
+        ...noConcurrentTests,
+      ],
     },
   },
   {
@@ -82,7 +110,11 @@ export default [
     files: concurrentTests.map((file) => `tests/${file}`),
     rules: {
       'no-restricted-imports': noSerialImports,
-      'no-restricted-syntax': ['error', serialImportExpression],
+      'no-restricted-syntax': [
+        'error',
+        serialImportExpression,
+        ...noConcurrentTests,
+      ],
     },
   },
 ]

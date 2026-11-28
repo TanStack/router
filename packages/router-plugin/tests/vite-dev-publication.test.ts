@@ -11,7 +11,7 @@
  * Source: design-routeset-v5.1.md §6 step 4 (the reviews' `viteGeneratorOnly`,
  * `symlink-tree`, `confirm` and `pluginReuseAcrossServers` drivers).
  */
-import { symlink, writeFile } from 'node:fs/promises'
+import { readFile, symlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { setFlagsFromString } from 'node:v8'
@@ -156,6 +156,28 @@ test('an older tree event another plugin holds in its hotUpdate: the newer tree 
   await addRoute(server, path.join(root, 'src/routes/new.tsx'), '/new')
   await serves(server, url, 'routes/new')
   release()
+})
+
+// A tree on disk that is no longer the one published (a git checkout, an
+// editor): the next update of a known route file prints it again, as the
+// routes are (SPEC J1.10). The tree is written back once the route added is
+// served (its publication), and this file's watcher reports nothing on its
+// own: the update comes after the outside write, in that order.
+test('the published tree replaced on disk by an earlier one is printed again at the next route update', async () => {
+  const root = await routeApp()
+  const url = '/src/routeTree.gen.ts'
+  const tree = path.join(root, 'src/routeTree.gen.ts')
+  const server = await devServer(root, [tanstackRouterGenerator(options(root))])
+  await server.environments.client.transformRequest(url)
+  const earlier = await readFile(tree, 'utf8')
+  await addRoute(server, path.join(root, 'src/routes/new.tsx'), '/new')
+  await serves(server, url, 'routes/new')
+  const published = await readFile(tree, 'utf8')
+  await writeFile(tree, earlier)
+  const index = path.join(root, 'src/routes/index.tsx')
+  await writeFile(index, route('/'))
+  server.watcher.emit('change', index)
+  await expect.poll(() => readFile(tree, 'utf8')).toBe(published)
 })
 
 test('one plugin object: a dev server, closed, then a build with it', async () => {

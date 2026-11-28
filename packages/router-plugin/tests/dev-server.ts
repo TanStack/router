@@ -18,8 +18,9 @@ import { fileURLToPath } from 'node:url'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
-import { expect, onTestFinished } from 'vitest'
+import { expect } from 'vitest'
 import { tanstackRouter } from '../src/vite'
+import { closeAtEnd } from './test-end'
 import { loadRoute } from './route-app'
 import type {
   DevServer,
@@ -250,14 +251,10 @@ return [
 export function routerDevServer(
   options: RouterDevServerOptions,
 ): Promise<DevServer> {
-  const starting = startRouterDevServer(options)
-  onTestFinished(() =>
-    starting.then(
-      (server) => server.close(),
-      () => {},
-    ),
+  return closeAtEnd(
+    () => startRouterDevServer(options),
+    (server) => server.close(),
   )
-  return starting
 }
 
 /** `routerDevServer` for a file's hook: the caller closes it. */

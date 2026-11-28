@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url'
 import { createElement } from 'react'
 import { renderToString } from 'react-dom/server'
 import { createAppDirectory } from '@tanstack/compiler-test-utils/app-directory'
-import { onTestFinished } from 'vitest'
+import { closeAtEnd } from './test-end'
 
 const harnessDir = path.dirname(fileURLToPath(import.meta.url))
 
@@ -104,16 +104,14 @@ export async function startWatchSession(
   bundler: WatchBundler,
   options: WatchSessionOptions = {},
 ): Promise<WatchSession> {
-  const creating = createAppDirectory(harnessDir, '.generator-watch-')
   let close: () => Promise<unknown> = () => Promise.resolve()
-  onTestFinished(async () => {
-    await close()
-    await creating.then(
-      (root) => rm(root, { recursive: true, force: true }),
-      () => {},
-    )
-  })
-  const root = await creating
+  const root = await closeAtEnd(
+    () => createAppDirectory(harnessDir, '.generator-watch-'),
+    async (created) => {
+      await close()
+      await rm(created, { recursive: true, force: true })
+    },
+  )
   const file = (relative: string) => path.join(root, relative)
   await mkdir(file('routes'), { recursive: true })
   // An app package of its own: the generated route tree imports route

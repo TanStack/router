@@ -16,7 +16,14 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { pluginReact } from '@rsbuild/plugin-react'
 import react from '@vitejs/plugin-react'
-import { beforeAll, describe, expect, onTestFinished, test } from 'vitest'
+import {
+  afterAll,
+  beforeAll,
+  describe,
+  expect,
+  onTestFinished,
+  test,
+} from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
@@ -37,6 +44,8 @@ import { rootRoute, routeHead } from '../build-harness'
 import { pageHtml, runInPage } from '../route-app'
 import { openWebpackHmrPage } from '../serial'
 import type { AnySourceMap } from '@tanstack/compiler-test-utils/source-maps'
+import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
+import type { PluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 
 const timeout = 60_000
 
@@ -168,9 +177,21 @@ describe('vite dev server', () => {
     origin: string
     loadedWithRoute: Array<string>
   }
-  // (what the tests read, taken once; the host closes then)
+  // (what the tests read, taken once)
+  let hosting: Promise<PluginHost> | undefined
+  let paging: Promise<BrowserPage> | undefined
+  afterAll(async () => {
+    await paging?.then(
+      (page) => page.close(),
+      () => {},
+    )
+    await hosting?.then(
+      (host) => host.close(),
+      () => {},
+    )
+  })
   beforeAll(async () => {
-    const host = await createPluginHost({
+    hosting = createPluginHost({
       dir: appsDir,
       prefix: '.dev-source-maps-',
       files: {
@@ -204,8 +225,10 @@ describe('vite dev server', () => {
         react(),
       ],
     })
-    const page = await openPage('about:blank')
-    try {
+    const host = await hosting
+    paging = openPage('about:blank')
+    const page = await paging
+    {
       const {
         result: { stacks, loadedWithRoute },
       } = await runInPage<{
@@ -232,9 +255,6 @@ describe('vite dev server', () => {
         maps.set(location, inlineSourceMap(body))
       }
       throws = { stacks, maps, root: host.root, origin, loadedWithRoute }
-    } finally {
-      await page.close()
-      await host.close()
     }
   }, timeout)
 
