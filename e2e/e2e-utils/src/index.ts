@@ -1,4 +1,5 @@
 export { apiTest } from './api-fixture'
+export { spawnDevServer, stopDevServer } from './devServerProcess'
 export { preOptimizeDevServer, waitForServer } from './devServerWarmup'
 export { collectBrowserErrors, test } from './fixture'
 export { createHmrFileEditor, replaceAll } from './hmrFileEditor'

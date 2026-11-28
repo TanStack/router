@@ -1,8 +1,12 @@
-import { execSync, spawn } from 'node:child_process'
+import { execSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { stripVTControlCharacters } from 'node:util'
-import { appServerReadyPattern } from '@tanstack/router-e2e-utils'
+import {
+  appServerReadyPattern,
+  spawnDevServer,
+  stopDevServer,
+} from '@tanstack/router-e2e-utils'
 import { chromium, expect } from '@playwright/test'
 import type { FullConfig } from '@playwright/test'
 
@@ -36,34 +40,6 @@ async function waitForHttpOk(url: string, timeoutMs: number): Promise<void> {
     }
     await new Promise((r) => setTimeout(r, 200))
   }
-}
-
-async function killChild(child: ReturnType<typeof spawn>): Promise<void> {
-  if (child.exitCode !== null || child.killed) return
-  await new Promise<void>((resolve) => {
-    let resolved = false
-    const done = () => {
-      if (resolved) return
-      resolved = true
-      resolve()
-    }
-    child.once('exit', done)
-    child.once('error', done)
-    try {
-      child.kill('SIGTERM')
-    } catch {
-      done()
-      return
-    }
-    setTimeout(() => {
-      try {
-        child.kill('SIGKILL')
-      } catch {
-        // ignore
-      }
-      setTimeout(done, 500)
-    }, 3000)
-  })
 }
 
 function captureBuild(cwd: string): void {
@@ -118,27 +94,14 @@ async function captureDev(cwd: string): Promise<void> {
     if (fs.existsSync(p)) fs.unlinkSync(p)
   }
 
-  const port = 0
   const logFile = path.resolve(cwd, 'error-dev.log')
 
   const out = fs.createWriteStream(logFile)
-  const toolchain = process.env.E2E_TOOLCHAIN ?? 'vite'
-  const command =
-    toolchain === 'rsbuild'
-      ? ['exec', 'rsbuild', 'dev', '--port', String(port)]
-      : ['exec', 'vite', 'dev', '--port', String(port)]
-
-  const child = spawn('pnpm', command, {
+  const child = spawnDevServer(
     cwd,
-    env: {
-      ...process.env,
-      BEHAVIOR: 'error',
-      PORT: String(port),
-      VITE_SERVER_PORT: String(port),
-      VITE_NODE_ENV: 'test',
-    },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
+    toolchain === 'rsbuild' ? 'rsbuild' : 'vite',
+    { BEHAVIOR: 'error', VITE_NODE_ENV: 'test' },
+  )
 
   const logChunks: Array<string> = []
   const record = (data: Buffer) => {
@@ -186,7 +149,7 @@ async function captureDev(cwd: string): Promise<void> {
 
     await new Promise((r) => setTimeout(r, 750))
   } finally {
-    await killChild(child)
+    await stopDevServer(child)
     await new Promise<void>((resolve) => out.end(resolve))
   }
 

@@ -1,9 +1,12 @@
-import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { stripVTControlCharacters } from 'node:util'
 import { chromium, expect } from '@playwright/test'
-import { appServerReadyPattern } from '@tanstack/router-e2e-utils'
+import {
+  appServerReadyPattern,
+  spawnDevServer,
+  stopDevServer,
+} from '@tanstack/router-e2e-utils'
 
 import {
   extractViolationsFromLog,
@@ -33,54 +36,6 @@ async function waitForHttpOk(url: string, timeoutMs: number): Promise<void> {
 
     await new Promise((r) => setTimeout(r, 200))
   }
-}
-
-function startDevServer(cwd: string, port: number): ReturnType<typeof spawn> {
-  const toolchain = process.env.E2E_TOOLCHAIN ?? 'vite'
-  const command =
-    toolchain === 'rsbuild'
-      ? ['exec', 'rsbuild', 'dev', '--port', String(port)]
-      : ['exec', 'vite', 'dev', '--port', String(port)]
-
-  return spawn('pnpm', command, {
-    cwd,
-    env: {
-      ...process.env,
-      PORT: String(port),
-      VITE_SERVER_PORT: String(port),
-      VITE_NODE_ENV: 'test',
-    },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
-}
-
-async function killChild(child: ReturnType<typeof spawn>): Promise<void> {
-  if (child.exitCode !== null || child.killed) return
-  await new Promise<void>((resolve) => {
-    let resolved = false
-    const done = () => {
-      if (resolved) return
-      resolved = true
-      resolve()
-    }
-    child.once('exit', done)
-    child.once('error', done)
-    try {
-      child.kill('SIGTERM')
-    } catch {
-      done()
-      return
-    }
-    setTimeout(() => {
-      try {
-        child.kill('SIGKILL')
-      } catch {
-        // ignore
-      }
-      // Resolve after a grace period even if 'exit' never fires.
-      setTimeout(done, 500)
-    }, 3000)
-  })
 }
 
 type ViolationExpectation = (violations: Array<Violation>) => boolean
@@ -219,12 +174,13 @@ async function navigateAllRoutes(
  * Starts a dev server, navigates all routes, captures violations.
  * Returns the extracted violations array.
  */
-async function runDevPass(
-  cwd: string,
-  port: number,
-): Promise<Array<Violation>> {
+async function runDevPass(cwd: string): Promise<Array<Violation>> {
   const logChunks: Array<string> = []
-  const child = startDevServer(cwd, port)
+  const child = spawnDevServer(
+    cwd,
+    process.env.E2E_TOOLCHAIN === 'rsbuild' ? 'rsbuild' : 'vite',
+    { VITE_NODE_ENV: 'test' },
+  )
 
   child.stdout?.on('data', (d: Buffer) => logChunks.push(d.toString()))
   child.stderr?.on('data', (d: Buffer) => logChunks.push(d.toString()))
@@ -254,7 +210,7 @@ async function runDevPass(
 
     await waitForOutput(() => logChunks.join(''))
   } finally {
-    await killChild(child)
+    await stopDevServer(child)
   }
 
   const text = logChunks.join('')
@@ -268,7 +224,7 @@ async function runDevPass(
  *      modules are pre-transformed so resolveId/transform paths differ.
  */
 async function captureDevViolations(cwd: string): Promise<void> {
-  const coldViolations = await runDevPass(cwd, 0)
+  const coldViolations = await runDevPass(cwd)
 
   fs.writeFileSync(
     path.resolve(cwd, getViolationArtifactName('dev')),
@@ -280,7 +236,7 @@ async function captureDevViolations(cwd: string): Promise<void> {
   )
 
   // Warm pass: the .vite cache from the cold run is still on disk.
-  const warmViolations = await runDevPass(cwd, 0)
+  const warmViolations = await runDevPass(cwd)
 
   fs.writeFileSync(
     path.resolve(cwd, getViolationArtifactName('dev.warm')),

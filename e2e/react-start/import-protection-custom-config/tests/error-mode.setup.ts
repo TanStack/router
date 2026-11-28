@@ -1,8 +1,12 @@
-import { execSync, spawn } from 'node:child_process'
+import { execSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { stripVTControlCharacters } from 'node:util'
-import { appServerReadyPattern } from '@tanstack/router-e2e-utils'
+import {
+  appServerReadyPattern,
+  spawnDevServer,
+  stopDevServer,
+} from '@tanstack/router-e2e-utils'
 import { chromium, expect } from '@playwright/test'
 import type { FullConfig } from '@playwright/test'
 
@@ -21,34 +25,6 @@ async function waitForHttpOk(url: string, timeoutMs: number): Promise<void> {
     }
     await new Promise((r) => setTimeout(r, 200))
   }
-}
-
-async function killChild(child: ReturnType<typeof spawn>): Promise<void> {
-  if (child.exitCode !== null || child.killed) return
-  await new Promise<void>((resolve) => {
-    let resolved = false
-    const done = () => {
-      if (resolved) return
-      resolved = true
-      resolve()
-    }
-    child.once('exit', done)
-    child.once('error', done)
-    try {
-      child.kill('SIGTERM')
-    } catch {
-      done()
-      return
-    }
-    setTimeout(() => {
-      try {
-        child.kill('SIGKILL')
-      } catch {
-        // ignore
-      }
-      setTimeout(done, 500)
-    }, 3000)
-  })
 }
 
 function captureBuild(cwd: string): void {
@@ -84,19 +60,9 @@ function captureBuild(cwd: string): void {
 }
 
 async function captureDevErrors(cwd: string): Promise<void> {
-  const port = 0
   const logChunks: Array<string> = []
 
-  const child = spawn('pnpm', ['exec', 'vite', 'dev', '--port', String(port)], {
-    cwd,
-    env: {
-      ...process.env,
-      PORT: String(port),
-      VITE_SERVER_PORT: String(port),
-      BEHAVIOR: 'error',
-    },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  })
+  const child = spawnDevServer(cwd, 'vite', { BEHAVIOR: 'error' })
 
   child.stdout.on('data', (d: Buffer) => logChunks.push(d.toString()))
   child.stderr.on('data', (d: Buffer) => logChunks.push(d.toString()))
@@ -139,7 +105,7 @@ async function captureDevErrors(cwd: string): Promise<void> {
 
     await new Promise((r) => setTimeout(r, 750))
   } finally {
-    await killChild(child)
+    await stopDevServer(child)
   }
 
   const combined = logChunks.join('')
