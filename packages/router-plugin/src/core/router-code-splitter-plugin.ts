@@ -126,14 +126,8 @@ export function createRouterCodeSplitterPlugin(
   /**
    * Resolves the split groupings of the route file `id` and computes its shared
    * bindings from `code`, remembering them for the file's other modules.
-   * `routeId` is undefined for a file that is not a known route: the
-   * `splitBehavior` option, which decides by route id, is then not consulted.
    */
-  const resolveSharedBindings = (
-    code: string,
-    id: string,
-    routeId: string | undefined,
-  ) => {
+  const resolveSharedBindings = (code: string, id: string) => {
     const fromCode = detectCodeSplitGroupingsFromRoute({
       code,
       filename: id,
@@ -149,10 +143,12 @@ export function createRouterCodeSplitterPlugin(
       }
     }
 
+    const route = routerPluginContext.routesByFile.get(id)
     const pluginSplitBehavior =
-      routeId === undefined
-        ? undefined
-        : (getShouldSplitFn()?.({ routeId }) as CodeSplitGroupings | undefined)
+      route &&
+      (getShouldSplitFn()?.({ routeId: route.routeId }) as
+        | CodeSplitGroupings
+        | undefined)
 
     if (pluginSplitBehavior) {
       const res = splitGroupingsSchema.safeParse(pluginSplitBehavior)
@@ -187,11 +183,7 @@ export function createRouterCodeSplitterPlugin(
   const getSharedBindings = (code: string, baseId: string) => {
     return (
       sharedBindingsMap.get(baseId) ??
-      resolveSharedBindings(
-        code,
-        baseId,
-        routerPluginContext.routesByFile.get(baseId)?.routeId,
-      ).sharedBindings
+      resolveSharedBindings(code, baseId).sharedBindings
     )
   }
 
@@ -203,11 +195,7 @@ export function createRouterCodeSplitterPlugin(
     if (debug) console.info('Compiling Route: ', id)
 
     // The code may have changed since the last compilation: always recompute.
-    const { splitGroupings, sharedBindings } = resolveSharedBindings(
-      code,
-      id,
-      generatorNodeInfo.routeId,
-    )
+    const { splitGroupings, sharedBindings } = resolveSharedBindings(code, id)
 
     const compiledReferenceRoute = compileCodeSplitReferenceRoute({
       code,
@@ -222,7 +210,7 @@ export function createRouterCodeSplitterPlugin(
       addHmr,
       hmrStyle,
       hmrRouteId: generatorNodeInfo.routeId,
-      sharedBindings: sharedBindings.size > 0 ? sharedBindings : undefined,
+      sharedBindings,
       compilerPlugins,
     })
 

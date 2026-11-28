@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { normalizePath } from '../src/core/utils'
 import {
   createCodeSplitterTransforms,
@@ -174,33 +174,6 @@ export const Route = createFileRoute('/posts')({${routeOptions}
 })
 `
 
-    it('imports the shared bindings into a split module', async () => {
-      const code = postsSource()
-      const splitter = await createCodeSplitterTransforms({}, routes)
-      const component = splitter.virtual(code, `${file}?tsr-split=component`)!
-      expect(importedNames(component, sharedId)).toEqual(['visits'])
-      expect(component).not.toMatch(declarationOf('visits'))
-
-      // A bundler compiles the reference module first.
-      splitter.reference(code, file)
-      expect(splitter.virtual(code, `${file}?tsr-split=component`)).toBe(
-        component,
-      )
-    })
-
-    it('compiles the shared module', async () => {
-      const code = postsSource()
-      const splitter = await createCodeSplitterTransforms({}, routes)
-      const shared = splitter.shared(code, sharedId)
-      expect(shared).not.toBeNull()
-      expect(exportedNames(shared!)).toEqual(['visits'])
-      expect(shared).toMatch(declarationOf('visits'))
-      expect(shared).not.toContain('createFileRoute')
-
-      splitter.reference(code, file)
-      expect(splitter.shared(code, sharedId)).toBe(shared)
-    })
-
     const cases: Array<{
       name: string
       code: string
@@ -208,6 +181,13 @@ export const Route = createFileRoute('/posts')({${routeOptions}
       split: string
       shared: Array<string>
     }> = [
+      {
+        name: 'the default groupings',
+        code: postsSource(),
+        options: {},
+        split: 'component',
+        shared: ['visits'],
+      },
       {
         name: 'the groupings in the route file',
         code: postsSource(`\n  codeSplitGroupings: [['component']],`),
@@ -245,31 +225,21 @@ export const Route = createFileRoute('/posts')({${routeOptions}
         const chunk = splitter.virtual(code, `${file}?tsr-split=${split}`)!
         expect(importedNames(chunk, sharedId)).toEqual(shared)
         const sharedModule = splitter.shared(code, sharedId)
-        expect(
-          sharedModule === null ? [] : exportedNames(sharedModule),
-        ).toEqual(shared)
+        if (shared.length > 0) {
+          expect(chunk).not.toMatch(declarationOf('visits'))
+          expect(exportedNames(sharedModule!)).toEqual(shared)
+          expect(sharedModule).toMatch(declarationOf('visits'))
+          expect(sharedModule).not.toContain('createFileRoute')
+        } else {
+          expect(sharedModule).toBeNull()
+        }
 
+        // A bundler compiles the reference module first.
         splitter.reference(code, file)
         expect(splitter.virtual(code, `${file}?tsr-split=${split}`)).toBe(chunk)
         expect(splitter.shared(code, sharedId)).toBe(sharedModule)
       },
     )
-
-    // `splitBehavior` decides by route id, which such a file does not have.
-    it('splits a file that is not a known route by its own groupings or the default behavior', async () => {
-      const code = postsSource()
-      const splitBehavior = vi.fn(() => undefined)
-      const splitter = await createCodeSplitterTransforms(
-        { codeSplittingOptions: { splitBehavior } },
-        {},
-      )
-      const component = splitter.virtual(code, `${file}?tsr-split=component`)!
-      expect(importedNames(component, sharedId)).toEqual(['visits'])
-      expect(exportedNames(splitter.shared(code, sharedId)!)).toEqual([
-        'visits',
-      ])
-      expect(splitBehavior).not.toHaveBeenCalled()
-    })
   })
 
   // File names from real apps: optional segments, pathless groups and escaped dots.

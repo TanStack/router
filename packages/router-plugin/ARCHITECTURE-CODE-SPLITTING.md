@@ -435,8 +435,7 @@ Plugins 2 and 3 also work when plugin 1 has not run in the current process. A
 tool with a persistent transform cache (Vitest's `fsModuleCache`) can restore
 a compiled reference module from disk without transforming it. Plugins 2 and 3
 receive the code of the whole route file, so they compute the same shared
-bindings from it. For a file that is not in `routesByFile` they skip
-`splitBehavior`, which needs a route id.
+bindings from it.
 
 ---
 
