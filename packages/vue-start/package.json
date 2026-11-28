@@ -137,7 +137,6 @@
   "peerDependencies": {
     "@rsbuild/core": "^2.0.5",
     "vite": ">=8.0.0",
-    "vitest": ">=5.1.1",
     "vue": "^3.3.0"
   },
   "peerDependenciesMeta": {
@@ -145,9 +144,6 @@
       "optional": true
     },
     "vite": {
-      "optional": true
-    },
-    "vitest": {
       "optional": true
     }
   }
