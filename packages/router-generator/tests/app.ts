@@ -6,26 +6,22 @@ import {
   mkdir,
   mkdtemp,
   readFile,
-  rm,
   symlink,
   utimes,
   writeFile,
 } from 'node:fs/promises'
 import path from 'node:path'
-import { onTestFinished } from 'vitest'
-import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { Generator, getConfig } from '../src'
 import { recordInputs } from './consumer-inputs'
 import type { Config } from '../src'
 
 /**
- * Creates an app in a temporary directory with the given files (paths
- * relative to the app root) and returns its root. The directory is removed
- * when the test finishes.
+ * Creates an app in a new directory of `dir` (a test's `appRoot`, which it
+ * goes with) with the given files (paths relative to the app root) and
+ * returns its root.
  */
-export async function createApp(files: Record<string, string>) {
-  const root = await mkdtemp(path.join(runDirectory(), 'tsr-app-'))
-  onTestFinished(() => rm(root, { recursive: true, force: true }))
+export async function createApp(dir: string, files: Record<string, string>) {
+  const root = await mkdtemp(path.join(dir, 'tsr-app-'))
   for (const [file, content] of Object.entries(files)) {
     await mkdir(path.dirname(path.join(root, file)), { recursive: true })
     await writeFile(path.join(root, file), content)
@@ -85,9 +81,12 @@ export async function save(root: string, file: string, content: string) {
   return filePath
 }
 
-/** An app with a root route and a route file (id `/wrong`) for each of `files`. */
-export function appWithRoutes(files: Array<string>) {
-  return createApp({
+/**
+ * An app (in `dir`, as `createApp`) with a root route and a route file (id
+ * `/wrong`) for each of `files`.
+ */
+export function appWithRoutes(dir: string, files: Array<string>) {
+  return createApp(dir, {
     'src/routes/__root.tsx': rootRoute(),
     ...Object.fromEntries(
       files.map((file) => [`src/routes/${file}`, fileRoute('/wrong')]),

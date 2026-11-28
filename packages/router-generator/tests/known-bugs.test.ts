@@ -5,10 +5,12 @@
  */
 import path from 'node:path'
 import { parseSync } from 'vite'
-import { describe, expect, test } from 'vitest'
+import { describe, expect } from 'vitest'
 import { createApp, generate, read, rootRoute } from './app'
 import { routeIdOf } from './route-id'
 import { routesOf } from './route-tree'
+import { test } from './test'
+import type { RouteTreeHost } from './route-tree'
 
 /**
  * Runs the generator on an app with a root route and `routes/moved.tsx`
@@ -17,10 +19,12 @@ import { routesOf } from './route-tree'
  * as the generator wrote it.
  */
 async function generateMovedRoute(
+  appRoot: string,
+  routeTreeHost: RouteTreeHost,
   source: string,
   otherFiles: Record<string, string> = {},
 ) {
-  const root = await createApp({
+  const root = await createApp(appRoot, {
     'routes/__root.tsx': rootRoute(),
     'routes/moved.tsx': source,
     ...otherFiles,
@@ -29,7 +33,7 @@ async function generateMovedRoute(
     routesDirectory: path.join(root, 'routes'),
     generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
   })
-  await routesOf(generatedRouteTree)
+  await routesOf(routeTreeHost, generatedRouteTree)
   return read(root, 'routes/moved.tsx')
 }
 
@@ -42,10 +46,16 @@ describe('route constructor imports', () => {
   // from its import: an aliased import (`createFileRoute as route`) is not
   // recognized.
   // Impact: the route keeps its old id when its file moves.
-  test('a moved route with an aliased import of the constructor gets the id of its new path', async () => {
-    const written =
-      await generateMovedRoute(`import { createFileRoute as route } from '@tanstack/react-router'
-export const Route = route('/old')({})`)
+  test('a moved route with an aliased import of the constructor gets the id of its new path', async ({
+    appRoot,
+    routeTreeHost,
+  }) => {
+    const written = await generateMovedRoute(
+      appRoot,
+      routeTreeHost,
+      `import { createFileRoute as route } from '@tanstack/react-router'
+export const Route = route('/old')({})`,
+    )
     expect(await routeIdOf(written)).toBe('/moved')
   })
 
@@ -58,8 +68,13 @@ export const Route = route('/old')({})`)
   // package owns the constructor); fuzzing, 7 unmodified files of real apps.
   // Impact: the written route file declares `createFileRoute` twice and no
   // longer parses, so the app fails to build.
-  test('a moved route importing createFileRoute from a module of the app stays a valid module', async () => {
+  test('a moved route importing createFileRoute from a module of the app stays a valid module', async ({
+    appRoot,
+    routeTreeHost,
+  }) => {
     const written = await generateMovedRoute(
+      appRoot,
+      routeTreeHost,
       `import { createFileRoute } from '../lib/router'
 export const Route = createFileRoute('/old')({})`,
       {

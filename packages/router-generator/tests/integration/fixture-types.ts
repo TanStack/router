@@ -28,8 +28,8 @@ import { typeErrorsOfModules } from '../type-check'
  * Generates the fixture `name` in a copy and returns the type errors of a
  * module asserting that its tree types the fixture's routes.
  */
-export async function typeErrorsOfFixture(name: string) {
-  const dir = await copyFixture(name)
+export async function typeErrorsOfFixture(appRoot: string, name: string) {
+  const dir = await copyFixture(appRoot, name)
   // (temporary files on the copy's filesystem)
   const config = { ...fixtureConfig(name, dir), tmpDir: path.join(dir, 'tmp') }
   await prepareFixture(name, dir)

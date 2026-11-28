@@ -6,7 +6,7 @@
  * full paths stand for the right routes. Slow tier: one TypeScript program
  * per app (each tree augments the router's types globally).
  */
-import { describe, expect, test } from 'vitest'
+import { describe, expect } from 'vitest'
 import {
   appWithRoutes,
   createApp,
@@ -26,13 +26,16 @@ import {
   shapeCases,
 } from '../real-router-cases'
 import { typeAssertions, typeErrorsOf } from '../type-check'
+import { test } from '../test'
 
 describe('route tree types agree with the router', () => {
-  test.each(
+  test.for(
     [...shapeCases, ...frameworkCases].filter(
       (testCase) => testCase.types !== false,
     ),
-  )('$name', (testCase) => checkApp(testCase, { runtime: false }), 60_000)
+  )('$name', { timeout: 60_000 }, (testCase, { appRoot, routeTreeHost }) =>
+    checkApp({ appRoot, routeTreeHost }, testCase, { runtime: false }),
+  )
 
   // Bug: the route tree types the layout route of a route group directory
   // (`(marketing)/route.tsx`) with `fullPath: ''` in `FileRoutesByPath`,
@@ -46,22 +49,27 @@ describe('route tree types agree with the router', () => {
   // links and hooks) say `''` in such a layout while the app sees `/`.
   test(
     'the layout route of a route group directory has the full path of the router in the types',
-    () => checkApp(groupLayout, { runtime: false }),
+    ({ appRoot, routeTreeHost }) =>
+      checkApp({ appRoot, routeTreeHost }, groupLayout, { runtime: false }),
     60_000,
   )
 
   // (the routes of these cases: route-paths.test.ts and real-router.test.ts,
   // with the bugs the last two pin)
-  test.each(childlessLayouts)(
+  test.for(childlessLayouts)(
     'a pathless layout without child routes yet ($name) next to the index route has the routes of the router in the types',
-    (layout) => checkApp(childlessLayoutCase(layout), { runtime: false }),
-    60_000,
+    { timeout: 60_000 },
+    (layout, { appRoot, routeTreeHost }) =>
+      checkApp({ appRoot, routeTreeHost }, childlessLayoutCase(layout), {
+        runtime: false,
+      }),
   )
 
-  test.each([lazyOnlyAnchorLayoutInDirectory, lazyOnlyPathlessLayout])(
+  test.for([lazyOnlyAnchorLayoutInDirectory, lazyOnlyPathlessLayout])(
     '$name has the routes of the router in the types',
-    (testCase) => checkApp(testCase, { runtime: false }),
-    60_000,
+    { timeout: 60_000 },
+    (testCase, { appRoot, routeTreeHost }) =>
+      checkApp({ appRoot, routeTreeHost }, testCase, { runtime: false }),
   )
 })
 
@@ -69,8 +77,10 @@ describe('route tree types agree with the router', () => {
 // real router types: the whole app type-checks, and a `to` or full path
 // stands for the right route (its `id`).
 describe('FileRoutesByTo', () => {
-  test('`to` of an index route is the index route, not a route under pathless layouts with the same path', async () => {
-    const root = await appWithRoutes([
+  test('`to` of an index route is the index route, not a route under pathless layouts with the same path', async ({
+    appRoot,
+  }) => {
+    const root = await appWithRoutes(appRoot, [
       'posts/index.tsx',
       '_a.tsx',
       '_a/_b.tsx',
@@ -90,8 +100,10 @@ export type Check = Expect<Equal<FileRoutesByTo['/posts']['id'], '/posts/'>>
     ).toEqual([])
   }, 30_000)
 
-  test('`to` of a route is the route, not its own pathless layout', async () => {
-    const root = await appWithRoutes([
+  test('`to` of a route is the route, not its own pathless layout', async ({
+    appRoot,
+  }) => {
+    const root = await appWithRoutes(appRoot, [
       'foo.tsx',
       'foo/_auth.tsx',
       'foo/_auth/bar.tsx',
@@ -120,8 +132,10 @@ export type Check = Expect<Equal<FileRoutesByTo['/foo']['id'], '/foo'>>
 // a route's names must not take).
 // Impact: a legal route name breaks the types of the tree's children.
 describe('the root route children', () => {
-  test('a route named `root` with child routes is a child of the root route in the types', async () => {
-    const root = await createApp({
+  test('a route named `root` with child routes is a child of the root route in the types', async ({
+    appRoot,
+  }) => {
+    const root = await createApp(appRoot, {
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/root.tsx': fileRoute('/root'),
       'src/routes/root.settings.tsx': fileRoute('/root/settings'),
@@ -145,8 +159,10 @@ export type Check = Expect<Equal<NonNullable<Children>[keyof NonNullable<Childre
 // (Through the router's public lookup by full path on `typeof routeTree`;
 // the tree's own type names are free.)
 describe('routes by full path', () => {
-  test('the full path `/` is the index route, not a pathless layout with only a lazy file', async () => {
-    const root = await createApp({
+  test('the full path `/` is the index route, not a pathless layout with only a lazy file', async ({
+    appRoot,
+  }) => {
+    const root = await createApp(appRoot, {
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/index.tsx': fileRoute('/'),
       'src/routes/_auth.lazy.tsx': lazyFileRoute('/_auth'),

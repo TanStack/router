@@ -10,10 +10,11 @@
  */
 import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { describe, expect, test } from 'vitest'
+import { describe, expect } from 'vitest'
 import { captureDiagnostics } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { Generator, getConfig } from '../src'
 import { configOf, createApp, fileRoute, rootRoute } from './app'
+import { test } from './test'
 import type { Config } from '../src'
 
 /** What `run` throws, and what it printed meanwhile. */
@@ -30,8 +31,8 @@ async function failure(run: () => unknown) {
 }
 
 describe('generator configuration errors', () => {
-  test('an invalid option fails naming it, once', async () => {
-    const root = await createApp({})
+  test('an invalid option fails naming it, once', async ({ appRoot }) => {
+    const root = await createApp(appRoot, {})
     const { error, printed } = await failure(() =>
       getConfig({ quoteStyle: 'backtick' } as unknown as Partial<Config>, root),
     )
@@ -42,8 +43,10 @@ describe('generator configuration errors', () => {
     expect(printed).toEqual([])
   })
 
-  test('an invalid option of tsr.config.json fails naming it and the file', async () => {
-    const root = await createApp({
+  test('an invalid option of tsr.config.json fails naming it and the file', async ({
+    appRoot,
+  }) => {
+    const root = await createApp(appRoot, {
       'tsr.config.json': JSON.stringify({ quoteStyle: 'backtick' }),
     })
     const { error } = await failure(() => getConfig({}, root))
@@ -53,16 +56,18 @@ describe('generator configuration errors', () => {
 
   // Source: the reviews of the implementation (Astra 5: a directory read
   // as "not valid JSON: EISDIR"; Gemini P3-1: `[]` spread as options).
-  test('a tsr.config.json that cannot be read fails with its read error', async () => {
-    const root = await createApp({ 'tsr.config.json/x': '' })
+  test('a tsr.config.json that cannot be read fails with its read error', async ({
+    appRoot,
+  }) => {
+    const root = await createApp(appRoot, { 'tsr.config.json/x': '' })
     const { error } = await failure(() => getConfig({}, root))
     expect((error as NodeJS.ErrnoException).code).toBe('EISDIR')
   })
 
-  test.each(['[]', 'null', '"src/routes"'])(
+  test.for(['[]', 'null', '"src/routes"'])(
     'a tsr.config.json holding %s fails naming the file',
-    async (json) => {
-      const root = await createApp({ 'tsr.config.json': json })
+    async (json, { appRoot }) => {
+      const root = await createApp(appRoot, { 'tsr.config.json': json })
       const { error } = await failure(() => getConfig({}, root))
       expect(error!.message).toBe(
         `[tanstack-router] ${path.join(root, 'tsr.config.json')} must hold an object of options.`,
@@ -70,8 +75,10 @@ describe('generator configuration errors', () => {
     },
   )
 
-  test('experimental.enableCodeSplitting fails once, with its migration', async () => {
-    const root = await createApp({})
+  test('experimental.enableCodeSplitting fails once, with its migration', async ({
+    appRoot,
+  }) => {
+    const root = await createApp(appRoot, {})
     const { error, printed } = await failure(() =>
       getConfig(
         { experimental: { enableCodeSplitting: true } } as Partial<Config>,
@@ -84,8 +91,10 @@ describe('generator configuration errors', () => {
 })
 
 describe('a run that fails', () => {
-  test('a route group configuration file fails the run once, printing nothing', async () => {
-    const root = await createApp({
+  test('a route group configuration file fails the run once, printing nothing', async ({
+    appRoot,
+  }) => {
+    const root = await createApp(appRoot, {
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/(group).tsx': fileRoute('/', `{ component: () => 'x' }`),
     })

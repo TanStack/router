@@ -22,11 +22,17 @@ import type { TestContext } from 'vitest'
  * keep theirs for good), and with them what a test holds, in a process that
  * runs many more files.
  */
-const scope = new AsyncLocalStorage<{ test: TestContext | undefined }>()
+const scope = new AsyncLocalStorage<{ test: TestScope | undefined }>()
+
+/**
+ * What the work of a test reads of it: the test (one object per test) and
+ * its `onTestFinished`.
+ */
+export type TestScope = Pick<TestContext, 'onTestFinished'>
 
 /** Runs `run` (a test) as the work of `context` (see `./test-scope-setup`). */
-export function runInTestScope<T>(context: TestContext, run: () => T): T {
-  const scoped = { test: context as TestContext | undefined }
+export function runInTestScope<T>(context: TestScope, run: () => T): T {
+  const scoped = { test: context as TestScope | undefined }
   // (cleanups run last registered first: this one after all of the test's)
   context.onTestFinished(() => {
     scoped.test = undefined
@@ -34,8 +40,8 @@ export function runInTestScope<T>(context: TestContext, run: () => T): T {
   return scope.run(scoped, run)
 }
 
-/** The context of the test this work belongs to, if any. */
-export function currentTest(): TestContext | undefined {
+/** The test this work belongs to, if any. */
+export function currentTest(): TestScope | undefined {
   return scope.getStore()?.test
 }
 

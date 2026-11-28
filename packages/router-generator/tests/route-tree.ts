@@ -15,11 +15,12 @@ import {
 } from 'vite'
 import { linkDirectory } from '@tanstack/compiler-test-utils/app-directory'
 import { runAsDevCommand } from '@tanstack/compiler-test-utils/dev-command'
-import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
-import { onFileFinished } from '@tanstack/compiler-test-utils/test-scope'
 import { forgetApp, inputsOf, recordInputs } from './consumer-inputs'
 import type { PluginOption, ViteDevServer } from 'vite'
-import type { createClientConsumer as CreateClientConsumer } from './consumer-client'
+import type {
+  ClientPages,
+  createClientConsumer as CreateClientConsumer,
+} from './consumer-client'
 
 const nodeModules = path.resolve(import.meta.dirname, '../node_modules')
 
@@ -65,18 +66,20 @@ interface Load {
 
 /**
  * The Vite server of a framework shared by the loads of one test file (one
- * per framework: its plugins differ). Its transforms of the router packages
- * and the framework (Solid's go through Babel) are kept; each load forgets
- * its app's modules first and evaluates them in a runner of its own, so no
- * load sees what an earlier one evaluated.
+ * per framework: its plugins differ; `routeTreeHost` of tests/test.ts). Its
+ * transforms of the router packages and the framework (Solid's go through
+ * Babel) are kept; each load forgets its app's modules first and evaluates
+ * them in a runner of its own, so no load sees what an earlier one
+ * evaluated.
  */
-interface Host {
+export interface Host {
   server: ViteDevServer
   /** The loads running now: the observer plugin records into each one whose app holds the file. */
   loads: Set<Load>
 }
 
-const hosts = new Map<string, Promise<Host>>()
+/** The host of a framework, started on the first load of its apps. */
+export type RouteTreeHost = (framework: string) => Promise<Host>
 
 /** The fixture-owned requests and imports a load observes (public Vite hooks). */
 function observerPlugin(loads: Set<Load>): PluginOption {
@@ -150,22 +153,14 @@ function observerPlugin(loads: Set<Load>): PluginOption {
   }
 }
 
-/** The framework's shared host of the test file running now. */
-function hostOf(framework: string): Promise<Host> {
-  let host = hosts.get(framework)
-  if (!host) {
-    host = createHost(framework)
-    hosts.set(framework, host)
-    onFileFinished(async () => {
-      hosts.delete(framework)
-      const { server } = await host!
-      await server.close()
-    })
-  }
-  return host
-}
-
-async function createHost(framework: string): Promise<Host> {
+/**
+ * Starts the host of `framework` in a new directory of `dir` (a test file's
+ * `fileRoot`, which it goes with); the caller closes its server.
+ */
+export async function createHost(
+  dir: string,
+  framework: string,
+): Promise<Host> {
   const loads = new Set<Load>()
   const plugins: Array<PluginOption> = [observerPlugin(loads)]
   if (framework === 'vue') {
@@ -178,7 +173,7 @@ async function createHost(framework: string): Promise<Host> {
   }
   // (Vite resolves the externals of SSR from its root: the packages every
   // app links)
-  const root = await mkdtemp(path.join(runDirectory(), 'tsr-consumer-'))
+  const root = await mkdtemp(path.join(dir, 'tsr-consumer-'))
   await linkDirectory(nodeModules, path.join(root, 'node_modules'))
   const server = await runAsDevCommand(async () =>
     createServer({
@@ -198,15 +193,11 @@ async function createHost(framework: string): Promise<Host> {
       ssr: framework === 'solid' ? {} : { external: true },
     }),
   )
-  const close = server.close.bind(server)
-  server.close = async () => {
-    await close()
-    await rm(root, { recursive: true, force: true })
-  }
   return { server, loads }
 }
 
 async function withModule<T>(
+  routeTreeHost: RouteTreeHost,
   file: string,
   use: (loaded: {
     exports: Record<string, any>
@@ -246,7 +237,7 @@ async function withModule<T>(
     printedRequests: new Map(),
     imports: [],
   }
-  const host = await hostOf(framework)
+  const host = await routeTreeHost(framework)
   if ([...host.loads].some(({ posixRoot }) => posixRoot === load.posixRoot)) {
     throw new Error(`${root} is being loaded already`)
   }
@@ -285,19 +276,24 @@ async function withModule<T>(
   }
 }
 
-export async function evaluateModule(code: string, fileName = 'route.tsx') {
-  const root = await mkdtemp(path.join(runDirectory(), 'tsr-module-'))
-  try {
-    const file = path.join(root, fileName)
-    await writeFile(file, code)
-    recordInputs(root, { [fileName]: code }, frameworkOf({ [fileName]: code }))
-    return await withModule(file, ({ exports, runtime }) => ({
-      exports,
-      router: runtime,
-    }))
-  } finally {
-    await rm(root, { recursive: true, force: true })
-  }
+/**
+ * Evaluates `code` as the module `fileName` of a new app in `dir` (a test's
+ * `appRoot`) on the host of its framework.
+ */
+export async function evaluateModule(
+  routeTreeHost: RouteTreeHost,
+  dir: string,
+  code: string,
+  fileName = 'route.tsx',
+) {
+  const root = await mkdtemp(path.join(dir, 'tsr-module-'))
+  const file = path.join(root, fileName)
+  await writeFile(file, code)
+  recordInputs(root, { [fileName]: code }, frameworkOf({ [fileName]: code }))
+  return withModule(routeTreeHost, file, ({ exports, runtime }) => ({
+    exports,
+    router: runtime,
+  }))
 }
 
 export interface RouterRoute {
@@ -332,11 +328,19 @@ export interface LoadedRouteTree {
   imports: Array<{ file: string; specifier: string; importer: string }>
 }
 
+/**
+ * Loads the route tree at `treeFile` on the host of its framework and runs
+ * `use` with the router built from it. `renderClientAt` renders in the
+ * browser page of `client` (only when given).
+ */
 export function withRouteTree<T>(
+  routeTreeHost: RouteTreeHost,
   treeFile: string,
   use: (tree: LoadedRouteTree) => Promise<T> | T,
+  client?: ClientPages,
 ): Promise<T> {
   return withModule(
+    routeTreeHost,
     treeFile,
     async ({
       exports,
@@ -371,7 +375,7 @@ export function withRouteTree<T>(
         }
         return owners.length ? relative(owners[0]![0]) : null
       }
-      let client: Awaited<ReturnType<typeof CreateClientConsumer>> | undefined
+      let consumer: Awaited<ReturnType<typeof CreateClientConsumer>> | undefined
       try {
         return await use({
           router,
@@ -409,9 +413,14 @@ export function withRouteTree<T>(
             return render(component)
           },
           renderClientAt: async (url, expectedParagraphs) => {
+            if (!client) {
+              throw new Error(
+                'renderClientAt needs the browser page (`client`)',
+              )
+            }
             const { createClientConsumer } = await import('./consumer-client')
-            client ??= await createClientConsumer(treeFile, framework)
-            return client.renderAt(url, expectedParagraphs)
+            consumer ??= await createClientConsumer(client, treeFile, framework)
+            return consumer.renderAt(url, expectedParagraphs)
           },
           renderAt: async (url) => {
             const pageRouter = runtime.createRouter({
@@ -423,7 +432,7 @@ export function withRouteTree<T>(
           },
         })
       } finally {
-        await client?.close()
+        await consumer?.close()
       }
     },
   )
@@ -436,9 +445,12 @@ export function withRouteTree<T>(
  * creates itself, such as a route with only a lazy route file).
  */
 export function routesOf(
+  routeTreeHost: RouteTreeHost,
   treeFile: string,
 ): Promise<Record<string, string | null>> {
-  return withRouteTree(treeFile, ({ routeFiles }) => routeFiles())
+  return withRouteTree(routeTreeHost, treeFile, ({ routeFiles }) =>
+    routeFiles(),
+  )
 }
 
 /**
@@ -446,8 +458,11 @@ export function routesOf(
  * of the router built from the generated route tree at `treeFile`, by route
  * id.
  */
-export function urlsOf(treeFile: string): Promise<Record<string, string>> {
-  return withRouteTree(treeFile, ({ router }) =>
+export function urlsOf(
+  routeTreeHost: RouteTreeHost,
+  treeFile: string,
+): Promise<Record<string, string>> {
+  return withRouteTree(routeTreeHost, treeFile, ({ router }) =>
     Object.fromEntries(
       Object.values(router.routesById).map((route) => [
         route.id,
@@ -462,10 +477,11 @@ export function urlsOf(treeFile: string): Promise<Record<string, string>> {
  * `treeFile` matches for `pathname`, the root route first.
  */
 export function matchesOf(
+  routeTreeHost: RouteTreeHost,
   treeFile: string,
   pathname: string,
 ): Promise<Array<string>> {
-  return withRouteTree(treeFile, ({ router }) =>
+  return withRouteTree(routeTreeHost, treeFile, ({ router }) =>
     router.matchRoutes(pathname).map((match) => match.routeId),
   )
 }
@@ -493,21 +509,26 @@ export interface ObservedRoute {
  * placement are free.
  */
 export function observeRouteTree(
+  routeTreeHost: RouteTreeHost,
   treeFile: string,
 ): Promise<Record<string, ObservedRoute>> {
-  return withRouteTree(treeFile, async ({ router, fileOf, loadedFiles }) => {
-    const observed: Record<string, ObservedRoute> = {}
-    for (const id of Object.keys(router.routesById).sort()) {
-      const route = router.routesById[id]!
-      const before = new Set(loadedFiles())
-      await router.loadRouteChunk(route)
-      observed[id] = {
-        fullPath: route.fullPath,
-        parent: route.parentRoute?.id ?? null,
-        file: fileOf(id),
-        lazy: loadedFiles().filter((file) => !before.has(file)),
+  return withRouteTree(
+    routeTreeHost,
+    treeFile,
+    async ({ router, fileOf, loadedFiles }) => {
+      const observed: Record<string, ObservedRoute> = {}
+      for (const id of Object.keys(router.routesById).sort()) {
+        const route = router.routesById[id]!
+        const before = new Set(loadedFiles())
+        await router.loadRouteChunk(route)
+        observed[id] = {
+          fullPath: route.fullPath,
+          parent: route.parentRoute?.id ?? null,
+          file: fileOf(id),
+          lazy: loadedFiles().filter((file) => !before.has(file)),
+        }
       }
-    }
-    return observed
-  })
+      return observed
+    },
+  )
 }

@@ -13,7 +13,7 @@
  * generator's output depends on no randomness or process state the tests
  * could vary.)
  */
-import { describe, test } from 'vitest'
+import { describe } from 'vitest'
 import { expectDeterministic } from '@tanstack/compiler-test-utils/determinism'
 import { createApp } from './app'
 import {
@@ -24,22 +24,31 @@ import {
   withListingOrder,
   workingDirectories,
 } from './determinism-app'
+import { test } from './test'
 
 describe('route tree determinism', () => {
-  test('the order the filesystem lists the route files in does not change the routes', async () => {
-    const root = await createApp({})
+  test('the order the filesystem lists the route files in does not change the routes', async ({
+    appRoot,
+    routeTreeHost,
+  }) => {
+    const root = await createApp(appRoot, {})
     await expectDeterministic(
       listingOrders,
-      (order) => withListingOrder(order, () => generateFresh(root)),
+      (order) =>
+        withListingOrder(order, () => generateFresh(routeTreeHost, root)),
       { project: routeTreeSemantics },
     )
   })
 
-  test('the working directory does not change the routes', async () => {
-    const root = await createApp({})
+  test('the working directory does not change the routes', async ({
+    appRoot,
+    routeTreeHost,
+  }) => {
+    const root = await createApp(appRoot, {})
     await expectDeterministic(
       workingDirectories(root),
-      (directory) => inDirectory(directory, () => generateFresh(root)),
+      (directory) =>
+        inDirectory(directory, () => generateFresh(routeTreeHost, root)),
       // (the routes only: diagnostics may name files relative to the
       // working directory, §5.7)
       { project: (generation) => routeTreeSemantics(generation).routes },

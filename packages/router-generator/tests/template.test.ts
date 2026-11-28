@@ -5,10 +5,11 @@
  * every route renders something (what is free), and the files follow
  * `quoteStyle` and `semicolons`.
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect } from 'vitest'
 import { createApp, generate, read } from './app'
 import { codeStyle, routeCallOf, routeCallSpansOf } from './route-id'
 import { withRouteTree } from './route-tree'
+import { test } from './test'
 
 /** The text of server-rendered `html`: its text nodes, joined. */
 const textOf = (html: string) =>
@@ -24,8 +25,11 @@ const textOf = (html: string) =>
 describe.each(['react', 'solid', 'vue'] as const)(
   'scaffolded %s routes',
   (target) => {
-    it('empty root, route and lazy route files become routes whose components render', async () => {
-      const root = await createApp({
+    test('empty root, route and lazy route files become routes whose components render', async ({
+      appRoot,
+      routeTreeHost,
+    }) => {
+      const root = await createApp(appRoot, {
         'src/routes/__root.tsx': '',
         'src/routes/posts.tsx': '',
         'src/routes/about.lazy.tsx': '',
@@ -53,7 +57,7 @@ describe.each(['react', 'solid', 'vue'] as const)(
       for (const [file, id, constructor] of Object.values(pages)) {
         expect(await scaffolded(file)).toEqual({ constructor, id })
       }
-      await withRouteTree(generatedRouteTree, async (tree) => {
+      await withRouteTree(routeTreeHost, generatedRouteTree, async (tree) => {
         expect(tree.routeFiles()).toEqual({
           __root__: 'routes/__root.tsx',
           '/posts': 'routes/posts.tsx',
@@ -80,14 +84,15 @@ describe.each(['react', 'solid', 'vue'] as const)(
     // quote style you specify" / "with semicolons". The route id argument
     // is the generator's edit of the file (SPEC J1.2: its quote character
     // is free), so it is left out.
-    it.each([
+    test.for([
       { quoteStyle: 'single', semicolons: false },
       { quoteStyle: 'double', semicolons: true },
     ] as const)(
       'scaffolded files follow quoteStyle $quoteStyle and semicolons $semicolons',
-      async ({ quoteStyle, semicolons }) => {
+      async ({ quoteStyle, semicolons }, { appRoot }) => {
         const files = ['__root.tsx', 'posts.tsx', 'about.lazy.tsx']
         const root = await createApp(
+          appRoot,
           Object.fromEntries(files.map((file) => [`src/routes/${file}`, ''])),
         )
         await generate(root, { target, quoteStyle, semicolons })

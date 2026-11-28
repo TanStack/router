@@ -8,7 +8,7 @@
 import { readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { chmod, open, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { expect, onTestFinished, test, vi } from 'vitest'
+import { expect, onTestFinished, vi } from 'vitest'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import {
   rootRoute as virtualRootRoute,
@@ -17,6 +17,7 @@ import {
 import { Generator, createGeneratorSession, replaceBackslash } from '../src'
 import { configOf, createApp, fileRoute, rootRoute, save } from './app'
 import { routesOf } from './route-tree'
+import { test } from './test'
 import type { Config, GetRoutesByFileMapResult } from '../src'
 
 /** A watch session on the app at `root`, once it watches and ran. */
@@ -67,8 +68,11 @@ const appRoutes = {
 // which has no structural event, prints the routes of its last scan.
 // Impact: in dev, SSR fails to load the deleted file for that window, and
 // every tab reloaded in it stays on an error page until reloaded by hand.
-test('a route tree written as a route file is deleted is never replaced by one that imports the deleted file', async () => {
-  const root = await createApp(app)
+test('a route tree written as a route file is deleted is never replaced by one that imports the deleted file', async ({
+  appRoot,
+  routeTreeHost,
+}) => {
+  const root = await createApp(appRoot, app)
   const config = configOf(root)
   await new Generator({ config, root }).run()
   const committed = await readFile(config.generatedRouteTree, 'utf8')
@@ -91,7 +95,7 @@ test('a route tree written as a route file is deleted is never replaced by one t
       },
     }),
   )
-  expect(await routesOf(config.generatedRouteTree)).toEqual({
+  expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual({
     ...appRoutes,
     '/extra': 'routes/extra.tsx',
   })
@@ -117,9 +121,11 @@ test('a route tree written as a route file is deleted is never replaced by one t
   for (const content of published) {
     const file = `${observed}-${index++}.gen.ts`
     await writeFile(file, content)
-    expect(await routesOf(file)).toEqual(appRoutes)
+    expect(await routesOf(routeTreeHost, file)).toEqual(appRoutes)
   }
-  expect(await routesOf(config.generatedRouteTree)).toEqual(appRoutes)
+  expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual(
+    appRoutes,
+  )
 })
 
 // Bug: once `.tanstack/` (the default temporary directory) is deleted under
@@ -129,8 +135,11 @@ test('a route tree written as a route file is deleted is never replaced by one t
 // Source: src/publish/atomic.ts `write()`: the temporary directory is
 // created once, and its creation remembered.
 // Impact: added routes 404, deleted routes stay imported, until restart.
-test('after the temporary directory is deleted, an added route reaches the route tree', async () => {
-  const root = await createApp(app)
+test('after the temporary directory is deleted, an added route reaches the route tree', async ({
+  appRoot,
+  routeTreeHost,
+}) => {
+  const root = await createApp(appRoot, app)
   const config = configOf(root)
   const session = await watchApp(root, config)
   await save(root, 'src/routes/b.tsx', fileRoute('/b'))
@@ -153,7 +162,7 @@ test('after the temporary directory is deleted, an added route reaches the route
     timeout: 10_000,
     describe: () => `routes handed over: ${session.routeFiles().join(', ')}`,
   })
-  expect(await routesOf(config.generatedRouteTree)).toEqual({
+  expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual({
     ...appRoutes,
     '/b': 'routes/b.tsx',
     '/c': 'routes/c.tsx',
@@ -167,8 +176,10 @@ test('after the temporary directory is deleted, an added route reaches the route
 // Source: src/generator.ts `watchTargets()` listed directories only.
 // Impact: the route keeps the file's content of the last scan until another
 // event rescans or the session restarts.
-test('an edit of a route file the virtual route config names outside the routes directory is handled', async () => {
-  const root = await createApp({
+test('an edit of a route file the virtual route config names outside the routes directory is handled', async ({
+  appRoot,
+}) => {
+  const root = await createApp(appRoot, {
     'src/routes/__root.tsx': rootRoute(),
     'src/external/item.tsx': fileRoute('/item'),
   })
@@ -215,8 +226,14 @@ async function saveInPlace(file: string, content: string) {
 // (With chokidar 5 the second save lands in the window only when the run of
 // the first one and the event loop take less than 50 ms: the test fails on
 // it on a quick machine, not on every one.)
-test('a save of a route file right after the generator handled the previous one is handled', async () => {
-  const root = await createApp({ ...app, 'src/routes/b.tsx': 'export {}\n' })
+test('a save of a route file right after the generator handled the previous one is handled', async ({
+  appRoot,
+  routeTreeHost,
+}) => {
+  const root = await createApp(appRoot, {
+    ...app,
+    'src/routes/b.tsx': 'export {}\n',
+  })
   const config = configOf(root)
   const generator = new Generator({ config, root })
   const b = path.join(root, 'src/routes/b.tsx')
@@ -252,7 +269,7 @@ test('a save of a route file right after the generator handled the previous one 
     describe: () => `routes handed over: ${session.routeFiles().join(', ')}`,
   })
   await secondSave
-  expect(await routesOf(config.generatedRouteTree)).toEqual({
+  expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual({
     ...appRoutes,
     '/b': 'routes/b.tsx',
   })
@@ -266,8 +283,11 @@ test('a save of a route file right after the generator handled the previous one 
 // Impact: under `tsr watch`, Rspack and webpack watch mode, Rsbuild dev and
 // `vite build --watch`, added, edited and deleted routes never reach the
 // route tree until the session restarts.
-test('after the routes directory is deleted and created again, its routes reach the route tree', async () => {
-  const root = await createApp(app)
+test('after the routes directory is deleted and created again, its routes reach the route tree', async ({
+  appRoot,
+  routeTreeHost,
+}) => {
+  const root = await createApp(appRoot, app)
   const config = configOf(root)
   // (an app whose route tree was generated before)
   await new Generator({ config, root }).run()
@@ -298,7 +318,7 @@ test('after the routes directory is deleted and created again, its routes reach 
     describe: () =>
       `routes handed over: ${session.routeFiles().join(', ')}\nreported: ${session.reported.join('\n')}`,
   })
-  expect(await routesOf(config.generatedRouteTree)).toEqual({
+  expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual({
     ...appRoutes,
     '/b': 'routes/b.tsx',
   })
@@ -309,13 +329,16 @@ test('after the routes directory is deleted and created again, its routes reach 
 // `tsr.config.json` changes, the bundler plugins when their config does):
 // the run ends and hands over its routes, and nothing is added to the
 // closed watcher (chokidar 6 throws then).
-test('a session closed while a run that adds a physical() mount is in flight lets the run end', async () => {
+test('a session closed while a run that adds a physical() mount is in flight lets the run end', async ({
+  appRoot,
+  routeTreeHost,
+}) => {
   const routeConfig = (mounts: string) =>
     `import { physical, rootRoute, route } from '@tanstack/virtual-file-routes'
 
 export const routes = rootRoute('__root.tsx', [route('/a', 'a.tsx')${mounts}])
 `
-  const root = await createApp({
+  const root = await createApp(appRoot, {
     'routes.ts': routeConfig(''),
     'src/routes/__root.tsx': rootRoute(),
     'src/routes/a.tsx': fileRoute('/a'),
@@ -383,7 +406,7 @@ export const routes = rootRoute('__root.tsx', [route('/a', 'a.tsx')${mounts}])
     timeout: 10_000,
     describe: () => `routes handed over: ${routeFiles().join(', ')}`,
   })
-  expect(await routesOf(config.generatedRouteTree)).toEqual({
+  expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual({
     __root__: 'routes/__root.tsx',
     '/a': 'routes/a.tsx',
     '/legacy/b': 'legacy/b.tsx',
@@ -400,8 +423,11 @@ export const routes = rootRoute('__root.tsx', [route('/a', 'a.tsx')${mounts}])
 // Impact: the dev server or `tsr watch` exits at start.
 test.runIf(process.platform === 'linux' && process.getuid?.() !== 0)(
   'a path the watcher cannot watch is reported, and the session keeps watching the others',
-  async () => {
-    const root = await createApp({ ...app, 'outside/b.tsx': fileRoute('/b') })
+  async ({ appRoot, routeTreeHost }) => {
+    const root = await createApp(appRoot, {
+      ...app,
+      'outside/b.tsx': fileRoute('/b'),
+    })
     const config = configOf(root)
     const outside = path.join(root, 'outside')
     await symlink(
@@ -419,7 +445,7 @@ test.runIf(process.platform === 'linux' && process.getuid?.() !== 0)(
       timeout: 10_000,
       describe: () => `routes handed over: ${session.routeFiles().join(', ')}`,
     })
-    expect(await routesOf(config.generatedRouteTree)).toEqual({
+    expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual({
       ...appRoutes,
       // (the module loaded from the link's target)
       '/b': '../outside/b.tsx',
@@ -434,8 +460,11 @@ test.runIf(process.platform === 'linux' && process.getuid?.() !== 0)(
 // Impact: a host that closes the session early (a dev server stopped while
 // it starts, a config change) never sees its `watch()` end.
 // Source: external review of #8817 (design-routeset-v5.md §2.4).
-test('a session closed before its watcher is ready ends its watch() without a run, and watches again on the next', async () => {
-  const root = await createApp(app)
+test('a session closed before its watcher is ready ends its watch() without a run, and watches again on the next', async ({
+  appRoot,
+  routeTreeHost,
+}) => {
+  const root = await createApp(appRoot, app)
   const config = configOf(root)
   const generator = new Generator({ config, root })
   let published = 0
@@ -464,14 +493,16 @@ test('a session closed before its watcher is ready ends its watch() without a ru
   // backend among them, and every event is a run)
   await session.watch()
   expect(handedOver('src/routes/a.tsx')).toBe(true)
-  expect(await routesOf(config.generatedRouteTree)).toEqual(appRoutes)
+  expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual(
+    appRoutes,
+  )
   await save(root, 'src/routes/b.tsx', fileRoute('/b'))
   await waitForOutcome({
     applied: () => handedOver('src/routes/b.tsx'),
     timeout: 10_000,
     describe: () => 'the session did not follow the route created',
   })
-  expect(await routesOf(config.generatedRouteTree)).toEqual({
+  expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual({
     ...appRoutes,
     '/b': 'routes/b.tsx',
   })
@@ -486,8 +517,10 @@ test('a session closed before its watcher is ready ends its watch() without a ru
 // `this`): the session calls it on the options object.
 // Source: whole-PR review R2-30, VERIFY-router V-66; review of the generation
 // record (Astra 3: the method form lost `this`).
-test('after the host replaces the generator, the watcher hands each event to the current one', async () => {
-  const root = await createApp(app)
+test('after the host replaces the generator, the watcher hands each event to the current one', async ({
+  appRoot,
+}) => {
+  const root = await createApp(appRoot, app)
   const config = configOf(root)
   const reported: Array<string> = []
   let routes: GetRoutesByFileMapResult = new Map()
@@ -525,8 +558,10 @@ test('after the host replaces the generator, the watcher hands each event to the
 // of the generator it replaced: the planners then failed every route module
 // with that error until the new generator's first run.
 // Source: whole-PR review R2-05 (Fable R2 #5, Astra R2 #13).
-test('a generator that replaces a failed one is handed over without its failure', async () => {
-  const root = await createApp({
+test('a generator that replaces a failed one is handed over without its failure', async ({
+  appRoot,
+}) => {
+  const root = await createApp(appRoot, {
     'src/routes/__root.tsx': rootRoute(),
     'src/routes/a.tsx': 'export const Route = createFileRoute(\n',
   })

@@ -10,13 +10,14 @@
 import { readFileSync } from 'node:fs'
 import { readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { describe, expect, test } from 'vitest'
+import { describe, expect } from 'vitest'
 import {
   captureThrow,
   expectDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { Generator, contentDigest, replaceBackslash } from '../src'
 import { configOf, createApp, fileRoute, linked, rootRoute, save } from './app'
+import { test } from './test'
 import type { GeneratorPlugin, GetRoutesByFileMapResult } from '../src'
 
 /** A registry as plain data, for comparison. */
@@ -32,8 +33,10 @@ describe('the registry', () => {
   // router plugin compiled `/b`'s module with `/a`'s HMR id, and an edit of
   // `/b`'s loader reached the page only after a reload.
   // Source: VERIFY-router V-64a (R2-01), a regression vs main.
-  test('a route file replaced by a link to the file of another route lists that file under the other route', async () => {
-    const root = await createApp({
+  test('a route file replaced by a link to the file of another route lists that file under the other route', async ({
+    appRoot,
+  }) => {
+    const root = await createApp(appRoot, {
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/a.tsx': fileRoute('/a'),
     })
@@ -66,8 +69,10 @@ describe('the registry', () => {
   // listeners for it). A run that scanned the routes again replaced it with
   // an equal one.
   // Source: whole-PR review R2-02.
-  test('a run that changes no entry keeps the same registry, and one that adds a route replaces it', async () => {
-    const root = await createApp({
+  test('a run that changes no entry keeps the same registry, and one that adds a route replaces it', async ({
+    appRoot,
+  }) => {
+    const root = await createApp(appRoot, {
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/about.tsx': fileRoute('/about'),
     })
@@ -102,8 +107,10 @@ describe('the registry', () => {
   // its own, still has a real path (the directory's link resolves), which is
   // the module id a bundler gives it. The registry dropped it.
   // Source: review of the generation record (Astra 1).
-  test('a route file made a file of its own under a linked routes directory keeps its real path', async () => {
-    const root = await createApp({
+  test('a route file made a file of its own under a linked routes directory keeps its real path', async ({
+    appRoot,
+  }) => {
+    const root = await createApp(appRoot, {
       'actual/__root.tsx': rootRoute(),
       'actual/a.tsx': fileRoute('/a'),
       'src/shared/page.tsx': fileRoute('/b'),
@@ -137,8 +144,10 @@ describe('the registry', () => {
   // The run published the facts from before the write (the shared file
   // under `/a`, the old digest of `a.tsx`).
   // Source: review of the generation record (Astra 2).
-  test('a write an onWrite observer throws on is published as written', async () => {
-    const root = await createApp({
+  test('a write an onWrite observer throws on is published as written', async ({
+    appRoot,
+  }) => {
+    const root = await createApp(appRoot, {
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/a.tsx': fileRoute('/a'),
     })
@@ -179,8 +188,10 @@ describe('the registry', () => {
   // nothing more: it installed the model of that run beside the tree it
   // did not write.
   // Source: review of the generation record (Gemini).
-  test('a generator retired during its run publishes nothing from it', async () => {
-    const root = await createApp({
+  test('a generator retired during its run publishes nothing from it', async ({
+    appRoot,
+  }) => {
+    const root = await createApp(appRoot, {
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/a.tsx': fileRoute('/wrong'),
     })
@@ -224,8 +235,8 @@ describe('a batch that fails', () => {
   // A second file for route `/b` fails every batch until it goes; the
   // registry keeps the published routes, with what their files say now.
   const conflicting = ['src/routes/b.tsx', 'src/routes/(g)/b.tsx']
-  async function failing(files: Record<string, string> = {}) {
-    const root = await createApp({
+  async function failing(appRoot: string, files: Record<string, string> = {}) {
+    const root = await createApp(appRoot, {
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/a.tsx': fileRoute('/a'),
       'src/routes/b.tsx': fileRoute('/b'),
@@ -252,8 +263,10 @@ describe('a batch that fails', () => {
 
   // Source: VERIFY-router V-64b (R2-01): the registry kept `routerConstructor:
   // true` for a file whose `Route` was gone.
-  test('a route file that lost its Route is no route constructor in the registry', async () => {
-    const { root, start } = await failing()
+  test('a route file that lost its Route is no route constructor in the registry', async ({
+    appRoot,
+  }) => {
+    const { root, start } = await failing(appRoot)
     const generator = new Generator({ config: configOf(root), root })
     await start(generator)
     const a = await save(root, 'src/routes/a.tsx', 'export const helper = 1\n')
@@ -274,8 +287,10 @@ describe('a batch that fails', () => {
   // succeeds, so the shared file is still `/b`'s, as its text says; the
   // registry gave it to `/a`, the first link.
   // Source: review of the generation record (Fable F1), head only.
-  test('a route file replaced by a link to the file of another route leaves that file to the other route', async () => {
-    const root = await createApp({
+  test('a route file replaced by a link to the file of another route leaves that file to the other route', async ({
+    appRoot,
+  }) => {
+    const root = await createApp(appRoot, {
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/a.tsx': fileRoute('/a'),
       'src/routes/c.tsx': fileRoute('/c'),
@@ -317,8 +332,10 @@ describe('a batch that fails', () => {
   // file while batches fail: the registry listed both files, and the digest
   // of the new one was unknown though the generator had read it.
   // Source: whole-PR review R2-01 (Astra R2 #8, FP-A4).
-  test('a link pointed at another file lists the new file only, with its digest', async () => {
-    const { root, start } = await failing({
+  test('a link pointed at another file lists the new file only, with its digest', async ({
+    appRoot,
+  }) => {
+    const { root, start } = await failing(appRoot, {
       'src/shared/a.tsx': fileRoute('/ext'),
     })
     const targetA = path.join(root, 'src/shared/a.tsx')
@@ -361,8 +378,10 @@ describe('onRouteTreeChanged', () => {
   // upkeep (its route id fixed) and before the registry followed the file
   // (its `Route` now the app's own factory).
   // Source: whole-PR review R2-01 (Fable R2 #1, Astra R2 #9, FP-A5).
-  test("a plugin reads the registry and the route files of the generation it's told of", async () => {
-    const root = await createApp({
+  test("a plugin reads the registry and the route files of the generation it's told of", async ({
+    appRoot,
+  }) => {
+    const root = await createApp(appRoot, {
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/about.tsx': fileRoute('/about'),
     })

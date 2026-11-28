@@ -8,7 +8,7 @@
  */
 import { readFile, symlink } from 'node:fs/promises'
 import path from 'node:path'
-import { describe, expect, test } from 'vitest'
+import { describe, expect } from 'vitest'
 import { Generator, contentDigest, replaceBackslash } from '../src'
 import {
   configOf,
@@ -19,6 +19,7 @@ import {
   save,
 } from './app'
 import { matchesOf } from './route-tree'
+import { test } from './test'
 
 const app = {
   'src/routes/__root.tsx': rootRoute(),
@@ -27,8 +28,8 @@ const app = {
 }
 
 /** A generator that ran once on a new app of `files`. */
-async function generated(files: Record<string, string>) {
-  const root = await createApp(files)
+async function generated(appRoot: string, files: Record<string, string>) {
+  const root = await createApp(appRoot, files)
   const config = configOf(root)
   const generator = new Generator({ config, root })
   await generator.run()
@@ -37,8 +38,10 @@ async function generated(files: Record<string, string>) {
 }
 
 describe('sourceDigest', () => {
-  test("a route file's digest is the digest of its text, and follows an edit the generator is told of", async () => {
-    const { root, generator, file } = await generated(app)
+  test("a route file's digest is the digest of its text, and follows an edit the generator is told of", async ({
+    appRoot,
+  }) => {
+    const { root, generator, file } = await generated(appRoot, app)
     const about = file('src/routes/about.tsx')
     expect(generator.sourceDigest(about)).toBe(
       contentDigest(await readFile(about, 'utf8')),
@@ -52,8 +55,10 @@ describe('sourceDigest', () => {
     expect(generator.sourceDigest(about)).not.toBe(before)
   })
 
-  test('an empty route file the generator fills in answers the digest of the bytes it wrote', async () => {
-    const { root, generator, file } = await generated(app)
+  test('an empty route file the generator fills in answers the digest of the bytes it wrote', async ({
+    appRoot,
+  }) => {
+    const { root, generator, file } = await generated(appRoot, app)
     const created = await save(root, 'src/routes/new.tsx', '')
     await generator.run({ type: 'create', path: created })
     const written = await readFile(created, 'utf8')
@@ -63,8 +68,10 @@ describe('sourceDigest', () => {
     )
   })
 
-  test('a route file behind a link answers under its path and under the real path', async () => {
-    const root = await createApp({
+  test('a route file behind a link answers under its path and under the real path', async ({
+    appRoot,
+  }) => {
+    const root = await createApp(appRoot, {
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/index.tsx': fileRoute('/'),
       'src/shared/about.tsx': fileRoute('/about'),
@@ -81,8 +88,10 @@ describe('sourceDigest', () => {
 
   // Source: review of the route-set work (Gemini L3: the real path answered
   // the first scanned file linked to it, which the tree does not import).
-  test('a real path two scanned files link to answers the one the route tree imports', async () => {
-    const root = await createApp({
+  test('a real path two scanned files link to answers the one the route tree imports', async ({
+    appRoot,
+  }) => {
+    const root = await createApp(appRoot, {
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/index.tsx': fileRoute('/'),
       'src/shared/target.tsx': fileRoute('/z'),
@@ -102,8 +111,10 @@ describe('sourceDigest', () => {
     expect(generator.sourceDigest(replaceBackslash(real))).toBe(digest)
   })
 
-  test('a scanned file the route tree does not import, and a file of no route, answer nothing', async () => {
-    const { generator, file } = await generated({
+  test('a scanned file the route tree does not import, and a file of no route, answer nothing', async ({
+    appRoot,
+  }) => {
+    const { generator, file } = await generated(appRoot, {
       ...app,
       'src/routes/__root.lazy.tsx': lazyFileRoute('__root__'),
       'src/other.ts': 'export {}\n',
@@ -117,8 +128,10 @@ describe('sourceDigest', () => {
 })
 
 describe('treeDigest', () => {
-  test('is undefined before the first generation, then the digest of the route tree file', async () => {
-    const root = await createApp(app)
+  test('is undefined before the first generation, then the digest of the route tree file', async ({
+    appRoot,
+  }) => {
+    const root = await createApp(appRoot, app)
     const config = configOf(root)
     const generator = new Generator({ config, root })
     expect(generator.treeDigest()).toBeUndefined()
@@ -145,15 +158,17 @@ describe('treeDigest', () => {
 // so `_a` was declared after the index route and the router matched the
 // layouts at `/`.
 // Source: design-routeset-v5.1.md item 3 (recursive `ownersLast`).
-test('a pathless layout whose children are childless pathless layouts does not take `/` from the index route', async () => {
-  const { config } = await generated({
+test('a pathless layout whose children are childless pathless layouts does not take `/` from the index route', async ({
+  routeTreeHost,
+  appRoot,
+}) => {
+  const { config } = await generated(appRoot, {
     'src/routes/__root.tsx': rootRoute(),
     'src/routes/_a.tsx': fileRoute('/_a'),
     'src/routes/_a._b.tsx': fileRoute('/_a/_b'),
     'src/routes/index.tsx': fileRoute('/'),
   })
-  expect(await matchesOf(config.generatedRouteTree, '/')).toEqual([
-    '__root__',
-    '/',
-  ])
+  expect(
+    await matchesOf(routeTreeHost, config.generatedRouteTree, '/'),
+  ).toEqual(['__root__', '/'])
 })

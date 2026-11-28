@@ -1,7 +1,7 @@
 /** Generated trees consumed by the real routers and renderers in Chromium. */
-import { test } from 'vitest'
 import { checkApp, checkClientPages } from '../real-router'
 import { frameworkCases, groupLayout } from '../real-router-cases'
+import { test } from '../test'
 import type { Case } from '../real-router'
 
 const nativeAsyncVue: Case = {
@@ -27,12 +27,30 @@ export const Route = createFileRoute('/')({
 // The pages in Chromium (their routes and server-rendered pages: the unit
 // tier's, real-router.test.ts and real-router-frameworks.test.ts; the route
 // shapes of shapeCases render none)
-test.each([...frameworkCases, groupLayout])(
+test.for([...frameworkCases, groupLayout])(
   'the browser renders $name',
-  (testCase) => checkClientPages(testCase),
+  (testCase, { appRoot, clientHost, page, pageErrors }) =>
+    checkClientPages(
+      { appRoot, client: { host: clientHost, page, pageErrors } },
+      testCase,
+    ),
 )
 
 // (its routes and server-rendered page are checked here too: no other case
 // has them)
-test('the browser renders a Vue route using the framework async-component API', () =>
-  checkApp(nativeAsyncVue, { types: false, client: true }))
+test('the browser renders a Vue route using the framework async-component API', ({
+  appRoot,
+  routeTreeHost,
+  clientHost,
+  page,
+  pageErrors,
+}) =>
+  checkApp(
+    {
+      appRoot,
+      routeTreeHost,
+      client: { host: clientHost, page, pageErrors },
+    },
+    nativeAsyncVue,
+    { types: false },
+  ))

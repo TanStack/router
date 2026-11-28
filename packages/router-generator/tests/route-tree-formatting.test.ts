@@ -3,9 +3,10 @@
  * generator prints. Prettier's `format` is counted through a passthrough
  * mock of the `prettier` package (the generator loads it on first use).
  */
-import { expect, test, vi } from 'vitest'
+import { expect, vi } from 'vitest'
 import { Generator } from '../src'
 import { configOf, createApp, fileRoute, read, rootRoute, save } from './app'
+import { test } from './test'
 import type * as Prettier from 'prettier'
 
 const format = vi.hoisted(() => ({ calls: 0 }))
@@ -25,8 +26,8 @@ vi.mock('prettier', async (importOriginal) => {
 // included (a production build, a dev server's restart, an unchanged rescan):
 // 120–180 ms per run at 338 routes.
 // Source: src/generator.ts `publishTree()` formatted before comparing.
-test('an unchanged route tree is not formatted again', async () => {
-  const root = await createApp({
+test('an unchanged route tree is not formatted again', async ({ appRoot }) => {
+  const root = await createApp(appRoot, {
     'src/routes/__root.tsx': rootRoute(),
     'src/routes/index.tsx': fileRoute('/'),
   })

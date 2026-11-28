@@ -7,25 +7,28 @@
  * integration/route-types.test.ts. Apps: real-router-cases.ts; helpers:
  * real-router.ts.
  */
-import { describe, test } from 'vitest'
+import { describe } from 'vitest'
 import { checkApp } from './real-router'
 import {
   groupLayout,
   lazyOnlyPathlessLayout,
   shapeCases,
 } from './real-router-cases'
+import { test } from './test'
 
 // (the frameworks' pages: real-router-frameworks.test.ts)
 describe('the real router on a generated route tree', () => {
-  test.each(shapeCases)(
+  test.for(shapeCases)(
     '$name',
-    (testCase) => checkApp(testCase, { types: false }),
-    60_000,
+    { timeout: 60_000 },
+    (testCase, { appRoot, routeTreeHost }) =>
+      checkApp({ appRoot, routeTreeHost }, testCase, { types: false }),
   )
 
   test(
     'the layout route of a route group directory adds no path segment and renders around its children',
-    () => checkApp(groupLayout, { types: false }),
+    ({ appRoot, routeTreeHost }) =>
+      checkApp({ appRoot, routeTreeHost }, groupLayout, { types: false }),
     60_000,
   )
 
@@ -44,7 +47,10 @@ describe('the real router on a generated route tree', () => {
   // typed links to them lead nowhere.
   test(
     'a pathless layout with only a lazy route file keeps its directory path',
-    () => checkApp(lazyOnlyPathlessLayout, { types: false }),
+    ({ appRoot, routeTreeHost }) =>
+      checkApp({ appRoot, routeTreeHost }, lazyOnlyPathlessLayout, {
+        types: false,
+      }),
     60_000,
   )
 })

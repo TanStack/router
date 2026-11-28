@@ -29,8 +29,10 @@ import { afterAll, aroundEach, beforeAll } from 'vitest'
 import { setCommandNodeEnv } from './node-env'
 import { runFileCleanups, runInTestScope } from './test-scope'
 
-aroundEach(async (runTest, context) => {
-  await runInTestScope(context, runTest)
+// (destructured: Vitest reads what a hook uses of a test's context, its
+// fixtures, from its parameter's pattern)
+aroundEach(async (runTest, { onTestFinished }) => {
+  await runInTestScope({ onTestFinished }, runTest)
 })
 
 /** What the live compilers of this process count of stale plans and paths. */

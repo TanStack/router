@@ -15,7 +15,7 @@ import {
 } from 'node:fs/promises'
 import path from 'node:path'
 import { parseSync } from 'vite'
-import { afterEach, describe, expect, onTestFinished, test, vi } from 'vitest'
+import { afterEach, describe, expect, onTestFinished, vi } from 'vitest'
 import {
   expectDiagnostic,
   findDiagnostics,
@@ -36,6 +36,8 @@ import { recordInputs } from './consumer-inputs'
 import { expectOnlyOwnedEdits } from './owned-edits'
 import { codeStyle, routeCallOf, routeIdOf } from './route-id'
 import { routesOf, urlsOf, withRouteTree } from './route-tree'
+import { test } from './test'
+import type { RouteTreeHost } from './route-tree'
 import type { Config } from '../src'
 
 afterEach(() => {
@@ -59,7 +61,7 @@ function Posts() {
 
   // (UTF-8 BOMs: outside the compiler tests, SPEC \u00A72.1 selects
   // BOM-free sources.)
-  test.each([
+  test.for([
     {
       name: 'CRLF line endings',
       file: 'posts.tsx',
@@ -120,8 +122,8 @@ export const Route = createFileRoute('/old')({
     config?: Partial<Config>
   }>)(
     'only the route id changes in a route file with $name',
-    async ({ file, source, config }) => {
-      const root = await createApp({
+    async ({ file, source, config }, { appRoot, routeTreeHost }) => {
+      const root = await createApp(appRoot, {
         'src/routes/__root.tsx': rootRoute(config?.target),
         [`src/routes/${file}`]: source,
       })
@@ -134,7 +136,7 @@ export const Route = createFileRoute('/old')({
         constructor: 'createFileRoute',
         id: '/posts',
       })
-      expect(await routesOf(generatedRouteTree)).toEqual({
+      expect(await routesOf(routeTreeHost, generatedRouteTree)).toEqual({
         __root__: 'routes/__root.tsx',
         '/posts': `routes/${file}`,
       })
@@ -144,19 +146,19 @@ export const Route = createFileRoute('/old')({
   describe.each(['react', 'solid', 'vue'] as const)('target %s', (target) => {
     const routerPackage = `@tanstack/${target}-router`
 
-    test.each([
+    test.for([
       { name: 'LF', newline: '\n' },
       { name: 'CRLF', newline: '\r\n' },
     ])(
       'a lazy route file created with createFileRoute gets createLazyFileRoute, with $name',
-      async ({ newline }) => {
+      async ({ newline }, { appRoot, routeTreeHost }) => {
         const source = `import { Link, createFileRoute } from '${routerPackage}'
 
 export const Route = createFileRoute('/posts')({
   component: () => <Link to="/">Home</Link>,
 })
 `.replaceAll('\n', newline)
-        const root = await createApp({
+        const root = await createApp(appRoot, {
           'src/routes/__root.tsx': rootRoute(target),
           'src/routes/posts.tsx': `import { createFileRoute } from '${routerPackage}'
 
@@ -176,21 +178,23 @@ export const Route = createFileRoute('/posts')({
           constructor: 'createLazyFileRoute',
           id: '/posts',
         })
-        expect(await routesOf(generatedRouteTree)).toEqual({
+        expect(await routesOf(routeTreeHost, generatedRouteTree)).toEqual({
           __root__: 'routes/__root.tsx',
           '/posts': 'routes/posts.tsx',
         })
       },
     )
 
-    test(`a route file without the route constructor import gets it from ${routerPackage}`, async () => {
+    test(`a route file without the route constructor import gets it from ${routerPackage}`, async ({
+      appRoot,
+    }) => {
       const source = `import { Link } from '${routerPackage}'
 
 export const Route = createFileRoute('/old')({
   component: Link,
 })
 `
-      const root = await createApp({
+      const root = await createApp(appRoot, {
         'src/routes/__root.tsx': rootRoute(target),
         'src/routes/posts.tsx': source,
       })
@@ -211,10 +215,10 @@ describe('empty route files', () => {
   // An empty route file is scaffolded and the other routes still generate.
   // On main an empty .ts route file got the route template, which renders
   // JSX, and the run failed parsing it as TypeScript (#8480).
-  test.each(['posts.tsx', 'posts.ts'])(
+  test.for(['posts.tsx', 'posts.ts'])(
     'an empty %s route file is scaffolded, and the other routes still generate',
-    async (file) => {
-      const { written, routes } = await scaffold(file)
+    async (file, { appRoot, routeTreeHost }) => {
+      const { written, routes } = await scaffold(appRoot, routeTreeHost, file)
       expect(parseErrors(written, file)).toEqual([])
       expect(await routeIdOf(written)).toBe('/posts')
       expect(routes).toEqual({
@@ -229,8 +233,12 @@ describe('empty route files', () => {
    * Runs the generator on an app with an index route and an empty
    * `routes/<file>`; returns the scaffolded file and the route tree's routes.
    */
-  async function scaffold(file: string) {
-    const root = await createApp({
+  async function scaffold(
+    appRoot: string,
+    routeTreeHost: RouteTreeHost,
+    file: string,
+  ) {
+    const root = await createApp(appRoot, {
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/index.tsx': fileRoute('/'),
       [`src/routes/${file}`]: '',
@@ -238,7 +246,7 @@ describe('empty route files', () => {
     const { generatedRouteTree } = await generate(root)
     return {
       written: await read(root, `src/routes/${file}`),
-      routes: await routesOf(generatedRouteTree),
+      routes: await routesOf(routeTreeHost, generatedRouteTree),
     }
   }
 
@@ -249,9 +257,12 @@ describe('empty route files', () => {
 })
 
 describe('route files with unusual names and contents', () => {
-  test('route files with non-ASCII names get routes with their paths', async () => {
+  test('route files with non-ASCII names get routes with their paths', async ({
+    appRoot,
+    routeTreeHost,
+  }) => {
     const route = fileRoute('/old')
-    const root = await createApp({
+    const root = await createApp(appRoot, {
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/café.tsx': route,
       'src/routes/日本語.tsx': route,
@@ -259,7 +270,7 @@ describe('route files with unusual names and contents', () => {
     })
     const { generatedRouteTree } = await generate(root)
 
-    expect(await routesOf(generatedRouteTree)).toEqual({
+    expect(await routesOf(routeTreeHost, generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/café': 'routes/café.tsx',
       '/日本語': 'routes/日本語.tsx',
@@ -280,9 +291,12 @@ describe('route files with unusual names and contents', () => {
 })
 
 describe('virtual route config in tsr.config.json', () => {
-  test('a virtual route config object in tsr.config.json generates its routes, and fixes their ids', async () => {
+  test('a virtual route config object in tsr.config.json generates its routes, and fixes their ids', async ({
+    appRoot,
+    routeTreeHost,
+  }) => {
     const route = fileRoute('/old')
-    const root = await createApp({
+    const root = await createApp(appRoot, {
       'tsr.config.json': JSON.stringify({
         virtualRouteConfig: {
           type: 'root',
@@ -319,7 +333,7 @@ describe('virtual route config in tsr.config.json', () => {
     })
     const { generatedRouteTree } = await generate(root)
 
-    const routes = await routesOf(generatedRouteTree)
+    const routes = await routesOf(routeTreeHost, generatedRouteTree)
     expect(routes).toEqual({
       __root__: 'routes/root.tsx',
       '/': 'routes/home.tsx',
@@ -361,13 +375,14 @@ describe('route tree options', () => {
    * And, in the same load, the tree's routes are `app()`'s.
    */
   async function expectRouteFileImports(
+    routeTreeHost: RouteTreeHost,
     root: string,
     treeFile: string,
     files: Array<string>,
     check: (edge: { specifier: string; importer: string }) => void,
     kinds: Array<'static' | 'dynamic'> = ['static', 'dynamic'],
   ) {
-    await withRouteTree(treeFile, async (tree) => {
+    await withRouteTree(routeTreeHost, treeFile, async (tree) => {
       expect(tree.routeFiles()).toEqual(appRoutes())
       const initial = [...tree.imports]
       if (kinds.includes('dynamic')) {
@@ -397,7 +412,7 @@ describe('route tree options', () => {
   const appFiles = (ext = 'tsx') =>
     Object.keys(app(ext)).filter((file) => file.startsWith('src/routes/'))
 
-  test.each([
+  test.for([
     { config: {}, quote: "'", semicolons: false },
     { config: { quoteStyle: 'double' }, quote: '"', semicolons: false },
     { config: { semicolons: true }, quote: "'", semicolons: true },
@@ -412,8 +427,8 @@ describe('route tree options', () => {
     semicolons: boolean
   }>)(
     'the route tree follows the quoteStyle and semicolons options: $config',
-    async ({ config, quote, semicolons }) => {
-      const root = await createApp(app())
+    async ({ config, quote, semicolons }, { appRoot, routeTreeHost }) => {
+      const root = await createApp(appRoot, app())
       const { generatedRouteTree } = await generate(root, config)
 
       const code = await readFile(generatedRouteTree, 'utf8')
@@ -423,17 +438,23 @@ describe('route tree options', () => {
       expect(style.quotes).toEqual([quote])
       expect(style.statements).toBeGreaterThan(0)
       expect(style.withSemicolon).toBe(semicolons ? style.statements : 0)
-      expect(await routesOf(generatedRouteTree)).toEqual(appRoutes())
+      expect(await routesOf(routeTreeHost, generatedRouteTree)).toEqual(
+        appRoutes(),
+      )
     },
   )
 
-  test('addExtensions true imports the route files by their file names', async () => {
-    const root = await createApp(app())
+  test('addExtensions true imports the route files by their file names', async ({
+    appRoot,
+    routeTreeHost,
+  }) => {
+    const root = await createApp(appRoot, app())
     const { generatedRouteTree } = await generate(root, {
       addExtensions: true,
     })
 
     await expectRouteFileImports(
+      routeTreeHost,
       root,
       generatedRouteTree,
       appFiles(),
@@ -446,16 +467,17 @@ describe('route tree options', () => {
     )
   })
 
-  test.each(['js', '.js'])(
+  test.for(['js', '.js'])(
     'addExtensions "%s" in tsr.config.json imports the route files with a .js extension',
-    async (addExtensions) => {
-      const root = await createApp({
+    async (addExtensions, { appRoot, routeTreeHost }) => {
+      const root = await createApp(appRoot, {
         ...app(),
         'tsr.config.json': JSON.stringify({ addExtensions }),
       })
       const { generatedRouteTree } = await generate(root)
 
       await expectRouteFileImports(
+        routeTreeHost,
         root,
         generatedRouteTree,
         appFiles(),
@@ -466,8 +488,11 @@ describe('route tree options', () => {
     },
   )
 
-  test('disableTypes in tsr.config.json generates a JavaScript route tree', async () => {
-    const root = await createApp({
+  test('disableTypes in tsr.config.json generates a JavaScript route tree', async ({
+    appRoot,
+    routeTreeHost,
+  }) => {
+    const root = await createApp(appRoot, {
       ...app('jsx'),
       'tsr.config.json': JSON.stringify({
         disableTypes: true,
@@ -482,17 +507,23 @@ describe('route tree options', () => {
     expect(parseSync('routeTree.gen.js', code, { lang: 'js' }).errors).toEqual(
       [],
     )
-    expect(await routesOf(generatedRouteTree)).toEqual(appRoutes('jsx'))
+    expect(await routesOf(routeTreeHost, generatedRouteTree)).toEqual(
+      appRoutes('jsx'),
+    )
   })
 
-  test('importRoutesUsingAbsolutePaths imports the route files by absolute paths', async () => {
-    const root = await createApp(app())
+  test('importRoutesUsingAbsolutePaths imports the route files by absolute paths', async ({
+    appRoot,
+    routeTreeHost,
+  }) => {
+    const root = await createApp(appRoot, app())
     const { generatedRouteTree } = await generate(root, {
       importRoutesUsingAbsolutePaths: true,
     })
 
     // (the static imports of the route files; the lazy file: below)
     await expectRouteFileImports(
+      routeTreeHost,
       root,
       generatedRouteTree,
       appFiles().filter((file) => !file.includes('.lazy.')),
@@ -513,14 +544,18 @@ describe('route tree options', () => {
   // tree's route imports to be absolute (a tree evaluated from another
   // location than the one it was generated for) still gets relative imports
   // for every lazy route.
-  test('importRoutesUsingAbsolutePaths imports the lazy route files by absolute paths too', async () => {
-    const root = await createApp(app())
+  test('importRoutesUsingAbsolutePaths imports the lazy route files by absolute paths too', async ({
+    appRoot,
+    routeTreeHost,
+  }) => {
+    const root = await createApp(appRoot, app())
     const { generatedRouteTree } = await generate(root, {
       importRoutesUsingAbsolutePaths: true,
     })
 
     // (static imports of the route files and dynamic ones of the lazy file)
     await expectRouteFileImports(
+      routeTreeHost,
       root,
       generatedRouteTree,
       appFiles(),
@@ -530,7 +565,7 @@ describe('route tree options', () => {
     )
   })
 
-  test.each([
+  test.for([
     {
       name: 'a function',
       routeTreeFileFooter: () => ['// footer', 'export const footer = 1'],
@@ -541,8 +576,8 @@ describe('route tree options', () => {
     },
   ])(
     'routeTreeFileFooter as $name ends the route tree with its lines',
-    async ({ routeTreeFileFooter }) => {
-      const root = await createApp(app())
+    async ({ routeTreeFileFooter }, { appRoot, routeTreeHost }) => {
+      const root = await createApp(appRoot, app())
       const { generatedRouteTree } = await generate(root, {
         routeTreeFileFooter,
       })
@@ -551,15 +586,20 @@ describe('route tree options', () => {
         .split('\n')
         .filter((line) => line.trim() !== '')
       expect(lines.slice(-2)).toEqual(['// footer', 'export const footer = 1'])
-      expect(await routesOf(generatedRouteTree)).toEqual(appRoutes())
+      expect(await routesOf(routeTreeHost, generatedRouteTree)).toEqual(
+        appRoutes(),
+      )
     },
   )
 })
 
 describe('ignored route files', () => {
-  test('with the default routeFileIgnorePrefix, "-" route files and directories are left out of the route tree and untouched', async () => {
+  test('with the default routeFileIgnorePrefix, "-" route files and directories are left out of the route tree and untouched', async ({
+    appRoot,
+    routeTreeHost,
+  }) => {
     const notARoute = fileRoute('/old')
-    const root = await createApp({
+    const root = await createApp(appRoot, {
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/index.tsx': fileRoute('/'),
       'src/routes/-disabled.tsx': notARoute,
@@ -568,7 +608,7 @@ describe('ignored route files', () => {
     })
     const { generatedRouteTree } = await generate(root)
 
-    expect(await routesOf(generatedRouteTree)).toEqual({
+    expect(await routesOf(routeTreeHost, generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/': 'routes/index.tsx',
     })
@@ -580,8 +620,11 @@ describe('ignored route files', () => {
   // An empty routeFileIgnorePrefix ignores nothing by prefix: a "-" file is
   // a route like any other (a generator must not restore the default "-"
   // for an empty prefix).
-  test('with an empty routeFileIgnorePrefix, a "-" route file is a route', async () => {
-    const root = await createApp({
+  test('with an empty routeFileIgnorePrefix, a "-" route file is a route', async ({
+    appRoot,
+    routeTreeHost,
+  }) => {
+    const root = await createApp(appRoot, {
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/-health.tsx': fileRoute('/old'),
     })
@@ -589,11 +632,11 @@ describe('ignored route files', () => {
       routeFileIgnorePrefix: '',
     })
 
-    expect(await routesOf(generatedRouteTree)).toEqual({
+    expect(await routesOf(routeTreeHost, generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/-health': 'routes/-health.tsx',
     })
-    expect(await urlsOf(generatedRouteTree)).toEqual({
+    expect(await urlsOf(routeTreeHost, generatedRouteTree)).toEqual({
       __root__: '/',
       '/-health': '/-health',
     })
@@ -603,8 +646,11 @@ describe('ignored route files', () => {
 describe.each(['react', 'solid', 'vue'] as const)('the %s target', (target) => {
   const routerPackage = `@tanstack/${target}-router`
 
-  test(`the route tree imports its runtime from ${routerPackage}`, async () => {
-    const root = await createApp({
+  test(`the route tree imports its runtime from ${routerPackage}`, async ({
+    appRoot,
+    routeTreeHost,
+  }) => {
+    const root = await createApp(appRoot, {
       'src/routes/__root.tsx': rootRoute(target),
       // A lazy route without a route file: the route tree creates its route.
       'src/routes/about.lazy.tsx': `import { createLazyFileRoute } from '${routerPackage}'
@@ -615,6 +661,7 @@ export const Route = createLazyFileRoute('/about')({})
     const { generatedRouteTree } = await generate(root, { target })
 
     await withRouteTree(
+      routeTreeHost,
       generatedRouteTree,
       async ({ router, routerPackage, import: importFile }) => {
         expect(router.routeTree).toBeInstanceOf(routerPackage.RootRoute)
@@ -627,7 +674,7 @@ export const Route = createLazyFileRoute('/about')({})
         await router.loadRouteChunk(router.routesById['/about'])
       },
     )
-    expect(await routesOf(generatedRouteTree)).toEqual({
+    expect(await routesOf(routeTreeHost, generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/about': null,
     })
@@ -638,8 +685,11 @@ describe('custom scaffolding', () => {
   // The lazy template uses an option a lazy route takes (`component`;
   // `staticData` is no option of createLazyFileRoute: tsc TS2353,
   // api/router/createLazyFileRouteFunction.md:22-28).
-  test('customScaffolding in tsr.config.json scaffolds new route and lazy route files', async () => {
-    const root = await createApp({
+  test('customScaffolding in tsr.config.json scaffolds new route and lazy route files', async ({
+    appRoot,
+    routeTreeHost,
+  }) => {
+    const root = await createApp(appRoot, {
       'tsr.config.json': JSON.stringify({
         customScaffolding: {
           routeTemplate:
@@ -663,18 +713,25 @@ describe('custom scaffolding', () => {
         id,
       })
     }
-    await withRouteTree(generatedRouteTree, async ({ router, renderAt }) => {
-      expect(router.routesById['/posts']!.options.staticData).toEqual({
-        template: 'route',
-      })
-      expect(await renderAt('/about')).toContain('lazy template')
-    })
+    await withRouteTree(
+      routeTreeHost,
+      generatedRouteTree,
+      async ({ router, renderAt }) => {
+        expect(router.routesById['/posts']!.options.staticData).toEqual({
+          template: 'route',
+        })
+        expect(await renderAt('/about')).toContain('lazy template')
+      },
+    )
   })
 })
 
 describe('token options', () => {
-  test('a RegExp indexToken with the default routeToken generates index and layout routes', async () => {
-    const root = await createApp({
+  test('a RegExp indexToken with the default routeToken generates index and layout routes', async ({
+    appRoot,
+    routeTreeHost,
+  }) => {
+    const root = await createApp(appRoot, {
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/posts/route.tsx': fileRoute('/posts'),
       'src/routes/posts/page.tsx': fileRoute('/posts/'),
@@ -683,7 +740,7 @@ describe('token options', () => {
       indexToken: /^page$/,
     })
 
-    expect(await routesOf(generatedRouteTree)).toEqual({
+    expect(await routesOf(routeTreeHost, generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/posts': 'routes/posts/route.tsx',
       '/posts/': 'routes/posts/page.tsx',
@@ -696,8 +753,11 @@ describe('custom tokens matching longer names', () => {
   // `dashboard.main-layout.tsx` ... would all be recognized as layout
   // routes") matches the whole name of a layout file (a generator that read
   // every name as bracket-wrapped missed it).
-  test('a routeToken regex matching whole names makes such a file the layout route of its directory', async () => {
-    const root = await createApp({
+  test('a routeToken regex matching whole names makes such a file the layout route of its directory', async ({
+    appRoot,
+    routeTreeHost,
+  }) => {
+    const root = await createApp(appRoot, {
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/posts/main-layout.tsx': fileRoute('/posts'),
       'src/routes/posts/index.tsx': fileRoute('/posts/'),
@@ -706,7 +766,7 @@ describe('custom tokens matching longer names', () => {
       routeToken: /[a-z]+-layout/,
     })
 
-    expect(await routesOf(generatedRouteTree)).toEqual({
+    expect(await routesOf(routeTreeHost, generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/posts': 'routes/posts/main-layout.tsx',
       '/posts/': 'routes/posts/index.tsx',
@@ -715,8 +775,11 @@ describe('custom tokens matching longer names', () => {
 
   // A token RegExp keeps its flags' meaning: `\p{L}` needs the `u` flag (a
   // generator must not drop it).
-  test('a Unicode-mode routeToken regex makes a file with a non-ASCII name the layout route of its directory', async () => {
-    const root = await createApp({
+  test('a Unicode-mode routeToken regex makes a file with a non-ASCII name the layout route of its directory', async ({
+    appRoot,
+    routeTreeHost,
+  }) => {
+    const root = await createApp(appRoot, {
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/posts/écran-layout.tsx': fileRoute('/posts'),
       'src/routes/posts/index.tsx': fileRoute('/posts/'),
@@ -725,20 +788,23 @@ describe('custom tokens matching longer names', () => {
       routeToken: /\p{L}+-layout/u,
     })
 
-    expect(await urlsOf(generatedRouteTree)).toEqual({
+    expect(await urlsOf(routeTreeHost, generatedRouteTree)).toEqual({
       __root__: '/',
       '/posts': '/posts',
       '/posts/': '/posts/',
     })
-    expect((await routesOf(generatedRouteTree))['/posts']).toBe(
+    expect((await routesOf(routeTreeHost, generatedRouteTree))['/posts']).toBe(
       'routes/posts/écran-layout.tsx',
     )
   })
 })
 
 describe('route tree path', () => {
-  test('the directories of a nested route tree path are created', async () => {
-    const root = await createApp({
+  test('the directories of a nested route tree path are created', async ({
+    appRoot,
+    routeTreeHost,
+  }) => {
+    const root = await createApp(appRoot, {
       'src/routes/__root.tsx': rootRoute(),
     })
     const { generatedRouteTree } = await generate(root, {
@@ -748,7 +814,7 @@ describe('route tree path', () => {
     expect(generatedRouteTree).toBe(
       path.join(root, 'src/generated/deep/routeTree.gen.ts'),
     )
-    expect(await routesOf(generatedRouteTree)).toEqual({
+    expect(await routesOf(routeTreeHost, generatedRouteTree)).toEqual({
       __root__: '../../routes/__root.tsx',
     })
   })
@@ -769,7 +835,7 @@ describe('logging', () => {
   // (SPEC J1.12, G5); what else the run logs is free. A function or class
   // declared as `Route` is no route either (the tree calls a route's
   // `update`), even one returning a route.
-  test.each([
+  test.for([
     'export const helper = 1\n',
     'const helper = 1\nexport { helper }\n',
     `import { createFileRoute } from '@tanstack/react-router'
@@ -783,8 +849,8 @@ export function Route() {
     'export namespace Route {\n  export const a = 1\n}\n',
   ])(
     'with logging on, a route file without a Route export is left out with a warning naming it: %j',
-    async (helpers) => {
-      const root = await createApp(app(helpers))
+    async (helpers, { appRoot, routeTreeHost }) => {
+      const root = await createApp(appRoot, app(helpers))
       const { result: config, diagnostics } = await captureDiagnostics(() =>
         generate(root, { disableLogging: false }),
       )
@@ -795,7 +861,7 @@ export function Route() {
         file: path.join(root, 'src/routes/helpers.tsx'),
         root,
       })
-      expect(await routesOf(config.generatedRouteTree)).toEqual({
+      expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual({
         __root__: 'routes/__root.tsx',
         '/': 'routes/index.tsx',
       })
@@ -804,8 +870,12 @@ export function Route() {
 
   // (a namespace of types beside the route, legal TypeScript, declares no
   // value: the route is the const)
-  test('a Route with a namespace of types of the same name is in the route tree', async () => {
+  test('a Route with a namespace of types of the same name is in the route tree', async ({
+    appRoot,
+    routeTreeHost,
+  }) => {
     const root = await createApp(
+      appRoot,
       app(`import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/helpers')({})
 export namespace Route {
@@ -814,7 +884,7 @@ export namespace Route {
 `),
     )
     const { generatedRouteTree } = await generate(root)
-    expect(await routesOf(generatedRouteTree)).toEqual({
+    expect(await routesOf(routeTreeHost, generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/': 'routes/index.tsx',
       '/helpers': 'routes/helpers.tsx',
@@ -825,8 +895,11 @@ export namespace Route {
   // every console channel, whatever its severity; actionable diagnostics
   // about the input stay allowed (G5): here, only ones naming the route
   // file without a Route export.
-  test('with disableLogging, a run that scaffolds and skips route files logs no route generation messages', async () => {
-    const root = await createApp(app())
+  test('with disableLogging, a run that scaffolds and skips route files logs no route generation messages', async ({
+    appRoot,
+    routeTreeHost,
+  }) => {
+    const root = await createApp(appRoot, app())
     const { result: config, diagnostics } = await captureDiagnostics(() =>
       generate(root, { disableLogging: true }),
     )
@@ -840,7 +913,7 @@ export namespace Route {
       diagnostics.filter((diagnostic) => !actionable.includes(diagnostic)),
       'the messages not about the route file without a Route export',
     ).toEqual([])
-    expect(await routesOf(config.generatedRouteTree)).toEqual({
+    expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/': 'routes/index.tsx',
     })
@@ -851,10 +924,10 @@ export namespace Route {
   // Route export, a route id it reports instead of fixing, and a file an
   // edit breaks in a running generator). With logging on, the same runs
   // warn about each file, so the files do reach the warnings.
-  test.each([false, true])(
+  test.for([false, true])(
     'with disableLogging: %s, warnings about route files follow the option',
-    async (disableLogging) => {
-      const root = await createApp({
+    async (disableLogging, { appRoot }) => {
+      const root = await createApp(appRoot, {
         'src/routes/__root.tsx': rootRoute(),
         'src/routes/helpers.tsx': 'export const helper = 1\n',
         'src/routes/old.tsx': `import { createFileRoute } from '@tanstack/react-router'
@@ -915,8 +988,11 @@ describe('tmpDir', () => {
   // A run that cannot create tmpDir fails; once the obstacle is gone (a file
   // in its place here; a read-only `.tanstack` alike), the next run of the
   // same generator (a dev server's) generates the route tree.
-  test('after a run that could not create tmpDir, the next run generates the route tree', async () => {
-    const root = await createApp({
+  test('after a run that could not create tmpDir, the next run generates the route tree', async ({
+    appRoot,
+    routeTreeHost,
+  }) => {
+    const root = await createApp(appRoot, {
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/index.tsx': fileRoute('/'),
     })
@@ -929,7 +1005,7 @@ describe('tmpDir', () => {
 
     await rm(config.tmpDir)
     await generator.run()
-    expect(await routesOf(config.generatedRouteTree)).toEqual({
+    expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual({
       __root__: 'routes/__root.tsx',
       '/': 'routes/index.tsx',
     })
@@ -949,7 +1025,7 @@ describe('tmpDir', () => {
   // filesystem (api/file-based-routing.md `tmpDir` names no such limit).
   test.skipIf(!otherDevice)(
     'with tmpDir on another filesystem, the route file and the route tree are replaced atomically',
-    async () => {
+    async ({ appRoot, routeTreeHost }) => {
       const tmpDir = await mkdtemp(
         path.join(otherDevice!, 'tsr-generator-tmp-'),
       )
@@ -963,7 +1039,7 @@ export const Route = createFileRoute('${id}')({
 `
       // A first run, with tmpDir on the app's filesystem; the next one
       // rewrites the route file (a wrong id) and the route tree (a new route)
-      const root = await createApp({
+      const root = await createApp(appRoot, {
         'src/routes/__root.tsx': rootRoute(),
         'src/routes/posts.tsx': postsRoute('/posts'),
       })
@@ -990,7 +1066,7 @@ export const Route = createFileRoute('${id}')({
       expect(await routeIdOf(await read(root, 'src/routes/posts.tsx'))).toBe(
         '/posts',
       )
-      expect(await routesOf(config.generatedRouteTree)).toEqual({
+      expect(await routesOf(routeTreeHost, config.generatedRouteTree)).toEqual({
         __root__: 'routes/__root.tsx',
         '/about': 'routes/about.tsx',
         '/posts': 'routes/posts.tsx',

@@ -4,11 +4,9 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { createLogger, createServer } from 'vite'
 import { linkDirectory } from '@tanstack/compiler-test-utils/app-directory'
-import { runInPage } from '@tanstack/compiler-test-utils/browser'
 import { runAsDevCommand } from '@tanstack/compiler-test-utils/dev-command'
-import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
-import { onFileFinished } from '@tanstack/compiler-test-utils/test-scope'
 import { forgetApp, inputsOf } from './consumer-inputs'
+import type { Page } from '@tanstack/compiler-test-utils/test'
 import type { PluginOption, ViteDevServer } from 'vite'
 
 const nodeModules = path.resolve(import.meta.dirname, '../node_modules')
@@ -21,29 +19,28 @@ const prebundled: Record<string, Array<string>> = {
 }
 
 /**
- * The dev server of a framework shared by the apps of one test file (closed
- * when the file ends): the packages are pre-bundled once, and the browser
- * keeps what it fetched of them (one origin). Each app is served from its
- * own directory (`/@fs/`), each page is a new document.
+ * The dev server of a framework shared by the apps of one test file
+ * (`clientHost` of tests/test.ts): the packages are pre-bundled once. Each
+ * app is served from its own directory (`/@fs/`), each render is a new
+ * document.
  */
-const servers = new Map<string, Promise<ViteDevServer>>()
+export type ClientHost = (framework: string) => Promise<ViteDevServer>
 
-function serverOf(framework: string) {
-  let server = servers.get(framework)
-  if (!server) {
-    server = createConsumerServer(framework)
-    servers.set(framework, server)
-    onFileFinished(async () => {
-      servers.delete(framework)
-      await (await server!).close()
-    })
-  }
-  return server
+/** What a render in the browser uses: the file's servers, the test's page. */
+export interface ClientPages {
+  host: ClientHost
+  page: Page
+  /** The page's errors (`pageErrors` of the shared fixtures). */
+  pageErrors: Array<string>
 }
 
-async function createConsumerServer(framework: string) {
+/**
+ * Starts the dev server of `framework` in a new directory of `dir` (a test
+ * file's `fileRoot`, which it goes with); the caller closes it.
+ */
+export async function createClientServer(dir: string, framework: string) {
   // (the packages every app links: pre-bundled from this root)
-  const root = await mkdtemp(path.join(runDirectory(), 'tsr-client-'))
+  const root = await mkdtemp(path.join(dir, 'tsr-client-'))
   await linkDirectory(nodeModules, path.join(root, 'node_modules'))
   const plugins: Array<PluginOption> = [
     {
@@ -102,15 +99,11 @@ async function createConsumerServer(framework: string) {
     }),
   )
   await server.listen()
-  const close = server.close.bind(server)
-  server.close = async () => {
-    await close()
-    await rm(root, { recursive: true, force: true })
-  }
   return server
 }
 
 export async function createClientConsumer(
+  { host, page, pageErrors }: ClientPages,
   treeFile: string,
   framework: string,
 ) {
@@ -161,24 +154,28 @@ export async function renderAt(url, expectedParagraphs) {
 }
 `,
   )
-  const server = await serverOf(framework)
+  const server = await host(framework)
   // (the app's files as they are now)
   forgetApp(server.environments.client, root)
   const base = server.resolvedUrls!.local[0]!
   return {
+    /** Renders `url` in a new document of the page. */
     async renderAt(url: string, expectedParagraphs: Array<string>) {
-      const result = await runInPage<string>({
-        pageUrl: new URL('/__consumer.html', base).href,
-        moduleUrl: new URL(
-          '/@fs/' + entry.replaceAll(path.sep, '/').replace(/^\/+/, ''),
-          base,
-        ).href,
-        script: `return module.renderAt(${JSON.stringify(url)}, ${JSON.stringify(expectedParagraphs)})`,
-      })
-      if (result.errors.length) {
-        throw new Error(result.errors.join('\n'))
+      const moduleUrl = new URL(
+        '/@fs/' + entry.replaceAll(path.sep, '/').replace(/^\/+/, ''),
+        base,
+      ).href
+      const errors = pageErrors.length
+      await page.goto(new URL('/__consumer.html', base).href)
+      // (a string, run as the page's own code: a function would be
+      // serialised as the test runner transformed it)
+      const html = await page.evaluate<string>(
+        `import(${JSON.stringify(moduleUrl)}).then((module) => module.renderAt(${JSON.stringify(url)}, ${JSON.stringify(expectedParagraphs)}))`,
+      )
+      if (pageErrors.length > errors) {
+        throw new Error(pageErrors.slice(errors).join('\n'))
       }
-      return result.result
+      return html
     },
     async close() {
       await rm(entry, { force: true })

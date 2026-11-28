@@ -35,6 +35,9 @@ import type { PluginHostOptions } from './plugin-host'
 import type { RsbuildDevServerOptions } from './rsbuild-dev-server'
 import type { RsbuildPluginHostOptions } from './rsbuild-plugin-host'
 
+/** The page of the `page` fixture (for helpers that take it). */
+export type { Page } from '@playwright/test'
+
 /** An opener's options: the harness's, without what the fixture gives. */
 type OpenOptions<T> = Omit<
   T,

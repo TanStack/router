@@ -20,7 +20,7 @@ import {
 } from 'node:fs/promises'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import { describe, expect, test } from 'vitest'
+import { describe, expect } from 'vitest'
 import { Generator } from '../src'
 import {
   configOf,
@@ -31,6 +31,7 @@ import {
   rootRoute,
 } from './app'
 import { withRouteTree } from './route-tree'
+import { test } from './test'
 
 const wrongId = `import { createFileRoute } from '@tanstack/react-router'\nexport const Route = createFileRoute('/wrong')({})\n`
 
@@ -42,8 +43,12 @@ async function expectLink(root: string, link: string, linkText: string) {
 }
 
 describe('symlinked files the generator rewrites', () => {
-  test('route file linked to a file: the link stays and the target gets the upkeep', async () => {
-    const root = await createApp({ 'src/routes/__root.tsx': rootRoute() })
+  test('route file linked to a file: the link stays and the target gets the upkeep', async ({
+    appRoot,
+  }) => {
+    const root = await createApp(appRoot, {
+      'src/routes/__root.tsx': rootRoute(),
+    })
     await linked(root, 'src/routes/about.tsx', 'shared/about.tsx', wrongId)
     await generate(root)
     await expectLink(
@@ -56,8 +61,13 @@ describe('symlinked files the generator rewrites', () => {
     ).toContain(`'/about'`)
   })
 
-  test('two route files linked to one file: the router loads both routes', async () => {
-    const root = await createApp({ 'src/routes/__root.tsx': rootRoute() })
+  test('two route files linked to one file: the router loads both routes', async ({
+    appRoot,
+    routeTreeHost,
+  }) => {
+    const root = await createApp(appRoot, {
+      'src/routes/__root.tsx': rootRoute(),
+    })
     const shared = fileRoute('/a', `{ component: () => 'shared page' }`)
     await linked(root, 'src/routes/a.tsx', 'shared/page.tsx', shared)
     await symlink(
@@ -74,6 +84,7 @@ describe('symlinked files the generator rewrites', () => {
       shared,
     )
     await withRouteTree(
+      routeTreeHost,
       path.join(root, 'src/routeTree.gen.ts'),
       async ({ router, renderAt }) => {
         expect(Object.keys(router.routesById).sort()).toEqual([
@@ -87,8 +98,12 @@ describe('symlinked files the generator rewrites', () => {
     )
   })
 
-  test('route file linked relatively through a directory link: both links stay and the file behind them gets the upkeep', async () => {
-    const root = await createApp({ 'src/routes/__root.tsx': rootRoute() })
+  test('route file linked relatively through a directory link: both links stay and the file behind them gets the upkeep', async ({
+    appRoot,
+  }) => {
+    const root = await createApp(appRoot, {
+      'src/routes/__root.tsx': rootRoute(),
+    })
     await mkdir(path.join(root, 'shared'), { recursive: true })
     await symlink(path.join(root, 'shared'), path.join(root, 'via'))
     await linked(
@@ -106,8 +121,11 @@ describe('symlinked files the generator rewrites', () => {
     ).toContain(`'/about'`)
   })
 
-  test('route tree linked to a file in another directory: the tree becomes a file of its own and the router loads it', async () => {
-    const root = await createApp({
+  test('route tree linked to a file in another directory: the tree becomes a file of its own and the router loads it', async ({
+    appRoot,
+    routeTreeHost,
+  }) => {
+    const root = await createApp(appRoot, {
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/index.tsx': fileRoute(
         '/',
@@ -130,6 +148,7 @@ describe('symlinked files the generator rewrites', () => {
       await readFile(path.join(root, 'shared/routeTree.gen.ts'), 'utf8'),
     ).toBe('// old\n')
     await withRouteTree(
+      routeTreeHost,
       path.join(root, 'src/routeTree.gen.ts'),
       async ({ router, renderAt }) => {
         expect(Object.keys(router.routesById).sort()).toEqual(['/', '__root__'])
@@ -138,8 +157,10 @@ describe('symlinked files the generator rewrites', () => {
     )
   })
 
-  test('route tree in a linked directory: the directory link stays and the tree lands behind it', async () => {
-    const root = await createApp({
+  test('route tree in a linked directory: the directory link stays and the tree lands behind it', async ({
+    appRoot,
+  }) => {
+    const root = await createApp(appRoot, {
       'src/routes/__root.tsx': rootRoute(),
       'src/routes/index.tsx': `import { createFileRoute } from '@tanstack/react-router'\nexport const Route = createFileRoute('/')({})\n`,
     })
@@ -156,8 +177,10 @@ describe('symlinked files the generator rewrites', () => {
 
   test.skipIf(process.platform === 'win32')(
     'the linked file keeps its mode',
-    async () => {
-      const root = await createApp({ 'src/routes/__root.tsx': rootRoute() })
+    async ({ appRoot }) => {
+      const root = await createApp(appRoot, {
+        'src/routes/__root.tsx': rootRoute(),
+      })
       await linked(root, 'src/routes/about.tsx', 'shared/about.tsx', wrongId)
       await chmod(path.join(root, 'shared/about.tsx'), 0o640)
       await generate(root)
@@ -174,8 +197,12 @@ describe('symlinked files the generator rewrites', () => {
 
   // The hosts whose compilation already took its changed files build the
   // reported files again (the router plugin's webpack and Rspack watch mode).
-  test('onWrite reports each replaced file as the generator names it and as it replaced it, once replaced', async () => {
-    const root = await createApp({ 'src/routes/__root.tsx': rootRoute() })
+  test('onWrite reports each replaced file as the generator names it and as it replaced it, once replaced', async ({
+    appRoot,
+  }) => {
+    const root = await createApp(appRoot, {
+      'src/routes/__root.tsx': rootRoute(),
+    })
     await linked(root, 'src/routes/about.tsx', 'shared/about.tsx', wrongId)
     const reported: Array<{ destination: string; file: string; text: string }> =
       []
@@ -216,7 +243,9 @@ describe('symlinked files the generator rewrites', () => {
 
   // A run settles once its writes have: an observer that throws fails the
   // run, after every route file it kept up got its upkeep.
-  test('a throwing onWrite observer fails the run once every write is done', async () => {
+  test('a throwing onWrite observer fails the run once every write is done', async ({
+    appRoot,
+  }) => {
     const files: Record<string, string> = {
       'src/routes/__root.tsx': rootRoute(),
     }
@@ -224,7 +253,7 @@ describe('symlinked files the generator rewrites', () => {
     for (const name of names) {
       files[`src/routes/${name}.tsx`] = wrongId
     }
-    const root = await createApp(files)
+    const root = await createApp(appRoot, files)
     let reported = 0
     const generator = new Generator({
       config: configOf(root),

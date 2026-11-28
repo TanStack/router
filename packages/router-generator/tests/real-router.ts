@@ -9,7 +9,18 @@ import { createApp, fileRoute, generate, lazyFileRoute } from './app'
 import { createClientConsumer } from './consumer-client'
 import { withRouteTree } from './route-tree'
 import { typeAssertions, typeErrorsOf } from './type-check'
+import type { ClientPages } from './consumer-client'
+import type { RouteTreeHost } from './route-tree'
 import type { Config } from '../src'
+
+/** What the checks use of a test's fixtures (tests/test.ts). */
+export interface CheckContext {
+  /** Where the case's app is created. */
+  appRoot: string
+  routeTreeHost: RouteTreeHost
+  /** The browser page, for the checks in Chromium. */
+  client?: ClientPages
+}
 
 /** Route files whose ids the generator fixes. */
 export const routes = (
@@ -141,17 +152,26 @@ const paragraphs = (html: string) =>
  * (`runtime`) and the tree's types (`types`) against the expected routes.
  */
 export async function checkApp(
+  { appRoot, routeTreeHost, client }: CheckContext,
   { files, config, expected, visits, pages }: Case,
-  { runtime = true, types = true, client = false } = {},
+  { runtime = true, types = true } = {},
 ) {
   if (client && !pages) {
     throw new Error('A case for the browser needs the pages it renders')
   }
-  const root = await createApp({ ...files, 'src/vue-shim.d.ts': vueShim })
+  const root = await createApp(appRoot, {
+    ...files,
+    'src/vue-shim.d.ts': vueShim,
+  })
   const { generatedRouteTree } = await generate(root, config)
 
   if (runtime) {
-    await checkRouter(generatedRouteTree, { expected, visits, pages }, client)
+    await checkRouter(
+      routeTreeHost,
+      generatedRouteTree,
+      { expected, visits, pages },
+      client,
+    )
   }
   if (types) {
     await checkTypes(root, expected)
@@ -163,53 +183,71 @@ export async function checkApp(
  * (its routes, matching and server-rendered pages: `checkApp`'s, in the unit
  * tier).
  */
-export async function checkClientPages({ files, config, pages }: Case) {
-  if (!pages) {
+export async function checkClientPages(
+  { appRoot, client }: Pick<CheckContext, 'appRoot' | 'client'>,
+  { files, config, pages }: Case,
+) {
+  if (!pages || !client) {
     throw new Error('A case for the browser needs the pages it renders')
   }
-  const root = await createApp({ ...files, 'src/vue-shim.d.ts': vueShim })
+  const root = await createApp(appRoot, {
+    ...files,
+    'src/vue-shim.d.ts': vueShim,
+  })
   const { generatedRouteTree, target } = await generate(root, config)
-  const client = await createClientConsumer(generatedRouteTree, target)
+  const consumer = await createClientConsumer(
+    client,
+    generatedRouteTree,
+    target,
+  )
   try {
     for (const [url, texts] of Object.entries(pages)) {
-      expect(paragraphs(await client.renderAt(url, texts))).toEqual(texts)
+      expect(paragraphs(await consumer.renderAt(url, texts))).toEqual(texts)
     }
   } finally {
-    await client.close()
+    await consumer.close()
   }
 }
 
 /** Checks the router over the route tree at `treeFile`. */
 async function checkRouter(
+  routeTreeHost: RouteTreeHost,
   treeFile: string,
   { expected, visits, pages }: Pick<Case, 'expected' | 'visits' | 'pages'>,
-  client: boolean,
+  client: ClientPages | undefined,
 ) {
-  await withRouteTree(treeFile, async (tree) => {
-    const { router } = tree
-    expect(
-      Object.fromEntries(
-        Object.values(router.routesById).map((route) => [
-          route.id,
-          [route.fullPath, route.parentRoute?.id ?? null],
-        ]),
-      ),
-    ).toEqual(expected)
-    expect(
-      Object.fromEntries(
-        Object.keys(visits).map((url) => [
-          url,
-          router.matchRoutes(url).at(-1)?.routeId,
-        ]),
-      ),
-    ).toEqual(visits)
-    for (const [url, texts] of Object.entries(pages ?? {})) {
-      expect(paragraphs(await tree.renderAt(url))).toEqual(texts)
-      if (client) {
-        expect(paragraphs(await tree.renderClientAt(url, texts))).toEqual(texts)
+  await withRouteTree(
+    routeTreeHost,
+    treeFile,
+    async (tree) => {
+      const { router } = tree
+      expect(
+        Object.fromEntries(
+          Object.values(router.routesById).map((route) => [
+            route.id,
+            [route.fullPath, route.parentRoute?.id ?? null],
+          ]),
+        ),
+      ).toEqual(expected)
+      expect(
+        Object.fromEntries(
+          Object.keys(visits).map((url) => [
+            url,
+            router.matchRoutes(url).at(-1)?.routeId,
+          ]),
+        ),
+      ).toEqual(visits)
+      for (const [url, texts] of Object.entries(pages ?? {})) {
+        expect(paragraphs(await tree.renderAt(url))).toEqual(texts)
+        if (client) {
+          expect(paragraphs(await tree.renderClientAt(url, texts))).toEqual(
+            texts,
+          )
+        }
       }
-    }
-  })
+    },
+    client,
+  )
 }
 
 /**

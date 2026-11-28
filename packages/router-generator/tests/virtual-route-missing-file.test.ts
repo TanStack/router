@@ -8,7 +8,7 @@
  */
 import { readFile, rm } from 'node:fs/promises'
 import path from 'node:path'
-import { expect, test } from 'vitest'
+import { expect } from 'vitest'
 import {
   index,
   rootRoute as virtualRootRoute,
@@ -20,6 +20,7 @@ import {
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { Generator } from '../src'
 import { configOf, createApp, fileRoute, rootRoute } from './app'
+import { test } from './test'
 
 const config = virtualRootRoute('__root.tsx', [
   virtualRoute('/dashboard', 'dashboard.tsx', [
@@ -28,8 +29,10 @@ const config = virtualRootRoute('__root.tsx', [
   ]),
 ])
 
-test('a cold run whose virtual route config names a missing file fails naming the file', async () => {
-  const root = await createApp({
+test('a cold run whose virtual route config names a missing file fails naming the file', async ({
+  appRoot,
+}) => {
+  const root = await createApp(appRoot, {
     'src/routes/__root.tsx': rootRoute(),
     'src/routes/dash-index.tsx': fileRoute('/dashboard/'),
     'src/routes/settings.tsx': fileRoute('/dashboard/settings'),
@@ -45,8 +48,10 @@ test('a cold run whose virtual route config names a missing file fails naming th
   })
 })
 
-test('a __virtual.ts subtree naming a missing file fails the run naming the file', async () => {
-  const root = await createApp({
+test('a __virtual.ts subtree naming a missing file fails the run naming the file', async ({
+  appRoot,
+}) => {
+  const root = await createApp(appRoot, {
     'src/routes/__root.tsx': rootRoute(),
     'src/routes/admin/__virtual.ts': `import { defineVirtualSubtreeConfig, route } from '@tanstack/virtual-file-routes'
 
@@ -61,8 +66,10 @@ export default defineVirtualSubtreeConfig([route('/users', 'users.tsx')])
   })
 })
 
-test('in a running session, deleting a file the virtual route config names fails the batch and keeps the tree', async () => {
-  const root = await createApp({
+test('in a running session, deleting a file the virtual route config names fails the batch and keeps the tree', async ({
+  appRoot,
+}) => {
+  const root = await createApp(appRoot, {
     'src/routes/__root.tsx': rootRoute(),
     'src/routes/dashboard.tsx': fileRoute('/dashboard'),
     'src/routes/dash-index.tsx': fileRoute('/dashboard/'),

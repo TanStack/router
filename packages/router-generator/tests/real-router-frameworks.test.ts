@@ -5,14 +5,16 @@
  * single-file components). The trees' types are checked in
  * integration/route-types.test.ts. Apps: real-router-cases.ts.
  */
-import { describe, test } from 'vitest'
+import { describe } from 'vitest'
 import { checkApp } from './real-router'
 import { frameworkCases } from './real-router-cases'
+import { test } from './test'
 
 describe('the real router on the route trees of each framework', () => {
-  test.each(frameworkCases)(
+  test.for(frameworkCases)(
     '$name',
-    (testCase) => checkApp(testCase, { types: false }),
-    60_000,
+    { timeout: 60_000 },
+    (testCase, { appRoot, routeTreeHost }) =>
+      checkApp({ appRoot, routeTreeHost }, testCase, { types: false }),
   )
 })

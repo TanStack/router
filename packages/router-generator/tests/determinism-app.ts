@@ -21,6 +21,7 @@ import { Generator } from '../src'
 import { configOf, fileRoute, lazyFileRoute, rootRoute } from './app'
 import { recordInputs } from './consumer-inputs'
 import { observeRouteTree } from './route-tree'
+import type { RouteTreeHost } from './route-tree'
 
 /**
  * Route files whose routes tie on everything but their names (siblings of
@@ -58,7 +59,10 @@ const routeFiles = new Set(
  * control only), the routes the real router builds from it, and the
  * warnings and errors the generator logged.
  */
-export async function generateFresh(root: string) {
+export async function generateFresh(
+  routeTreeHost: RouteTreeHost,
+  root: string,
+) {
   await rm(path.join(root, 'src'), { recursive: true, force: true })
   for (const [file, content] of Object.entries(files)) {
     await mkdir(path.dirname(path.join(root, file)), { recursive: true })
@@ -82,7 +86,7 @@ export async function generateFresh(root: string) {
   )
   return {
     tree: await readFile(config.generatedRouteTree, 'utf8'),
-    routes: await observeRouteTree(config.generatedRouteTree),
+    routes: await observeRouteTree(routeTreeHost, config.generatedRouteTree),
     // Compare the file reported, not wording, grouping, channel, severity
     // labels, or duplicate presentations of the same diagnosis.
     diagnostics: [{ file: diagnosticContract.file }],

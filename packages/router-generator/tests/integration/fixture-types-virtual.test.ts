@@ -3,7 +3,8 @@
  * route config (`virtual*`) agree with the router (SPEC J1.13; helper and
  * method: fixture-types.ts).
  */
-import { describe, expect, test } from 'vitest'
+import { describe, expect } from 'vitest'
+import { test } from '../test'
 import { typeErrorsOfFixture, typedFixtureNames } from './fixture-types'
 
 const names = (await typedFixtureNames()).filter((name) =>
@@ -11,10 +12,10 @@ const names = (await typedFixtureNames()).filter((name) =>
 )
 
 describe('the types of the generator fixtures with a virtual route config', () => {
-  test.each(names)(
+  test.for(names)(
     'the "%s" route tree types its routes like the router',
-    async (name) => {
-      expect(await typeErrorsOfFixture(name)).toEqual([])
+    async (name, { appRoot }) => {
+      expect(await typeErrorsOfFixture(appRoot, name)).toEqual([])
     },
   )
 })
