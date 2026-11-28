@@ -56,6 +56,7 @@ import {
   rewriteBasepath,
 } from './rewrite'
 import { createRouterStores } from './stores'
+import { formatValidationError } from './validationError'
 import type { SieveCache } from './sieve-cache'
 import type { RouteInterpolation } from './path'
 import type {
@@ -2851,7 +2852,7 @@ function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
       throw new SearchParamError('Async validation not supported')
 
     if (result.issues)
-      throw new SearchParamError(JSON.stringify(result.issues, undefined, 2), {
+      throw new SearchParamError(formatValidationError(result.issues), {
         cause: result,
       })
 

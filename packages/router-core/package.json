@@ -68,6 +68,16 @@
         "default": "./dist/cjs/ssr/client.cjs"
       }
     },
+    "./validationError": {
+      "import": {
+        "types": "./dist/esm/validationError.d.ts",
+        "default": "./dist/esm/validationError.js"
+      },
+      "require": {
+        "types": "./dist/cjs/validationError.d.cts",
+        "default": "./dist/cjs/validationError.cjs"
+      }
+    },
     "./isServer": {
       "development": {
         "import": {

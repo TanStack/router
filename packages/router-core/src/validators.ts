@@ -27,6 +27,9 @@ export interface AnyStandardSchemaValidateFailure {
 
 export interface AnyStandardSchemaValidateIssue {
   readonly message: string
+  readonly path?:
+    | ReadonlyArray<PropertyKey | { readonly key: PropertyKey }>
+    | undefined
 }
 
 export interface AnyStandardSchemaValidateInput {
