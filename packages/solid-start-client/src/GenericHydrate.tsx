@@ -1,7 +1,6 @@
 import * as Solid from 'solid-js'
 import { Dynamic } from 'solid-js/web'
 
-import { useHydrated } from '@tanstack/solid-router'
 import { isServer } from '@tanstack/router-core/isServer'
 import {
   hydrateIdAttribute,
@@ -85,15 +84,16 @@ export function GenericHydrate(props: InternalHydrateProps) {
     ? dynamicType
     : initialHydrateStrategy._t!
   const prefetchStrategy = () => props.prefetch
-  const hydrated = useHydrated()
   const uniqueId = Solid.createUniqueId()
   const id = props.h ? `${props.h}${uniqueId}` : uniqueId
   const initialHydrateType = initialHydrateStrategy._t!
+  // Client navigation has no server HTML, even if no earlier component used
+  // useHydrated. Decide from this boundary's actual hydration context.
   const shouldPreserveServerHTML =
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    (isServer ?? typeof window === 'undefined') || !hydrated()
+    (isServer ?? typeof window === 'undefined') || !!Solid.sharedConfig.context
   const shouldDeferInitialHydration =
-    !hydrated() && shouldDeferHydration(initialHydrateStrategy)
+    shouldPreserveServerHTML && shouldDeferHydration(initialHydrateStrategy)
   const gate: HydrationGateRecord =
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     (isServer ?? typeof window === 'undefined')
@@ -171,14 +171,6 @@ export function GenericHydrate(props: InternalHydrateProps) {
     gate.when = currentHydrateType
     if (markerElement) {
       saveFallbackHtml(id, markerElement)
-    }
-
-    if (
-      currentHydrateType === 'never' &&
-      !shouldPreserveServerHTML &&
-      markerElement
-    ) {
-      markerElement.replaceChildren()
     }
 
     if (currentPrefetchStrategy && !controller.started) {

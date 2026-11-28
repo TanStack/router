@@ -15,6 +15,7 @@ import { Route as DeferredRouteImport } from './routes/deferred'
 import { Route as DeferredWithoutSuspenseRouteImport } from './routes/deferred-without-suspense'
 import { Route as ErrorNormalizationRouteImport } from './routes/error-normalization'
 import { Route as InlineScriptsRouteImport } from './routes/inline-scripts'
+import { Route as LinkHashHydrationRouteImport } from './routes/link-hash-hydration'
 import { Route as LinksRouteImport } from './routes/links'
 import { Route as NotFoundRouteRouteImport } from './routes/not-found/route'
 import { Route as PostsRouteImport } from './routes/posts'
@@ -98,6 +99,11 @@ const ErrorNormalizationRoute = ErrorNormalizationRouteImport.update({
 const InlineScriptsRoute = InlineScriptsRouteImport.update({
   id: '/inline-scripts',
   path: '/inline-scripts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LinkHashHydrationRoute = LinkHashHydrationRouteImport.update({
+  id: '/link-hash-hydration',
+  path: '/link-hash-hydration',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LinksRoute = LinksRouteImport.update({
@@ -401,6 +407,7 @@ export interface FileRoutesByFullPath {
   '/deferred-without-suspense': typeof DeferredWithoutSuspenseRoute
   '/error-normalization': typeof ErrorNormalizationRoute
   '/inline-scripts': typeof InlineScriptsRoute
+  '/link-hash-hydration': typeof LinkHashHydrationRoute
   '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
   '/raw-stream': typeof RawStreamRouteWithChildren
@@ -460,6 +467,7 @@ export interface FileRoutesByTo {
   '/deferred-without-suspense': typeof DeferredWithoutSuspenseRoute
   '/error-normalization': typeof ErrorNormalizationRoute
   '/inline-scripts': typeof InlineScriptsRoute
+  '/link-hash-hydration': typeof LinkHashHydrationRoute
   '/links': typeof LinksRoute
   '/scripts': typeof ScriptsRoute
   '/stream': typeof StreamRoute
@@ -519,6 +527,7 @@ export interface FileRoutesById {
   '/deferred-without-suspense': typeof DeferredWithoutSuspenseRoute
   '/error-normalization': typeof ErrorNormalizationRoute
   '/inline-scripts': typeof InlineScriptsRoute
+  '/link-hash-hydration': typeof LinkHashHydrationRoute
   '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
   '/raw-stream': typeof RawStreamRouteWithChildren
@@ -583,6 +592,7 @@ export interface FileRouteTypes {
     | '/deferred-without-suspense'
     | '/error-normalization'
     | '/inline-scripts'
+    | '/link-hash-hydration'
     | '/links'
     | '/posts'
     | '/raw-stream'
@@ -642,6 +652,7 @@ export interface FileRouteTypes {
     | '/deferred-without-suspense'
     | '/error-normalization'
     | '/inline-scripts'
+    | '/link-hash-hydration'
     | '/links'
     | '/scripts'
     | '/stream'
@@ -700,6 +711,7 @@ export interface FileRouteTypes {
     | '/deferred-without-suspense'
     | '/error-normalization'
     | '/inline-scripts'
+    | '/link-hash-hydration'
     | '/links'
     | '/posts'
     | '/raw-stream'
@@ -764,6 +776,7 @@ export interface RootRouteChildren {
   DeferredWithoutSuspenseRoute: typeof DeferredWithoutSuspenseRoute
   ErrorNormalizationRoute: typeof ErrorNormalizationRoute
   InlineScriptsRoute: typeof InlineScriptsRoute
+  LinkHashHydrationRoute: typeof LinkHashHydrationRoute
   LinksRoute: typeof LinksRoute
   PostsRoute: typeof PostsRouteWithChildren
   RawStreamRoute: typeof RawStreamRouteWithChildren
@@ -822,6 +835,13 @@ declare module '@tanstack/solid-router' {
       path: '/inline-scripts'
       fullPath: '/inline-scripts'
       preLoaderRoute: typeof InlineScriptsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/link-hash-hydration': {
+      id: '/link-hash-hydration'
+      path: '/link-hash-hydration'
+      fullPath: '/link-hash-hydration'
+      preLoaderRoute: typeof LinkHashHydrationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/links': {
@@ -1420,6 +1440,7 @@ const rootRouteChildren: RootRouteChildren = {
   DeferredWithoutSuspenseRoute: DeferredWithoutSuspenseRoute,
   ErrorNormalizationRoute: ErrorNormalizationRoute,
   InlineScriptsRoute: InlineScriptsRoute,
+  LinkHashHydrationRoute: LinkHashHydrationRoute,
   LinksRoute: LinksRoute,
   PostsRoute: PostsRouteWithChildren,
   RawStreamRoute: RawStreamRouteWithChildren,
