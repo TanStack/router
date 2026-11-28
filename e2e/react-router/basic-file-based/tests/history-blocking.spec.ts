@@ -252,3 +252,59 @@ for (const action of ['Navigate document', 'Replace document']) {
     })
   }
 }
+
+test('a stale blocker answer after a push does not swallow the next native back', async ({
+  page,
+}) => {
+  await prepareSameDocumentTraversal(page, -2)
+  await page.getByRole('button', { name: 'History back', exact: true }).click()
+  await expect(
+    page.getByText('Blocker status: blocked', { exact: true }),
+  ).toBeVisible()
+  await expect(page).toHaveURL('/history-blocking?step=1')
+
+  await page.getByLabel('Draft', { exact: true }).fill('')
+  await page.getByRole('link', { name: 'Add history entry' }).click()
+  await expect(page.getByText('Step 3', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Stay here' }).click()
+  await expect(
+    page.getByText('Blocker status: idle', { exact: true }),
+  ).toBeVisible()
+
+  await page.goBack()
+  await expect(page).toHaveURL('/history-blocking?step=1')
+  await expect(page.getByText('Step 1', { exact: true })).toBeVisible()
+})
+
+test('stay does not reload when a late answer leaves no index difference', async ({
+  page,
+}) => {
+  await prepareSameDocumentTraversal(page, 1)
+  await page
+    .getByRole('button', { name: 'History forward', exact: true })
+    .click()
+  await expect(
+    page.getByText('Blocker status: blocked', { exact: true }),
+  ).toBeVisible()
+
+  await page.getByLabel('Draft', { exact: true }).fill('')
+  await page.getByRole('link', { name: 'Add history entry' }).click()
+  await expect(page.getByText('Step 1', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Stay here' }).click()
+  await expect(
+    page.getByText('Blocker status: idle', { exact: true }),
+  ).toBeVisible()
+
+  await page.getByLabel('Draft', { exact: true }).fill('Second draft')
+  await page.goBack()
+  await expect(
+    page.getByText('Blocker status: blocked', { exact: true }),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Stay here' }).click()
+  await expect(
+    page.getByText('Blocker status: idle', { exact: true }),
+  ).toBeVisible()
+  await expect(page.getByLabel('Draft', { exact: true })).toHaveValue(
+    'Second draft',
+  )
+})
