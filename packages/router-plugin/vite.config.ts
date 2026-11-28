@@ -24,20 +24,18 @@ const testsDir = path.join(
  * tests share. Paths relative to `tests/`.
  */
 const serialHmrTests = [
-  'route-hmr-browser-plugin.test.ts',
-  'route-hmr-browser-plugin-routes.test.ts',
-  'route-hmr-browser-plugin-order.test.ts',
-  'route-hmr-browser-kept-binding.test.ts',
-  'route-hmr-browser-kept-binding-solid.test.ts',
+  'integration/route-hmr-browser-plugin.test.ts',
+  'integration/route-hmr-browser-plugin-routes.test.ts',
+  'integration/route-hmr-browser-plugin-order.test.ts',
+  'integration/route-hmr-browser-kept-binding.test.ts',
+  'integration/route-hmr-browser-kept-binding-solid.test.ts',
 ]
 const concurrentTests = readdirSync(path.join(testsDir, 'integration'))
   .filter(
-    (file) =>
-      file.startsWith('route-hmr-browser') &&
-      file.endsWith('.test.ts') &&
-      !serialHmrTests.includes(file),
+    (file) => file.startsWith('route-hmr-browser') && file.endsWith('.test.ts'),
   )
   .map((file) => `integration/${file}`)
+  .filter((file) => !serialHmrTests.includes(file))
 const moreConcurrentTests = [
   'integration/code-splitter-refresh-placements.test.ts',
   'integration/route-hmr-rsbuild-dev-maps.test.ts',
@@ -62,6 +60,7 @@ const smokeTests = [
 if (process.env.VITEST) {
   for (const [list, files] of Object.entries({
     smokeTests,
+    serialHmrTests,
     moreConcurrentTests,
   })) {
     for (const file of files) {
