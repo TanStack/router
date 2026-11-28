@@ -1,3 +1,4 @@
+import { transformWithOxc } from 'vite'
 import { expect, test } from 'vitest'
 import {
   callProvider,
@@ -5,7 +6,10 @@ import {
   compileCode,
   evaluateModule,
   importSources,
+  outputs,
 } from '../regression-helpers'
+import { getModuleErrors } from '../validate-module'
+import type { Output } from '../regression-helpers'
 
 // The provider module runs the extracted handler: it must keep every module
 // binding the handler closes over, however the handler is written and
@@ -113,6 +117,15 @@ export const later = createServerFn().handler(async () => 'later:')`,
     code: `export const fn = (createServerFn().handler(async () => db.x()))!`,
     expected: 'x',
   },
+  {
+    // Source: TanStack/router#3698
+    name: 'a body calling other methods named handler',
+    code: `const local = { handler: (value: string) => value + '!' }
+export const fn = createServerFn().handler(async () =>
+  local.handler([db].map((source) => ({ handler: source.y }))[0]!.handler() + db.x()),
+)`,
+    expected: 'yx!',
+  },
 ])(
   'the handler can be $name',
   async ({ code, expected, read = async (value) => value }) => {
@@ -129,6 +142,33 @@ export const later = createServerFn().handler(async () => 'later:')`,
     expect(await read(value)).toEqual(expected)
   },
 )
+
+// Source: TanStack/router#7341. In a `.ts` module, `<T>value` is a type
+// assertion and `<T>(value: T) => value` a generic arrow function, not JSX.
+test('a handler in a .ts module can use angle-bracket type assertions', async () => {
+  const id = '/test/src/module.ts'
+  const code = `${head}import { db } from './db.server'
+const identity = <T>(value: T) => value
+export const fn = createServerFn().handler(async () => <string>identity(<unknown>db.x()))`
+  const compiled = {} as Record<Output, string>
+  for (const output of outputs) {
+    compiled[output] = (await compileCode(output, code, { id }))!
+    expect(
+      await getModuleErrors(compiled[output], 'module.ts'),
+      output,
+    ).toEqual([])
+  }
+  for (const caller of [compiled.client, compiled.ssr]) {
+    expect(importSources(caller)).toEqual([])
+  }
+  const { code: provider } = await transformWithOxc(
+    compiled.provider,
+    'module.ts',
+  )
+  expect(await callProvider(provider, 'fn', { './db.server': dbServer })).toBe(
+    'x',
+  )
+})
 
 // Each handler reads the module binding `value` (or `key`) through a scope
 // that also declares, or seems to declare, the same name.

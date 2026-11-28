@@ -638,6 +638,36 @@ describe('transform preserves the rest of the route file', () => {
     })
   })
 
+  // Source: TanStack/router#7341. In a `.ts` file, `<T>value` is a type
+  // assertion and `<T>(value: T) => value` a generic arrow function, not JSX.
+  it('parses a .ts route file with angle-bracket type assertions', () => {
+    const body = [
+      'const identity = <T>(value: T) => value',
+      "export const Route = createFileRoute('/old')({",
+      '  loader: () => <number>identity(<unknown>1),',
+      '})',
+    ]
+    const result = transform({
+      source: [
+        "import { createFileRoute } from '@tanstack/react-router'",
+        ...body,
+      ].join('\n'),
+      filename: '/routes/old.ts',
+      ctx: { target: 'react', routeId: '/new', lazy: false },
+      node: makeNode(),
+    })
+
+    expect(result).toEqual({
+      result: 'modified',
+      output: [
+        "import { createFileRoute } from '@tanstack/react-router'",
+        ...body,
+      ]
+        .join('\n')
+        .replace("'/old'", "'/new'"),
+    })
+  })
+
   it('updates only the Route declarator of a multi-declarator export', () => {
     const result = transformToNewRoute(
       [

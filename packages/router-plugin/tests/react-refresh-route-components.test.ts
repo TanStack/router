@@ -7,6 +7,8 @@
  * components are registered and how their hook signatures are computed.
  */
 import { describe, expect, it } from 'vitest'
+import { compileCodeSplitReferenceRoute } from '../src/core/code-splitter/compilers'
+import { getFrameworkHmrCompilerPlugins } from '../src/core/code-splitter/plugins/framework-plugins'
 import {
   compileRouteModules,
   declarationOf,
@@ -77,6 +79,10 @@ ${Object.entries(options)
     [
       'a reassigned function declaration',
       `import { connect } from './connect'\nfunction page() { return <p>hi</p> }\npage = connect(page)`,
+    ],
+    [
+      'an overloaded function declaration',
+      `function page(props: { title: string }): JSX.Element\nfunction page(props: any) { return <p>{props.title}</p> }`,
     ],
   ])('declared lowercase as %s, by renaming it', async (_, declaration) => {
     const code = transformWithRouteHmrPlugin(
@@ -277,5 +283,39 @@ export const page = () => <div />, Route = createRootRoute({
     // the route is created.
     expect(declaration).toBeDefined()
     expect(declaration!.start).toBeLessThan(route.start)
+  })
+})
+
+describe('route HMR leaves options React Refresh does not handle as they are', () => {
+  it('keeps a method-shorthand component option', () => {
+    const code = transformWithRouteHmrPlugin(
+      `${head}export const Route = createFileRoute('/')({
+  component() {
+    return <p>hi</p>
+  },
+})`,
+    )
+    expect(code).toMatch(/component\(\)\s*\{/)
+  })
+
+  // Only split components are kept in the HMR data across updates; a split
+  // loader kept there would keep running its old code after an edit.
+  it('does not keep a split loader in the HMR data', () => {
+    const compiled = compileCodeSplitReferenceRoute({
+      code: `${head}export const Route = createFileRoute('/')({
+  loader: () => 'data',
+  component: () => <p>hi</p>,
+})`,
+      filename: 'route.tsx',
+      id: 'route.tsx',
+      addHmr: true,
+      codeSplitGroupings: [['loader'], ['component']],
+      targetFramework: 'react',
+      compilerPlugins: getFrameworkHmrCompilerPlugins({
+        targetFramework: 'react',
+      }),
+    })
+    expect(compiled!.code).toContain('tsr-split-component:component')
+    expect(compiled!.code).not.toContain('tsr-split-component:loader')
   })
 })

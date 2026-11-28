@@ -97,6 +97,33 @@ describe('createMiddleware compiles correctly', async () => {
     `)
   })
 
+  test('requires an argument for validator()', async () => {
+    await expect(
+      compile({
+        env: 'client',
+        code: `
+      import { createMiddleware } from '@tanstack/react-start'
+      const myMiddleware = createMiddleware({ type: 'function' })
+        .validator()
+        .server(async ({ next }) => next())`,
+        id: 'test.ts',
+      }),
+    ).rejects.toThrow(
+      'createMiddleware().validator() must be called with a validator!',
+    )
+  })
+
+  test('keeps a middleware without a server function on the client', async () => {
+    const result = await compile({
+      env: 'client',
+      code: `
+      import { createMiddleware } from '@tanstack/react-start'
+      export const logger = createMiddleware().client(async ({ next }) => next())`,
+      id: 'test.ts',
+    })
+    expect(result?.code ?? '').toMatch(/\.client\(async/)
+  })
+
   test('should use fast path for direct imports from known library (no extra resolveId calls)', async () => {
     const code = `
       import { createMiddleware } from '@tanstack/react-start'
