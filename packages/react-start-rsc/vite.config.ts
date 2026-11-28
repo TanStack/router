@@ -8,6 +8,28 @@ import packageJson from './package.json'
 // them; the compiler projects leave them out. Paths relative to `tests/`.
 import noncompilerTests from './tests/noncompiler-tests.json' with { type: 'json' }
 
+const concurrentTests = [
+  'tests/integration/rsc-start-build.test.ts',
+  'tests/integration/rsc-start-build-client-reach.test.ts',
+  'tests/integration/rsc-reach-warm-build-rsbuild.test.ts',
+  'tests/integration/rsc-reach-warm-edit-rsbuild.test.ts',
+]
+
+/** What both integration projects run with. */
+const integration = {
+  environment: 'node',
+  // The dev servers and their module runners run in the test
+  // process, and `vite dev` runs with `development`: Vitest's `test`
+  // would be baked into the served client code (e.g. the RSC HMR
+  // client is set up under `development` only).
+  env: { NODE_ENV: 'development' },
+  // (after the root's: each file ends with the compilers' stale
+  // check, and the process environment it started with)
+  setupFiles: ['@tanstack/compiler-test-utils/test-scope-setup'],
+  testTimeout: 60_000,
+  hookTimeout: 60_000,
+}
+
 const config = defineConfig({
   resolve: {
     alias: {
@@ -52,17 +74,20 @@ const config = defineConfig({
         test: {
           name: 'integration',
           include: ['tests/integration/**/*.test.ts?(x)'],
-          environment: 'node',
-          // The dev servers and their module runners run in the test
-          // process, and `vite dev` runs with `development`: Vitest's `test`
-          // would be baked into the served client code (e.g. the RSC HMR
-          // client is set up under `development` only).
-          env: { NODE_ENV: 'development' },
-          // (after the root's: each file ends with the compilers' stale
-          // check, and the process environment it started with)
-          setupFiles: ['@tanstack/compiler-test-utils/test-scope-setup'],
-          testTimeout: 60_000,
-          hookTimeout: 60_000,
+          exclude: concurrentTests,
+          ...integration,
+        },
+      },
+      {
+        // The files whose one build is a `beforeAll` their tests await, each
+        // test a page of its own on it: their tests run at once.
+        extends: true,
+        test: {
+          name: 'integration-concurrent',
+          include: concurrentTests,
+          sequence: { concurrent: true },
+          maxConcurrency: 4,
+          ...integration,
         },
       },
     ],
