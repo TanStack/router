@@ -109,8 +109,8 @@ export function createRouterCodeSplitterPlugin(
       (plugin) => plugin.onVirtualRouteSplitNode,
     )
   }
-  // Map from normalized route file path → set of shared binding names.
-  // Populated by the reference compiler, consumed by virtual and shared compilers.
+  // Map from normalized route file path → set of shared binding names, empty
+  // when the file has none. Filled by `resolveSharedBindings`.
   const sharedBindingsMap = new Map<string, Set<string>>()
 
   const getGlobalCodeSplitGroupings = () => {
@@ -123,13 +123,11 @@ export function createRouterCodeSplitterPlugin(
     return userConfig.codeSplittingOptions?.splitBehavior
   }
 
-  const handleCompilingReferenceFile = (
-    code: string,
-    id: string,
-    generatorNodeInfo: GetRoutesByFileMapResultValue,
-  ): UnpluginTransformResult => {
-    if (debug) console.info('Compiling Route: ', id)
-
+  /**
+   * Resolves the split groupings of the route file `id` and computes its shared
+   * bindings from `code`, remembering them for the file's other modules.
+   */
+  const resolveSharedBindings = (code: string, id: string) => {
     const fromCode = detectCodeSplitGroupingsFromRoute({
       code,
       filename: id,
@@ -145,11 +143,12 @@ export function createRouterCodeSplitterPlugin(
       }
     }
 
-    const userShouldSplitFn = getShouldSplitFn()
-
-    const pluginSplitBehavior = userShouldSplitFn?.({
-      routeId: generatorNodeInfo.routeId,
-    }) as CodeSplitGroupings | undefined
+    const route = routerPluginContext.routesByFile.get(id)
+    const pluginSplitBehavior =
+      route &&
+      (getShouldSplitFn()?.({ routeId: route.routeId }) as
+        | CodeSplitGroupings
+        | undefined)
 
     if (pluginSplitBehavior) {
       const res = splitGroupingsSchema.safeParse(pluginSplitBehavior)
@@ -164,17 +163,39 @@ export function createRouterCodeSplitterPlugin(
     const splitGroupings: CodeSplitGroupings =
       fromCode.groupings ?? pluginSplitBehavior ?? getGlobalCodeSplitGroupings()
 
-    // Compute shared bindings before compiling the reference route
     const sharedBindings = computeSharedBindings({
       code,
       filename: id,
       codeSplitGroupings: splitGroupings,
     })
-    if (sharedBindings.size > 0) {
-      sharedBindingsMap.set(id, sharedBindings)
-    } else {
-      sharedBindingsMap.delete(id)
-    }
+    sharedBindingsMap.set(id, sharedBindings)
+
+    return { splitGroupings, sharedBindings }
+  }
+
+  /**
+   * The shared bindings of the route file `baseId` for its split and shared
+   * modules, which get the code of the whole file. The reference module is
+   * normally compiled first and has computed them. A tool with a persistent
+   * transform cache can restore the reference module without compiling it in
+   * this process; the bindings are then computed here.
+   */
+  const getSharedBindings = (code: string, baseId: string) => {
+    return (
+      sharedBindingsMap.get(baseId) ??
+      resolveSharedBindings(code, baseId).sharedBindings
+    )
+  }
+
+  const handleCompilingReferenceFile = (
+    code: string,
+    id: string,
+    generatorNodeInfo: GetRoutesByFileMapResultValue,
+  ): UnpluginTransformResult => {
+    if (debug) console.info('Compiling Route: ', id)
+
+    // The code may have changed since the last compilation: always recompute.
+    const { splitGroupings, sharedBindings } = resolveSharedBindings(code, id)
 
     const compiledReferenceRoute = compileCodeSplitReferenceRoute({
       code,
@@ -189,7 +210,7 @@ export function createRouterCodeSplitterPlugin(
       addHmr,
       hmrStyle,
       hmrRouteId: generatorNodeInfo.routeId,
-      sharedBindings: sharedBindings.size > 0 ? sharedBindings : undefined,
+      sharedBindings,
       compilerPlugins,
     })
 
@@ -232,13 +253,12 @@ export function createRouterCodeSplitterPlugin(
     ) as Array<SplitRouteIdentNodes>
 
     const baseId = id.split('?')[0]!
-    const resolvedSharedBindings = sharedBindingsMap.get(baseId)
 
     const result = compileCodeSplitVirtualRoute({
       code,
       filename: id,
       splitTargets: grouping,
-      sharedBindings: resolvedSharedBindings,
+      sharedBindings: getSharedBindings(code, baseId),
       compilerPlugins: virtualRouteCompilerPlugins,
     })
 
@@ -380,8 +400,8 @@ export function createRouterCodeSplitterPlugin(
 
           if (!baseId) return null
 
-          const sharedBindings = sharedBindingsMap.get(baseId)
-          if (!sharedBindings || sharedBindings.size === 0) return null
+          const sharedBindings = getSharedBindings(code, baseId)
+          if (sharedBindings.size === 0) return null
 
           if (debug) console.info('Compiling Shared Module: ', id)
 

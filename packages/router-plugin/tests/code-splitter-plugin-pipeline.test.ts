@@ -3,13 +3,16 @@ import { describe, expect, it } from 'vitest'
 import { normalizePath } from '../src/core/utils'
 import {
   createCodeSplitterTransforms,
+  declarationOf,
   expectValidModules,
+  exportedNames,
   importSources,
+  importedNames,
   routeFile,
   transformWithRouteHmrPlugin,
 } from './regression-helpers'
 import { getModuleErrors } from './validate-module'
-import type { Config } from '../src/core/config'
+import type { CodeSplittingOptions, Config } from '../src/core/config'
 import type { HmrStyle } from '../src/core/hmr'
 
 const routeSource = (name: string) => `
@@ -150,6 +153,93 @@ export const Route = createFileRoute('/unshared')({
     )
     expect(splitter.reference(code, file)).toContain('tsr-split=component')
     expect(splitter.shared(code, `${file}?tsr-shared=1`)).toBeNull()
+  })
+
+  // A tool with a persistent transform cache (Vitest's `fsModuleCache`) can
+  // restore the compiled route module from disk. That process then compiles a
+  // split or shared module of a route whose reference module it never compiled.
+  describe('when the reference module was not compiled in this process', () => {
+    const file = routeFile('posts')
+    const sharedId = `${file}?tsr-shared=1`
+    const routes = { [file]: '/posts' }
+    const postsSource = (routeOptions = '') => `
+import { createFileRoute } from '@tanstack/react-router'
+import { createStore } from './store'
+const visits = createStore(0)
+export const Route = createFileRoute('/posts')({${routeOptions}
+  loader: () => {
+    visits.set(visits.get() + 1)
+  },
+  component: () => <p>{visits.get()}</p>,
+})
+`
+
+    const cases: Array<{
+      name: string
+      code: string
+      options: CodeSplittingOptions
+      split: string
+      shared: Array<string>
+    }> = [
+      {
+        name: 'the default groupings',
+        code: postsSource(),
+        options: {},
+        split: 'component',
+        shared: ['visits'],
+      },
+      {
+        name: 'the groupings in the route file',
+        code: postsSource(`\n  codeSplitGroupings: [['component']],`),
+        options: { splitBehavior: () => [['loader', 'component']] },
+        split: 'component',
+        shared: ['visits'],
+      },
+      {
+        name: 'the splitBehavior for the route id',
+        code: postsSource(),
+        options: {
+          defaultBehavior: [['loader', 'component']],
+          splitBehavior: ({ routeId }) =>
+            routeId === '/posts' ? [['component']] : undefined,
+        },
+        split: 'component',
+        shared: ['visits'],
+      },
+      {
+        name: 'the default behavior',
+        code: postsSource(),
+        options: { defaultBehavior: [['loader', 'component']] },
+        split: 'component---loader',
+        shared: [],
+      },
+    ]
+
+    it.each(cases)(
+      'splits by $name, like the reference module',
+      async ({ code, options, split, shared }) => {
+        const splitter = await createCodeSplitterTransforms(
+          { codeSplittingOptions: options },
+          routes,
+        )
+        const chunk = splitter.virtual(code, `${file}?tsr-split=${split}`)!
+        expect(importedNames(chunk, sharedId)).toEqual(shared)
+        const sharedModule = splitter.shared(code, sharedId)
+        if (shared.length > 0) {
+          expect(chunk).not.toMatch(declarationOf('visits'))
+          expect(exportedNames(sharedModule!)).toEqual(shared)
+          expect(sharedModule).toMatch(declarationOf('visits'))
+          expect(sharedModule).not.toContain('createFileRoute')
+        } else {
+          expect(sharedModule).toBeNull()
+        }
+
+        // A bundler compiles the reference module first.
+        splitter.reference(code, file)
+        expect(splitter.virtual(code, `${file}?tsr-split=${split}`)).toBe(chunk)
+        expect(splitter.shared(code, sharedId)).toBe(sharedModule)
+      },
+    )
   })
 
   // File names from real apps: optional segments, pathless groups and escaped dots.
