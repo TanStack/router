@@ -45,12 +45,21 @@ const directory = realpathSync(
 const copy = path.join(directory, 'project')
 
 function run(executable, executableArgs, options = {}) {
-  const result = spawnSync(executable, executableArgs, {
-    stdio: 'inherit',
-    // (`pnpm` and the binaries of `node_modules/.bin` are `.cmd` files on Windows)
-    shell: process.platform === 'win32',
-    ...options,
-  })
+  const spawnOptions = { stdio: 'inherit', ...options }
+  // `pnpm` and the binaries of `node_modules/.bin` are `.cmd` files on
+  // Windows, which only a shell starts. Node joins the arguments of a shell
+  // command with spaces and does not quote them, so an argument with a space
+  // in it, such as the copy under a temporary directory of "Jane Doe", is
+  // quoted here.
+  const result =
+    process.platform === 'win32'
+      ? spawnSync(
+          [executable, ...executableArgs]
+            .map((arg) => (/\s/.test(arg) ? `"${arg}"` : arg))
+            .join(' '),
+          { ...spawnOptions, shell: true },
+        )
+      : spawnSync(executable, executableArgs, spawnOptions)
   if (result.error) {
     throw result.error
   }
