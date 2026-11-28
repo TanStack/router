@@ -21,7 +21,7 @@
 import react from '@vitejs/plugin-react'
 import { describe, expect, test } from 'vitest'
 import { describeHmr } from '@tanstack/compiler-test-utils/dev-server'
-import { openTestPage } from '../test-close'
+import { openTestPage } from '../test-page'
 import { startDevServer } from '../dev-server'
 import {
   editLoadedChild,

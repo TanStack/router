@@ -11,7 +11,7 @@
  * v5.1 item 3).
  */
 import { describe, expect, test } from 'vitest'
-import { openTestPage } from '../../test-close'
+import { openTestPage } from '../../test-page'
 import { buildStart } from '../../build-harness'
 import { rsbuildEntries } from '../route-css-cases'
 import {

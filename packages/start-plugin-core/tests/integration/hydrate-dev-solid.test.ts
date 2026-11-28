@@ -1,6 +1,6 @@
 import solid from 'vite-plugin-solid'
 import { describe, expect, test } from 'vitest'
-import { openTestPage } from '../test-close'
+import { openTestPage } from '../test-page'
 import { startDevServer } from '../dev-server'
 import {
   editLoadedChild,

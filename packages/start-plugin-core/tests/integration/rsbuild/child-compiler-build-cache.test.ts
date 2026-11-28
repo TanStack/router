@@ -14,7 +14,7 @@
  * serves both pages.
  */
 import { expect, test } from 'vitest'
-import { openTestPage } from '../../test-close'
+import { openTestPage } from '../../test-page'
 import { buildStart } from '../../build-harness'
 import { rsbuildEntries } from '../route-css-cases'
 import { workerPlugin } from './worker-plugin'

@@ -8,7 +8,7 @@
  */
 import { expect } from 'vitest'
 import { trackRequests } from '@tanstack/compiler-test-utils/hmr-sync'
-import { openTestPage } from '../test-close'
+import { openTestPage } from '../test-page'
 import { startServerEntryFiles } from '../dev-server'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 

@@ -87,7 +87,7 @@ import react from '@vitejs/plugin-react'
 import { pluginReact } from '@rsbuild/plugin-react'
 import { inProbeRequest, requestFiles } from './request-probe'
 import { startPlugins, startRsbuildPlugin } from './start-plugins'
-import { closedWithTest } from './test-close'
+import { closeAtEnd } from './test-end'
 import type { StartFramework } from './start-plugins'
 import type {
   BuildMode,
@@ -597,7 +597,10 @@ const harnessEntries = (root: string) => ({
  * the current test finishes (`StartBuild.close`).
  */
 export function buildStart(options: StartBuildOptions): Promise<StartBuild> {
-  return closedWithTest(() => buildStartShared(options))
+  return closeAtEnd(
+    () => buildStartShared(options),
+    (opened) => opened.close(),
+  )
 }
 
 /**
@@ -683,6 +686,14 @@ async function createBuildApp(options: StartBuildOptions) {
   const app = workspace
     ? { ...created, root: path.join(created.root, workspace.app) }
     : created
+  // (the app's option runs once the directory is owned: its error removes it)
+  let configuredRoot: string | undefined
+  try {
+    configuredRoot = options.root?.(app.root)
+  } catch (error) {
+    await created.dispose()
+    throw error
+  }
   const mode = options.mode ?? 'production'
   const violations: Array<ViolationInfo> = []
   const start = options.start ?? {}
@@ -714,18 +725,22 @@ async function createBuildApp(options: StartBuildOptions) {
     closes: [],
     viteConfigFile: options.viteConfigFile ?? false,
     cwd: options.cwd,
-    configuredRoot: options.root?.(app.root),
+    configuredRoot,
   }
   return {
     ...app,
     target,
+    // (newest first; a close that fails skips none of the others)
     close: async () => {
-      try {
-        for (const close of target.closes.splice(0).reverse()) {
-          await close()
-        }
-      } finally {
-        await created.dispose()
+      const failures: Array<unknown> = []
+      for (const close of [
+        ...target.closes.splice(0).reverse(),
+        created.dispose,
+      ]) {
+        await close().catch((error: unknown) => failures.push(error))
+      }
+      if (failures.length > 0) {
+        throw failures[0]
       }
     },
   }

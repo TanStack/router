@@ -18,7 +18,7 @@
  */
 import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { beforeAll, describe, expect, test } from 'vitest'
+import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
 import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { buildStartShared, startBundlers } from '../build-harness'
@@ -140,13 +140,25 @@ describe.each(startBundlers)('%s build, served', (bundler) => {
   /** Ids of the routes of the client build's route tree. */
   let clientRoutes: Array<string>
 
+  let building: Promise<{ close: () => Promise<void> }> | undefined
+  let serving: Promise<{ close: () => Promise<void> }> | undefined
+  afterAll(async () => {
+    await serving?.then(
+      (opened) => opened.close(),
+      () => {},
+    )
+    await building?.then(
+      (opened) => opened.close(),
+      () => {},
+    )
+  })
   beforeAll(async () => {
-    build = await buildStartShared({
+    build = await (building = buildStartShared({
       bundler,
       files,
       entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-    })
-    served = await serveStartBuildShared(build)
+    }))
+    served = await (serving = serveStartBuildShared(build))
     // (a page of the hook's own: `openAppPage` closes its page with a test)
     const page = await openPage(new URL('/', served.url).href)
     try {
@@ -156,10 +168,6 @@ describe.each(startBundlers)('%s build, served', (bundler) => {
       )
     } finally {
       await page.close()
-    }
-    return async () => {
-      await served.close()
-      await build.close()
     }
   }, timeout)
 

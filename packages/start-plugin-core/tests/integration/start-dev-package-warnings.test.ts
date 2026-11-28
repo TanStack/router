@@ -21,7 +21,7 @@ import { describe, expect, test } from 'vitest'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
-import { openTestPage } from '../test-close'
+import { openTestPage } from '../test-page'
 import { startDevServer } from '../dev-server'
 import { appManifest, installPackage } from '../package-layouts'
 import {

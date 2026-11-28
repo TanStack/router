@@ -16,7 +16,7 @@
  * Rsbuild: rsbuild/start-dev-route-shape-change.test.ts.
  */
 import { describe, expect, test } from 'vitest'
-import { openTestPage } from '../test-close'
+import { openTestPage } from '../test-page'
 import { startDevServer } from '../dev-server'
 import { apps } from './route-error-apps'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'

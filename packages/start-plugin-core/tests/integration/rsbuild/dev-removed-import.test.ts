@@ -9,7 +9,7 @@
  */
 import { describe, expect, test } from 'vitest'
 import { pluginReact } from '@rsbuild/plugin-react'
-import { openTestPage } from '../../test-close'
+import { openTestPage } from '../../test-page'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 import { reactApp, solidApp } from '../hydrate-dev-edits'
 import { solidAppConfig } from '../hydrate-pages'

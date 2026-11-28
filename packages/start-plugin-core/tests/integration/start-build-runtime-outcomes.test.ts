@@ -1,5 +1,5 @@
 /** Observable Start runtime contracts that mutation testing found unchecked. */
-import { beforeAll, describe, expect, test } from 'vitest'
+import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { buildStartShared, startBundlers } from '../build-harness'
 import {
   openAppPage,
@@ -64,16 +64,24 @@ function PostForm() {
 
 describe.each(startBundlers)('%s build runtime outcomes', (bundler) => {
   let served: Awaited<ReturnType<typeof serveStartBuild>>
+  let building: Promise<{ close: () => Promise<void> }> | undefined
+  let serving: Promise<{ close: () => Promise<void> }> | undefined
+  afterAll(async () => {
+    await serving?.then(
+      (opened) => opened.close(),
+      () => {},
+    )
+    await building?.then(
+      (opened) => opened.close(),
+      () => {},
+    )
+  })
   beforeAll(async () => {
-    const build = await buildStartShared({
+    const build = await (building = buildStartShared({
       bundler,
       files,
-    })
-    served = await serveStartBuildShared(build)
-    return async () => {
-      await served.close()
-      await build.close()
-    }
+    }))
+    served = await (serving = serveStartBuildShared(build))
   }, 60_000)
 
   test('a provider keeps the effect of a default-export expression over HTTP', async () => {

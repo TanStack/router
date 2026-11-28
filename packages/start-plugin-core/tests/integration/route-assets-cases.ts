@@ -39,7 +39,7 @@
  * and `/media` boundaries without CSS, and `/widget-a` and `/widget-b` render
  * a shared widget whose own boundary has CSS.
  */
-import { beforeAll, describe, expect, test } from 'vitest'
+import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { buildStartShared } from '../build-harness'
 import { createStartHost } from '../start-host'
 import { rsbuildEntries } from './route-css-cases'
@@ -610,31 +610,38 @@ export function routeAssetsSuite(
   describe(name, () => {
     let url: string
     let shell: Assets
+    let opening: Promise<{ close: () => Promise<void> }> | undefined
+    afterAll(() =>
+      opening?.then(
+        (opened) => opened.close(),
+        () => {},
+      ),
+    )
     beforeAll(async () => {
-      const built = await (bundler === 'vite'
-        ? createStartHost({
-            serve: false,
-            files: {
-              ...files,
-              ...(sideEffects === false && {
-                'package.json': JSON.stringify({
-                  name: 'app',
-                  private: true,
-                  type: 'module',
-                  sideEffects: false,
+      const built = await (opening =
+        bundler === 'vite'
+          ? createStartHost({
+              serve: false,
+              files: {
+                ...files,
+                ...(sideEffects === false && {
+                  'package.json': JSON.stringify({
+                    name: 'app',
+                    private: true,
+                    type: 'module',
+                    sideEffects: false,
+                  }),
                 }),
-              }),
-            },
-          })
-        : buildStartShared({
-            bundler,
-            sideEffects,
-            rsbuildConfig,
-            files: { ...rsbuildEntries, ...files },
-          }))
+              },
+            })
+          : buildStartShared({
+              bundler,
+              sideEffects,
+              rsbuildConfig,
+              files: { ...rsbuildEntries, ...files },
+            }))
       url = (await built.preview()).url
       shell = await linkedMarkers(url, '/no-such-route')
-      return () => built.close()
     }, timeout)
 
     test('the page of an unknown path links no code or CSS only a route or a boundary needs', () => {

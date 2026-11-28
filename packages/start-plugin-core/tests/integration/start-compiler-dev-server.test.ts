@@ -13,7 +13,7 @@ import { normalizePath } from 'vite'
 import { describe, expect, onTestFinished, test } from 'vitest'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import { describeHmr } from '@tanstack/compiler-test-utils/dev-server'
-import { openTestPage } from '../test-close'
+import { openTestPage } from '../test-page'
 import { requestsOfPrelude } from '../build-harness'
 import {
   callServerFn,

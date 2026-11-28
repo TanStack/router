@@ -37,7 +37,7 @@ import { normalizePath } from 'vite'
 import { expect } from 'vitest'
 import { createPluginHost } from '@tanstack/compiler-test-utils/plugin-host'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
-import { closedWithTest } from './test-close'
+import { closeAtEnd } from './test-end'
 import { settledSource } from './settled-source'
 import { createStartHost } from './start-host'
 import type { PluginHost } from '@tanstack/compiler-test-utils/plugin-host'
@@ -263,11 +263,13 @@ async function warm(hosts: HydrateHost) {
  * `target`.
  */
 export async function startEditHost(): Promise<HydrateHost> {
-  const start = await closedWithTest(() =>
-    createStartHost({
-      start: startOptions,
-      files: { ...renderFiles, 'tsconfig.json': reactTsconfig },
-    }),
+  const start = await closeAtEnd(
+    () =>
+      createStartHost({
+        start: startOptions,
+        files: { ...renderFiles, 'tsconfig.json': reactTsconfig },
+      }),
+    (opened) => opened.close(),
   )
   // The page loads its runtime before an edit reloads it
   await start.run('1')

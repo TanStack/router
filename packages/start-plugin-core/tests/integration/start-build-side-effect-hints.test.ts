@@ -11,7 +11,7 @@
  * validator schema a client form also uses and non-JS modules whose text
  * contains `createServerFn(` (SPEC J4.1, J4.7, J4.12, J4.14, G2, G3, §2.1).
  */
-import { beforeAll, describe, expect, test } from 'vitest'
+import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import {
   buildStartShared,
   callByIdExports,
@@ -240,14 +240,20 @@ describe.each(startBundlers)('%s build', (bundler) => {
   // Node processes).
   let build: StartBuild
   let urls: Record<string, string>
+  let opening: Promise<{ close: () => Promise<void> }> | undefined
+  afterAll(() =>
+    opening?.then(
+      (opened) => opened.close(),
+      () => {},
+    ),
+  )
   beforeAll(async () => {
-    build = await buildStartShared({
+    build = await (opening = buildStartShared({
       bundler,
       files: { ...files, 'src/text.ts': textModule(bundler) },
       entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-    })
+    }))
     urls = (await build.client.run(clientUrls)).result as Record<string, string>
-    return () => build.close()
   }, timeout)
 
   describe('server code under side-effect hints', () => {

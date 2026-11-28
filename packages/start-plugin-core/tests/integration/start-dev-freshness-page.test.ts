@@ -17,7 +17,7 @@ import {
   trackRequests,
 } from '@tanstack/compiler-test-utils/hmr-sync'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
-import { openTestPage } from '../test-close'
+import { openTestPage } from '../test-page'
 import { startBrowserStartDevServer } from './importProtection/client-pages'
 
 const timeout = 60_000

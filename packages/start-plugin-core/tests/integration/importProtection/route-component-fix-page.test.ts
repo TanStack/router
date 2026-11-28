@@ -25,7 +25,8 @@
  * protection N1, B1 and B2.
  */
 import { describe, expect, test } from 'vitest'
-import { closedWithTest, openTestPage } from '../../test-close'
+import { closeAtEnd } from '../../test-end'
+import { openTestPage } from '../../test-page'
 import { buildStart, startBundlers } from '../../build-harness'
 import { createStartHost } from '../../start-host'
 import { rejection } from '../../importProtection/start-apps'
@@ -156,12 +157,14 @@ async function previewFixed(
   files: Record<string, string>,
 ) {
   if (bundler === 'vite') {
-    const host = await closedWithTest(() =>
-      createStartHost({
-        serve: false,
-        files,
-        start: { importProtection: { enabled: true } },
-      }),
+    const host = await closeAtEnd(
+      () =>
+        createStartHost({
+          serve: false,
+          files,
+          start: { importProtection: { enabled: true } },
+        }),
+      (opened) => opened.close(),
     )
     return (await host.preview()).url
   }

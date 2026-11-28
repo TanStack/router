@@ -13,7 +13,7 @@
  * whole plugin serves the same app to a page.
  */
 import react from '@vitejs/plugin-react'
-import { beforeAll, describe, expect, test } from 'vitest'
+import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import {
   buildStartShared,
   callByIdPrelude,
@@ -127,17 +127,25 @@ describe.each(startBundlers)('%s production build, served', (bundler) => {
   let build: StartBuild
   let served: Awaited<ReturnType<typeof serveStartBuild>>
 
+  let building: Promise<{ close: () => Promise<void> }> | undefined
+  let serving: Promise<{ close: () => Promise<void> }> | undefined
+  afterAll(async () => {
+    await serving?.then(
+      (opened) => opened.close(),
+      () => {},
+    )
+    await building?.then(
+      (opened) => opened.close(),
+      () => {},
+    )
+  })
   beforeAll(async () => {
-    build = await buildStartShared({
+    build = await (building = buildStartShared({
       bundler,
       files: { ...startPageEntries, ...files },
       entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-    })
-    served = await serveStartBuildShared(build)
-    return async () => {
-      await served.close()
-      await build.close()
-    }
+    }))
+    served = await (serving = serveStartBuildShared(build))
   }, timeout)
 
   test('nothing of the server-only module is in the client build, and import protection reports nothing', () => {

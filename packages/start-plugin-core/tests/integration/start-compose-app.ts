@@ -20,7 +20,8 @@ import { serve } from 'srvx/node'
 import { staticMiddleware } from 'srvx/static'
 import ts from 'typescript'
 import { callByIdExports } from '../build-harness'
-import { closedWithTest, openTestPage } from '../test-close'
+import { closeAtEnd } from '../test-end'
+import { openTestPage } from '../test-page'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 import type { StartBuild } from '../build-harness'
 
@@ -145,7 +146,10 @@ async function serverFetch(build: StartBuild) {
  * the server entry for every other request.
  */
 export function serveStartBuild(build: StartBuild): Promise<ServedStartBuild> {
-  return closedWithTest(() => serveStartBuildShared(build))
+  return closeAtEnd(
+    () => serveStartBuildShared(build),
+    (opened) => opened.close(),
+  )
 }
 
 /** `serveStartBuild` for a server several tests share: the caller closes it. */

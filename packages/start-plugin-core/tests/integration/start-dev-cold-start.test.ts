@@ -18,7 +18,7 @@ import {
   settlePage,
   trackRequests,
 } from '@tanstack/compiler-test-utils/hmr-sync'
-import { openTestPage } from '../test-close'
+import { openTestPage } from '../test-page'
 import { startDevServer } from '../dev-server'
 import type { StartDevServerOptions } from '../dev-server'
 

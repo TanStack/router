@@ -8,7 +8,7 @@
  * correctness, not equality). Builds go through Start's Vite and Rsbuild
  * plugins (build-harness.ts).
  */
-import { beforeAll, describe, expect, test } from 'vitest'
+import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import {
   expectDeterministic,
   expectRelocatable,
@@ -188,8 +188,15 @@ describe.each(startBundlers)('%s build', (bundler) => {
     let oppositeEnvironments: Awaited<ReturnType<typeof observe>>
     let first: Awaited<ReturnType<typeof observe>>
     let reordered: Awaited<ReturnType<typeof observe>>
+    let opening: Promise<{ close: () => Promise<void> }> | undefined
+    afterAll(() =>
+      opening?.then(
+        (opened) => opened.close(),
+        () => {},
+      ),
+    )
     beforeAll(async () => {
-      const build = await buildStartShared({
+      const build = await (opening = buildStartShared({
         bundler,
         files: {
           'src/a.ts': appFiles['src/a.ts']!,
@@ -200,13 +207,12 @@ describe.each(startBundlers)('%s build', (bundler) => {
         },
         entry,
         start: { serverFns: { generateFunctionId: () => 'same-id' } },
-      })
+      }))
       oppositeEnvironments = await observe(build)
       first = await observe(await build.rebuild(collisionEntries(['a', 'b'])))
       reordered = await observe(
         await build.rebuild(collisionEntries(['b', 'a'])),
       )
-      return () => build.close()
     }, timeout)
 
     test('each client id runs its own handler in the SSR build in either discovery order', () => {

@@ -12,7 +12,7 @@
  */
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { openTestPage } from '../../test-close'
+import { openTestPage } from '../../test-page'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 import { rootDocument, routerFile } from '../start-compose-app'
 import type { RsbuildPlugin, Rspack } from '@rsbuild/core'

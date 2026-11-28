@@ -16,7 +16,7 @@
  * when its top-level code runs (the SSR environment runs in this process).
  */
 import path from 'node:path'
-import { beforeAll, describe, expect, test } from 'vitest'
+import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { pluginReact } from '@rsbuild/plugin-react'
 import { startDevServerShared, startRequestFiles } from '../dev-server'
 import { startRsbuildStartDevServerShared } from '../rsbuild-dev-server'
@@ -153,15 +153,21 @@ describe('vite dev: by-id requests', () => {
   const call = (id: string) =>
     callAt(server.url!, id, 'Server function info not found for')
 
+  let opening: Promise<{ close: () => Promise<void> }> | undefined
+  afterAll(() =>
+    opening?.then(
+      (opened) => opened.close(),
+      () => {},
+    ),
+  )
   beforeAll(async () => {
-    server = await startDevServerShared({
+    server = await (opening = startDevServerShared({
       listen: true,
       files,
       symlinks,
-    })
+    }))
     appId = await clientId('/src/fns.ts')
     expect(decode(appId).f).toBe('src/fns.ts')
-    return () => server.close()
   }, timeout)
 
   test(

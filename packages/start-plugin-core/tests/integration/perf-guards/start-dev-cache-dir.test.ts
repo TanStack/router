@@ -11,7 +11,7 @@
  */
 import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import { compilerStats } from '@tanstack/router-utils/compiler'
-import { closedWithTest } from '../../test-close'
+import { closeAtEnd } from '../../test-end'
 import { createStartHost } from '../../start-host'
 import type { StartHost } from '../../start-host'
 
@@ -57,14 +57,16 @@ describe.each([
       onTestFinished(() => {
         vi.unstubAllEnvs()
       })
-      const host = await closedWithTest(() =>
-        createStartHost({
-          files: plainLibrary,
-          config: {
-            ...(cacheDir && { cacheDir }),
-            optimizeDeps: { include: ['plain-lib', 'named-lib'] },
-          },
-        }),
+      const host = await closeAtEnd(
+        () =>
+          createStartHost({
+            files: plainLibrary,
+            config: {
+              ...(cacheDir && { cacheDir }),
+              optimizeDeps: { include: ['plain-lib', 'named-lib'] },
+            },
+          }),
+        (opened) => opened.close(),
       )
       // the page itself, and the framework's own pre-bundled dependencies
       await importCase(host, `export const value = () => 'MARK_WARM'`)

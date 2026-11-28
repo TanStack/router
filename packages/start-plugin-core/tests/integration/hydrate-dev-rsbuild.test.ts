@@ -8,7 +8,7 @@
  */
 import { describe, expect, test } from 'vitest'
 import { pluginReact } from '@rsbuild/plugin-react'
-import { openTestPage } from '../test-close'
+import { openTestPage } from '../test-page'
 import {
   reportedErrors,
   startRsbuildStartDevServer,

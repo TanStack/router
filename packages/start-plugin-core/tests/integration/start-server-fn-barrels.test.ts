@@ -10,7 +10,7 @@
 import { pluginReact } from '@rsbuild/plugin-react'
 import { describe, expect, test } from 'vitest'
 import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
-import { openTestPage } from '../test-close'
+import { openTestPage } from '../test-page'
 import {
   buildStart,
   callByIdExports,

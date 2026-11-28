@@ -6,7 +6,7 @@ import { servedDirectories } from '@tanstack/compiler-test-utils/app-directory'
 import { runAsDevCommand } from '@tanstack/compiler-test-utils/dev-command'
 import { closeViteServer } from '@tanstack/compiler-test-utils/dev-server'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
-import { openTestPage } from '../test-close'
+import { openTestPage } from '../test-page'
 import {
   clientEntryFiles,
   reportedErrors,

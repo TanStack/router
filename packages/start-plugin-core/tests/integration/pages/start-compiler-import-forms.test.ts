@@ -11,7 +11,7 @@
  * createMiddleware, createIsomorphicFn, envOnly and ClientOnly suites and
  * envOnlyExportedAlias.
  */
-import { beforeAll, describe, expect, test } from 'vitest'
+import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import {
   callFromClient,
@@ -202,10 +202,16 @@ describe.each(frameworks)('%s', (framework) => {
   const pkg = `@tanstack/${framework}-start`
   // The framework's host (dev server and page) starts before its tests.
   let host: StartHost
+  let opening: Promise<{ close: () => Promise<void> }> | undefined
+  afterAll(() =>
+    opening?.then(
+      (opened) => opened.close(),
+      () => {},
+    ),
+  )
   beforeAll(async () => {
-    host = await createStartHost({ framework })
+    host = await (opening = createStartHost({ framework }))
     await host.page()
-    return () => host.close()
   }, 60_000)
 
   describe.each(constructs)('$name', (construct) => {

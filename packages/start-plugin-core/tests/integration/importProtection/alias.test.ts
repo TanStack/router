@@ -23,7 +23,7 @@ import {
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { describe, expect, test } from 'vitest'
 import { buildStart, startRuntimeLinks } from '../../build-harness'
-import { closedWithTest } from '../../test-close'
+import { closeAtEnd } from '../../test-end'
 import { startPlugin, startPluginFiles } from '../../dev-server'
 import { probeMockPrelude, safeMock } from '../../importProtection/mock-helpers'
 import {
@@ -160,25 +160,27 @@ function startAliasDevServer(
   alias: (typeof viteAliases)[number],
   importProtection: ImportProtectionOptions,
 ) {
-  return closedWithTest(async (registerCleanup) => {
-    const recorder = violationRecorder(importProtection)
-    const server = await createDevServer({
-      dir: testsDir,
-      prefix: '.start-dev-server-',
-      registerCleanup,
-      files: { ...startPluginFiles, ...aliasApp },
-      browser: true,
-      symlinks: startRuntimeLinks(),
-      config: alias.devConfig,
-      plugins: ({ root }) => [
-        clientFixturePlugin,
-        ...alias.devPlugins(
-          startPlugin(root, { importProtection: recorder.importProtection }),
-        ),
-      ],
-    })
-    return Object.assign(server, { violations: recorder.violations })
-  })
+  return closeAtEnd(
+    async () => {
+      const recorder = violationRecorder(importProtection)
+      const server = await createDevServer({
+        dir: testsDir,
+        prefix: '.start-dev-server-',
+        files: { ...startPluginFiles, ...aliasApp },
+        browser: true,
+        symlinks: startRuntimeLinks(),
+        config: alias.devConfig,
+        plugins: ({ root }) => [
+          clientFixturePlugin,
+          ...alias.devPlugins(
+            startPlugin(root, { importProtection: recorder.importProtection }),
+          ),
+        ],
+      })
+      return Object.assign(server, { violations: recorder.violations })
+    },
+    (server) => server.close(),
+  )
 }
 
 /**

@@ -11,8 +11,8 @@
  * route, and, for two routes that share a module, after a reload there (the
  * page the server renders at the route).
  */
-import { beforeAll, describe, expect, test } from 'vitest'
-import { openTestPage } from '../test-close'
+import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { openTestPage } from '../test-page'
 import { buildStartShared } from '../build-harness'
 import { startDevServerShared } from '../dev-server'
 import { startRsbuildStartDevServerShared } from '../rsbuild-dev-server'
@@ -198,31 +198,38 @@ export function routeCssSuite(
     `${bundlerName[bundler]} %s`,
     (mode) => {
       let url: string
+      let opening: Promise<{ close: () => Promise<void> }> | undefined
+      afterAll(() =>
+        opening?.then(
+          (opened) => opened.close(),
+          () => {},
+        ),
+      )
       beforeAll(async () => {
-        const opened = await (bundler === 'vite'
-          ? mode === 'dev'
-            ? startDevServerShared({
-                browser: true,
-                files: { ...reactApp, ...files },
-              })
-            : createStartHost({ serve: false, files })
-          : mode === 'dev'
-            ? startRsbuildStartDevServerShared({
-                browser: true,
-                config: {
-                  ...rsbuildConfig,
-                  // Start serves the pages, not an HTML template
-                  tools: { htmlPlugin: false },
-                },
-                files: { ...rsbuildEntries, ...files },
-              })
-            : buildStartShared({
-                bundler,
-                rsbuildConfig,
-                files: { ...rsbuildEntries, ...files },
-              }))
+        const opened = await (opening =
+          bundler === 'vite'
+            ? mode === 'dev'
+              ? startDevServerShared({
+                  browser: true,
+                  files: { ...reactApp, ...files },
+                })
+              : createStartHost({ serve: false, files })
+            : mode === 'dev'
+              ? startRsbuildStartDevServerShared({
+                  browser: true,
+                  config: {
+                    ...rsbuildConfig,
+                    // Start serves the pages, not an HTML template
+                    tools: { htmlPlugin: false },
+                  },
+                  files: { ...rsbuildEntries, ...files },
+                })
+              : buildStartShared({
+                  bundler,
+                  rsbuildConfig,
+                  files: { ...rsbuildEntries, ...files },
+                }))
         url = 'preview' in opened ? (await opened.preview()).url : opened.url!
-        return () => opened.close()
       }, timeout)
 
       /** A page of the app at `/`, hydrated, everything it loads loaded. */

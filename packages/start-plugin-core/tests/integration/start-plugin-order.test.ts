@@ -34,7 +34,8 @@ import {
   loadMarker,
   loadedModulesExpression,
 } from '@tanstack/compiler-test-utils/importers'
-import { closedWithTest, openTestPage } from '../test-close'
+import { closeAtEnd } from '../test-end'
+import { openTestPage } from '../test-page'
 import { startDevServer } from '../dev-server'
 import {
   reportedErrors,
@@ -275,16 +276,18 @@ const devServer = (framework: StartFramework, startLast: boolean) =>
 
 /** A host building `framework`'s app, Start listed first or last. */
 const buildHost = async (framework: StartFramework, startLast: boolean) => {
-  const host = await closedWithTest(() =>
-    createStartHost({
-      framework,
-      serve: false,
-      startLast,
-      files: {
-        ...routeFiles(framework),
-        'src/routes/index.tsx': indexRoute(framework, 'home-v1'),
-      },
-    }),
+  const host = await closeAtEnd(
+    () =>
+      createStartHost({
+        framework,
+        serve: false,
+        startLast,
+        files: {
+          ...routeFiles(framework),
+          'src/routes/index.tsx': indexRoute(framework, 'home-v1'),
+        },
+      }),
+    (opened) => opened.close(),
   )
   return host
 }

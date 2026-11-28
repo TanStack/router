@@ -15,7 +15,7 @@
  */
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { expectRelocatable } from '@tanstack/compiler-test-utils/determinism'
-import { closedWithTest } from '../test-close'
+import { closeAtEnd } from '../test-end'
 import {
   callFromClient,
   callOnServer,
@@ -210,8 +210,9 @@ describe('relocation', () => {
     await expectRelocatable(
       ['first root', 'second root'],
       async () => {
-        const host = await closedWithTest(() =>
-          createStartHost({ ...hostDefaults, serve: false }),
+        const host = await closeAtEnd(
+          () => createStartHost({ ...hostDefaults, serve: false }),
+          (opened) => opened.close(),
         )
         const startCase = await host.case({
           'fns.ts': serverFnModule('fn', 'from the server'),

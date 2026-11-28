@@ -20,7 +20,7 @@ import vue from '@vitejs/plugin-vue'
 import { pluginVue } from '@rsbuild/plugin-vue'
 import { afterAll, describe, expect, test } from 'vitest'
 import { diagnosticPosition } from '@tanstack/compiler-test-utils/diagnostics'
-import { openTestPage } from '../../test-close'
+import { openTestPage } from '../../test-page'
 import { buildStartShared, startBundlers } from '../../build-harness'
 import { createStartHost } from '../../start-host'
 import {

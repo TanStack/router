@@ -12,7 +12,7 @@ import {
   settlePage,
   trackRequests,
 } from '@tanstack/compiler-test-utils/hmr-sync'
-import { openTestPage } from '../test-close'
+import { openTestPage } from '../test-page'
 import { startDevServer } from '../dev-server'
 import { reactApp } from './hydrate-dev-edits'
 

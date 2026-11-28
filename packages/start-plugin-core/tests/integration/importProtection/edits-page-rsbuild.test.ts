@@ -12,7 +12,7 @@
  */
 import { pluginReact } from '@rsbuild/plugin-react'
 import { describe, expect, test } from 'vitest'
-import { openTestPage } from '../../test-close'
+import { openTestPage } from '../../test-page'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 import { violationRecorder } from '../../importProtection/start-apps'

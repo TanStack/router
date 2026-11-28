@@ -9,8 +9,8 @@
  * route's param, count a click, and follow a client-side navigation to
  * another param.
  */
-import { beforeAll, describe, expect, test } from 'vitest'
-import { openTestPage } from '../test-close'
+import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { openTestPage } from '../test-page'
 import { buildStartShared } from '../build-harness'
 import { createStartHost } from '../start-host'
 import { solidAppConfig } from './hydrate-pages'
@@ -82,21 +82,28 @@ export const Route = createRootRoute({
 
 describe.each(['vite', 'rsbuild'] as const)('%s build', (bundler) => {
   let url: string
+  let opening: Promise<{ close: () => Promise<void> }> | undefined
+  afterAll(() =>
+    opening?.then(
+      (opened) => opened.close(),
+      () => {},
+    ),
+  )
   beforeAll(async () => {
-    const built = await (bundler === 'vite'
-      ? createStartHost({
-          framework: 'solid',
-          serve: false,
-          files: routeFiles,
-        })
-      : buildStartShared({
-          bundler,
-          framework: 'solid',
-          rsbuildConfig: solidAppConfig.rsbuildConfig,
-          files: rsbuildFiles,
-        }))
+    const built = await (opening =
+      bundler === 'vite'
+        ? createStartHost({
+            framework: 'solid',
+            serve: false,
+            files: routeFiles,
+          })
+        : buildStartShared({
+            bundler,
+            framework: 'solid',
+            rsbuildConfig: solidAppConfig.rsbuildConfig,
+            files: rsbuildFiles,
+          }))
     url = (await built.preview()).url
-    return () => built.close()
   }, timeout)
 
   test(

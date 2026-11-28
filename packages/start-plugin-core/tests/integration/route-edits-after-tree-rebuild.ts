@@ -15,7 +15,7 @@ import {
   hmrSyncModule,
   trackRequests,
 } from '@tanstack/compiler-test-utils/hmr-sync'
-import { openTestPage } from '../test-close'
+import { openTestPage } from '../test-page'
 import { reactApp } from './hydrate-dev-edits'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'
 

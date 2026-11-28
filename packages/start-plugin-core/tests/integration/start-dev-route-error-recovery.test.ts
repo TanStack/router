@@ -11,7 +11,7 @@
  * hydrated root replaced the document), route HMR reloads the page. After a loader failed: start-dev-route-loader-error.
  */
 import { describe, expect, test } from 'vitest'
-import { openTestPage } from '../test-close'
+import { openTestPage } from '../test-page'
 import { startDevServer } from '../dev-server'
 import { apps, index, rootRendersDocument } from './route-error-apps'
 import type { BrowserPage } from '@tanstack/compiler-test-utils/browser'

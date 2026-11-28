@@ -21,7 +21,7 @@ import { pluginNames } from '@tanstack/compiler-test-utils/build-harness'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { pluginReact } from '@rsbuild/plugin-react'
 import { startRuntimeLinks } from './build-harness'
-import { closedOnFailure, closedWithTest } from './test-close'
+import { closeAtEnd } from './test-end'
 import { startRsbuildPluginFactory, withHarnessEntries } from './start-plugins'
 import type { StartFramework } from './start-plugins'
 import type { TanStackStartInputConfig } from '../src'
@@ -67,6 +67,36 @@ interface ClientEntry {
 }
 
 const clientEntries = new WeakMap<object, ClientEntry>()
+
+/**
+ * `first`, whose `close` also closes the servers its restarts start
+ * (Rsbuild's `restart` starts a new server on the same app), newest first,
+ * once a restart still starting has settled. A close that fails does not
+ * skip the older ones.
+ */
+function closingRestarts(first: RsbuildDevServer): RsbuildDevServer {
+  const closes: Array<() => Promise<void>> = []
+  let restarting: Promise<unknown> | undefined
+  const close = async () => {
+    await restarting?.catch(() => {})
+    const failures: Array<unknown> = []
+    for (const closeOne of closes.splice(0).reverse()) {
+      await closeOne().catch((error: unknown) => failures.push(error))
+    }
+    if (failures.length > 0) {
+      throw failures[0]
+    }
+  }
+  const own = (server: RsbuildDevServer): RsbuildDevServer => {
+    closes.push(server.close)
+    const restart = server.restart
+    return Object.assign(server, {
+      restart: () => (restarting = restart().then(own)),
+      close,
+    })
+  }
+  return own(first)
+}
 
 function withClientEntry(server: RsbuildDevServer, entry: ClientEntry) {
   clientEntries.set(server, entry)
@@ -153,8 +183,9 @@ function recordClientEntry(entry: ClientEntry): RsbuildPlugin {
 export function startRsbuildStartDevServer(
   options: RsbuildStartDevServerOptions,
 ): Promise<RsbuildDevServer> {
-  return closedWithTest((register) =>
-    openRsbuildStartDevServer(options, register),
+  return closeAtEnd(
+    () => openRsbuildStartDevServer(options),
+    (server) => server.close(),
   )
 }
 
@@ -162,9 +193,7 @@ export function startRsbuildStartDevServer(
 export function startRsbuildStartDevServerShared(
   options: RsbuildStartDevServerOptions,
 ): Promise<RsbuildDevServer> {
-  return closedOnFailure((register) =>
-    openRsbuildStartDevServer(options, register),
-  )
+  return openRsbuildStartDevServer(options)
 }
 
 type RsbuildStartDevServerOptions = Omit<
@@ -185,7 +214,6 @@ type RsbuildStartDevServerOptions = Omit<
 
 async function openRsbuildStartDevServer(
   options: RsbuildStartDevServerOptions,
-  registerCleanup?: RsbuildDevServerOptions['registerCleanup'],
 ): Promise<RsbuildDevServer> {
   const {
     files,
@@ -204,7 +232,6 @@ async function openRsbuildStartDevServer(
   return createRsbuildDevServer({
     dir: harnessDir,
     prefix: '.start-rsbuild-start-dev-server-',
-    registerCleanup,
     ...devServerOptions,
     config,
     symlinks: {
@@ -240,7 +267,7 @@ export const Route = createRootRoute()
         recordClientEntry(entry),
       ]
     },
-  }).then((server) => withClientEntry(server, entry))
+  }).then((server) => closingRestarts(withClientEntry(server, entry)))
 }
 
 /**

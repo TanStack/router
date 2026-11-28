@@ -12,7 +12,7 @@
 import { describe, expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { pluginReact } from '@rsbuild/plugin-react'
-import { openTestPage } from '../test-close'
+import { openTestPage } from '../test-page'
 import { startDevServer } from '../dev-server'
 import { startRsbuildStartDevServer } from '../rsbuild-dev-server'
 import { rootDocument, routerFile } from './start-compose-app'

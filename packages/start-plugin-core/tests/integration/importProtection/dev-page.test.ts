@@ -9,7 +9,7 @@
  */
 import react from '@vitejs/plugin-react'
 import { describe, expect, test } from 'vitest'
-import { openTestPage } from '../../test-close'
+import { openTestPage } from '../../test-page'
 import { startDevServer, startServerEntryFiles } from '../../dev-server'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import {

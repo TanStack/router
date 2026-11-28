@@ -7,9 +7,9 @@
  * dev servers (the server renders the page first, so it compiles the file
  * before the client) and in their builds, served like a deployed app.
  */
-import { beforeAll, describe, expect, test } from 'vitest'
+import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { pluginReact } from '@rsbuild/plugin-react'
-import { openTestPage } from '../test-close'
+import { openTestPage } from '../test-page'
 import { buildStartShared } from '../build-harness'
 import { startDevServer } from '../dev-server'
 import { startRsbuildStartDevServer } from '../rsbuild-dev-server'
@@ -97,14 +97,25 @@ describe.each(Object.keys(devServers))('%s dev', (bundler) => {
 describe.each(['vite', 'rsbuild'] as const)('%s build', (bundler) => {
   let url: string
 
+  let building: Promise<{ close: () => Promise<void> }> | undefined
+  let serving: Promise<{ close: () => Promise<void> }> | undefined
+  afterAll(async () => {
+    await serving?.then(
+      (opened) => opened.close(),
+      () => {},
+    )
+    await building?.then(
+      (opened) => opened.close(),
+      () => {},
+    )
+  })
   beforeAll(async () => {
-    const build = await buildStartShared({
+    const build = await (building = buildStartShared({
       bundler,
       files: { ...startPageEntries, ...pageEntries, ...app },
       entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-    })
-    url = (await serveStartBuildShared(build)).url
-    return () => build.close()
+    }))
+    url = (await (serving = serveStartBuildShared(build))).url
   }, timeout)
 
   test(

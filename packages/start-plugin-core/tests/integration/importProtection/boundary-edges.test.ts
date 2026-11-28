@@ -16,7 +16,7 @@
  * compiler and read its imports. Where a surviving use is reported:
  * `reported-location.test.ts`.
  */
-import { beforeAll, describe, expect, test } from 'vitest'
+import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import {
   inDevRequest,
   startDevServerShared,
@@ -141,8 +141,15 @@ describe('vite dev', () => {
    * the request a handler runs in (`inDevRequest`).
    */
   let server: DevServer
+  let opening: Promise<{ close: () => Promise<void> }> | undefined
+  afterAll(() =>
+    opening?.then(
+      (opened) => opened.close(),
+      () => {},
+    ),
+  )
   beforeAll(async () => {
-    server = await startDevServerShared({
+    server = await (opening = startDevServerShared({
       files: {
         ...startRequestFiles,
         ...files,
@@ -152,10 +159,9 @@ describe('vite dev', () => {
         router: { entry: 'entry.ts' },
         importProtection: recorded.importProtection,
       },
-    })
+    }))
     await server.load('/src/entry.ts')
     await server.import('/src/entry.ts', 'ssr')
-    return () => server.close()
   }, timeout)
 
   test(

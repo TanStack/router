@@ -730,11 +730,19 @@ export async function createStartHost(
         "a Vue host's production page runs no cases: open preview().url",
       )
     }
-    if (previewState) {
-      const opened = await openPage('about:blank', {
-        initScript: devSupportTrap,
-      })
-      track(opened)
+    const opened = await openPage(
+      'about:blank',
+      previewState ? { initScript: devSupportTrap } : {},
+    )
+    track(opened)
+    // (a page that fails to load closes: the next use opens a new one)
+    try {
+      if (!previewState) {
+        await opened.page.goto(
+          new URL('/__plugin-host__/page.html', baseUrl()).href,
+        )
+        return { opened, requests, failed }
+      }
       await opened.page.goto(new URL(pageRoutePath, previewState.url).href)
       try {
         await opened.page.waitForFunction(
@@ -753,13 +761,10 @@ export async function createStartHost(
         )
       }
       return { opened, requests, failed }
+    } catch (error) {
+      await opened.close()
+      throw error
     }
-    const opened = await openPage('about:blank')
-    track(opened)
-    await opened.page.goto(
-      new URL('/__plugin-host__/page.html', baseUrl()).href,
-    )
-    return { opened, requests, failed }
   }
 
   /** The host's page, opened on first use. */
@@ -776,14 +781,32 @@ export async function createStartHost(
     await (await closing?.catch(() => undefined))?.opened.close()
   }
 
+  /** Whether a run holds the page (runs of a host do not overlap). */
+  let running = false
   /**
    * Runs page code on the host's page, again on a fresh document if the
    * page reloaded. `fresh`: on a new page (a new document, no module
-   * instance kept).
+   * instance kept). A run while another runs throws.
    */
   const runInHostPage = async <T>(
     source: string,
     runOptions: { fresh?: boolean } = {},
+  ): Promise<ClientRun<T>> => {
+    if (running) {
+      throw new Error(
+        'a run of this host is still running on its page: await it first, or give the other run its own host',
+      )
+    }
+    running = true
+    try {
+      return await runOnHostPage<T>(source, runOptions)
+    } finally {
+      running = false
+    }
+  }
+  const runOnHostPage = async <T>(
+    source: string,
+    runOptions: { fresh?: boolean },
   ): Promise<ClientRun<T>> => {
     if (runOptions.fresh) {
       // A new page, not a reload of this one: after an edit, the dev

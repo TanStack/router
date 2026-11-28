@@ -20,7 +20,7 @@ import { pluginNames } from '@tanstack/compiler-test-utils/build-harness'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import react from '@vitejs/plugin-react'
 import { startRuntimeLinks } from './build-harness'
-import { closedOnFailure, closedWithTest } from './test-close'
+import { closeAtEnd } from './test-end'
 import { inProbeRequest, requestFiles } from './request-probe'
 import { startPlugins } from './start-plugins'
 import type { StartFramework } from './start-plugins'
@@ -200,20 +200,20 @@ export function startPlugin(
 export function startDevServer(
   options: StartDevServerOptions,
 ): Promise<DevServer> {
-  return closedWithTest((register) => openDevServer(options, register))
+  return closeAtEnd(
+    () => openDevServer(options),
+    (server) => server.close(),
+  )
 }
 
 /** `startDevServer` for a server several tests share: the caller closes it. */
 export function startDevServerShared(
   options: StartDevServerOptions,
 ): Promise<DevServer> {
-  return closedOnFailure((register) => openDevServer(options, register))
+  return openDevServer(options)
 }
 
-function openDevServer(
-  options: StartDevServerOptions,
-  registerCleanup?: DevServerOptions['registerCleanup'],
-): Promise<DevServer> {
+function openDevServer(options: StartDevServerOptions): Promise<DevServer> {
   const {
     files,
     plugins = [],
@@ -225,7 +225,6 @@ function openDevServer(
   return createDevServer({
     dir: harnessDir,
     prefix: '.start-dev-server-',
-    registerCleanup,
     ...devServerOptions,
     files: {
       ...startPluginFiles,

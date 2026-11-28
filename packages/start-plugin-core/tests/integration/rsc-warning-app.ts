@@ -23,7 +23,7 @@ import { pluginReact } from '@rsbuild/plugin-react'
 import { createDevServer } from '@tanstack/compiler-test-utils/dev-server'
 import { createRsbuildDevServer } from '@tanstack/compiler-test-utils/rsbuild-dev-server'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
-import { closedOnFailure, closedWithTest } from '../test-close'
+import { closeAtEnd } from '../test-end'
 import {
   rscDependency,
   rscPluginFactory,
@@ -78,21 +78,23 @@ const appLinks = () => ({
 export function startViteRscApp(
   files: Record<string, string>,
 ): Promise<DevServer> {
-  return closedWithTest(async (registerCleanup) => {
-    const start = await startPluginFactory('react')
-    const rsc = await rscPluginFactory()
-    return createDevServer({
-      dir: appsDir,
-      prefix: '.start-rsc-warnings-vite-',
-      registerCleanup,
-      listen: true,
-      files: { ...rscAppFiles, ...files },
-      symlinks: appLinks(),
-      // Start serves the pages (SSR through its dev middleware)
-      config: { appType: 'custom' },
-      plugins: [start({ rsc: { enabled: true } }), rsc(), react()],
-    })
-  })
+  return closeAtEnd(
+    async () => {
+      const start = await startPluginFactory('react')
+      const rsc = await rscPluginFactory()
+      return createDevServer({
+        dir: appsDir,
+        prefix: '.start-rsc-warnings-vite-',
+        listen: true,
+        files: { ...rscAppFiles, ...files },
+        symlinks: appLinks(),
+        // Start serves the pages (SSR through its dev middleware)
+        config: { appType: 'custom' },
+        plugins: [start({ rsc: { enabled: true } }), rsc(), react()],
+      })
+    },
+    (server) => server.close(),
+  )
 }
 
 /** An Rsbuild dev server on the RSC app of `files` (over `rscAppFiles`). */
@@ -100,8 +102,9 @@ export function startRsbuildRscApp(
   files: Record<string, string>,
   options: RsbuildRscAppOptions = {},
 ): Promise<RsbuildDevServer> {
-  return closedWithTest((register) =>
-    openRsbuildRscApp(files, options, register),
+  return closeAtEnd(
+    () => openRsbuildRscApp(files, options),
+    (server) => server.close(),
   )
 }
 
@@ -110,9 +113,7 @@ export function startRsbuildRscAppShared(
   files: Record<string, string>,
   options: RsbuildRscAppOptions = {},
 ): Promise<RsbuildDevServer> {
-  return closedOnFailure((register) =>
-    openRsbuildRscApp(files, options, register),
-  )
+  return openRsbuildRscApp(files, options)
 }
 
 interface RsbuildRscAppOptions {
@@ -131,7 +132,6 @@ interface RsbuildRscAppOptions {
 async function openRsbuildRscApp(
   files: Record<string, string>,
   options: RsbuildRscAppOptions,
-  registerCleanup: (cleanup: () => Promise<void>) => void,
 ): Promise<RsbuildDevServer> {
   const start = await startRsbuildPluginFactory('react')
   const cwd = process.cwd()
@@ -139,7 +139,6 @@ async function openRsbuildRscApp(
     return await createRsbuildDevServer({
       dir: appsDir,
       prefix: '.start-rsc-warnings-rsbuild-',
-      registerCleanup,
       browser: true,
       // Start's plugin defines the entries of its environments
       entry: 'src/router.tsx',

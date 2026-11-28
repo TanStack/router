@@ -9,7 +9,7 @@
  * `@vitejs/plugin-vue` became a test-only devDependency.
  */
 import { expect, test } from 'vitest'
-import { closedWithTest } from '../test-close'
+import { closeAtEnd } from '../test-end'
 import { createStartHost } from '../regression-helpers'
 
 /**
@@ -20,8 +20,9 @@ import { createStartHost } from '../regression-helpers'
  * server-only module not shipped there.
  */
 async function expectSfcServerFnBuilds(script: string) {
-  const host = await closedWithTest(() =>
-    createStartHost({ framework: 'vue', serve: false }),
+  const host = await closeAtEnd(
+    () => createStartHost({ framework: 'vue', serve: false }),
+    (opened) => opened.close(),
   )
   const startCase = await host.case({
     'Page.vue': `<script lang="ts">
