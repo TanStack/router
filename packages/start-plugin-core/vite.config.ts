@@ -42,13 +42,17 @@ const unitAloneTests = ['start-compiler-rsc-import-protection.test.ts']
 
 /**
  * Slow-tier files whose tests run concurrently (project
- * `integration-concurrent`): each file builds its apps once, before its
- * tests (`beforeAll`), and every test only reads those finished builds:
- * it runs them in a page and an HTTP server of its own (a client run) or
- * a Node process of its own (an SSR run), and reads their files. No test
+ * `integration-concurrent`): each file builds its one app once, before its
+ * tests (one `beforeAll`), and every test only reads that finished build:
+ * it runs it in a page and an HTTP server of its own (a client run) or a
+ * Node process of its own (an SSR run), and reads its files. No test
  * builds, edits a file, uses a dev or preview server, or reads what the
- * build or the process printed. Every other project runs one test at a
- * time. Paths relative to `tests/`.
+ * build or the process printed. A build changes process-wide state while
+ * it runs (the working directory, `unhandledRejection` listeners,
+ * `NODE_ENV`), so a file with sibling builds (`describe.each` over
+ * bundlers, each with its `beforeAll`) is not one: its hooks would build at
+ * once. Every other project runs one test at a time. Paths relative to
+ * `tests/`.
  */
 const concurrentTests = [
   'integration/hydrate-pages.test.ts',
@@ -56,12 +60,7 @@ const concurrentTests = [
   'integration/hydrate-pages-solid.test.ts',
   'integration/hydrate-pages-solid-rsbuild.test.ts',
   'integration/clientOnlyJSX.test.ts',
-  'integration/start-build-side-effect-hints.test.ts',
-  'integration/start-build-erased-handler-reads.test.ts',
   'integration/start-build-jsx-and-builders.test.ts',
-  'integration/start-build-route-option-keys.test.ts',
-  'integration/start-compose-project-path.test.ts',
-  'integration/rsbuild/vue-tools-rspack.test.ts',
 ]
 
 /** This package's build output (`dist`), as its `exports` name it. */
