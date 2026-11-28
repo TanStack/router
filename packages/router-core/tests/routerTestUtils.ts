@@ -19,7 +19,7 @@ import {
 import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
 import type { interpolatePath } from '../src/path'
 import type { SegmentKind } from '../src/new-process-route-tree'
-import type { ServerManifest } from '../src/manifest'
+import type { ManifestRouteAssets, ServerManifest } from '../src/manifest'
 import type { TsrSsrGlobal } from '../src/ssr/types'
 import type { RouterHistory } from '@tanstack/history'
 import type {
@@ -187,12 +187,15 @@ export function loadServerResponse(
 
 export async function dehydrateToBootstrap(
   router: AnyRouter,
-  manifest: ServerManifest,
+  manifest: ServerManifest | undefined,
+  requestAssets?: ManifestRouteAssets,
 ): Promise<TsrSsrGlobal> {
   attachRouterServerSsrUtils({ router, manifest })
   try {
     await router.load()
-    await router.serverSsr!.dehydrate()
+    await router.serverSsr!.dehydrate(
+      requestAssets ? { requestAssets } : undefined,
+    )
 
     const scripts = router.serverSsr!.takeInitialHydrationScriptTags()
     expect(scripts?.before.length).toBeGreaterThan(0)

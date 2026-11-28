@@ -389,7 +389,7 @@ describe('ssr HeadContent', () => {
         dehydratedData: {},
         manifest: {
           routes: {
-            [childRoute.id]: {
+            [dehydrateSsrMatchId(childRoute.id)]: {
               css: ['/data-only-manifest.css'],
               preloads: ['/data-only-manifest.js'],
               scripts: [
