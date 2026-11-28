@@ -201,19 +201,28 @@ export async function buildStartApp(
   }
 }
 
-/** Starts the app's Vite dev server (middleware mode); closed when the test finishes. */
+/**
+ * Starts the app's Vite dev server; closed when the test finishes. It is in
+ * middleware mode unless `listen` is set: it then takes requests on a free
+ * port (`server.resolvedUrls`).
+ */
 export async function startViteDevServer(
   app: StartApp,
   options: StartOptions = {},
+  { mode, listen = false }: { mode?: string; listen?: boolean } = {},
 ): Promise<ViteDevServer> {
   const server = await createServer({
     root: app.root,
     configFile: false,
     logLevel: 'error',
-    server: { middlewareMode: true },
+    mode,
+    server: listen ? { port: 0 } : { middlewareMode: true },
     plugins: [await startPlugin(app, 'vite', options)],
   })
   onTestFinished(() => server.close())
+  if (listen) {
+    await server.listen()
+  }
   return server
 }
 

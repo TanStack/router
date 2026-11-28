@@ -20,7 +20,6 @@ export function devServerPlugin({
   devSsrStylesEnabled: boolean
   installDevServerMiddleware: boolean | undefined
 }): PluginOption {
-  let isTest = false
   let bundledDev = false
   let bundledStyles: ReturnType<typeof captureBundledDevStyles> | undefined
 
@@ -28,9 +27,6 @@ export function devServerPlugin({
     {
       name: 'tanstack-start-core:dev-server',
       perEnvironmentWatchChangeDuringDev: true,
-      config(_userConfig, { mode }) {
-        isTest = isTest ? isTest : mode === 'test'
-      },
       configEnvironment(name, _config, { command }) {
         if (
           command === 'serve' &&
@@ -82,10 +78,6 @@ export function devServerPlugin({
         },
       },
       configureServer(viteDevServer) {
-        if (isTest) {
-          return
-        }
-
         const clientEnv =
           viteDevServer.environments[VITE_ENVIRONMENT_NAMES.client]
 

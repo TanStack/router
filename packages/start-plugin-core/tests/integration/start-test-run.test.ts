@@ -12,6 +12,7 @@ import {
   appFiles,
   createStartApp,
   runVitest,
+  startViteDevServer,
   startViteTestServer,
   until,
   watcherReady,
@@ -47,6 +48,7 @@ function importOnServer(server: ViteDevServer, id: string) {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  vi.unstubAllEnvs()
 })
 
 describe('a package without a router entry and without routes', () => {
@@ -351,6 +353,36 @@ export const Route = createFileRoute('/api')({
       const ssr = await compiled(server, 'ssr', 'src/routes/api.tsx')
       expect(ssr).toContain('MARK_HANDLER')
       expect(ssr).toContain('server-only')
+    },
+    timeout,
+  )
+})
+
+// https://github.com/TanStack/router/issues/4620
+describe('the dev server in the `test` mode, outside a test runner', () => {
+  // `vite dev --mode test` answered "404 Cannot GET /": the dev server took
+  // the mode for a test run and installed no middleware.
+  test(
+    'serves the app',
+    async () => {
+      // (these tests run in a Vitest worker; a dev server someone starts for
+      // an end-to-end run does not)
+      vi.stubEnv('VITEST', undefined)
+      const app = await createStartApp(
+        appFiles({
+          'src/routes/index.tsx': `${head}export const Route = createFileRoute('/')({ component: () => 'MARK_HOME' })\n`,
+        }),
+      )
+      const server = await startViteDevServer(
+        app,
+        {},
+        { mode: 'test', listen: true },
+      )
+
+      const response = await fetch(server.resolvedUrls!.local[0]!)
+
+      expect(response.status).toBe(200)
+      expect(await response.text()).toContain('MARK_HOME')
     },
     timeout,
   )
