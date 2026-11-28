@@ -242,8 +242,38 @@ describe('renderRouterToStream', () => {
     }
   })
 
+  test('renderer chunks reach the response without a copy', async () => {
+    const html = new TextEncoder().encode('<html><body>solid</body></html>')
+    solidMocks.renderToStream.mockImplementationOnce(
+      () =>
+        ({
+          pipeTo(writable: WritableStream<Uint8Array>) {
+            const writer = writable.getWriter()
+            return writer.write(html).then(() => writer.close())
+          },
+        }) as any,
+    )
+
+    const router = await buildRouter()
+    router.serverSsr!.disableHydration()
+    try {
+      const result = await renderRouterToStream({
+        request: new Request('http://localhost/'),
+        router,
+        responseHeaders: new Headers(),
+        children: () => null,
+      })
+
+      const reader = unwrapResponse(result).body!.getReader()
+      const { value } = await reader.read()
+      expect(value).toBe(html)
+      await expect(reader.read()).resolves.toMatchObject({ done: true })
+    } finally {
+      router.serverSsr?.cleanup()
+    }
+  })
+
   test('bot response does not wait for a backpressured pipe', async () => {
-    // The adapter prepends the document type to Solid 2's shell.
     const html = new TextEncoder().encode('<html><body>solid</body></html>')
     let pipeCompletion: Promise<void> | undefined
     solidMocks.renderToStream.mockImplementationOnce(
@@ -275,7 +305,7 @@ describe('renderRouterToStream', () => {
       expect(pipeCompletion).toBeDefined()
       const response = unwrapResponse(result)
       await expect(response.text()).resolves.toBe(
-        `<!DOCTYPE html>${new TextDecoder().decode(html)}`,
+        new TextDecoder().decode(html),
       )
       await expect(pipeCompletion).resolves.toBeUndefined()
     } finally {
