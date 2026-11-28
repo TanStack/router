@@ -429,12 +429,14 @@ the stored set and calls `resolveSharedBindings()` when there is none.
 All three plugins run in the same JavaScript process and the map is captured
 by closure. In typical builds, the reference module is transformed first and
 then the bundler resolves the emitted dynamic imports, which triggers
-transformations for the virtual/shared module IDs. The map is a memo, not the
-only source: a tool with a persistent transform cache (Vitest's
-`fsModuleCache`) can restore a compiled reference module without running
-plugin 1 in the current process. Plugins 2 and 3 receive the code of the whole
-route file, so they compute the same shared bindings from it. For a file that
-is not in `routesByFile` they skip `splitBehavior`, which needs a route id.
+transformations for the virtual/shared module IDs.
+
+Plugins 2 and 3 also work when plugin 1 has not run in the current process. A
+tool with a persistent transform cache (Vitest's `fsModuleCache`) can restore
+a compiled reference module from disk without transforming it. Plugins 2 and 3
+receive the code of the whole route file, so they compute the same shared
+bindings from it. For a file that is not in `routesByFile` they skip
+`splitBehavior`, which needs a route id.
 
 ---
 
