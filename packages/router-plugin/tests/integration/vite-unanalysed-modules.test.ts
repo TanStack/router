@@ -13,7 +13,8 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import { afterEach, expect, onTestFinished, test } from 'vitest'
+import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
+import { afterEach, expect, test } from 'vitest'
 import { createServer } from 'vite'
 import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import type { HotPayload, Plugin } from 'vite'
@@ -54,19 +55,20 @@ test('a module only imported, never requested, is not analysed and its edit send
       }
     },
   }
-  const server = await createServer({
-    root,
-    configFile: false,
-    envFile: false,
-    appType: 'custom',
-    clearScreen: false,
-    logLevel: 'silent',
-    cacheDir: path.join(root, 'node_modules/.vite'),
-    optimizeDeps: { noDiscovery: true, include: [] },
-    server: { host: '127.0.0.1' },
-    plugins: [record],
-  })
-  onTestFinished(() => server.close())
+  const server = await closeAtEnd(() =>
+    createServer({
+      root,
+      configFile: false,
+      envFile: false,
+      appType: 'custom',
+      clearScreen: false,
+      logLevel: 'silent',
+      cacheDir: path.join(root, 'node_modules/.vite'),
+      optimizeDeps: { noDiscovery: true, include: [] },
+      server: { host: '127.0.0.1' },
+      plugins: [record],
+    }),
+  )
   await server.listen()
   const client = server.environments.client
   await client.transformRequest('/a.ts')

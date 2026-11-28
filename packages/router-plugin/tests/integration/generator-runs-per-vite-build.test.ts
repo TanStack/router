@@ -60,12 +60,14 @@ async function watchBuild(builder: ViteModule.ViteBuilder) {
   const close = async () => {
     await Promise.all(watchers.map((watcher) => watcher.close()))
   }
-  onTestFinished(close)
   const watch = async (
     name: string,
     environment: ViteModule.BuildEnvironment,
   ) => {
-    const watcher = (await builder.build(environment)) as unknown as Watcher
+    // (also closed by `close`: a watcher closes once)
+    const watcher = await closeAtEnd(
+      async () => (await builder.build(environment)) as unknown as Watcher,
+    )
     watchers.push(watcher)
     watcher.on('event', (event) => {
       if (event.code === 'END' || event.code === 'ERROR') {
@@ -229,13 +231,9 @@ describe.each(versions)('Vite $major', ({ major, load }) => {
       }),
     )
     for (const environment of Object.values(builder.environments)) {
-      const watcher = (await builder.build(environment)) as unknown as {
-        on: (
-          event: 'event',
-          listener: (event: { code: string }) => void,
-        ) => void
-        close: () => Promise<void>
-      }
+      const watcher = await closeAtEnd(
+        async () => (await builder.build(environment)) as unknown as Watcher,
+      )
       await new Promise<void>((resolve, reject) => {
         watcher.on('event', (event) => {
           if (event.code === 'END') {
@@ -245,7 +243,6 @@ describe.each(versions)('Vite $major', ({ major, load }) => {
           }
         })
       })
-      onTestFinished(() => watcher.close())
     }
     expect(app.generations()).toBe(1)
     expect(await treeRoutes(app.root)).toEqual(['/'])
@@ -335,13 +332,14 @@ describe.each(versions)('Vite $major', ({ major, load }) => {
   test('a dev server generates the route tree once', async () => {
     const { createServer } = await vite()
     const app = await routerApp(major)
-    const server = await createServer({
-      root: app.root,
-      configFile: app.configFile,
-      logLevel: 'silent',
-      server: { middlewareMode: true, ws: false },
-    })
-    onTestFinished(() => server.close())
+    await closeAtEnd(() =>
+      createServer({
+        root: app.root,
+        configFile: app.configFile,
+        logLevel: 'silent',
+        server: { middlewareMode: true, ws: false },
+      }),
+    )
     expect(app.generations()).toBe(1)
   }, 60_000)
 

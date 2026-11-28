@@ -12,7 +12,7 @@ import { readFile, readdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { viteVersions } from '@tanstack/compiler-vite-versions'
 import { servedDirectories } from '@tanstack/compiler-test-utils/app-directory'
 import { openPage } from '@tanstack/compiler-test-utils/browser'
@@ -190,40 +190,41 @@ export const Route = createFileRoute('/shared')({ component: Shared })
     const log = (level: string) => (message: unknown) => {
       logs.push(`${level}: ${String(message)}`)
     }
-    const server = await runAsDevCommand(async () =>
-      vite.createServer({
-        root: app.root,
-        configFile: false,
-        appType: 'spa',
-        clearScreen: false,
-        customLogger: {
-          info: log('info'),
-          warn: log('warn'),
-          warnOnce: log('warn'),
-          error: log('error'),
-          clearScreen() {},
-          hasErrorLogged: () => false,
-          hasWarned: false,
-        },
-        cacheDir: path.join(app.root, 'node_modules/.vite'),
-        esbuild: { jsx: 'automatic' },
-        optimizeDeps: {
-          include: [
-            'react',
-            'react/jsx-runtime',
-            'react/jsx-dev-runtime',
-            'react-dom/client',
-            '@tanstack/react-router',
-          ],
-        },
-        server: {
-          host: '127.0.0.1',
-          fs: { allow: await servedDirectories(app.root) },
-        },
-        plugins: [tanstackRouter(pluginOptions(app.root))],
-      }),
+    const server = await closeAtEnd(() =>
+      runAsDevCommand(async () =>
+        vite.createServer({
+          root: app.root,
+          configFile: false,
+          appType: 'spa',
+          clearScreen: false,
+          customLogger: {
+            info: log('info'),
+            warn: log('warn'),
+            warnOnce: log('warn'),
+            error: log('error'),
+            clearScreen() {},
+            hasErrorLogged: () => false,
+            hasWarned: false,
+          },
+          cacheDir: path.join(app.root, 'node_modules/.vite'),
+          esbuild: { jsx: 'automatic' },
+          optimizeDeps: {
+            include: [
+              'react',
+              'react/jsx-runtime',
+              'react/jsx-dev-runtime',
+              'react-dom/client',
+              '@tanstack/react-router',
+            ],
+          },
+          server: {
+            host: '127.0.0.1',
+            fs: { allow: await servedDirectories(app.root) },
+          },
+          plugins: [tanstackRouter(pluginOptions(app.root))],
+        }),
+      ),
     )
-    onTestFinished(() => server.close())
     await server.listen()
     const url = server.resolvedUrls?.local[0]
     if (!url) {

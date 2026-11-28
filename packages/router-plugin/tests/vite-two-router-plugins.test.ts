@@ -10,7 +10,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { closeAtEnd } from '@tanstack/compiler-test-utils/test-end'
-import { expect, onTestFinished, test } from 'vitest'
+import { expect, test } from 'vitest'
 import { createServer } from 'vite'
 import { createApp } from '@tanstack/compiler-test-utils/build-harness'
 import { createRouterPluginContext } from '../src/context'
@@ -62,15 +62,16 @@ async function twoTreeApp(extra: Record<string, string> = {}) {
 }
 
 async function devServer(root: string, plugins: Array<PluginOption>) {
-  const server = await createServer({
-    root,
-    configFile: false,
-    logLevel: 'silent',
-    server: { middlewareMode: true, ws: false },
-    optimizeDeps: { noDiscovery: true },
-    plugins,
-  })
-  onTestFinished(() => server.close())
+  const server = await closeAtEnd(() =>
+    createServer({
+      root,
+      configFile: false,
+      logLevel: 'silent',
+      server: { middlewareMode: true, ws: false },
+      optimizeDeps: { noDiscovery: true },
+      plugins,
+    }),
+  )
   return server.environments.client
 }
 
@@ -154,18 +155,19 @@ test('one instance: the empty module of a split id of a file that is no route ho
       return null
     },
   }
-  const server = await createServer({
-    root,
-    configFile: false,
-    logLevel: 'silent',
-    server: { middlewareMode: true, ws: false },
-    optimizeDeps: { noDiscovery: true },
-    plugins: [
-      upstream,
-      tanstackRouter({ ...options[0], autoCodeSplitting: false }),
-    ],
-  })
-  onTestFinished(() => server.close())
+  const server = await closeAtEnd(() =>
+    createServer({
+      root,
+      configFile: false,
+      logLevel: 'silent',
+      server: { middlewareMode: true, ws: false },
+      optimizeDeps: { noDiscovery: true },
+      plugins: [
+        upstream,
+        tanstackRouter({ ...options[0], autoCodeSplitting: false }),
+      ],
+    }),
+  )
   const served = []
   for (const [env, file] of [
     ['client', '-plain.ts'],

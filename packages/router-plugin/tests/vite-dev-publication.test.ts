@@ -48,24 +48,24 @@ async function routeApp(files: Record<string, string> = {}) {
 }
 
 /** A Vite dev server on `root` whose watcher reports nothing of the app on its own. */
-async function devServer(
+function devServer(
   root: string,
   plugins: Array<PluginOption>,
 ): Promise<ViteDevServer> {
-  const server = await createServer({
-    root,
-    configFile: false,
-    logLevel: 'silent',
-    server: {
-      middlewareMode: true,
-      ws: false,
-      watch: { ignored: [path.join(root, '**')] },
-    },
-    optimizeDeps: { noDiscovery: true },
-    plugins,
-  })
-  onTestFinished(() => server.close())
-  return server
+  return closeAtEnd(() =>
+    createServer({
+      root,
+      configFile: false,
+      logLevel: 'silent',
+      server: {
+        middlewareMode: true,
+        ws: false,
+        watch: { ignored: [path.join(root, '**')] },
+      },
+      optimizeDeps: { noDiscovery: true },
+      plugins,
+    }),
+  )
 }
 
 /** Creates a route file and reports it on Vite's watcher. */
