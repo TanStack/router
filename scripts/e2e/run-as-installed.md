@@ -109,7 +109,8 @@ the second run gets the compiled modules of the first from the cache:
 
 These two projects run their tests only in the copy. `vitest run` in the
 directory of `vitest-app` fails one browser test file on the first run after
-an install and passes on the second. Start's packages are links there, so Vite
+an install and passes on the second (see also its
+[README](../../e2e/react-start/vitest-app/README.md)). Start's packages are links there, so Vite
 sees what they import (`seroval`, `cookie-es`) only when a test loads them. It
 pre-bundles those packages then and reloads the page, and the test file that
 was loading fails to import. Vite keeps the pre-bundle for later runs. In the
