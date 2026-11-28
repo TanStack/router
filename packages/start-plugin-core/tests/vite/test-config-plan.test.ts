@@ -25,11 +25,11 @@ describe('createViteTestConfigPlan', () => {
     })
   })
 
-  // Start's packages then resolve the placeholder router entry they ship.
+  // The placeholder of `testRunRouterEntryPlugin` then answers the import.
   test('leaves the router entry of a package without one unaliased', () => {
     const plan = createViteTestConfigPlan({
       framework: 'react',
-      entryPaths: { ...entryPaths, router: undefined },
+      entryPaths: { ...entryPaths, router: '' },
       optimizeDepsExclude: [],
       noExternal: [],
     })
@@ -45,7 +45,7 @@ describe('createViteTestConfigPlan', () => {
   test('keeps the libraries built on Start out of pre-bundling and externalization', () => {
     const plan = createViteTestConfigPlan({
       framework: 'solid',
-      entryPaths: { ...entryPaths, router: undefined },
+      entryPaths: { ...entryPaths, router: '' },
       optimizeDepsExclude: ['a-start-library'],
       noExternal: ['a-start-library'],
     })

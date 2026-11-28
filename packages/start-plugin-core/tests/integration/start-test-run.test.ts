@@ -50,6 +50,8 @@ afterEach(() => {
 })
 
 describe('a package without a router entry and without routes', () => {
+  // (it depends on Start only, not on the router)
+  const library = { dependencies: ['react', 'react-dom'] }
   const files = {
     'src/server-only.ts': serverOnly,
     'src/runtime.ts': `import { createIsomorphicFn } from '@tanstack/react-start'
@@ -65,10 +67,7 @@ export const where = createIsomorphicFn()
   test(
     "the client gets the client's code and the server gets the server's",
     async () => {
-      const app = await createStartApp(files, 'start-library-', [
-        'react',
-        'react-dom',
-      ])
+      const app = await createStartApp(files, library)
       const { server } = await startViteTestServer(app)
 
       const client = await compiled(server, 'client', 'src/runtime.ts')
@@ -93,8 +92,7 @@ export const where = createIsomorphicFn()
 export const greet = createServerFn({ method: 'POST' }).handler(() => 'MARK_HANDLER')
 `,
         },
-        'start-library-',
-        ['react', 'react-dom'],
+        library,
       )
       const { server } = await startViteTestServer(app)
 
@@ -110,14 +108,11 @@ export const greet = createServerFn({ method: 'POST' }).handler(() => 'MARK_HAND
   test(
     "a server module that uses Start's server helpers loads",
     async () => {
-      const app = await createStartApp(
-        {
-          'src/session.ts': `import { getCookie } from '@tanstack/react-start/server'
+      const app = await createStartApp({
+        'src/session.ts': `import { getCookie } from '@tanstack/react-start/server'
 export const readSession = () => getCookie('session')
 `,
-        },
-        'start-library-',
-      )
+      })
       const { server } = await startViteTestServer(app)
 
       const session = await importOnServer(server, '/src/session.ts')
@@ -133,10 +128,7 @@ export const readSession = () => getCookie('session')
     'no route tree is generated and nothing is logged',
     async () => {
       const error = vi.spyOn(console, 'error').mockImplementation(() => {})
-      const app = await createStartApp(files, 'start-library-', [
-        'react',
-        'react-dom',
-      ])
+      const app = await createStartApp(files, library)
       const { warnings } = await startViteTestServer(app)
 
       await expect(app.read('src/routeTree.gen.ts')).rejects.toThrow('ENOENT')
@@ -153,11 +145,10 @@ export const readSession = () => getCookie('session')
   test(
     'that depends on Start only: Vite pre-bundles what the router Start uses loads in a browser',
     async () => {
-      const app = await createStartApp(files, 'start-library-', [
-        'react',
-        'react-dom',
-      ])
-      const { server, warnings } = await startViteTestServer(app, {}, true)
+      const app = await createStartApp(files, library)
+      const { server, warnings } = await startViteTestServer(app, {
+        browser: true,
+      })
 
       expect(warnings).toEqual([])
       const preBundled = server.environments.client.depsOptimizer!.metadata
@@ -184,11 +175,11 @@ export const where = createIsomorphicFn()
   .client(() => 'MARK_CLIENT')
 `,
         },
-        'start-library-',
-        ['vue'],
-        'vue',
+        { dependencies: ['vue'], framework: 'vue' },
       )
-      const { server, warnings } = await startViteTestServer(app, {}, true)
+      const { server, warnings } = await startViteTestServer(app, {
+        browser: true,
+      })
 
       expect(warnings).toEqual([])
       const preBundled = server.environments.client.depsOptimizer!.metadata
@@ -369,7 +360,6 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['tests/**/*.test.ts'],
-    fsModuleCachePath: 'node_modules/.vitest-cache',
   },
 })
 `,
@@ -388,8 +378,15 @@ test('records the routes of the client route tree', () => {
 })
 `,
       }),
-      'start-app-',
-      ['@tanstack/react-router', 'react', 'react-dom', 'vitest', 'jsdom'],
+      {
+        dependencies: [
+          '@tanstack/react-router',
+          'react',
+          'react-dom',
+          'vitest',
+          'jsdom',
+        ],
+      },
     )
     const routeIds = async () => {
       const run = await runVitest(app)

@@ -37,8 +37,7 @@ describe('hasRouteTreeSources', () => {
   })
 
   // The generator only reads route files with the configured prefix, and
-  // finds the root route in `<prefix>__root.tsx`. The check looked for
-  // `__root.` only, and the test run generated no route tree.
+  // finds the root route in `<prefix>__root.tsx`.
   test('finds the root route of a routes directory with a route file prefix', () => {
     const routesDirectory = createRoutesDirectory([
       'route-__root.tsx',

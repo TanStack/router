@@ -216,7 +216,8 @@ export function createRouterCodeSplitterPlugin(
     id: string,
   ): UnpluginTransformResult => {
     const deleteNodes = userConfig.codeSplittingOptions?.deleteNodes
-    if (!deleteNodes?.length) {
+    // (a route option to delete is named in the code: nothing to parse otherwise)
+    if (!deleteNodes?.some((name) => code.includes(name))) {
       return null
     }
 

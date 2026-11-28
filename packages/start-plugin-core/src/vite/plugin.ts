@@ -191,7 +191,7 @@ export function tanStackStartVite(
         if (testRun) {
           const testConfigPlan = createViteTestConfigPlan({
             framework: corePluginOpts.framework,
-            entryPaths: configContext.resolveTestEntries().entryPaths,
+            entryPaths: configContext.resolveEntries().entryPaths,
             optimizeDepsExclude: crawlFrameworkPkgsResult.optimizeDeps.exclude,
             noExternal: crawlFrameworkPkgsResult.ssr.noExternal.sort(),
           })
@@ -241,12 +241,10 @@ export function tanStackStartVite(
         }
       },
     },
-    excludeFromTestRuns(
-      createPostBuildPlugin({
-        getConfig,
-        postServerBuild,
-      }),
-    ),
+    createPostBuildPlugin({
+      getConfig,
+      postServerBuild,
+    }),
     // Server function plugin handles:
     // 1. Identifying createServerFn().handler() calls
     // 2. Extracting server functions to separate modules
@@ -277,12 +275,10 @@ export function tanStackStartVite(
     ),
     loadEnvPlugin(),
     testRunRouterEntryPlugin(),
-    excludeFromTestRuns(
-      createDevClientEntryPlugin({
-        framework: corePluginOpts.framework,
-        getClientEntry: () => configContext.resolveEntries().entryPaths.client,
-      }),
-    ),
+    createDevClientEntryPlugin({
+      framework: corePluginOpts.framework,
+      getClientEntry: () => configContext.resolveEntries().entryPaths.client,
+    }),
     startManifestPlugin({
       getConfig,
     }),
@@ -304,8 +300,8 @@ export function tanStackStartVite(
         installDevServerMiddleware:
           normalizedStartPluginOpts.vite?.installDevServerMiddleware,
       }),
-      previewServerPlugin(),
     ]),
+    previewServerPlugin(),
     ...(corePluginOpts.serializationAdapters?.length
       ? [
           serializationAdaptersPlugin({

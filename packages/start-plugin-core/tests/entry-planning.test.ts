@@ -9,10 +9,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalize } from 'pathe'
 import { afterEach, describe, expect, test } from 'vitest'
-import {
-  resolveStartEntryPlan,
-  resolveStartTestEntryPlan,
-} from '../src/planning'
+import { resolveStartEntryPlan } from '../src/planning'
 import { parseStartConfig as parseRsbuildStartConfig } from '../src/rsbuild/schema'
 import { parseStartConfig as parseViteStartConfig } from '../src/vite/schema'
 
@@ -24,11 +21,13 @@ const defaultEntryPaths = {
 }
 const roots = new Set<string>()
 
-function createRoot() {
+function createRoot({ router = true } = {}) {
   const root = mkdtempSync(join(tmpdir(), 'tanstack-start-entry-'))
   roots.add(root)
   mkdirSync(join(root, 'src'))
-  writeFileSync(join(root, 'src', 'router.ts'), 'export {}\n')
+  if (router) {
+    writeFileSync(join(root, 'src', 'router.ts'), 'export {}\n')
+  }
   return root
 }
 
@@ -121,31 +120,18 @@ describe('server entry planning', () => {
 describe('entry planning for a project under a test runner', () => {
   // A package that only uses Start's compile-time APIs has no router.
   test('plans a project without a router entry', () => {
-    const root = mkdtempSync(join(tmpdir(), 'tanstack-start-entry-'))
-    roots.add(root)
-    mkdirSync(join(root, 'src'))
+    const root = createRoot({ router: false })
     const startConfig = parseViteStartConfig({}, corePluginOpts, root)
 
-    const plan = resolveStartTestEntryPlan({
+    const plan = resolveStartEntryPlan({
       root,
       startConfig,
       defaultEntryPaths,
+      routerEntryOptional: true,
     })
 
-    expect(plan.routerFilePath).toBeUndefined()
-    expect(plan.entryPaths).toEqual({
-      ...defaultEntryPaths,
-      router: undefined,
-    })
-  })
-
-  test('plans the entries of an app as the app does', () => {
-    const root = createRoot()
-    writeFileSync(join(root, 'src', 'start.ts'), 'export {}\n')
-    const startConfig = parseViteStartConfig({}, corePluginOpts, root)
-    const opts = { root, startConfig, defaultEntryPaths }
-
-    expect(resolveStartTestEntryPlan(opts)).toEqual(resolveStartEntryPlan(opts))
+    expect(plan.routerFilePath).toBe('')
+    expect(plan.entryPaths).toEqual({ ...defaultEntryPaths, router: '' })
   })
 
   // A typo in the config is not a project without a router.
@@ -158,7 +144,12 @@ describe('entry planning for a project under a test runner', () => {
     )
 
     expect(() =>
-      resolveStartTestEntryPlan({ root, startConfig, defaultEntryPaths }),
+      resolveStartEntryPlan({
+        root,
+        startConfig,
+        defaultEntryPaths,
+        routerEntryOptional: true,
+      }),
     ).toThrow('missing-router.ts')
   })
 })

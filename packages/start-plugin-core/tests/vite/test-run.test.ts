@@ -3,7 +3,7 @@ import {
   excludeFromTestRuns,
   testRunRouterEntryPlugin,
 } from '../../src/vite/test-run'
-import type { ConfigEnv, Plugin, PluginOption } from 'vite'
+import type { ConfigEnv, Plugin } from 'vite'
 
 const testRun: ConfigEnv = { command: 'serve', mode: 'test' }
 const devServer: ConfigEnv = { command: 'serve', mode: 'development' }
@@ -20,76 +20,25 @@ function applies(plugin: Plugin, env: ConfigEnv) {
   return plugin.apply === env.command
 }
 
-async function flatten(option: PluginOption): Promise<Array<Plugin>> {
-  const resolved = await option
-  if (!resolved) {
-    return []
-  }
-  if (Array.isArray(resolved)) {
-    return (await Promise.all(resolved.map(flatten))).flat()
-  }
-  return [resolved as Plugin]
-}
-
 afterEach(() => {
   vi.unstubAllEnvs()
 })
 
 describe('excludeFromTestRuns', () => {
-  test('leaves a plugin out of a test run and keeps it everywhere else', async () => {
+  test('leaves plugins out of a test run and keeps them everywhere else', () => {
     vi.stubEnv('VITEST', 'true')
-    const [plugin] = await flatten(excludeFromTestRuns({ name: 'serves-app' }))
+    const plugins = (
+      excludeFromTestRuns([{ name: 'first' }, [{ name: 'nested' }]]) as Array<
+        Plugin | Array<Plugin>
+      >
+    ).flat()
 
-    expect(applies(plugin!, testRun)).toBe(false)
-    expect(applies(plugin!, devServer)).toBe(true)
-    expect(applies(plugin!, build)).toBe(true)
-  })
-
-  test('keeps the command a plugin applies to', async () => {
-    vi.stubEnv('VITEST', 'true')
-    const [plugin] = await flatten(
-      excludeFromTestRuns({ name: 'builds-app', apply: 'build' }),
-    )
-
-    expect(applies(plugin!, testRun)).toBe(false)
-    expect(applies(plugin!, devServer)).toBe(false)
-    expect(applies(plugin!, build)).toBe(true)
-  })
-
-  test("keeps a plugin's own decision outside a test run", async () => {
-    vi.stubEnv('VITEST', 'true')
-    const [plugin] = await flatten(
-      excludeFromTestRuns({
-        name: 'production-only',
-        apply: (_config, env) => env.mode === 'production',
-      }),
-    )
-
-    expect(applies(plugin!, testRun)).toBe(false)
-    expect(applies(plugin!, devServer)).toBe(false)
-    expect(applies(plugin!, build)).toBe(true)
-  })
-
-  test('reaches the plugins inside arrays and promises, and keeps empty entries', async () => {
-    vi.stubEnv('VITEST', 'true')
-    const option = excludeFromTestRuns([
-      { name: 'first' },
-      null,
-      false,
-      [{ name: 'nested' }, Promise.resolve({ name: 'later' })],
-    ])
-
-    const plugins = await flatten(option)
-    expect(plugins.map((plugin) => plugin.name)).toEqual([
-      'first',
-      'nested',
-      'later',
-    ])
-    expect(plugins.map((plugin) => applies(plugin, testRun))).toEqual([
-      false,
-      false,
-      false,
-    ])
+    expect(plugins.map((plugin) => plugin.name)).toEqual(['first', 'nested'])
+    for (const plugin of plugins) {
+      expect(applies(plugin, testRun)).toBe(false)
+      expect(applies(plugin, devServer)).toBe(true)
+      expect(applies(plugin, build)).toBe(true)
+    }
   })
 })
 

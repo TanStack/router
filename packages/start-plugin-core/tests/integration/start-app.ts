@@ -9,7 +9,7 @@
  * The app links the workspace's `@tanstack/react-start` and the
  * `@tanstack/react-router`, `react` and `react-dom` it uses, as an installed
  * app would. A package that only uses Start's compile-time APIs links fewer
- * (`createStartApp`'s `dependencies`).
+ * (`dependencies` of `createStartApp`).
  */
 import { execFile } from 'node:child_process'
 import { realpathSync } from 'node:fs'
@@ -77,13 +77,15 @@ export interface StartApp {
  */
 export async function createStartApp(
   files: Record<string, string>,
-  prefix = 'start-app-',
-  dependencies: Array<string> = [
-    '@tanstack/react-router',
-    'react',
-    'react-dom',
-  ],
-  framework: StartFramework = 'react',
+  {
+    prefix = 'start-app-',
+    dependencies = ['@tanstack/react-router', 'react', 'react-dom'],
+    framework = 'react',
+  }: {
+    prefix?: string
+    dependencies?: Array<string>
+    framework?: StartFramework
+  } = {},
 ): Promise<StartApp> {
   const root = realpathSync(await mkdtemp(path.join(os.tmpdir(), prefix)))
   const cwd = process.cwd()
@@ -138,6 +140,15 @@ async function startPlugin(
   return tanstackStart(options)
 }
 
+/** A Vite logger that keeps the warnings instead of printing them. */
+function warningCollector() {
+  const warnings: Array<string> = []
+  const customLogger = createLogger('error')
+  customLogger.warn = (message) => warnings.push(message)
+  customLogger.warnOnce = customLogger.warn
+  return { customLogger, warnings }
+}
+
 /** The JavaScript a build emitted under `dir` (of the app), concatenated. */
 async function emittedCode(dir: string) {
   const entries = await readdir(dir, { recursive: true, withFileTypes: true })
@@ -166,11 +177,8 @@ export async function buildStartApp(
   options: StartOptions = {},
 ): Promise<StartBuild> {
   const plugin = await startPlugin(app, bundler, options)
-  const warnings: Array<string> = []
+  const { customLogger, warnings } = warningCollector()
   if (bundler === 'vite') {
-    const customLogger = createLogger('error')
-    customLogger.warn = (message) => warnings.push(message)
-    customLogger.warnOnce = customLogger.warn
     const builder = await createBuilder({
       root: app.root,
       configFile: false,
@@ -227,13 +235,9 @@ export interface ViteTestServer {
  */
 export async function startViteTestServer(
   app: StartApp,
-  options: StartOptions = {},
-  browser = false,
+  { browser = false }: { browser?: boolean } = {},
 ): Promise<ViteTestServer> {
-  const warnings: Array<string> = []
-  const customLogger = createLogger('error')
-  customLogger.warn = (message) => warnings.push(message)
-  customLogger.warnOnce = customLogger.warn
+  const { customLogger, warnings } = warningCollector()
   const server = await createServer({
     root: app.root,
     configFile: false,
@@ -244,7 +248,7 @@ export async function startViteTestServer(
     server: { middlewareMode: browser, hmr: false },
     // (the pre-bundle is written when it is ready, not when a page has loaded)
     optimizeDeps: { holdUntilCrawlEnd: false },
-    plugins: [await startPlugin(app, 'vite', options)],
+    plugins: [await startPlugin(app, 'vite', {})],
   })
   onTestFinished(async () => {
     // Closing the server does not wait for a pre-bundle in progress, which

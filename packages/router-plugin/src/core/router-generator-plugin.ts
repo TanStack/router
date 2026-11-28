@@ -53,8 +53,6 @@ export function createRouterGeneratorPlugin(
   }) => {
     let generatorEvent: GeneratorEvent | undefined = undefined
     if (opts) {
-      // (Vite reports file changes through `watchChange`, webpack and rspack
-      // new files through chokidar)
       if (hostOptions.watch?.() === false) {
         return
       }

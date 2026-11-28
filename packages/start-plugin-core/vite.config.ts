@@ -2,9 +2,9 @@ import { configDefaults, defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/vite-config'
 import packageJson from './package.json'
 
-/** The build output (`dist`) of this package and `@tanstack/react-start`. */
+/** The build output (`dist`) of this package and of the Start packages the tests use. */
 const builtStartPackages =
-  /\/packages\/(?:start-plugin-core|react-start)\/dist\//
+  /\/packages\/(?:start-plugin-core|react-start|vue-start)\/dist\//
 
 const config = defineConfig({
   test: {

@@ -8,10 +8,7 @@ import {
 } from '../constants'
 import { getBundlerOptions } from '../utils'
 import type { CompileStartFrameworkOptions } from '../types'
-import type {
-  ResolvedStartEntryPlan,
-  ResolvedStartTestEntryPlan,
-} from '../planning'
+import type { ResolvedStartEntryPlan } from '../planning'
 import type * as vite from 'vite'
 
 export interface ViteResolvedEntryAliases {
@@ -133,7 +130,7 @@ export function createViteConfigPlan(opts: {
  */
 export function createViteTestConfigPlan(opts: {
   framework: CompileStartFrameworkOptions
-  entryPaths: ResolvedStartTestEntryPlan['entryPaths']
+  entryPaths: ResolvedStartEntryPlan['entryPaths']
   optimizeDepsExclude: Array<string>
   noExternal: Array<string>
 }) {

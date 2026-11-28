@@ -89,47 +89,16 @@ export function createServerFnBasePath(opts: {
   return joinPaths(['/', opts.routerBasepath, opts.serverFnBase, '/'])
 }
 
-/**
- * The entries of a project whose code runs under a test runner. Such a project
- * may be an app or a package that only uses Start's compile-time APIs, so the
- * router entry is optional, unless the config names one.
- */
-export interface ResolvedStartTestEntryPlan extends Omit<
-  ResolvedStartEntryPlan,
-  'routerFilePath' | 'entryPaths'
-> {
-  routerFilePath: string | undefined
-  entryPaths: Omit<ResolvedStartEntryPlan['entryPaths'], 'router'> & {
-    router: string | undefined
-  }
-}
-
 export function resolveStartEntryPlan(opts: {
   root: string
   startConfig: TanStackStartOutputConfig
   defaultEntryPaths: TanStackStartCoreOptions['defaultEntryPaths']
+  /**
+   * A project whose code runs under a test runner may be a package that only
+   * uses Start's compile-time APIs. Its router entry is then an empty string.
+   */
+  routerEntryOptional?: boolean
 }): ResolvedStartEntryPlan {
-  return resolveEntryPlan(opts, true)
-}
-
-export function resolveStartTestEntryPlan(opts: {
-  root: string
-  startConfig: TanStackStartOutputConfig
-  defaultEntryPaths: TanStackStartCoreOptions['defaultEntryPaths']
-}): ResolvedStartTestEntryPlan {
-  return resolveEntryPlan(opts, false)
-}
-
-function resolveEntryPlan<TRouterRequired extends boolean>(
-  opts: {
-    root: string
-    startConfig: TanStackStartOutputConfig
-    defaultEntryPaths: TanStackStartCoreOptions['defaultEntryPaths']
-  },
-  routerEntryRequired: TRouterRequired,
-): TRouterRequired extends true
-  ? ResolvedStartEntryPlan
-  : ResolvedStartTestEntryPlan {
   const srcDirectory = join(opts.root, opts.startConfig.srcDirectory)
 
   const startFilePath = resolveEntry({
@@ -140,15 +109,16 @@ function resolveEntryPlan<TRouterRequired extends boolean>(
     required: false,
   })
 
-  const routerFilePath = resolveEntry({
-    type: 'router entry',
-    configuredEntry: opts.startConfig.router.entry,
-    defaultEntry: 'router',
-    resolvedSrcDirectory: srcDirectory,
-    // (a configured entry has to exist: a typo in the config is not a project
-    // without a router)
-    required: routerEntryRequired || !!opts.startConfig.router.entry,
-  })
+  const routerFilePath =
+    resolveEntry({
+      type: 'router entry',
+      configuredEntry: opts.startConfig.router.entry,
+      defaultEntry: 'router',
+      resolvedSrcDirectory: srcDirectory,
+      // (a configured entry has to exist: a typo in the config is not a
+      // project without a router)
+      required: !opts.routerEntryOptional || !!opts.startConfig.router.entry,
+    }) ?? ''
 
   const clientEntryPath = resolveEntry({
     type: 'client entry',
@@ -176,7 +146,5 @@ function resolveEntryPlan<TRouterRequired extends boolean>(
       start: startFilePath ?? opts.defaultEntryPaths.start,
       router: routerFilePath,
     },
-  } as TRouterRequired extends true
-    ? ResolvedStartEntryPlan
-    : ResolvedStartTestEntryPlan
+  }
 }

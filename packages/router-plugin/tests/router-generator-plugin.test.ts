@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { createRouterGeneratorPlugin } from '../src/core/router-generator-plugin'
 import { createRouterPluginContext } from '../src/core/router-plugin-context'
 import type { RouterGeneratorHostOptions } from '../src/core/host-options'
@@ -20,32 +20,9 @@ export const Route = createFileRoute('${routePath}')({
 })
 `
 
-// webpack and rspack do not report new files, so the plugin watches the
-// routes directory with chokidar. The mock hands its `add` listener to the
-// test.
-const chokidar = vi.hoisted(() => ({
-  onAdd: undefined as ((file: string) => Promise<void>) | undefined,
-}))
-vi.mock('chokidar', () => {
-  const watch = () => {
-    const watcher = {
-      on(event: string, listener: (file: string) => Promise<void>) {
-        if (event === 'add') {
-          chokidar.onAdd = listener
-        }
-        return watcher
-      },
-      close: async () => {},
-    }
-    return watcher
-  }
-  return { watch, default: { watch } }
-})
-
 let tempDir: string | undefined
 
 afterEach(async () => {
-  chokidar.onAdd = undefined
   if (tempDir) {
     await fs.rm(tempDir, { recursive: true, force: true })
     tempDir = undefined
@@ -99,34 +76,6 @@ async function createProject(
       ) => Promise<void>
       await watchChange.call({}, added, { event: 'create' })
     },
-    /** A webpack or rspack watch run started. */
-    async watchRun(bundler: 'rspack' | 'webpack') {
-      const taps: Record<string, () => Promise<void>> = {}
-      const hook = (name: string) => ({
-        tap: (_plugin: string, fn: () => Promise<void>) => {
-          taps[name] = fn
-        },
-        tapPromise: (_plugin: string, fn: () => Promise<void>) => {
-          taps[name] = fn
-        },
-      })
-      const setUp = plugin[bundler] as (compiler: unknown) => void
-      setUp({
-        hooks: {
-          beforeRun: hook('beforeRun'),
-          watchRun: hook('watchRun'),
-          watchClose: hook('watchClose'),
-          done: hook('done'),
-        },
-      })
-      await taps.watchRun!()
-    },
-    /** chokidar saw a new file during a webpack or rspack watch run. */
-    async addSeenByChokidar(file: string, content: string) {
-      const added = path.join(routesDirectory, file)
-      await fs.writeFile(added, content)
-      await chokidar.onAdd!(added)
-    },
   }
 }
 
@@ -140,19 +89,6 @@ describe('route generator plugin', () => {
     await project.add('added.tsx', routeSource('/added'))
     expect(await project.routeTree()).toContain(`'/added'`)
   })
-
-  it.each(['rspack', 'webpack'] as const)(
-    'writes the route tree when a route is added during a %s watch run',
-    async (bundler) => {
-      const project = await createProject({ '__root.tsx': rootRouteSource })
-
-      await project.watchRun(bundler)
-      expect(await project.routeTree()).not.toContain(`'/added'`)
-
-      await project.addSeenByChokidar('added.tsx', routeSource('/added'))
-      expect(await project.routeTree()).toContain(`'/added'`)
-    },
-  )
 })
 
 describe('route generator plugin embedded in a host plugin', () => {
@@ -200,22 +136,6 @@ describe('route generator plugin embedded in a host plugin', () => {
 
     expect(await project.routeTree()).toBe(routeTree)
   })
-
-  it.each(['rspack', 'webpack'] as const)(
-    'ignores a route added during a %s watch run when the host turns watching off',
-    async (bundler) => {
-      const project = await createProject(
-        { '__root.tsx': rootRouteSource },
-        { watch: () => false },
-      )
-
-      await project.watchRun(bundler)
-      const routeTree = await project.routeTree()
-      await project.addSeenByChokidar('added.tsx', routeSource('/added'))
-
-      expect(await project.routeTree()).toBe(routeTree)
-    },
-  )
 
   it('leaves route files as they are when the host turns writing them off', async () => {
     const moved = routeSource('/moved-from')

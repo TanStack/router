@@ -43,7 +43,7 @@ export function tanStackStartRouter(
    * files are never written; and a route file does not have to be known to
    * the generator to lose its server-only options in client code.
    */
-  isTestRun: () => boolean = () => false,
+  isTestRun: () => boolean,
 ): Array<PluginOption> {
   const routerPluginContext = createRouterPluginContext()
 
@@ -82,6 +82,8 @@ export function tanStackStartRouter(
   }
 
   let resolvedGeneratedRouteTreePath: string | null = null
+  const isGeneratedRouteTree = (id: string) =>
+    normalizePath(id.replace(/\?.*$/, '')) === resolvedGeneratedRouteTreePath
   const clientTreePlugin: Plugin = {
     name: 'tanstack-start:route-tree-client-plugin',
     enforce: 'pre',
@@ -98,8 +100,7 @@ export function tanStackStartRouter(
       defineCacheKeyGenerator(({ environment, id }) => {
         if (
           environment.name === VITE_ENVIRONMENT_NAMES.client &&
-          normalizePath(id.replace(/\?.*$/, '')) ===
-            resolvedGeneratedRouteTreePath
+          isGeneratedRouteTree(id)
         ) {
           // Not cached: `load` builds it in every run.
           return false
@@ -130,10 +131,7 @@ export function tanStackStartRouter(
         // this will be set in the config hook above since it relies on `config` hook being called first
       },
       async handler(id) {
-        if (
-          normalizePath(id.replace(/\?.*$/, '')) !==
-          resolvedGeneratedRouteTreePath
-        ) {
+        if (!isGeneratedRouteTree(id)) {
           return null
         }
         if (!generatorInstance) {

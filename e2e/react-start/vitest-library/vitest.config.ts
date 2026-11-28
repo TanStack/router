@@ -17,10 +17,6 @@ export default defineConfig({
   plugins: [tanstackStart(), react()],
   test: {
     watch: false,
-    // Vitest keeps the modules it compiled in one cache for the whole
-    // repository. This project keeps its own, so that `vitest --clearCache`
-    // in this directory empties only this one.
-    fsModuleCachePath: 'node_modules/.vitest-cache',
     projects: [
       {
         extends: true,

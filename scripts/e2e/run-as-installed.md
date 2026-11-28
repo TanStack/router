@@ -1,6 +1,6 @@
 # Running an e2e project as an installed project
 
-`scripts/e2e/run-as-installed.mjs` runs a command in a copy of an e2e project
+`scripts/e2e/run-as-installed.mjs` runs a script of an e2e project in a copy
 whose `@tanstack/*` dependencies are installed the way a user's package
 manager installs them.
 
@@ -58,9 +58,8 @@ in the repository:
    the versions are the ones the repository uses. A workspace package is
    packed as for publishing (the files its `files` field names) and installed
    like a package from the registry.
-2. It runs the given command in the copy, with the copy's `node_modules/.bin`
-   first on `PATH`.
-3. It removes the copy and exits with the command's status.
+2. It runs the given script of the project in the copy (`pnpm run <script>`).
+3. It removes the copy and exits with the script's status.
 
 The copy is outside the repository on purpose. From a directory inside it,
 Node and Vite would walk up to the repository's own `node_modules` and
@@ -74,7 +73,8 @@ In the e2e project's `package.json`:
 {
   "scripts": {
     "test:e2e": "pnpm run test:e2e:installed",
-    "test:e2e:installed": "node ../../../scripts/e2e/run-as-installed.mjs vitest run"
+    "test:e2e:installed": "node ../../../scripts/e2e/run-as-installed.mjs test:e2e:cold-then-cached",
+    "test:e2e:cold-then-cached": "vitest run && vitest run"
   },
   "nx": {
     "targets": {
@@ -93,41 +93,26 @@ In the e2e project's `package.json`:
 
 The `inputs` add the script to what Nx hashes for the target.
 
-The command can be a script of the project, which `pnpm run` starts in the
-copy. `e2e/react-start/vitest-library` and `e2e/react-start/vitest-app` run
-Vitest twice that way. The copy starts with an empty Vitest module cache, so
-the second run gets the compiled modules of the first from the cache:
+`e2e/react-start/vitest-library` and `e2e/react-start/vitest-app` are set up
+like this. Their script runs Vitest twice. The copy starts with an empty
+Vitest module cache, so the second run gets the compiled modules of the first
+from the cache.
 
-```json
-{
-  "scripts": {
-    "test:e2e:installed": "node ../../../scripts/e2e/run-as-installed.mjs pnpm run test:e2e:cold-then-cached",
-    "test:e2e:cold-then-cached": "vitest run && vitest run"
-  }
-}
-```
-
-These two projects run their tests only in the copy. `vitest run` in the
-directory of `vitest-app` fails one browser test file on the first run after
-an install and passes on the second (see also its
-[README](../../e2e/react-start/vitest-app/README.md)). Start's packages are links there, so Vite
-sees what they import (`seroval`, `cookie-es`) only when a test loads them. It
-pre-bundles those packages then and reloads the page, and the test file that
-was loading fails to import. Vite keeps the pre-bundle for later runs. In the
-copy Vite pre-bundles nothing late (the table above), so the page is not
-reloaded.
+These two projects run their tests only in the copy. Running Vitest in the
+directory of `vitest-app` can fail on the first run; its
+[README](../../e2e/react-start/vitest-app/README.md) says why.
 
 To look at a copy after a failure:
 
 ```sh
-node ../../../scripts/e2e/run-as-installed.mjs --keep vitest run
+node ../../../scripts/e2e/run-as-installed.mjs --keep test:e2e:cold-then-cached
 ```
 
 ## In CI
 
 `pnpm test:pr` runs `test:e2e` of every affected project, and `test:ci` runs
 it for all of them, so the run as a user's project is part of every CI run that
-touches these projects. Before it runs the command, the script checks that
+touches these projects. Before anything runs in the copy, `run-as-installed.mjs` checks that
 each `@tanstack/*` dependency of the project resolves to a package inside the
 copy, and fails otherwise. A pass therefore means the tests ran against
 installed packages, and not against links that slipped back in.
@@ -154,4 +139,4 @@ script as well; none does yet.
   are not run.
 - `pnpm deploy` needs the registry: it checks the lockfile against the
   workspace's supply-chain policies, and it downloads what the store lacks.
-- It takes about 7 seconds before the command starts.
+- It takes about 7 seconds before the project's script starts.

@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * Runs a command in a copy of an e2e project whose `@tanstack/*` dependencies
+ * Runs a script of an e2e project in a copy whose `@tanstack/*` dependencies
  * are installed the way a user's package manager installs them, instead of
  * being links to `packages/*`. `run-as-installed.md` explains why a project
  * needs this and what the copy is.
  *
  * Usage, from the e2e project's directory:
  *
- *   node ../../../scripts/e2e/run-as-installed.mjs [--keep] <command> [...args]
+ *   node ../../../scripts/e2e/run-as-installed.mjs [--keep] <script>
  *
  * `--keep` leaves the copy in place and prints where it is.
  */
@@ -21,10 +21,10 @@ const keep = args[0] === '--keep'
 if (keep) {
   args.shift()
 }
-const [command, ...commandArgs] = args
-if (!command) {
+const [script] = args
+if (!script) {
   console.error(
-    'Usage: node scripts/e2e/run-as-installed.mjs [--keep] <command> [...args]',
+    'Usage: node scripts/e2e/run-as-installed.mjs [--keep] <script>',
   )
   process.exit(1)
 }
@@ -44,22 +44,21 @@ const directory = realpathSync(
 )
 const copy = path.join(directory, 'project')
 
-function run(executable, executableArgs, options = {}) {
+function pnpm(pnpmArgs, options = {}) {
   const spawnOptions = { stdio: 'inherit', ...options }
-  // `pnpm` and the binaries of `node_modules/.bin` are `.cmd` files on
-  // Windows, which only a shell starts. Node joins the arguments of a shell
-  // command with spaces and does not quote them, so an argument with a space
-  // in it, such as the copy under a temporary directory of "Jane Doe", is
-  // quoted here.
+  // `pnpm` is a `.cmd` file on Windows, which only a shell starts. Node joins
+  // the arguments of a shell command with spaces and does not quote them, so
+  // an argument with a space in it, such as the copy under a temporary
+  // directory of "Jane Doe", is quoted here.
   const result =
     process.platform === 'win32'
       ? spawnSync(
-          [executable, ...executableArgs]
+          ['pnpm', ...pnpmArgs]
             .map((arg) => (/\s/.test(arg) ? `"${arg}"` : arg))
             .join(' '),
           { ...spawnOptions, shell: true },
         )
-      : spawnSync(executable, executableArgs, spawnOptions)
+      : spawnSync('pnpm', pnpmArgs, spawnOptions)
   if (result.error) {
     throw result.error
   }
@@ -90,17 +89,10 @@ try {
   // `pnpm deploy` copies the project and installs its dependencies into the
   // copy from the workspace's lockfile. A workspace package is packed as for
   // publishing and installed like a package from the registry.
-  status = run('pnpm', ['--filter', projectName, 'deploy', copy])
+  status = pnpm(['--filter', projectName, 'deploy', copy])
   if (status === 0) {
     assertInstalled()
-    const binaries = path.join(copy, 'node_modules', '.bin')
-    status = run(command, commandArgs, {
-      cwd: copy,
-      env: {
-        ...process.env,
-        PATH: `${binaries}${path.delimiter}${process.env.PATH}`,
-      },
-    })
+    status = pnpm(['run', script], { cwd: copy })
   }
 } finally {
   if (keep) {
