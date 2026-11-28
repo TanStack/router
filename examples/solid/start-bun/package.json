@@ -18,8 +18,8 @@
     "@tanstack/solid-router": "^1.170.43",
     "@tanstack/solid-router-devtools": "^1.167.4",
     "@tanstack/solid-router-ssr-query": "^1.167.3",
-    "@tanstack/solid-start": "^1.169.7",
-    "@tanstack/router-plugin": "^1.169.0",
+    "@tanstack/solid-start": "^1.170.0",
+    "@tanstack/router-plugin": "^1.170.0",
     "solid-js": "^1.9.10",
     "tailwindcss": "^4.2.2"
   },
@@ -35,7 +35,7 @@
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
-    "vitest": "^5.0.4",
+    "vitest": "^5.1.1",
     "web-vitals": "^5.1.0"
   }
 }

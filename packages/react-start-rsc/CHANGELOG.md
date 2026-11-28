@@ -1,5 +1,12 @@
 # @tanstack/react-start-rsc
 
+## 0.1.69
+
+### Patch Changes
+
+- Updated dependencies [[`611b364`](https://github.com/TanStack/router/commit/611b364f8ddaa42da11f3506c14c5e2521810ba9), [`611b364`](https://github.com/TanStack/router/commit/611b364f8ddaa42da11f3506c14c5e2521810ba9)]:
+  - @tanstack/start-plugin-core@1.173.0
+
 ## 0.1.68
 
 ### Patch Changes
