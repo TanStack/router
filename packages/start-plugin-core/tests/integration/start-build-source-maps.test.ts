@@ -9,7 +9,8 @@
  */
 import { describe, expect, test } from 'vitest'
 import { originalFrameOf } from '@tanstack/compiler-test-utils/build-harness'
-import { buildStart, startBundlers } from '../build-harness'
+import { startBundlers } from '../build-harness'
+import { buildStart } from '../build-start'
 import type { StartBundler } from '../build-harness'
 import type { InlineConfig } from 'vite'
 

@@ -8,7 +8,8 @@
  * Same rule for a denied file `client.excludeFiles` / `server.excludeFiles`
  * match (end of the file): its importers get the real module.
  */
-import { afterAll, afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
+import { closeAfterAll } from '../../file-end'
 import { buildStartShared, startBundlers } from '../../build-harness'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import {
@@ -138,19 +139,18 @@ describe.each(startBundlers)('%s build', (bundler) => {
   describe.each(exemptions)('$option', ({ importProtection }) => {
     // One build for both tests.
     let built: Promise<StartBuild> | undefined
+    const openBuilt = closeAfterAll()
     const app = () =>
-      (built ??= buildStartShared({
-        bundler,
-        files,
-        entry: 'src/entry.ts',
-        start: { importProtection: { ...importProtection, behavior: 'mock' } },
-      }))
-    afterAll(() =>
-      built?.then(
-        (opened) => opened.close(),
-        () => {},
-      ),
-    )
+      (built ??= openBuilt(() =>
+        buildStartShared({
+          bundler,
+          files,
+          entry: 'src/entry.ts',
+          start: {
+            importProtection: { ...importProtection, behavior: 'mock' },
+          },
+        }),
+      ))
 
     async function outcome(): Promise<Outcome> {
       const build = await app()
@@ -288,19 +288,18 @@ function excludedBuild(
   importProtection: ImportProtectionOptions,
 ) {
   let built: Promise<StartBuild> | undefined
-  afterAll(() =>
-    built?.then(
-      (opened) => opened.close(),
-      () => {},
-    ),
-  )
+  const openExcluded = closeAfterAll()
   return async (environment: 'client' | 'ssr'): Promise<ExcludedOutcome> => {
-    built ??= buildStartShared({
-      bundler,
-      files: excludedFiles,
-      entry: 'src/entry.ts',
-      start: { importProtection: { ...importProtection, behavior: 'mock' } },
-    })
+    built ??= openExcluded(() =>
+      buildStartShared({
+        bundler,
+        files: excludedFiles,
+        entry: 'src/entry.ts',
+        start: {
+          importProtection: { ...importProtection, behavior: 'mock' },
+        },
+      }),
+    )
     const build = await built
     const { result: read } = await build[environment].run(excludedReadScript)
     return {

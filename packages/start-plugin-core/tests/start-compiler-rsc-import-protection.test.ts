@@ -12,6 +12,7 @@
  * could no longer call its provider once this one closed.
  */
 import { beforeAll, describe, expect, test } from 'vitest'
+import { closeAfterAll } from './file-end'
 import { createStartHost } from './start-host'
 import type { StartHost } from './start-host'
 
@@ -22,23 +23,25 @@ describe("Vite with RSC: import protection's 'use client' exception", () => {
     specifier: string
   }> = []
   let host: StartHost
+  const openHost = closeAfterAll()
   beforeAll(async () => {
-    host = await createStartHost({
-      rsc: true,
-      start: {
-        importProtection: {
-          behavior: 'mock',
-          onViolation: (info: {
-            env: string
-            importer: string
-            specifier: string
-          }) => {
-            violations.push(info)
+    host = await openHost(() =>
+      createStartHost({
+        rsc: true,
+        start: {
+          importProtection: {
+            behavior: 'mock',
+            onViolation: (info: {
+              env: string
+              importer: string
+              specifier: string
+            }) => {
+              violations.push(info)
+            },
           },
         },
-      },
-    })
-    return () => host.close()
+      }),
+    )
   }, 60_000)
 
   // SPEC J6.1: the provider compiles the module, which the RSC plugin

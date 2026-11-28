@@ -8,6 +8,7 @@
  * hook) are not kept: the outcomes they stood for are decided here.
  */
 import { beforeAll, describe, expect, test } from 'vitest'
+import { closeAfterAll } from './file-end'
 import {
   callFromClient,
   callServerFnThroughCallers,
@@ -32,16 +33,18 @@ import type { StartHost } from './start-host'
 import type { PageSettled } from './regression-helpers'
 
 let host: StartHost
+const openHost = closeAfterAll()
 beforeAll(async () => {
-  host = await createStartHost({
-    links: ['@tanstack/start-client-core'],
-    files: libraryPackages,
-    config: {
-      optimizeDeps: { exclude: compiledLibraries },
-      ssr: { noExternal: compiledLibraries },
-    },
-  })
-  return () => host.close()
+  host = await openHost(() =>
+    createStartHost({
+      links: ['@tanstack/start-client-core'],
+      files: libraryPackages,
+      config: {
+        optimizeDeps: { exclude: compiledLibraries },
+        ssr: { noExternal: compiledLibraries },
+      },
+    }),
+  )
 }, 60_000)
 
 /**

@@ -6,7 +6,8 @@
  * ships or runs. Vite and Rsbuild builds.
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart, startBundlers } from '../../build-harness'
+import { startBundlers } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { barrelApp, outcome, timeout } from './dropped-imports-apps'
 
 describe.each(startBundlers)('%s build', (bundler) => {

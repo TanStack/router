@@ -18,7 +18,8 @@
 import react from '@vitejs/plugin-react'
 import { describe, expect, test } from 'vitest'
 import { openTestPage } from '../test-page'
-import { buildStart, startBundlers } from '../build-harness'
+import { startBundlers } from '../build-harness'
+import { buildStart } from '../build-start'
 import { startDevServer } from '../dev-server'
 import {
   reportedErrors,

@@ -18,7 +18,8 @@ import {
   positionAt,
   traceStack,
 } from '@tanstack/compiler-test-utils/source-maps'
-import { buildStart, startBundlers } from '../build-harness'
+import { startBundlers } from '../build-harness'
+import { buildStart } from '../build-start'
 import type { StartBuild, StartBundler } from '../build-harness'
 import type { RsbuildPlugin } from '@rsbuild/core'
 import type { Plugin } from 'vite'

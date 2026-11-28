@@ -16,6 +16,7 @@ import {
   positionAt,
   tokenOffsets,
 } from '@tanstack/compiler-test-utils/source-maps'
+import { closeAfterAll } from '../../file-end'
 import { compileError, expectCompileError } from '../../regression-helpers'
 import {
   caseCode,
@@ -30,9 +31,9 @@ import type { ClientRender, HydrateHost } from '../../render'
 import type { SourceMapInput } from '@tanstack/compiler-test-utils/source-maps'
 
 let hosts: HydrateHost
+const openHosts = closeAfterAll()
 beforeAll(async () => {
-  hosts = await createHydrateHost()
-  return () => hosts.close()
+  hosts = await openHosts(() => createHydrateHost())
 }, 60_000)
 
 const head = `import { Hydrate } from '@tanstack/react-start'

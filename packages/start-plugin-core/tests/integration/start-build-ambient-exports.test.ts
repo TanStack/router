@@ -9,7 +9,7 @@
  * and the Rsbuild build failed with "export 'default' was not found").
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart } from '../build-harness'
+import { buildStart } from '../build-start'
 
 const timeout = 60_000
 

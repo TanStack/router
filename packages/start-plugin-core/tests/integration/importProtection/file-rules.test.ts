@@ -12,7 +12,8 @@
  * and dev servers with Start's whole plugin.
  */
 import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
-import { afterAll, afterEach, describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test } from 'vitest'
+import { closeAfterAll } from '../../file-end'
 import { buildStartShared, startBundlers } from '../../build-harness'
 import {
   describeValue,
@@ -202,27 +203,24 @@ const expected = {
 
 describe.each(startBundlers)('%s build (mock mode)', (bundler) => {
   let built: Promise<StartBuild> | undefined
-  afterAll(() =>
-    built?.then(
-      (opened) => opened.close(),
-      () => {},
-    ),
-  )
+  const openBuilt = closeAfterAll()
   const build = () =>
-    (built ??= buildStartShared({
-      bundler,
-      files: {
-        ...app,
-        // A real router (the server's requests need one; `request-probe.ts`)
-        'src/router.ts': `import { createRouter } from '@tanstack/react-router'
+    (built ??= openBuilt(() =>
+      buildStartShared({
+        bundler,
+        files: {
+          ...app,
+          // A real router (the server's requests need one; `request-probe.ts`)
+          'src/router.ts': `import { createRouter } from '@tanstack/react-router'
 import './entry'
 import { routeTree } from './routeTree.gen'
 export const getRouter = () => createRouter({ routeTree })
 `,
-      },
-      entry: 'src/entry.ts',
-      start: { importProtection: { ...importProtection, behavior: 'mock' } },
-    }))
+        },
+        entry: 'src/entry.ts',
+        start: { importProtection: { ...importProtection, behavior: 'mock' } },
+      }),
+    ))
 
   test(
     'client.files replaces the default file rule of the client',
@@ -253,21 +251,18 @@ describe('vite dev', () => {
 
   // One dev server for both environments.
   let started: ReturnType<typeof startDevServer> | undefined
-  afterAll(() =>
-    started?.then(
-      (opened) => opened.close(),
-      () => {},
-    ),
-  )
+  const openStarted = closeAfterAll()
   const recorder = violationRecorder(importProtection)
 
   /** Runs the app from Start's router entry in `environment`. */
   async function run(environment: 'client' | 'server') {
-    const server = await (started ??= startDevServerShared({
-      browser: true,
-      start: { importProtection: recorder.importProtection },
-      files: app,
-    }))
+    const server = await (started ??= openStarted(() =>
+      startDevServerShared({
+        browser: true,
+        start: { importProtection: recorder.importProtection },
+        files: app,
+      }),
+    ))
     const { result } =
       environment === 'client'
         ? await runViteClient(
@@ -318,22 +313,19 @@ describe('vite dev', () => {
 describe('rsbuild dev', () => {
   // One dev server for both environments.
   let started: ReturnType<typeof startRsbuildStartDevServer> | undefined
-  afterAll(() =>
-    started?.then(
-      (opened) => opened.close(),
-      () => {},
-    ),
-  )
+  const openStarted2 = closeAfterAll()
   const recorder = violationRecorder(importProtection)
   const start = () =>
-    (started ??= startRsbuildStartDevServerShared({
-      compileTimeout,
-      browser: true,
-      hmr: false,
-      config: ssrNodeOutput,
-      files: app,
-      start: { importProtection: recorder.importProtection },
-    }))
+    (started ??= openStarted2(() =>
+      startRsbuildStartDevServerShared({
+        compileTimeout,
+        browser: true,
+        hmr: false,
+        config: ssrNodeOutput,
+        files: app,
+        start: { importProtection: recorder.importProtection },
+      }),
+    ))
 
   test(
     'client.files replaces the default file rule of the client',

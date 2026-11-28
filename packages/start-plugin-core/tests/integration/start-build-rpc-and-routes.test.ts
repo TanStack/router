@@ -9,12 +9,12 @@
  */
 import { describe, expect, test } from 'vitest'
 import {
-  buildStart,
   callByIdExports,
   callByIdPrelude,
   requestsOfPrelude,
   startBundlers,
 } from '../build-harness'
+import { buildStart } from '../build-start'
 import { probeRoutePath } from '../request-probe'
 
 const timeout = 60_000

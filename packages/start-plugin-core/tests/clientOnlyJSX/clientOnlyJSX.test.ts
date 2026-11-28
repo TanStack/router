@@ -1,11 +1,12 @@
 import { beforeAll, describe, expect, test } from 'vitest'
+import { closeAfterAll } from '../file-end'
 import { createHydrateHost, renderServer, renderSource } from '../render'
 import type { HydrateHost } from '../render'
 
 let hosts: HydrateHost
+const openHosts = closeAfterAll()
 beforeAll(async () => {
-  hosts = await createHydrateHost()
-  return () => hosts.close()
+  hosts = await openHosts(() => createHydrateHost())
 }, 60_000)
 
 // On the server, `<ClientOnly>` (of a TanStack router package) renders its

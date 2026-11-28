@@ -15,7 +15,8 @@
  * an async chunk). No upstream issue.
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart, startBundlers } from '../../build-harness'
+import { startBundlers } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { importersIn } from './hosts'
 
 const timeout = 120_000

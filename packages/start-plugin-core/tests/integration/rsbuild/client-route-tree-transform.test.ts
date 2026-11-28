@@ -9,7 +9,7 @@
  * (a restored tree module built from the current tree is not built again).
  */
 import { expect, test } from 'vitest'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { rsbuildEntries } from '../route-css-cases'
 import type { RsbuildConfig, RsbuildPlugin } from '@rsbuild/core'
 

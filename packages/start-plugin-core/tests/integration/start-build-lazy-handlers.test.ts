@@ -13,11 +13,13 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import {
   runNodeProgram,
   runNodeStep,
 } from '@tanstack/compiler-test-utils/run-node'
+import { closeAtEnd } from '../test-end'
+import { closeAfterAll } from '../file-end'
 import {
   buildStartShared,
   callByIdExports,
@@ -27,7 +29,6 @@ import {
 import { createStartHost } from '../regression-helpers'
 import { routerFile } from '../request-probe'
 import type { StartBuild } from '../build-harness'
-import type { StartHost } from '../regression-helpers'
 
 const timeout = 60_000
 
@@ -522,13 +523,15 @@ const counts = (...names) =>
 
 describe.each(startBundlers)('%s build', (bundler) => {
   let build: StartBuild
+  const openBuild = closeAfterAll()
   beforeAll(async () => {
-    build = await buildStartShared({
-      bundler,
-      files,
-      entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
-    })
-    return () => build.close()
+    build = await openBuild(() =>
+      buildStartShared({
+        bundler,
+        files,
+        entry: { client: 'client-entry.ts', ssr: 'ssr-entry.ts' },
+      }),
+    )
   }, timeout)
 
   test(
@@ -1176,12 +1179,14 @@ describe.each(startBundlers)(
   (bundler) => {
     let build: StartBuild
 
+    const openBuild2 = closeAfterAll()
     beforeAll(async () => {
-      build = await buildStartShared({
-        bundler,
-        files: firstRequestFiles,
-      })
-      return () => build.close()
+      build = await openBuild2(() =>
+        buildStartShared({
+          bundler,
+          files: firstRequestFiles,
+        }),
+      )
     }, timeout)
 
     test(
@@ -1270,13 +1275,13 @@ describe.each(startBundlers)(
 // as a module of its own (`Page.vue?vue&type=script&lang.ts`); its
 // handlers' server-only modules load on the first call like any module's.
 describe('vite build of a Vue app', () => {
-  let host: StartHost | undefined
-  afterAll(() => host?.close())
-
   test(
     'SSR: the server-only module of a handler in a <script lang="ts"> block is not loaded with the SFC',
     async () => {
-      host = await createStartHost({ framework: 'vue', serve: false })
+      const host = await closeAtEnd(
+        () => createStartHost({ framework: 'vue', serve: false }),
+        (opened) => opened.close(),
+      )
       const startCase = await host.case({
         'Page.vue': `<script lang="ts">
 import { createServerFn } from '@tanstack/vue-start'

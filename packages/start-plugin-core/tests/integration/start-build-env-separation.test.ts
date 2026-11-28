@@ -9,14 +9,15 @@
  * options deleted from client route modules).
  */
 import { beforeAll, describe, expect, test } from 'vitest'
+import { closeAfterAll } from '../file-end'
 import {
-  buildStart,
   buildStartShared,
   callByIdExports,
   callByIdPrelude,
   requestsOfPrelude,
   startBundlers,
 } from '../build-harness'
+import { buildStart } from '../build-start'
 import { solidAppConfig } from './hydrate-pages'
 import type { StartBuild } from '../build-harness'
 
@@ -464,13 +465,15 @@ const get = async (path) =>
 
     // One build for every row.
     let build: StartBuild
+    const openBuild = closeAfterAll()
     beforeAll(async () => {
-      build = await buildStartShared({
-        bundler,
-        files,
-        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
-      })
-      return () => build.close()
+      build = await openBuild(() =>
+        buildStartShared({
+          bundler,
+          files,
+          entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+        }),
+      )
     }, timeout)
 
     // The markers are searchable: the client keeps the client side of the

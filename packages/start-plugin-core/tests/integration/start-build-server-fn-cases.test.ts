@@ -15,11 +15,11 @@ import {
 import { describe, expect, test } from 'vitest'
 import {
   StartBuildError,
-  buildStart,
   callByIdExports,
   callByIdPrelude,
   startBundlers,
 } from '../build-harness'
+import { buildStart } from '../build-start'
 import {
   clientPage,
   runInClient,

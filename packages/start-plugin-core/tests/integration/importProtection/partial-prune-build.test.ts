@@ -6,7 +6,8 @@
  * client-only file. The cases: partial-prune-cases.ts.
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart, startBundlers } from '../../build-harness'
+import { startBundlers } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import { rejection } from '../../importProtection/start-apps'
 import {

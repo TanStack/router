@@ -16,8 +16,9 @@
  * when its top-level code runs (the SSR environment runs in this process).
  */
 import path from 'node:path'
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import { pluginReact } from '@rsbuild/plugin-react'
+import { closeAfterAll } from '../file-end'
 import { startDevServerShared, startRequestFiles } from '../dev-server'
 import { startRsbuildStartDevServerShared } from '../rsbuild-dev-server'
 import type { DevServer } from '@tanstack/compiler-test-utils/dev-server'
@@ -153,19 +154,15 @@ describe('vite dev: by-id requests', () => {
   const call = (id: string) =>
     callAt(server.url!, id, 'Server function info not found for')
 
-  let opening: Promise<{ close: () => Promise<void> }> | undefined
-  afterAll(() =>
-    opening?.then(
-      (opened) => opened.close(),
-      () => {},
-    ),
-  )
+  const opening = closeAfterAll()
   beforeAll(async () => {
-    server = await (opening = startDevServerShared({
-      listen: true,
-      files,
-      symlinks,
-    }))
+    server = await opening(() =>
+      startDevServerShared({
+        listen: true,
+        files,
+        symlinks,
+      }),
+    )
     appId = await clientId('/src/fns.ts')
     expect(decode(appId).f).toBe('src/fns.ts')
   }, timeout)
@@ -236,15 +233,17 @@ describe('rsbuild dev: by-id requests', () => {
   const call = (id: string) =>
     callAt(server.url!, id, 'Server function info not found')
 
+  const openServer = closeAfterAll()
   beforeAll(async () => {
     const { 'harness/server-entry.ts': _, ...appFiles } = files
-    server = await startRsbuildStartDevServerShared({
-      browser: true,
-      config: { plugins: [pluginReact()] },
-      files: { ...appFiles, 'src/entry.ts': `import './fns'\n` },
-      symlinks,
-    })
-    return () => server.close()
+    server = await openServer(() =>
+      startRsbuildStartDevServerShared({
+        browser: true,
+        config: { plugins: [pluginReact()] },
+        files: { ...appFiles, 'src/entry.ts': `import './fns'\n` },
+        symlinks,
+      }),
+    )
   }, timeout)
 
   test(

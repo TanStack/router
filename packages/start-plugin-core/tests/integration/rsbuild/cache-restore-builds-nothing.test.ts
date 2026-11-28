@@ -12,7 +12,7 @@
  * the handler-removal fixture of the node_modules policy review, round 4).
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 import { rsbuildEntries } from '../route-css-cases'
 import type { RsbuildPlugin } from '@rsbuild/core'

@@ -5,6 +5,7 @@ import {
   positionAt,
   tokenOffsets,
 } from '@tanstack/compiler-test-utils/source-maps'
+import { closeAfterAll } from './file-end'
 import {
   callFromClient,
   callServerFnThroughCallers,
@@ -35,9 +36,9 @@ const hostTsconfig = {
 // real page, the server in the SSR environment and in real requests.
 
 let host: StartHost
+const openHost = closeAfterAll()
 beforeAll(async () => {
-  host = await createStartHost()
-  return () => host.close()
+  host = await openHost(() => createStartHost())
 }, 60_000)
 beforeAll(async () => {
   await host.page()
@@ -636,9 +637,11 @@ export const getBadge = createServerFn().handler(async () => Badge('Ada'))`,
 // (`react({ jsxRuntime: 'classic' })`), with the real React.
 describe('keeps working with the classic JSX runtime downstream', () => {
   let classic: StartHost
+  const openClassic = closeAfterAll()
   beforeAll(async () => {
-    classic = await createStartHost({ react: { jsxRuntime: 'classic' } })
-    return () => classic.close()
+    classic = await openClassic(() =>
+      createStartHost({ react: { jsxRuntime: 'classic' } }),
+    )
   }, 60_000)
 
   test('the client and the server render it', async () => {

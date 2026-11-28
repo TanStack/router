@@ -13,7 +13,8 @@
  * whole plugin serves the same app to a page.
  */
 import react from '@vitejs/plugin-react'
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
+import { closeAfterAll } from '../file-end'
 import {
   buildStartShared,
   callByIdPrelude,
@@ -127,25 +128,17 @@ describe.each(startBundlers)('%s production build, served', (bundler) => {
   let build: StartBuild
   let served: Awaited<ReturnType<typeof serveStartBuild>>
 
-  let building: Promise<{ close: () => Promise<void> }> | undefined
-  let serving: Promise<{ close: () => Promise<void> }> | undefined
-  afterAll(async () => {
-    await serving?.then(
-      (opened) => opened.close(),
-      () => {},
-    )
-    await building?.then(
-      (opened) => opened.close(),
-      () => {},
-    )
-  })
+  const building = closeAfterAll()
+  const serving = closeAfterAll()
   beforeAll(async () => {
-    build = await (building = buildStartShared({
-      bundler,
-      files: { ...startPageEntries, ...files },
-      entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-    }))
-    served = await (serving = serveStartBuildShared(build))
+    build = await building(() =>
+      buildStartShared({
+        bundler,
+        files: { ...startPageEntries, ...files },
+        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+      }),
+    )
+    served = await serving(() => serveStartBuildShared(build))
   }, timeout)
 
   test('nothing of the server-only module is in the client build, and import protection reports nothing', () => {

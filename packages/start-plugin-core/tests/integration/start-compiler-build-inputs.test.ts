@@ -21,14 +21,15 @@
  */
 import { afterAll, describe, expect, test } from 'vitest'
 import { workspacePackageLinks } from '@tanstack/compiler-test-utils/workspace-packages'
+import { closeAfterAll } from '../file-end'
 import {
-  buildStart,
   buildStartShared,
   callByIdExports,
   callByIdPrelude,
   requestsOfPrelude,
   startBundlers,
 } from '../build-harness'
+import { buildStart } from '../build-start'
 import {
   aliasedClientOnlyFiles,
   compiledLibraries,
@@ -499,30 +500,27 @@ describe('rsbuild build --watch', () => {
     )
   let rebuilt: Promise<StartBuild> | undefined
   /** The rebuild both edits cause (one watch build). */
-  afterAll(() =>
-    rebuilt?.then(
-      (build) => build.close(),
-      () => {},
-    ),
-  )
+  const openRebuilt = closeAfterAll()
   const rebuild = () =>
-    (rebuilt ??= buildStartShared({
-      bundler: 'rsbuild',
-      files: {
-        ...inDir(dirs.reexportChain, factoryEdits.reexportChain.files),
-        ...inDir(dirs.aliasedEnvOnly, factoryEdits.aliasedEnvOnly.files),
-        'src/entry.ts': `export * as chain from './edits/chain/module'
+    (rebuilt ??= openRebuilt(() =>
+      buildStartShared({
+        bundler: 'rsbuild',
+        files: {
+          ...inDir(dirs.reexportChain, factoryEdits.reexportChain.files),
+          ...inDir(dirs.aliasedEnvOnly, factoryEdits.aliasedEnvOnly.files),
+          'src/entry.ts': `export * as chain from './edits/chain/module'
 export * as aliased from './edits/aliased/module'
 `,
-        'src/ssr-entry.ts': `export * from './entry'\n${callByIdExports}`,
-      },
-      entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
-      start: { importProtection: { enabled: false } },
-      watchEdits: {
-        ...inDir(dirs.reexportChain, factoryEdits.reexportChain.edit),
-        ...inDir(dirs.aliasedEnvOnly, factoryEdits.aliasedEnvOnly.edit),
-      },
-    }))
+          'src/ssr-entry.ts': `export * from './entry'\n${callByIdExports}`,
+        },
+        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+        start: { importProtection: { enabled: false } },
+        watchEdits: {
+          ...inDir(dirs.reexportChain, factoryEdits.reexportChain.edit),
+          ...inDir(dirs.aliasedEnvOnly, factoryEdits.aliasedEnvOnly.edit),
+        },
+      }),
+    ))
 
   // (The dev server's twin: ../start-compiler-cases.test.ts
   // "a dev edit of a module a re-export chain ends in recompiles its

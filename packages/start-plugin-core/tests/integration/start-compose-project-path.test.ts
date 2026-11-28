@@ -15,13 +15,14 @@
  * untransformed, silently: the client would ship the handlers.
  */
 import { beforeAll, describe, expect, test } from 'vitest'
+import { closeAfterAll } from '../file-end'
 import {
-  buildStart,
   buildStartShared,
   callByIdExports,
   callByIdPrelude,
   startBundlers,
 } from '../build-harness'
+import { buildStart } from '../build-start'
 import type { StartBuild } from '../build-harness'
 
 const timeout = 60_000
@@ -46,19 +47,21 @@ const clientRouteIds = `return Object.values(entry.getRouter().routeTree.childre
 describe.each(startBundlers)('%s build', (bundler) => {
   describe('of an app whose path has characters a regular expression reads', () => {
     let build: StartBuild
+    const openBuild = closeAfterAll()
     beforeAll(async () => {
-      build = await buildStartShared({
-        bundler,
-        prefix: `.start-build-harness-${bundler} my app (2)+-`,
-        files: {
-          ...routes,
-          'src/entry.ts': `export { getRouter } from './router'
+      build = await openBuild(() =>
+        buildStartShared({
+          bundler,
+          prefix: `.start-build-harness-${bundler} my app (2)+-`,
+          files: {
+            ...routes,
+            'src/entry.ts': `export { getRouter } from './router'
 export { renderPath } from '../harness/render'
 `,
-        },
-        entry: 'src/entry.ts',
-      })
-      return () => build.close()
+          },
+          entry: 'src/entry.ts',
+        }),
+      )
     }, timeout)
 
     test('builds, and the page renders', async () => {
@@ -86,23 +89,25 @@ return { ids, page: await entry.renderPath(entry.getRouter().routeTree, '/') }`,
   describe('of an app with a file named one character away from the generated route tree', () => {
     let build: StartBuild | undefined
     let failure: unknown
+    const openBuild2 = closeAfterAll()
     beforeAll(async () => {
       try {
-        build = await buildStartShared({
-          bundler,
-          files: {
-            ...routes,
-            'src/routeTree-gen.ts': `export const sibling = 'MARK_SIBLING'\n`,
-            'src/entry.ts': `export { getRouter } from './router'
+        build = await openBuild2(() =>
+          buildStartShared({
+            bundler,
+            files: {
+              ...routes,
+              'src/routeTree-gen.ts': `export const sibling = 'MARK_SIBLING'\n`,
+              'src/entry.ts': `export { getRouter } from './router'
 export { sibling } from './routeTree-gen'
 `,
-          },
-          entry: 'src/entry.ts',
-        })
+            },
+            entry: 'src/entry.ts',
+          }),
+        )
       } catch (error) {
         failure = error
       }
-      return () => build?.close()
     }, timeout)
 
     // On main, the build fails (the file's exports are gone) or the app reads
@@ -121,21 +126,23 @@ export { sibling } from './routeTree-gen'
 describe.each(startBundlers)('%s build', (bundler) => {
   describe('of an app whose path has a #', () => {
     let build: StartBuild
+    const openBuild3 = closeAfterAll()
     beforeAll(async () => {
-      build = await buildStartShared({
-        bundler,
-        prefix: `.start-build-harness-${bundler} C# project #2-`,
-        files: {
-          ...routes,
-          'src/routes/index.tsx': `${head}import { greet } from '../fns'
+      build = await openBuild3(() =>
+        buildStartShared({
+          bundler,
+          prefix: `.start-build-harness-${bundler} C# project #2-`,
+          files: {
+            ...routes,
+            'src/routes/index.tsx': `${head}import { greet } from '../fns'
 export const Route = createFileRoute('/')({
   loader: () => greet(),
   component: () => 'MARK_INDEX',
 })
 `,
-          // the handler of `readLabel` reads a binding its module writes:
-          // its lazy handler module imports the module itself
-          'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
+            // the handler of `readLabel` reads a binding its module writes:
+            // its lazy handler module imports the module itself
+            'src/fns.ts': `import { createServerFn } from '@tanstack/react-start'
 let label = 'MARK_LABEL_INITIAL'
 export function setLabel(value: string) {
   label = value
@@ -143,14 +150,14 @@ export function setLabel(value: string) {
 export const greet = createServerFn().handler(async () => 'MARK_SERVER_SECRET')
 export const readLabel = createServerFn().handler(async () => label)
 `,
-          'src/entry.ts': `export { getRouter } from './router'
+            'src/entry.ts': `export { getRouter } from './router'
 export { greet, readLabel, setLabel } from './fns'
 export { renderPath } from '../harness/render'
 `,
-        },
-        entry: 'src/entry.ts',
-      })
-      return () => build.close()
+          },
+          entry: 'src/entry.ts',
+        }),
+      )
     }, timeout)
 
     test('builds under the directory, and the page renders', async () => {

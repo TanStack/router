@@ -4,7 +4,7 @@
  */
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import type { StartBundler } from '../../build-harness'
 
 export const timeout = 60_000

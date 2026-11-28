@@ -6,11 +6,11 @@
  */
 import { describe, expect, test } from 'vitest'
 import {
-  buildStart,
   callByIdExports,
   callByIdPrelude,
   startBundlers,
 } from '../build-harness'
+import { buildStart } from '../build-start'
 import { routeFiles } from './start-build-route-app'
 
 const timeout = 60_000

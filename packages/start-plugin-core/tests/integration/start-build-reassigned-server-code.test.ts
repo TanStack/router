@@ -18,7 +18,8 @@ import {
   expectNoDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { StartBuildError, buildStart, startBundlers } from '../build-harness'
+import { StartBuildError, startBundlers } from '../build-harness'
+import { buildStart } from '../build-start'
 import {
   pageEntries,
   rootDocument,

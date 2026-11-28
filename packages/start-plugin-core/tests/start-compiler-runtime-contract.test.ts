@@ -9,6 +9,7 @@
  * Source: review.
  */
 import { beforeAll, describe, expect, test } from 'vitest'
+import { closeAfterAll } from './file-end'
 import {
   callFromClient,
   callOnServer,
@@ -19,14 +20,14 @@ import {
 import type { StartHost } from './start-host'
 
 let host: StartHost
+const openHost = closeAfterAll()
 beforeAll(async () => {
-  host = await createStartHost()
-  return () => host.close()
+  host = await openHost(() => createStartHost())
 }, 60_000)
 let solidHost: StartHost
+const openSolidHost = closeAfterAll()
 beforeAll(async () => {
-  solidHost = await createStartHost({ framework: 'solid' })
-  return () => solidHost.close()
+  solidHost = await openSolidHost(() => createStartHost({ framework: 'solid' }))
 }, 60_000)
 beforeAll(async () => {
   await host.page()

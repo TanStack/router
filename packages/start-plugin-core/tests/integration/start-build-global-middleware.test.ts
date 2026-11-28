@@ -11,11 +11,11 @@
  */
 import { describe, expect, test } from 'vitest'
 import {
-  buildStart,
   callByIdExports,
   callByIdPrelude,
   startBundlers,
 } from '../build-harness'
+import { buildStart } from '../build-start'
 import {
   openAppPage,
   rootDocument,

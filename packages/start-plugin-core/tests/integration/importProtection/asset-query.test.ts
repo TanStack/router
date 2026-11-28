@@ -13,8 +13,10 @@
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import { buildStart, buildStartShared } from '../../build-harness'
+import { beforeAll, describe, expect, test } from 'vitest'
+import { closeAfterAll } from '../../file-end'
+import { buildStartShared } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import {
   rejection,
   startProtectedDevServer,
@@ -198,20 +200,16 @@ describe.each<[StartBundler, Array<[string, string, Files]>]>([
   // canary (all output, `data:` URLs decoded), and the importers reported
   let emitted: Array<Awaited<ReturnType<typeof emittedCanaries>>>
   let importers: ReturnType<typeof importersIn>
-  let opening: Promise<{ close: () => Promise<void> }> | undefined
-  afterAll(() =>
-    opening?.then(
-      (opened) => opened.close(),
-      () => {},
-    ),
-  )
+  const opening = closeAfterAll()
   beforeAll(async () => {
-    const result = await (opening = buildStartShared({
-      bundler,
-      files: formsApp(forms),
-      entry: 'src/entry.ts',
-      start: { importProtection },
-    }))
+    const result = await opening(() =>
+      buildStartShared({
+        bundler,
+        files: formsApp(forms),
+        entry: 'src/entry.ts',
+        start: { importProtection },
+      }),
+    )
     emitted = await Promise.all(
       forms.map((_, i) => emittedCanaries(result.client.outDir, canaryOf(i))),
     )
@@ -338,20 +336,16 @@ describe('vite dev', () => {
   // reader (lazy imports included), before any row reads them; each row
   // then reads its own form in a page of its own
   let served: { server: DevServer; importers: Array<string> }
-  let opening: Promise<{ close: () => Promise<void> }> | undefined
-  afterAll(() =>
-    opening?.then(
-      (opened) => opened.close(),
-      () => {},
-    ),
-  )
+  const opening = closeAfterAll()
   beforeAll(async () => {
     const recorder = violationRecorder(importProtection)
-    const server = await (opening = startDevServerShared({
-      browser: true,
-      start: { importProtection: recorder.importProtection },
-      files: formsApp(forms),
-    }))
+    const server = await opening(() =>
+      startDevServerShared({
+        browser: true,
+        start: { importProtection: recorder.importProtection },
+        files: formsApp(forms),
+      }),
+    )
     await runViteClient(
       server,
       '/src/router.ts',
@@ -462,22 +456,18 @@ describe('rsbuild dev', () => {
   // every form in one app (as on Vite): the reports once a page ran every
   // reader, then a page of its own per row
   let served: { server: RsbuildDevServer; importers: Array<string> }
-  let opening: Promise<{ close: () => Promise<void> }> | undefined
-  afterAll(() =>
-    opening?.then(
-      (opened) => opened.close(),
-      () => {},
-    ),
-  )
+  const opening = closeAfterAll()
   beforeAll(async () => {
     const recorder = violationRecorder(importProtection)
-    const server = await (opening = startRsbuildStartDevServerShared({
-      compileTimeout: timeout,
-      browser: true,
-      hmr: false,
-      files: formsApp(forms),
-      start: { importProtection: recorder.importProtection },
-    }))
+    const server = await opening(() =>
+      startRsbuildStartDevServerShared({
+        compileTimeout: timeout,
+        browser: true,
+        hmr: false,
+        files: formsApp(forms),
+        start: { importProtection: recorder.importProtection },
+      }),
+    )
     await captureConsole(() =>
       clientResult(server, readFormTexts({ count: forms.length })),
     )

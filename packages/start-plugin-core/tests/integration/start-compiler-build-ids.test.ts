@@ -16,7 +16,8 @@
  * UNRESOLVED_IMPORT), which is how the Start build fails there too (an
  * upstream Vite limitation).
  */
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
+import { closeAfterAll } from '../file-end'
 import {
   callFromClient,
   callServerFnThroughCallers,
@@ -38,12 +39,13 @@ interface DefaultCases {
   trailing: Array<{ end: string; startCase: StartCase }>
 }
 
-let defaultHost: StartHost | undefined
+let defaultHost: StartHost
+const openDefaultHost = closeAfterAll()
 let defaultPreview: StartPreview
 let defaults: DefaultCases
 
 beforeAll(async () => {
-  defaultHost = await createStartHost({ serve: false })
+  defaultHost = await openDefaultHost(() => createStartHost({ serve: false }))
   defaults = {
     noHmr: await defaultHost.case({
       'module.tsx': `${head}export const getPosts = createServerFn().handler(async () => 'posts')`,
@@ -82,10 +84,6 @@ beforeAll(async () => {
   }
   defaultPreview = await defaultHost.preview()
 }, 120_000)
-
-afterAll(async () => {
-  await defaultHost?.close()
-})
 
 describe('production builds', () => {
   // Dev-only code never reaches production (SPEC R7). The code the build emits for

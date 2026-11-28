@@ -32,12 +32,12 @@
  */
 import { describe, expect, test } from 'vitest'
 import {
-  buildStart,
   callByIdExports,
   callByIdPrelude,
   requestsOfPrelude,
   startBundlers,
 } from '../build-harness'
+import { buildStart } from '../build-start'
 import { expectSourceError } from './source-errors'
 import type { StartBuild, StartBundler } from '../build-harness'
 

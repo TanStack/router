@@ -21,8 +21,9 @@
  * and a JavaScript block is refused without shipping its handler.
  */
 import { pluginVue } from '@rsbuild/plugin-vue'
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
+import { closeAfterAll } from '../../file-end'
 import { buildStartShared, callByIdPrelude } from '../../build-harness'
 import {
   clientPage,
@@ -107,25 +108,27 @@ const vuePlugin = (inlineMatchResource: boolean) =>
 
 describe.each(vueOptions)('rsbuild build, $name', ({ inlineMatchResource }) => {
   let build: StartBuild
+  const openBuild = closeAfterAll()
   beforeAll(async () => {
-    build = await buildStartShared({
-      bundler: 'rsbuild',
-      framework: 'vue',
-      files: {
-        ...files,
-        'src/entry.ts': `${mountExport}export { default as IsoJs } from './IsoJs.vue'
+    build = await openBuild(() =>
+      buildStartShared({
+        bundler: 'rsbuild',
+        framework: 'vue',
+        files: {
+          ...files,
+          'src/entry.ts': `${mountExport}export { default as IsoJs } from './IsoJs.vue'
 export { default as IsoTs } from './IsoTs.vue'
 export { fn as plainFn } from './Plain.vue'
 `,
-        'src/ssr-entry.ts': `import './entry'
+          'src/ssr-entry.ts': `import './entry'
 export { default as startServerEntry } from '@tanstack/vue-start/server-entry'
 export { createClientRpc } from '@tanstack/vue-start/client-rpc'
 `,
-      },
-      entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
-      rsbuildConfig: { plugins: [vuePlugin(inlineMatchResource)] },
-    })
-    return () => build.close()
+        },
+        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+        rsbuildConfig: { plugins: [vuePlugin(inlineMatchResource)] },
+      }),
+    )
   }, timeout)
 
   test('a server fn a plain <script> exports keeps its handler on the server, and the client calls it by id', async () => {
@@ -159,19 +162,17 @@ export { createClientRpc } from '@tanstack/vue-start/client-rpc'
 
 describe.each(vueOptions)('rsbuild dev, $name', ({ inlineMatchResource }) => {
   let server: RsbuildDevServer
-  // (registered here: a hook called from inside `beforeAll` never runs,
-  // and the server would stay open for the rest of the worker)
-  let close: (() => Promise<void>) | undefined
-  afterAll(() => close?.())
+  const openServer = closeAfterAll()
   beforeAll(async () => {
-    server = await startRsbuildStartDevServerShared({
-      ...clientPage,
-      framework: 'vue',
-      config: { plugins: [vuePlugin(inlineMatchResource)] },
-      files: {
-        ...files,
-        // (the refused blocks only behind an import the page never runs)
-        'src/entry.ts': `${mountExport}import IsoTs from './IsoTs.vue'
+    server = await openServer(() =>
+      startRsbuildStartDevServerShared({
+        ...clientPage,
+        framework: 'vue',
+        config: { plugins: [vuePlugin(inlineMatchResource)] },
+        files: {
+          ...files,
+          // (the refused blocks only behind an import the page never runs)
+          'src/entry.ts': `${mountExport}import IsoTs from './IsoTs.vue'
 import { fn as plainFn } from './Plain.vue'
 globalThis.__vueRows = {
   mount,
@@ -184,9 +185,9 @@ globalThis.__vueRows = {
   ],
 }
 `,
-      },
-    })
-    return () => server.close()
+        },
+      }),
+    )
   }, timeout)
 
   const outputsWith = async (env: 'client' | 'ssr', mark: string) =>

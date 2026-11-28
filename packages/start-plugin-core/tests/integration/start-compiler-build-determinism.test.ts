@@ -14,13 +14,14 @@
  * compiled in"), which compiled through the internal compiler.
  */
 import { writeFile } from 'node:fs/promises'
-import { afterAll, expect, test } from 'vitest'
+import { expect, test } from 'vitest'
 import {
   expectDeterministic,
   reorderedRecords,
 } from '@tanstack/compiler-test-utils/determinism'
+import { closeAtEnd } from '../test-end'
 import { callFromClient, createStartHost, inPage } from '../regression-helpers'
-import type { StartCase, StartHost } from '../regression-helpers'
+import type { StartCase } from '../regression-helpers'
 
 /**
  * The host defaults these tests use: no import
@@ -61,9 +62,6 @@ export { b } from './b'
 export { a as nestedA } from './c/a'
 `
 
-let host: StartHost | undefined
-afterAll(() => host?.close())
-
 /** Each server fn's `url` and what a call from the client gives. */
 async function observe(startCase: StartCase) {
   const urls = await inPage<Record<string, string>>(
@@ -86,19 +84,22 @@ async function observe(startCase: StartCase) {
 }
 
 test('are deterministic for an unchanged project, whatever order its files are written in', async () => {
-  host = await createStartHost({ ...hostDefaults, serve: false })
+  const host = await closeAtEnd(
+    () => createStartHost({ ...hostDefaults, serve: false }),
+    (opened) => opened.close(),
+  )
   let startCase: StartCase | undefined
   const observations = await expectDeterministic(
     reorderedRecords(modules),
     async ({ record }) => {
       if (!startCase) {
-        startCase = await host!.case({ ...record, 'index.ts': index })
-        await host!.preview()
+        startCase = await host.case({ ...record, 'index.ts': index })
+        await host.preview()
       } else {
         for (const [file, code] of Object.entries(record)) {
           await writeFile(startCase.file(file), code)
         }
-        await host!.preview({ rebuild: true })
+        await host.preview({ rebuild: true })
       }
       return observe(startCase)
     },

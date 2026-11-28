@@ -29,7 +29,7 @@
  */
 import { describe, expect, test } from 'vitest'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import {
   reportedErrors,
   startRsbuildStartDevServer,

@@ -10,6 +10,7 @@
  */
 import { beforeAll, describe, expect, test } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
+import { closeAfterAll } from './file-end'
 import {
   callFromClient,
   callOnServer,
@@ -38,9 +39,9 @@ function workersPlatform(): Plugin {
 }
 
 let host: StartHost
+const openHost = closeAfterAll()
 beforeAll(async () => {
-  host = await createStartHost({ plugins: [workersPlatform()] })
-  return () => host.close()
+  host = await openHost(() => createStartHost({ plugins: [workersPlatform()] }))
 }, 60_000)
 
 const head = `import { createMiddleware, createServerFn } from '@tanstack/react-start'\n`

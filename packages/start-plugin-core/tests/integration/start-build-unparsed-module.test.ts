@@ -19,7 +19,8 @@
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
-import { StartBuildError, buildStart, startBundlers } from '../build-harness'
+import { StartBuildError, startBundlers } from '../build-harness'
+import { buildStart } from '../build-start'
 
 const timeout = 60_000
 

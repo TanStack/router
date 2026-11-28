@@ -11,7 +11,7 @@
 import { writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { buildStart } from '../build-harness'
+import { buildStart } from '../build-start'
 import {
   app,
   callGreet,

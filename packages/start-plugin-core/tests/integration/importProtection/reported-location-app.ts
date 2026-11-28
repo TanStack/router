@@ -11,7 +11,7 @@ import {
   findDiagnostics,
   mentionsFile,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { startRsbuildDevServer } from '../../rsbuild-dev-server'
 import {
   appFileOf,

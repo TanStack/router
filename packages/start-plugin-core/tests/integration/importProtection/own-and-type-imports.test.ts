@@ -11,7 +11,8 @@
  */
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { describe, expect, test } from 'vitest'
-import { StartBuildError, buildStart, startBundlers } from '../../build-harness'
+import { StartBuildError, startBundlers } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { reportedViolations } from '../../importProtection/start-apps'
 import { db, outcome, timeout } from './kept-importer-cases'
 import type { KeptCase } from './kept-importer-cases'

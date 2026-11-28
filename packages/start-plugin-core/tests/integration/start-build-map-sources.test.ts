@@ -19,7 +19,8 @@ import {
   positionAt,
   tokenOffsets,
 } from '@tanstack/compiler-test-utils/source-maps'
-import { buildStart, startBundlers } from '../build-harness'
+import { startBundlers } from '../build-harness'
+import { buildStart } from '../build-start'
 import {
   pageEntries,
   rootDocument,

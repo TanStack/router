@@ -11,7 +11,7 @@
  * compiler's (`this.resolve`).
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import type { Plugin } from 'vite'
 
 const timeout = 60_000

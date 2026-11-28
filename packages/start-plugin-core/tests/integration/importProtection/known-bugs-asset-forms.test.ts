@@ -6,7 +6,7 @@
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test } from 'vitest'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { importersIn } from './hosts'
 
 const timeout = 60_000

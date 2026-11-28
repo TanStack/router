@@ -13,12 +13,10 @@ import {
   captureConsole,
   expectNoDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { afterAll, describe, expect, test } from 'vitest'
-import {
-  buildStart,
-  buildStartShared,
-  startBundlers,
-} from '../../build-harness'
+import { describe, expect, test } from 'vitest'
+import { closeAfterAll } from '../../file-end'
+import { buildStartShared, startBundlers } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import {
   problemsNaming,
@@ -111,22 +109,19 @@ return {
 
 describe.each(startBundlers)('%s build (mock mode)', (bundler) => {
   let built: Promise<StartBuild> | undefined
-  afterAll(() =>
-    built?.then(
-      (opened) => opened.close(),
-      () => {},
-    ),
-  )
+  const openBuilt = closeAfterAll()
 
   test(
     'type-only forms are neither reported nor loaded; the mixed import is reported and mocked',
     async () => {
-      built ??= buildStartShared({
-        bundler,
-        files: app,
-        entry: 'src/entry.ts',
-        start: { importProtection: { behavior: 'mock', mockAccess: 'off' } },
-      })
+      built ??= openBuilt(() =>
+        buildStartShared({
+          bundler,
+          files: app,
+          entry: 'src/entry.ts',
+          start: { importProtection: { behavior: 'mock', mockAccess: 'off' } },
+        }),
+      )
       const build = await built
       const { result } = await build.client.run(
         outcomeScript('entry.readMixed'),

@@ -28,7 +28,8 @@ import {
   expectDiagnostic,
   expectNoDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { buildStart, startBundlers } from '../../build-harness'
+import { startBundlers } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import {
   expectViolationsAt,
   rejection,

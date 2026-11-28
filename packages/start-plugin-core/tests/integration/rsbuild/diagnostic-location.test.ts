@@ -7,7 +7,8 @@
  */
 import { describe, expect, test } from 'vitest'
 import { diagnosticPosition } from '@tanstack/compiler-test-utils/diagnostics'
-import { StartBuildError, buildStart } from '../../build-harness'
+import { StartBuildError } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { startRsbuildStartDevServer } from '../../rsbuild-dev-server'
 import type { RsbuildPlugin } from '@rsbuild/core'
 

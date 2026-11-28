@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, test } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
+import { closeAfterAll } from '../file-end'
 import {
   compileError,
   createStartHost,
@@ -11,9 +12,9 @@ import type { StartHost } from '../start-host'
 import type { ServedCase } from '../regression-helpers'
 
 let host: StartHost
+const openHost = closeAfterAll()
 beforeAll(async () => {
-  host = await createStartHost()
-  return () => host.close()
+  host = await openHost(() => createStartHost())
 }, 60_000)
 
 /** What a call returned, `undefined` spelled out (results cross JSON). */

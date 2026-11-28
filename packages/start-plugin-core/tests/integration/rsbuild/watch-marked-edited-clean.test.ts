@@ -7,7 +7,8 @@
  * H3).
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart, callByIdExports } from '../../build-harness'
+import { callByIdExports } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { appManifest, installPackage } from '../../package-layouts'
 import { rsbuildEntries } from '../route-css-cases'
 

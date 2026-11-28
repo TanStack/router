@@ -11,7 +11,7 @@
  */
 import { describe, expect, test } from 'vitest'
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import {
   expectPrinted,
   rejection,

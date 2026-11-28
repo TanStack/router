@@ -6,7 +6,8 @@
  * a microtask loop that freezes the tab or the whole server.
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart, startBundlers } from '../../build-harness'
+import { startBundlers } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 
 const timeout = 60_000

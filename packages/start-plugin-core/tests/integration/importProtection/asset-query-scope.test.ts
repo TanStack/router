@@ -9,7 +9,7 @@
  */
 import { captureConsole } from '@tanstack/compiler-test-utils/diagnostics'
 import { describe, expect, test } from 'vitest'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { rejection, violationRecorder } from '../../importProtection/start-apps'
 import {
   clientResult,

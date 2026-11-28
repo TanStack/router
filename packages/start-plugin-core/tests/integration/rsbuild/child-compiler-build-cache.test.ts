@@ -15,7 +15,7 @@
  */
 import { expect, test } from 'vitest'
 import { openTestPage } from '../../test-page'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { rsbuildEntries } from '../route-css-cases'
 import { workerPlugin } from './worker-plugin'
 

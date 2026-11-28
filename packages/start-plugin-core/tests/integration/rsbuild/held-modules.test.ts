@@ -18,11 +18,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
-import {
-  buildStart,
-  callByIdExports,
-  callByIdPrelude,
-} from '../../build-harness'
+import { callByIdExports, callByIdPrelude } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { workerPluginOf } from './worker-plugin'
 
 const timeout = 120_000

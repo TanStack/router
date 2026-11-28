@@ -8,7 +8,8 @@
  * reported-location.test.ts to keep each file of the slow tier short.
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart, startBundlers } from '../../build-harness'
+import { startBundlers } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import {
   inEnvironment,
   isAt,

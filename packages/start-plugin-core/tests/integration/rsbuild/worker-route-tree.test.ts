@@ -9,7 +9,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { rsbuildEntries } from '../route-css-cases'
 import { workerPlugin } from './worker-plugin'
 

@@ -19,7 +19,8 @@ import {
   expectDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { buildStart, callByIdExports, startBundlers } from '../build-harness'
+import { callByIdExports, startBundlers } from '../build-harness'
+import { buildStart } from '../build-start'
 import { appManifest, installPackage } from '../package-layouts'
 import { probeRoute } from '../request-probe'
 import type { StartBundler } from '../build-harness'

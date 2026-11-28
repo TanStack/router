@@ -5,14 +5,12 @@
  * A mock is told by what it does (`mock-helpers.ts`, `describeValue`:
  * `a safe mock`), and a violation by what `onViolation` receives.
  */
-import { afterAll, describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
-import {
-  buildStart,
-  buildStartShared,
-  startBundlers,
-} from '../../build-harness'
+import { closeAfterAll } from '../../file-end'
+import { buildStartShared, startBundlers } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import {
   expectMarkerViolation,
   expectPrinted,
@@ -448,29 +446,26 @@ export const read = () => secret() + '|' + d()
   })
   // (shared by both rows: closed after the file)
   let several: Promise<StartBuild> | undefined
-  afterAll(() =>
-    several?.then(
-      (opened) => opened.close(),
-      () => {},
-    ),
-  )
+  const openSeveral = closeAfterAll()
   test.each([
     { env: 'ssr', marker: 'server-only', build: 'server' },
     { env: 'client', marker: 'client-only', build: 'client' },
   ] as const)(
     'the $build build may import a $marker-marked module from several modules, without any import-protection output',
     async ({ env }) => {
-      const built = await (several ??= buildStartShared({
-        bundler,
-        files: {
-          ...severalImporters('server-only'),
-          ...severalImporters('client-only'),
-        },
-        entry: {
-          client: 'src/client-only/user.ts',
-          ssr: 'src/server-only/user.ts',
-        },
-      }))
+      const built = await (several ??= openSeveral(() =>
+        buildStartShared({
+          bundler,
+          files: {
+            ...severalImporters('server-only'),
+            ...severalImporters('client-only'),
+          },
+          entry: {
+            client: 'src/client-only/user.ts',
+            ssr: 'src/server-only/user.ts',
+          },
+        }),
+      ))
       expect((await built[env].run(`return entry.read()`)).result).toBe(
         'MARK_SECRET|MARK_SECRET',
       )

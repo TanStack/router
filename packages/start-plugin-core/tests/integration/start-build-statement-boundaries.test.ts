@@ -9,7 +9,8 @@
  * every statement); the source's values are the expectation.
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart, startBundlers } from '../build-harness'
+import { startBundlers } from '../build-harness'
+import { buildStart } from '../build-start'
 
 /** The statement after the removed declaration, and what running it records. */
 const next: Record<string, { statement: string; seen: Array<unknown> }> = {

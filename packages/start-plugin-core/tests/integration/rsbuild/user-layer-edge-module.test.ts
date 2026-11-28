@@ -10,7 +10,7 @@
  * failed it).
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { rejection } from '../../importProtection/start-apps'
 
 const timeout = 60_000

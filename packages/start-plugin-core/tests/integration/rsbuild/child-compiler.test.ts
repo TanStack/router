@@ -13,13 +13,14 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { beforeAll, describe, expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
+import { closeAfterAll } from '../../file-end'
 import {
   StartBuildError,
-  buildStart,
   buildStartShared,
   callByIdExports,
   callByIdPrelude,
 } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { workerPlugin } from './worker-plugin'
 import type { StartBuild } from '../../build-harness'
 
@@ -44,18 +45,20 @@ self.onmessage = () => {
 
 describe('Rsbuild build: modules of a child compiler of the client', () => {
   let build: StartBuild
+  const openBuild = closeAfterAll()
   beforeAll(async () => {
-    build = await buildStartShared({
-      bundler: 'rsbuild',
-      files,
-      entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
-      rsbuildConfig: {
-        environments: {
-          client: { tools: { rspack: { plugins: [workerPlugin] } } },
+    build = await openBuild(() =>
+      buildStartShared({
+        bundler: 'rsbuild',
+        files,
+        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+        rsbuildConfig: {
+          environments: {
+            client: { tools: { rspack: { plugins: [workerPlugin] } } },
+          },
         },
-      },
-    })
-    return () => build.close()
+      }),
+    )
   }, timeout)
 
   const workerCode = () =>

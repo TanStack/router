@@ -10,7 +10,7 @@
  * db260cf3a3 and 2169b4165c), design-rsc-phase1-settlement.md S4.
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { rsbuildRscLinks } from '../../start-plugins'
 
 const timeout = 120_000

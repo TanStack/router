@@ -19,10 +19,10 @@ import {
 } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   StartBuildError,
-  buildStart,
   callByIdExports,
   callByIdPrelude,
 } from '../build-harness'
+import { buildStart } from '../build-start'
 
 const timeout = 90_000
 

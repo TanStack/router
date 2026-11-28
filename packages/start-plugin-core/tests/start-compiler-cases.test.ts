@@ -22,6 +22,7 @@
 import { beforeAll, describe, expect, test } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
+import { closeAfterAll } from './file-end'
 import {
   Thrown,
   callFromClient,
@@ -71,9 +72,9 @@ const dbFile = `export const db = {
 `
 
 let host: StartHost
+const openHost = closeAfterAll()
 beforeAll(async () => {
-  host = await createStartHost()
-  return () => host.close()
+  host = await openHost(() => createStartHost())
 }, 60_000)
 
 /** A case of `files` with the server-only module. */

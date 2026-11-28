@@ -4,7 +4,8 @@
  */
 import { describe, expect, test } from 'vitest'
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
-import { StartBuildError, buildStart, startBundlers } from '../build-harness'
+import { StartBuildError, startBundlers } from '../build-harness'
+import { buildStart } from '../build-start'
 
 const timeout = 60_000
 

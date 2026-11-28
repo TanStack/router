@@ -13,6 +13,7 @@
  * one file in both layers).
  */
 import { beforeAll, describe, test } from 'vitest'
+import { closeAfterAll } from '../../file-end'
 import { startRsbuildRscAppShared } from '../rsc-warning-app'
 import {
   clientBox,
@@ -26,9 +27,9 @@ const timeout = 60_000
 
 describe('Rsbuild dev with RSC: one file, a module in each layer', () => {
   let server: RsbuildDevServer
+  const openServer = closeAfterAll()
   beforeAll(async () => {
-    server = await startRsbuildRscAppShared(layersFiles)
-    return () => server.close()
+    server = await openServer(() => startRsbuildRscAppShared(layersFiles))
   }, timeout)
 
   test('a server fn module and a client component of both layers serve each layer its role', async () => {

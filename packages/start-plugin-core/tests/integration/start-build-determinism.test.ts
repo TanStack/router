@@ -8,18 +8,19 @@
  * correctness, not equality). Builds go through Start's Vite and Rsbuild
  * plugins (build-harness.ts).
  */
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import {
   expectDeterministic,
   expectRelocatable,
 } from '@tanstack/compiler-test-utils/determinism'
+import { closeAfterAll } from '../file-end'
 import {
-  buildStart,
   buildStartShared,
   callByIdExports,
   callByIdPrelude,
   startBundlers,
 } from '../build-harness'
+import { buildStart } from '../build-start'
 import type { StartBuild } from '../build-harness'
 
 const timeout = 60_000
@@ -188,26 +189,22 @@ describe.each(startBundlers)('%s build', (bundler) => {
     let oppositeEnvironments: Awaited<ReturnType<typeof observe>>
     let first: Awaited<ReturnType<typeof observe>>
     let reordered: Awaited<ReturnType<typeof observe>>
-    let opening: Promise<{ close: () => Promise<void> }> | undefined
-    afterAll(() =>
-      opening?.then(
-        (opened) => opened.close(),
-        () => {},
-      ),
-    )
+    const opening = closeAfterAll()
     beforeAll(async () => {
-      const build = await (opening = buildStartShared({
-        bundler,
-        files: {
-          'src/a.ts': appFiles['src/a.ts']!,
-          'src/b.ts': appFiles['src/b.ts']!,
-          'src/lazy.ts': appFiles['src/lazy.ts']!,
-          ...collisionBarrels,
-          ...entries(['a', 'b'], ['b', 'a']),
-        },
-        entry,
-        start: { serverFns: { generateFunctionId: () => 'same-id' } },
-      }))
+      const build = await opening(() =>
+        buildStartShared({
+          bundler,
+          files: {
+            'src/a.ts': appFiles['src/a.ts']!,
+            'src/b.ts': appFiles['src/b.ts']!,
+            'src/lazy.ts': appFiles['src/lazy.ts']!,
+            ...collisionBarrels,
+            ...entries(['a', 'b'], ['b', 'a']),
+          },
+          entry,
+          start: { serverFns: { generateFunctionId: () => 'same-id' } },
+        }),
+      )
       oppositeEnvironments = await observe(build)
       first = await observe(await build.rebuild(collisionEntries(['a', 'b'])))
       reordered = await observe(

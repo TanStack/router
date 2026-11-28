@@ -5,6 +5,7 @@
  * throwing on the server, is clientOnlyJSX/clientOnlyJSX.test.ts).
  */
 import { beforeAll, describe, expect, test } from 'vitest'
+import { closeAfterAll } from '../file-end'
 import { buildHydrationApp } from './hydrate-pages'
 import type { HydrationApp } from './hydrate-pages'
 
@@ -168,37 +169,39 @@ export function Page() {
 
 let app: HydrationApp
 
+const openApp = closeAfterAll()
 beforeAll(async () => {
-  app = await buildHydrationApp({
-    fixtures,
-    files: {
-      ...library('heavy-chart-library', { Chart: 'chart-el' }),
-      ...library('video-player-lib', { VideoPlayer: 'video-el' }),
-      ...library('audio-viz-lib', { AudioVisualizer: 'audio-el' }),
-      ...library('animation-library', { HeavyAnimation: 'animation-el' }),
-      ...library('outer-lib', { OuterWidget: 'outer-el' }),
-      ...library('inner-lib', { InnerWidget: 'inner-el' }),
-      'src/utils.ts': `export const formatData = () => 'data'\n`,
-      // (a top-level effect, which a bundler keeps in any module it bundles)
-      'src/WindowSize.tsx': `;(globalThis as Record<string, unknown>).MARK_WINDOW_SIZE_LOADED = true
+  app = await openApp(() =>
+    buildHydrationApp({
+      fixtures,
+      files: {
+        ...library('heavy-chart-library', { Chart: 'chart-el' }),
+        ...library('video-player-lib', { VideoPlayer: 'video-el' }),
+        ...library('audio-viz-lib', { AudioVisualizer: 'audio-el' }),
+        ...library('animation-library', { HeavyAnimation: 'animation-el' }),
+        ...library('outer-lib', { OuterWidget: 'outer-el' }),
+        ...library('inner-lib', { InnerWidget: 'inner-el' }),
+        'src/utils.ts': `export const formatData = () => 'data'\n`,
+        // (a top-level effect, which a bundler keeps in any module it bundles)
+        'src/WindowSize.tsx': `;(globalThis as Record<string, unknown>).MARK_WINDOW_SIZE_LOADED = true
 export const WindowSize = () => <size-el />
 `,
-      'src/chart.client.tsx': `export const Chart = () => <client-chart-el data-mark="MARK_CLIENT_CHART" />\n`,
-      'src/browser-hook.ts': `import { useState } from 'react'
+        'src/chart.client.tsx': `export const Chart = () => <client-chart-el data-mark="MARK_CLIENT_CHART" />\n`,
+        'src/browser-hook.ts': `import { useState } from 'react'
 export function useViewport() {
   const [width] = useState(() => (window.innerWidth > 0 ? 'vp-wide' : 'vp-narrow'))
   return width
 }
 `,
-      'src/viewport.client.ts': `import { useState } from 'react'
+        'src/viewport.client.ts': `import { useState } from 'react'
 export function useClientViewport() {
   const [width] = useState(() => (window.innerWidth > 0 ? 'cvp-wide' : 'cvp-narrow'))
   return width
 }
 `,
-    },
-  })
-  return () => app.close()
+      },
+    }),
+  )
 }, 60_000)
 
 describe('<ClientOnly> in a hydrated page', () => {

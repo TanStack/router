@@ -11,7 +11,8 @@
  */
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { buildStart, callByIdExports, startBundlers } from '../build-harness'
+import { callByIdExports, startBundlers } from '../build-harness'
+import { buildStart } from '../build-start'
 import { appManifest, installPackage } from '../package-layouts'
 import type { StartBundler } from '../build-harness'
 import type { Plugin } from 'vite'

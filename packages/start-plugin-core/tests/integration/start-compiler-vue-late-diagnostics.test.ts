@@ -10,7 +10,8 @@
  * not the generated object, whose position is past the block (or past the
  * file). An escape the author wrote keeps its own report.
  */
-import { afterAll, describe, test } from 'vitest'
+import { describe, test } from 'vitest'
+import { closeAfterAll } from '../file-end'
 import {
   compileError,
   createStartHost,
@@ -37,15 +38,10 @@ ${script}
 
 /** One dev host for the cases of this file (each case is its own module). */
 let devHost: Promise<StartHost> | undefined
-afterAll(() =>
-  devHost?.then(
-    (host) => host.close(),
-    () => {},
-  ),
-)
+const openDevHost = closeAfterAll()
 
 async function refusalOf(source: string) {
-  devHost ??= createStartHost({ framework: 'vue' })
+  devHost ??= openDevHost(() => createStartHost({ framework: 'vue' }))
   const startCase = await (
     await devHost
   ).case({

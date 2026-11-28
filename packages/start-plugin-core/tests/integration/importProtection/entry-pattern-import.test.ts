@@ -6,7 +6,8 @@
  * Source: review round 3 (R3-G6-6).
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart, startBundlers } from '../../build-harness'
+import { startBundlers } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import type { StartBundler } from '../../build-harness'
 
 const timeout = 60_000

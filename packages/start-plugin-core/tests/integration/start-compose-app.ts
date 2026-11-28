@@ -165,9 +165,13 @@ export async function serveStartBuildShared(
     middleware: [staticMiddleware({ dir: clientDir })],
     fetch: handle,
   })
-  await server.ready()
-  const url = server.url!
   const close = () => server.close(true)
+  // (a server that fails to listen closes: the caller has nothing to close)
+  await server.ready().catch(async (error: unknown) => {
+    await close()
+    throw error
+  })
+  const url = server.url!
   return {
     url,
     fetch: (target, init) => fetch(new URL(target, url), init),

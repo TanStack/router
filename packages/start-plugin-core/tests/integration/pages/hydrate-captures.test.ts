@@ -1,12 +1,13 @@
 import { afterEach, beforeAll, describe, expect, test } from 'vitest'
+import { closeAfterAll } from '../../file-end'
 import { createHydrateHost, expectRendersLikeSource } from '../../render'
 import { generatedNames } from '../../hydrate-helpers'
 import type { ClientOptions, HydrateHost } from '../../render'
 
 let hosts: HydrateHost
+const openHosts = closeAfterAll()
 beforeAll(async () => {
-  hosts = await createHydrateHost()
-  return () => hosts.close()
+  hosts = await openHosts(() => createHydrateHost())
 }, 60_000)
 
 // `<Hydrate>` moves its children into a lazily loaded chunk on the client.

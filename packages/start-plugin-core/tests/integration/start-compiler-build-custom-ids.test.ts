@@ -13,8 +13,9 @@
  * - the same project at another root builds correctly (relocation is
  *   correctness, not id equality: G4).
  */
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
 import { expectRelocatable } from '@tanstack/compiler-test-utils/determinism'
+import { closeAfterAll } from '../file-end'
 import { closeAtEnd } from '../test-end'
 import {
   callFromClient,
@@ -65,39 +66,42 @@ async function callBothWays(startCase: StartCase, fn: string, file: string) {
 describe('a custom generateFunctionId', () => {
   /** The names the custom function received for named-ids.ts. */
   const namesReceived = new Set<string>()
-  let host: StartHost | undefined
+  let host: StartHost
+  const openHost = closeAfterAll()
   const cases: Record<string, StartCase> = {}
 
   beforeAll(async () => {
     // One build: each case directory gets its own id policy.
-    host = await createStartHost({
-      serve: false,
-      files: hostDefaults.files,
-      start: {
-        ...hostDefaults.start,
-        serverFns: {
-          generateFunctionId: ({
-            filename,
-            functionName,
-          }: {
-            filename: string
-            functionName: string
-          }) => {
-            if (filename.includes('same-ids')) {
-              return 'same-id'
-            }
-            if (filename.includes('named-ids')) {
-              namesReceived.add(functionName)
-              // the documented inputs, readable: the file and the name (a
-              // non-ASCII name replaced: an id is ASCII,
-              // start-build-function-id-url.test.ts)
-              return `${filename.replace(/[^A-Za-z0-9]+/g, '-')}-${functionName.replace(/[^\x21-\x7e]/g, '_')}`
-            }
-            return undefined
+    host = await openHost(() =>
+      createStartHost({
+        serve: false,
+        files: hostDefaults.files,
+        start: {
+          ...hostDefaults.start,
+          serverFns: {
+            generateFunctionId: ({
+              filename,
+              functionName,
+            }: {
+              filename: string
+              functionName: string
+            }) => {
+              if (filename.includes('same-ids')) {
+                return 'same-id'
+              }
+              if (filename.includes('named-ids')) {
+                namesReceived.add(functionName)
+                // the documented inputs, readable: the file and the name (a
+                // non-ASCII name replaced: an id is ASCII,
+                // start-build-function-id-url.test.ts)
+                return `${filename.replace(/[^A-Za-z0-9]+/g, '-')}-${functionName.replace(/[^\x21-\x7e]/g, '_')}`
+              }
+              return undefined
+            },
           },
         },
-      },
-    })
+      }),
+    )
     cases.several = await host.case({
       'same-ids.ts': `import { createServerFn } from '@tanstack/react-start'
 export const a = createServerFn().handler(async () => 'from a')
@@ -122,7 +126,6 @@ export const outer = {
     })
     await host.preview()
   }, 60_000)
-  afterAll(() => host?.close())
 
   // The server gives each server fn of a module the id the client gave it,
   // also when the custom function gives them all the same id.

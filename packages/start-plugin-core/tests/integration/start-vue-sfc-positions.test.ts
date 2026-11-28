@@ -14,14 +14,16 @@
  */
 import vue from '@vitejs/plugin-vue'
 import { pluginVue } from '@rsbuild/plugin-vue'
-import { afterAll, describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import {
   diagnosticPosition,
   diagnosticsOf,
   expectDiagnostic,
   expectNoDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { StartBuildError, buildStart } from '../build-harness'
+import { closeAfterAll } from '../file-end'
+import { StartBuildError } from '../build-harness'
+import { buildStart } from '../build-start'
 import { clientPage, startRsbuildStartDevServer } from '../rsbuild-dev-server'
 import { compileError, createStartHost } from '../regression-helpers'
 import { expectViolationsAt, rejection } from '../importProtection/start-apps'
@@ -354,14 +356,9 @@ const shown = ref(secret)
 
 describe('vite dev', () => {
   let devHost: Promise<StartHost> | undefined
-  afterAll(() =>
-    devHost?.then(
-      (host) => host.close(),
-      () => {},
-    ),
-  )
+  const openDevHost = closeAfterAll()
   const sfcCase = async (text: string) => {
-    devHost ??= createStartHost({ framework: 'vue' })
+    devHost ??= openDevHost(() => createStartHost({ framework: 'vue' }))
     return (await devHost).case({
       'Page.vue': text,
       'builders.ts': builders,

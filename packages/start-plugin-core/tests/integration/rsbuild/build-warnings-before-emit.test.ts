@@ -6,7 +6,7 @@
  * Source: review-hotspot3-impl-astra.md, finding 2.
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { appManifest } from '../../package-layouts'
 import { uiKit, workerApp } from './worker-warning-apps'
 import type { Rspack } from '@rsbuild/core'

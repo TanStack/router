@@ -8,7 +8,8 @@
  * review-hotspot3-impl-gemini.md finding 1.
  */
 import { describe, expect, test } from 'vitest'
-import { StartBuildError, buildStart } from '../../build-harness'
+import { StartBuildError } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { appManifest } from '../../package-layouts'
 import { rsbuildRscLinks } from '../../start-plugins'
 import { rsbuildEntries } from '../route-css-cases'

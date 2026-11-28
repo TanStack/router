@@ -9,7 +9,8 @@
  * entry `src/server.ts`. Rsbuild dev, and the `Promise<false>` row on Vite
  * dev (its sync twin is pinned in dev.test.ts).
  */
-import { afterAll, describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
+import { closeAfterAll } from '../../file-end'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import { violationRecorder } from '../../importProtection/start-apps'
 import {
@@ -97,22 +98,19 @@ const mocked = { value: 'a safe mock', reported: true }
 describe('rsbuild dev', () => {
   // One dev server for every row.
   let started: ReturnType<typeof startRsbuildStartDevServer> | undefined
-  afterAll(() =>
-    started?.then(
-      (opened) => opened.close(),
-      () => {},
-    ),
-  )
+  const openStarted = closeAfterAll()
   const recorder = violationRecorder(importProtection)
   const start = () =>
-    (started ??= startRsbuildStartDevServerShared({
-      compileTimeout,
-      browser: true,
-      hmr: false,
-      config: ssrNodeOutput,
-      files: app,
-      start: { importProtection: recorder.importProtection },
-    }))
+    (started ??= openStarted(() =>
+      startRsbuildStartDevServerShared({
+        compileTimeout,
+        browser: true,
+        hmr: false,
+        config: ssrNodeOutput,
+        files: app,
+        start: { importProtection: recorder.importProtection },
+      }),
+    ))
 
   /** What a use of the client returns, and whether its importer is reported. */
   async function client(name: string, importer: string) {
@@ -202,21 +200,18 @@ export const getRouter = () => undefined
   }
 
   let started: ReturnType<typeof startDevServer> | undefined
-  afterAll(() =>
-    started?.then(
-      (opened) => opened.close(),
-      () => {},
-    ),
-  )
+  const openStarted2 = closeAfterAll()
   const recorder = violationRecorder(importProtection)
 
   /** What the client gets, and the importers reported for the client. */
   async function outcome() {
-    const server = await (started ??= startDevServerShared({
-      browser: true,
-      start: { importProtection: recorder.importProtection },
-      files: viteApp,
-    }))
+    const server = await (started ??= openStarted2(() =>
+      startDevServerShared({
+        browser: true,
+        start: { importProtection: recorder.importProtection },
+        files: viteApp,
+      }),
+    ))
     const { result: value } = await runViteClient(
       server,
       '/src/router.ts',

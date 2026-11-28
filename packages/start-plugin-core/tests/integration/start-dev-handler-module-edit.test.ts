@@ -21,6 +21,7 @@ import path from 'node:path'
 import { beforeAll, describe, expect, test } from 'vitest'
 import { waitForOutcome } from '@tanstack/compiler-test-utils/outcome'
 import { pluginReact } from '@rsbuild/plugin-react'
+import { closeAfterAll } from '../file-end'
 import { openTestPage } from '../test-page'
 import { startDevServerShared } from '../dev-server'
 import { startRsbuildStartDevServerShared } from '../rsbuild-dev-server'
@@ -235,9 +236,9 @@ describe.each(Object.keys(servers))('%s dev', (bundler) => {
   // One dev server for the bundler's rows: each row serves its own route
   // and edits files no other row reads, from the app's text (`restore`).
   let server!: Served
+  const openServer = closeAfterAll()
   beforeAll(async () => {
-    server = await servers[bundler]!()
-    return () => server.close()
+    server = await openServer(() => servers[bundler]!())
   }, timeout)
 
   test(

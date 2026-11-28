@@ -7,7 +7,7 @@
  * Source: design-hotspot3-merged.md, review round 1, decision 6.
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { rsbuildRscLinks } from '../../start-plugins'
 import { rsbuildEntries } from '../route-css-cases'
 import type { StartPluginOptions } from '../../start-plugins'

@@ -16,7 +16,8 @@ import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { mentionsFile } from '@tanstack/compiler-test-utils/diagnostics'
-import { buildStart, callByIdPrelude } from '../build-harness'
+import { callByIdPrelude } from '../build-harness'
+import { buildStart } from '../build-start'
 import {
   pageEntries,
   rootDocument,

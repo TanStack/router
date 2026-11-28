@@ -3,11 +3,11 @@
 // start-build-server-fn-cases.test.ts.
 import { describe, expect, test } from 'vitest'
 import {
-  buildStart,
   callByIdExports,
   callByIdPrelude,
   startBundlers,
 } from '../build-harness'
+import { buildStart } from '../build-start'
 
 describe.each(startBundlers)('%s build', (bundler) => {
   const timeout = 60_000

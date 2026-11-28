@@ -5,13 +5,14 @@ import {
   expectNoDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
+import { closeAfterAll } from '../../file-end'
 import {
   runRsbuildClient,
   startBrowserRsbuildStartDevServerShared,
   startBrowserRsbuildDevServer as startRsbuildDevServer,
 } from '../importProtection/client-pages'
 import { runRsbuildSsr, ssrNodeOutput } from '../importProtection/hosts'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import {
   describeValuePrelude,
   expectMockAccess,
@@ -73,34 +74,36 @@ exports.page = () => secret
 
   let violations: Array<ViolationInfo>
   let server: RsbuildDevServer
+  const openServer = closeAfterAll()
   beforeAll(async () => {
     violations = []
-    server = await startBrowserRsbuildStartDevServerShared({
-      compileTimeout,
-      start: {
-        importProtection: {
-          onViolation: (info) => {
-            violations.push(info as ViolationInfo)
+    server = await openServer(() =>
+      startBrowserRsbuildStartDevServerShared({
+        compileTimeout,
+        start: {
+          importProtection: {
+            onViolation: (info) => {
+              violations.push(info as ViolationInfo)
+            },
           },
         },
-      },
-      files: {
-        'src/secret.server.js': `export const secret = 'MARK_SERVER_SECRET'\n`,
-        ...Object.fromEntries(
-          importers.map(({ extension, page }) => [
-            `src/page.${extension}`,
-            page,
-          ]),
-        ),
-        'src/entry.ts': importers
-          .map(
-            ({ extension }) =>
-              `import { page as ${extension} } from './page.${extension}'\nconsole.log(${extension}())\n`,
-          )
-          .join(''),
-      },
-    })
-    return () => server.close()
+        files: {
+          'src/secret.server.js': `export const secret = 'MARK_SERVER_SECRET'\n`,
+          ...Object.fromEntries(
+            importers.map(({ extension, page }) => [
+              `src/page.${extension}`,
+              page,
+            ]),
+          ),
+          'src/entry.ts': importers
+            .map(
+              ({ extension }) =>
+                `import { page as ${extension} } from './page.${extension}'\nconsole.log(${extension}())\n`,
+            )
+            .join(''),
+        },
+      }),
+    )
   }, timeout)
 
   test('the compile succeeds, without the real module', async () => {

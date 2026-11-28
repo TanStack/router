@@ -22,7 +22,8 @@ import {
   expectNoDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { describe, expect, test } from 'vitest'
-import { buildStart, startRuntimeLinks } from '../../build-harness'
+import { startRuntimeLinks } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { closeAtEnd } from '../../test-end'
 import { startPlugin, startPluginFiles } from '../../dev-server'
 import { probeMockPrelude, safeMock } from '../../importProtection/mock-helpers'

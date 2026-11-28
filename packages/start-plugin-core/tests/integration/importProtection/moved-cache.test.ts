@@ -13,7 +13,7 @@ import { rename } from 'node:fs/promises'
 import path from 'node:path'
 import { runDirectory } from '@tanstack/compiler-test-utils/run-directory'
 import { expect, test } from 'vitest'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { importersIn } from './hosts'
 import type { StartBuild } from '../../build-harness'
 

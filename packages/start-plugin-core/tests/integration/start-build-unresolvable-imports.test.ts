@@ -16,12 +16,12 @@
 import { describe, expect, test } from 'vitest'
 import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import {
-  buildStart,
   callByIdExports,
   callByIdPrelude,
   requestsOfPrelude,
   startBundlers,
 } from '../build-harness'
+import { buildStart } from '../build-start'
 import { workerResolveHook } from './worker-resolve-hook'
 import type { StartBundler } from '../build-harness'
 

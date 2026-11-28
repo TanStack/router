@@ -12,12 +12,12 @@ import { describe, expect, test } from 'vitest'
 import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { openTestPage } from '../test-page'
 import {
-  buildStart,
   callByIdExports,
   callByIdPrelude,
   requestsOfPrelude,
   startBundlers,
 } from '../build-harness'
+import { buildStart } from '../build-start'
 import { callServerFn, startDevServer, startRequestFiles } from '../dev-server'
 import { startRsbuildStartDevServer } from '../rsbuild-dev-server'
 import { rootDocument, routerFile, startPageEntries } from './start-compose-app'

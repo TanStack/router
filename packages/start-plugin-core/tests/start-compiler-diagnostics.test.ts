@@ -6,6 +6,7 @@
  * context length are free (SPEC §5.7).
  */
 import { beforeAll, test } from 'vitest'
+import { closeAfterAll } from './file-end'
 import {
   compileError,
   createStartHost,
@@ -14,9 +15,9 @@ import {
 import type { StartHost } from './start-host'
 
 let host: StartHost
+const openHost = closeAfterAll()
 beforeAll(async () => {
-  host = await createStartHost()
-  return () => host.close()
+  host = await openHost(() => createStartHost())
 }, 60_000)
 
 // Spreading the handler's arguments is a type error (TS2556 against the real

@@ -3,7 +3,7 @@
  * members of Object.prototype, through Start's whole compiler in real builds.
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart } from '../build-harness'
+import { buildStart } from '../build-start'
 
 const timeout = 60_000
 

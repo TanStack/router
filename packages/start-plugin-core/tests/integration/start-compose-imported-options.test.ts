@@ -13,6 +13,7 @@ import {
   expectDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
+import { closeAfterAll } from '../file-end'
 import {
   StartBuildError,
   buildStartShared,
@@ -53,20 +54,22 @@ describe.each(startBundlers)('%s build', (bundler) => {
   let build: StartBuild | undefined
   let failure: StartBuildError | undefined
 
+  const openBuild = closeAfterAll()
   beforeAll(async () => {
     try {
-      build = await buildStartShared({
-        bundler,
-        files,
-        entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-      })
+      build = await openBuild(() =>
+        buildStartShared({
+          bundler,
+          files,
+          entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+        }),
+      )
     } catch (error) {
       if (!(error instanceof StartBuildError)) {
         throw error
       }
       failure = error
     }
-    return () => build?.close()
   }, timeout)
 
   test('the route renders and its handler answers on the server', async () => {

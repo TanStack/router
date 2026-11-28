@@ -1,11 +1,11 @@
 import { writeFile } from 'node:fs/promises'
 import react from '@vitejs/plugin-react'
 import { createServer } from 'vite'
-import { describe, expect, onTestFinished, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { servedDirectories } from '@tanstack/compiler-test-utils/app-directory'
 import { runAsDevCommand } from '@tanstack/compiler-test-utils/dev-command'
 import { closeViteServer } from '@tanstack/compiler-test-utils/dev-server'
-import { openPage } from '@tanstack/compiler-test-utils/browser'
+import { closeAtEnd } from '../test-end'
 import { openTestPage } from '../test-page'
 import {
   clientEntryFiles,
@@ -69,11 +69,11 @@ createRoot(document.getElementById('root')!).render(<Page />)
       pageUrl.searchParams.set('entry', '/src/main.tsx')
 
       // The requests of a page that renders the children
-      const first = await openPage(pageUrl.href)
-      let childRequests: Array<string>
-      try {
-        await first.waitForText('MARK_OLD', { selector: '#root' })
-        childRequests = await first.page.evaluate<Array<string>>(`(async () => {
+      const first = await openTestPage(pageUrl.href)
+      await first.waitForText('MARK_OLD', { selector: '#root' })
+      const childRequests = await first.page.evaluate<
+        Array<string>
+      >(`(async () => {
   const urls = [...new Set(performance.getEntriesByType('resource')
     .map((entry) => entry.name)
     .filter((url) => url.startsWith(location.origin + '/')))]
@@ -86,9 +86,8 @@ createRoot(document.getElementById('root')!).render(<Page />)
   }
   return holding
 })()`)
-      } finally {
-        await first.close()
-      }
+      // (closed before the restart)
+      await first.close()
       expect(childRequests).not.toEqual([])
 
       // The dev server restarts at the same root (the app's files and
@@ -107,21 +106,28 @@ createRoot(document.getElementById('root')!).render(<Page />)
         ),
       )
       await server.stop()
-      const restarted = await runAsDevCommand(async () =>
-        createServer({
-          root: server.root,
-          configFile: false,
-          logLevel: 'error',
-          server: {
-            host: '127.0.0.1',
-            port: 0,
-            fs: { allow: await servedDirectories(server.root) },
-          },
-          optimizeDeps,
-          plugins: [startPlugin(server.root, {}), clientFixturePlugin, react()],
-        }),
+      const restarted = await closeAtEnd(
+        () =>
+          runAsDevCommand(async () =>
+            createServer({
+              root: server.root,
+              configFile: false,
+              logLevel: 'error',
+              server: {
+                host: '127.0.0.1',
+                port: 0,
+                fs: { allow: await servedDirectories(server.root) },
+              },
+              optimizeDeps,
+              plugins: [
+                startPlugin(server.root, {}),
+                clientFixturePlugin,
+                react(),
+              ],
+            }),
+          ),
+        closeViteServer,
       )
-      onTestFinished(() => closeViteServer(restarted))
       await restarted.listen()
       const restartedUrl = new URL(
         '/__ip-fixture.html',

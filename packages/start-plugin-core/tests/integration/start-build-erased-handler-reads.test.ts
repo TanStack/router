@@ -8,6 +8,7 @@
  * server fn, +65 B and +84 B eager against main).
  */
 import { beforeAll, describe, expect, test } from 'vitest'
+import { closeAfterAll } from '../file-end'
 import {
   buildStartShared,
   callByIdExports,
@@ -59,14 +60,16 @@ const outerId = 'id-outerFn_createServerFn_handler'
 describe.each(startBundlers)('%s build', (bundler) => {
   let build: StartBuild
 
+  const openBuild = closeAfterAll()
   beforeAll(async () => {
-    build = await buildStartShared({
-      bundler,
-      files,
-      entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
-      start: { serverFns: { generateFunctionId: idOf } },
-    })
-    return () => build.close()
+    build = await openBuild(() =>
+      buildStartShared({
+        bundler,
+        files,
+        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+        start: { serverFns: { generateFunctionId: idOf } },
+      }),
+    )
   }, timeout)
 
   test(

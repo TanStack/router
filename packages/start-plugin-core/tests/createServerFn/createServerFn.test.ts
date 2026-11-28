@@ -3,6 +3,7 @@ import path from 'node:path'
 import { beforeAll, describe, expect, test } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
 import { linkWorkspacePackages } from '@tanstack/compiler-test-utils/workspace-packages'
+import { closeAfterAll } from '../file-end'
 import {
   callFromClient,
   callOnServer,
@@ -44,11 +45,13 @@ function exactVirtualFactory(): Plugin {
 }
 
 let host: StartHost
+const openHost = closeAfterAll()
 beforeAll(async () => {
-  host = await createStartHost({
-    plugins: [virtualFactories(), exactVirtualFactory()],
-  })
-  return () => host.close()
+  host = await openHost(() =>
+    createStartHost({
+      plugins: [virtualFactories(), exactVirtualFactory()],
+    }),
+  )
 }, 60_000)
 
 describe('createServerFn compiles correctly', () => {

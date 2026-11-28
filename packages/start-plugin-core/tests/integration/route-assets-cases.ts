@@ -39,7 +39,8 @@
  * and `/media` boundaries without CSS, and `/widget-a` and `/widget-b` render
  * a shared widget whose own boundary has CSS.
  */
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
+import { closeAfterAll } from '../file-end'
 import { buildStartShared } from '../build-harness'
 import { createStartHost } from '../start-host'
 import { rsbuildEntries } from './route-css-cases'
@@ -610,15 +611,9 @@ export function routeAssetsSuite(
   describe(name, () => {
     let url: string
     let shell: Assets
-    let opening: Promise<{ close: () => Promise<void> }> | undefined
-    afterAll(() =>
-      opening?.then(
-        (opened) => opened.close(),
-        () => {},
-      ),
-    )
+    const opening = closeAfterAll()
     beforeAll(async () => {
-      const built = await (opening =
+      const built = await opening(async () =>
         bundler === 'vite'
           ? createStartHost({
               serve: false,
@@ -639,7 +634,8 @@ export function routeAssetsSuite(
               sideEffects,
               rsbuildConfig,
               files: { ...rsbuildEntries, ...files },
-            }))
+            }),
+      )
       url = (await built.preview()).url
       shell = await linkedMarkers(url, '/no-such-route')
     }, timeout)

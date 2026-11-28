@@ -16,11 +16,11 @@ import { expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   StartBuildError,
-  buildStart,
   callByIdExports,
   callByIdPrelude,
   startBundlers,
 } from '../build-harness'
+import { buildStart } from '../build-start'
 import type { StartBuild } from '../build-harness'
 import type { Plugin, ViteBuilder } from 'vite'
 

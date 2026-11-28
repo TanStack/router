@@ -6,6 +6,7 @@ import {
   positionAt,
   tokenOffsets,
 } from '@tanstack/compiler-test-utils/source-maps'
+import { closeAfterAll } from '../../file-end'
 import {
   compileError,
   expectCompileError,
@@ -39,14 +40,14 @@ import type { SourceMapInput } from '@tanstack/compiler-test-utils/source-maps'
 // lives (how many modules, under which ids) is free (SPEC §5.3).
 
 let hosts: HydrateHost
+const openHosts = closeAfterAll()
 beforeAll(async () => {
-  hosts = await createHydrateHost()
-  return () => hosts.close()
+  hosts = await openHosts(() => createHydrateHost())
 }, 60_000)
 let solidHost: SolidHost
+const openSolidHost = closeAfterAll()
 beforeAll(async () => {
-  solidHost = await createSolidHost()
-  return () => solidHost.close()
+  solidHost = await openSolidHost(() => createSolidHost())
 }, 60_000)
 
 /**

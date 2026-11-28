@@ -15,7 +15,8 @@
 import { describe, expect, test } from 'vitest'
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
-import { buildStart, callByIdExports, callByIdPrelude } from '../build-harness'
+import { callByIdExports, callByIdPrelude } from '../build-harness'
+import { buildStart } from '../build-start'
 import { appManifest, installPackage } from '../package-layouts'
 import type { InstalledPackage } from '../package-layouts'
 

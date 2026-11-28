@@ -12,7 +12,8 @@
  * main (`type-only-main-cases`).
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart, startBundlers } from '../build-harness'
+import { startBundlers } from '../build-harness'
+import { buildStart } from '../build-start'
 
 const timeout = 60_000
 

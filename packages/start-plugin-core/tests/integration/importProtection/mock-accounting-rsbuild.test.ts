@@ -23,7 +23,8 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { runNodeProgram } from '@tanstack/compiler-test-utils/run-node'
 import { describe, expect, test } from 'vitest'
-import { StartBuildError, buildStart } from '../../build-harness'
+import { StartBuildError } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import {
   describeValuePrelude,
   probeMockPrelude,

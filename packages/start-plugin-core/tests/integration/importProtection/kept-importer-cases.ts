@@ -7,7 +7,8 @@
  * shows what the bundler itself keeps: the denied module's initializer
  * (`MARK_DB`) in the client output or not.
  */
-import { StartBuildError, buildStart } from '../../build-harness'
+import { StartBuildError } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { reportedViolations } from '../../importProtection/start-apps'
 import { lateImport } from './late-import'
 import type { StartBundler } from '../../build-harness'

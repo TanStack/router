@@ -16,6 +16,7 @@ import { beforeAll, describe, expect, test } from 'vitest'
 import babel from '@rolldown/plugin-babel'
 // @ts-expect-error -- the preset ships no type declarations
 import typescript from '@babel/preset-typescript'
+import { closeAfterAll } from './file-end'
 import {
   callFromClient,
   callOnServer,
@@ -25,13 +26,17 @@ import {
 import type { StartHost } from './regression-helpers'
 
 let host: StartHost
+const openHost = closeAfterAll()
 beforeAll(async () => {
-  host = await createStartHost({
-    plugins: [
-      babel({ presets: [[typescript, { allExtensions: true, isTSX: true }]] }),
-    ],
-  })
-  return () => host.close()
+  host = await openHost(() =>
+    createStartHost({
+      plugins: [
+        babel({
+          presets: [[typescript, { allExtensions: true, isTSX: true }]],
+        }),
+      ],
+    }),
+  )
 }, 60_000)
 beforeAll(async () => {
   await host.page()

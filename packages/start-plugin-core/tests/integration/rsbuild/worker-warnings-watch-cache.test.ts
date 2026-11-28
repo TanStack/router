@@ -13,7 +13,7 @@ import {
   diagnosticsOf,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { appManifest } from '../../package-layouts'
 import { uiKit, uiKitFile, workerApp } from './worker-warning-apps'
 import type { RsbuildPlugin, Rspack } from '@rsbuild/core'

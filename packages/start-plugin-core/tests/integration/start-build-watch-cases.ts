@@ -14,10 +14,10 @@ import {
 } from '@tanstack/compiler-test-utils/diagnostics'
 import {
   StartBuildError,
-  buildStart,
   callByIdExports,
   callByIdPrelude,
 } from '../build-harness'
+import { buildStart } from '../build-start'
 import { rejection, reportedViolations } from '../importProtection/start-apps'
 import {
   pageEntries,

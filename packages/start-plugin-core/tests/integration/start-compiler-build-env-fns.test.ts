@@ -10,7 +10,8 @@
  * dependencies and removes allowServer imports", "supports allowServer
  * aliasing and export specifiers".
  */
-import { afterAll, expect, test } from 'vitest'
+import { expect, test } from 'vitest'
+import { closeAtEnd } from '../test-end'
 import {
   createStartHost,
   fromPage,
@@ -18,7 +19,7 @@ import {
   settle,
   throwsError,
 } from '../regression-helpers'
-import type { PageSettled, StartHost } from '../regression-helpers'
+import type { PageSettled } from '../regression-helpers'
 
 /**
  * The host defaults these tests use: no import
@@ -40,11 +41,11 @@ const hostDefaults = {
   },
 }
 
-let host: StartHost | undefined
-afterAll(() => host?.close())
-
 test('build: each environment keeps the implementation of its environment and only its dependencies', async () => {
-  host = await createStartHost({ ...hostDefaults, serve: false })
+  const host = await closeAtEnd(
+    () => createStartHost({ ...hostDefaults, serve: false }),
+    (opened) => opened.close(),
+  )
   const startCase = await host.case({
     'module.tsx': `import { createServerOnlyFn, createClientOnlyFn as clientOnly } from '@tanstack/react-start'
 import { draw } from './chart.client'

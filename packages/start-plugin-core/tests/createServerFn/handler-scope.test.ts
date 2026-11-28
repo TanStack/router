@@ -1,6 +1,7 @@
 import { beforeAll, expect, test } from 'vitest'
 import { findDiagnostics } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
+import { closeAfterAll } from '../file-end'
 import {
   callFromClient,
   callServerFnThroughCallers,
@@ -25,9 +26,9 @@ import type { StartHost } from '../start-host'
 // handler lives on the server is free (SPEC J4.2, §5.4).
 
 let host: StartHost
+const openHost = closeAfterAll()
 beforeAll(async () => {
-  host = await createStartHost()
-  return () => host.close()
+  host = await openHost(() => createStartHost())
 }, 60_000)
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`

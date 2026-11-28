@@ -15,6 +15,7 @@
  * same input for the compiler.)
  */
 import { beforeAll, describe, expect, test } from 'vitest'
+import { closeAfterAll } from './file-end'
 import {
   callOnServer,
   createStartHost,
@@ -42,29 +43,31 @@ ${
 }`
 
 let host: StartHost
+const openHost = closeAfterAll()
 beforeAll(async () => {
-  host = await createStartHost({
-    files: {
-      'node_modules/pragma-jsx/package.json': JSON.stringify({
-        name: 'pragma-jsx',
-        type: 'module',
-        exports: {
-          './jsx-runtime': './jsx-runtime.js',
-          './jsx-dev-runtime': './jsx-dev-runtime.js',
-        },
-      }),
-      'node_modules/pragma-jsx/jsx-runtime.js': runtime(
-        'react/jsx-runtime',
-        'jsx',
-      ),
-      'node_modules/pragma-jsx/jsx-dev-runtime.js': runtime(
-        'react/jsx-dev-runtime',
-        'jsxDEV',
-      ),
-    },
-    config: { optimizeDeps: { exclude: ['pragma-jsx'] } },
-  })
-  return () => host.close()
+  host = await openHost(() =>
+    createStartHost({
+      files: {
+        'node_modules/pragma-jsx/package.json': JSON.stringify({
+          name: 'pragma-jsx',
+          type: 'module',
+          exports: {
+            './jsx-runtime': './jsx-runtime.js',
+            './jsx-dev-runtime': './jsx-dev-runtime.js',
+          },
+        }),
+        'node_modules/pragma-jsx/jsx-runtime.js': runtime(
+          'react/jsx-runtime',
+          'jsx',
+        ),
+        'node_modules/pragma-jsx/jsx-dev-runtime.js': runtime(
+          'react/jsx-dev-runtime',
+          'jsxDEV',
+        ),
+      },
+      config: { optimizeDeps: { exclude: ['pragma-jsx'] } },
+    }),
+  )
 }, 60_000)
 beforeAll(async () => {
   await host.page()

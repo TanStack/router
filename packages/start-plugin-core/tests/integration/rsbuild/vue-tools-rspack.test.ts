@@ -11,6 +11,7 @@
  */
 import { createRequire } from 'node:module'
 import { beforeAll, describe, expect, test } from 'vitest'
+import { closeAfterAll } from '../../file-end'
 import { buildStartShared, callByIdPrelude } from '../../build-harness'
 import type { StartBuild } from '../../build-harness'
 
@@ -83,30 +84,32 @@ describe.each([
   },
 ])('rsbuild build, $name', ({ inlineMatchResource, Plugin }) => {
   let build: StartBuild
+  const openBuild = closeAfterAll()
   beforeAll(async () => {
-    build = await buildStartShared({
-      bundler: 'rsbuild',
-      framework: 'vue',
-      files,
-      entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
-      rsbuildConfig: {
-        tools: {
-          rspack: (config) => {
-            config.module.rules ??= []
-            config.module.rules.push({
-              test: /\.vue$/,
-              loader: vueLoader,
-              options: {
-                experimentalInlineMatchResource: inlineMatchResource,
-              },
-            })
-            config.plugins.push(new Plugin() as never)
-            return config
+    build = await openBuild(() =>
+      buildStartShared({
+        bundler: 'rsbuild',
+        framework: 'vue',
+        files,
+        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+        rsbuildConfig: {
+          tools: {
+            rspack: (config) => {
+              config.module.rules ??= []
+              config.module.rules.push({
+                test: /\.vue$/,
+                loader: vueLoader,
+                options: {
+                  experimentalInlineMatchResource: inlineMatchResource,
+                },
+              })
+              config.plugins.push(new Plugin() as never)
+              return config
+            },
           },
         },
-      },
-    })
-    return () => build.close()
+      }),
+    )
   }, timeout)
 
   test('a server fn of a plain <script> keeps its handler on the server, and the client calls it by id', async () => {

@@ -11,7 +11,7 @@
  * own code, in the boundary the server rendered it in.
  */
 import ts from 'typescript'
-import { afterAll, describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { originalFrameOf } from '@tanstack/compiler-test-utils/build-harness'
 import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import {
@@ -19,7 +19,9 @@ import {
   expectDiagnostic,
   expectNoDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { StartBuildError, buildStart, buildStartShared } from '../build-harness'
+import { closeAfterAll } from '../file-end'
+import { StartBuildError, buildStartShared } from '../build-harness'
+import { buildStart } from '../build-start'
 import { typeCheck } from './start-compose-app'
 import type { StartBuild, StartBundler } from '../build-harness'
 
@@ -133,18 +135,15 @@ export function hydrateBuildSuite(bundler: StartBundler) {
     let shared: Promise<StartBuild> | undefined
     let sharedHtml: ReturnType<typeof renderPages> | undefined
     const sharedApp = () =>
-      (shared ??= buildStartShared({
-        bundler,
-        entry,
-        sourcemap: true,
-        files: { ...pageEntries, ...sharedFiles },
-      }))
-    afterAll(() =>
-      shared?.then(
-        (opened) => opened.close(),
-        () => {},
-      ),
-    )
+      (shared ??= openShared(() =>
+        buildStartShared({
+          bundler,
+          entry,
+          sourcemap: true,
+          files: { ...pageEntries, ...sharedFiles },
+        }),
+      ))
+    const openShared = closeAfterAll()
 
     /** The page `name` of the shared build, hydrated (`hydratePage`). */
     async function hydrateShared(

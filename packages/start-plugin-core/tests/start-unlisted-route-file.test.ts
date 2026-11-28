@@ -7,28 +7,31 @@
  */
 import { beforeAll, expect, test } from 'vitest'
 import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
+import { closeAfterAll } from './file-end'
 import { createStartHost } from './regression-helpers'
 import type { StartHost } from './start-host'
 
 let host: StartHost
+const openHost = closeAfterAll()
 beforeAll(async () => {
-  host = await createStartHost({
-    files: {
-      'src/widgets/w.tsx': `import { createFileRoute } from '@tanstack/react-router'
+  host = await openHost(() =>
+    createStartHost({
+      files: {
+        'src/widgets/w.tsx': `import { createFileRoute } from '@tanstack/react-router'
 export const Route = createFileRoute('/w')({
   component: () => 'MARK_W_PAGE',
   server: { handlers: { GET: () => new Response('MARK_W_SERVER') } },
 })
 `,
-      'src/routes/widget.tsx': `import { createFileRoute } from '@tanstack/react-router'
+        'src/routes/widget.tsx': `import { createFileRoute } from '@tanstack/react-router'
 import { Route as Widget } from '../widgets/w'
 export const Route = createFileRoute('/widget')({
   component: () => String(Widget.options.component),
 })
 `,
-    },
-  })
-  return () => host.close()
+      },
+    }),
+  )
 }, 60_000)
 
 test('a route file the generator does not list is served as written, with nothing reported', async () => {

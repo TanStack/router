@@ -20,7 +20,7 @@ import {
   expectDiagnostic,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { rejection } from '../../importProtection/start-apps'
 import { rsbuildRscLinks } from '../../start-plugins'
 import { rscAppFiles, startRsbuildRscApp } from '../rsc-warning-app'

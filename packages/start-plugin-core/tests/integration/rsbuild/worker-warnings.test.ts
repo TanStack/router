@@ -10,7 +10,7 @@
  * 1 and 4, review-hotspot3-impl-fable.md findings 1 and 3.
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { appManifest } from '../../package-layouts'
 import { rsbuildRscLinks } from '../../start-plugins'
 import { rscAppFiles } from '../rsc-warning-app'

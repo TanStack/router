@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, test, vi } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
+import { closeAfterAll } from '../file-end'
 import {
   callFromClient,
   callOnServer,
@@ -21,9 +22,9 @@ import type { StartHost } from '../start-host'
 // file of the case.
 
 let host: StartHost
+const openHost = closeAfterAll()
 beforeAll(async () => {
-  host = await createStartHost()
-  return () => host.close()
+  host = await openHost(() => createStartHost())
 }, 60_000)
 
 const head = `import { createServerFn } from '@tanstack/react-start'\n`

@@ -15,6 +15,7 @@
  * not be frozen).
  */
 import { beforeAll, describe, expect, test } from 'vitest'
+import { closeAfterAll } from '../file-end'
 import {
   barrelRows,
   buildHydrationApp,
@@ -429,18 +430,20 @@ return root.querySelector('output').textContent`
 export function solidPageSuite(bundler: StartBundler) {
   let app: HydrationApp
 
+  const openApp = closeAfterAll()
   beforeAll(async () => {
-    app = await buildHydrationApp({
-      framework: 'solid',
-      bundler,
-      fixtures: { ...fixtures, ...hydrateBarrelFixtures('solid') },
-      files: {
-        'src/counter.tsx': counterFile,
-        'src/theme.tsx': themeFile,
-        ...hydrateBarrelFiles('solid'),
-      },
-    })
-    return () => app.close()
+    app = await openApp(() =>
+      buildHydrationApp({
+        framework: 'solid',
+        bundler,
+        fixtures: { ...fixtures, ...hydrateBarrelFixtures('solid') },
+        files: {
+          'src/counter.tsx': counterFile,
+          'src/theme.tsx': themeFile,
+          ...hydrateBarrelFiles('solid'),
+        },
+      }),
+    )
   }, 60_000)
 
   /** Hydrates fixture `name`; every child counts one click; no error. */

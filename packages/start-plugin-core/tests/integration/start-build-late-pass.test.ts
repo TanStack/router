@@ -16,14 +16,15 @@ import {
   expectDiagnostic,
   expectNoDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
+import { closeAfterAll } from '../file-end'
 import {
   StartBuildError,
-  buildStart,
   buildStartShared,
   callByIdExports,
   callByIdPrelude,
   startBundlers,
 } from '../build-harness'
+import { buildStart } from '../build-start'
 import type { StartBuild, StartBuildOptions } from '../build-harness'
 
 const require = createRequire(import.meta.url)
@@ -78,14 +79,16 @@ const mdxConfig = {
 
 describe.each(startBundlers)('%s build', (bundler) => {
   let build: StartBuild
+  const openBuild = closeAfterAll()
   beforeAll(async () => {
-    build = await buildStartShared({
-      bundler,
-      files,
-      entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
-      ...mdxConfig,
-    })
-    return () => build.close()
+    build = await openBuild(() =>
+      buildStartShared({
+        bundler,
+        files,
+        entry: { client: 'src/entry.ts', ssr: 'src/ssr-entry.ts' },
+        ...mdxConfig,
+      }),
+    )
   }, timeout)
 
   test('the client calls an MDX module’s server fn by its id, without its handler', async () => {

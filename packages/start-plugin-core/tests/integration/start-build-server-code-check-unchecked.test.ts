@@ -12,7 +12,8 @@
  * `integration-alone`) and turns it off before anything loads.
  */
 import { describe, expect, test, vi } from 'vitest'
-import { buildStart, sharedBuildFailure, startBundlers } from '../build-harness'
+import { sharedBuildFailure, startBundlers } from '../build-harness'
+import { buildStart } from '../build-start'
 import type { StartBuild } from '../build-harness'
 
 vi.hoisted(() => {

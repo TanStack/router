@@ -1,6 +1,7 @@
 /** Public rule configuration, exercised by real Start builds (J6.1/J6.8). */
 import { describe, expect, test } from 'vitest'
-import { buildStart, startBundlers } from '../../build-harness'
+import { startBundlers } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import {
   inEnvironment,
   receivedViolations,

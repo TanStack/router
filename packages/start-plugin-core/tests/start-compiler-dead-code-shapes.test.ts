@@ -6,6 +6,7 @@ import {
   recordFile,
   shapeSetup,
 } from '@tanstack/compiler-test-utils/dead-code-shapes'
+import { closeAfterAll } from './file-end'
 import {
   callServerFnThroughCallers,
   createStartHost,
@@ -29,9 +30,9 @@ import type { PageSettled, ServedCase } from './regression-helpers'
 // "Not loaded" is what the environment's module graph reaches.
 
 let host: StartHost
+const openHost = closeAfterAll()
 beforeAll(async () => {
-  host = await createStartHost()
-  return () => host.close()
+  host = await openHost(() => createStartHost())
 }, 60_000)
 
 type Environment = 'client' | 'ssr'

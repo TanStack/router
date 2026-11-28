@@ -5,7 +5,7 @@
  * Development: dev.test.ts, policy.test.ts, value-import-as-type.test.ts.
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { rejection } from '../../importProtection/start-apps'
 import type { StartBundler } from '../../build-harness'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'

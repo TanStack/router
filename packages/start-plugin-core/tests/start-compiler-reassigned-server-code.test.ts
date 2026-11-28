@@ -25,6 +25,7 @@ import {
   expectDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
+import { closeAfterAll } from './file-end'
 import {
   CompileFailure,
   callServerFnThroughCallers,
@@ -357,9 +358,9 @@ async function expectCompiles(
 
 describe('Vite: every compile refuses server code passed by a name the module assigns', () => {
   let host: StartHost
+  const openHost = closeAfterAll()
   beforeAll(async () => {
-    host = await createStartHost()
-    return () => host.close()
+    host = await openHost(() => createStartHost())
   }, 60_000)
 
   test.each(writes)('a handler: %s', async (_, body) => {
@@ -578,9 +579,9 @@ export const fn = createServerFn().handler(h)
 
 describe('Vite with RSC: every compile refuses server code passed by a name the module assigns', () => {
   let host: StartHost
+  const openHost2 = closeAfterAll()
   beforeAll(async () => {
-    host = await createStartHost({ rsc: true })
-    return () => host.close()
+    host = await openHost2(() => createStartHost({ rsc: true }))
   }, 60_000)
 
   // the client, the SSR caller and the provider the rsc environment derives
@@ -773,19 +774,21 @@ export const Route = createFileRoute('/reassigned-read-by-route-handler')({
 
 describe("Vite: a route's server options by a name the module assigns", () => {
   let host: StartHost
+  const openHost3 = closeAfterAll()
   beforeAll(async () => {
-    host = await createStartHost({
-      files: {
-        ...routeDb,
-        ...Object.fromEntries(
-          Object.entries(refusedRoutes).map(([file, { source }]) => [
-            file,
-            source,
-          ]),
-        ),
-      },
-    })
-    return () => host.close()
+    host = await openHost3(() =>
+      createStartHost({
+        files: {
+          ...routeDb,
+          ...Object.fromEntries(
+            Object.entries(refusedRoutes).map(([file, { source }]) => [
+              file,
+              source,
+            ]),
+          ),
+        },
+      }),
+    )
   }, 60_000)
 
   // what the user reads in a `createHandlers(…)` object: the argument, with
@@ -853,11 +856,13 @@ describe("Vite: a route's server options by a name the module assigns", () => {
 
 describe("Vite: a route's server options by one `const`", () => {
   let host: StartHost
+  const openHost4 = closeAfterAll()
   beforeAll(async () => {
-    host = await createStartHost({
-      files: {
-        ...routeDb,
-        'src/routes/const-get.tsx': `${routeHead}const get = import.meta.env.DEV
+    host = await openHost4(() =>
+      createStartHost({
+        files: {
+          ...routeDb,
+          'src/routes/const-get.tsx': `${routeHead}const get = import.meta.env.DEV
   ? async () => new Response(db.x())
   : async () => new Response(db.y())
 const pickHeaders = () => ({ 'x-db': db.x() })
@@ -867,7 +872,7 @@ export const Route = createFileRoute('/const-get')({
   component: () => <p>page</p>,
 })
 `,
-        'src/routes/written-by-handler.tsx': `${routeHead}import { createServerOnlyFn } from '@tanstack/react-start'
+          'src/routes/written-by-handler.tsx': `${routeHead}import { createServerOnlyFn } from '@tanstack/react-start'
 let format = (v: string) => v
 export const read = createServerOnlyFn(format)
 export const Route = createFileRoute('/written-by-handler')({
@@ -882,7 +887,7 @@ export const Route = createFileRoute('/written-by-handler')({
   component: () => <p>page</p>,
 })
 `,
-        'src/routes/const-create-handlers.tsx': `${routeHead}const get = import.meta.env.DEV
+          'src/routes/const-create-handlers.tsx': `${routeHead}const get = import.meta.env.DEV
   ? async () => new Response(db.x())
   : async () => new Response(db.y())
 export const Route = createFileRoute('/const-create-handlers')({
@@ -893,9 +898,9 @@ export const Route = createFileRoute('/const-create-handlers')({
   component: () => <p>page</p>,
 })
 `,
-      },
-    })
-    return () => host.close()
+        },
+      }),
+    )
   }, 60_000)
 
   // only server code assigns it, or it holds no server code
@@ -933,9 +938,9 @@ export const Route = createFileRoute('/const-create-handlers')({
  */
 describe('Solid: a callback ref is no reassignment', () => {
   let host: StartHost
+  const openHost5 = closeAfterAll()
   beforeAll(async () => {
-    host = await createStartHost({ framework: 'solid' })
-    return () => host.close()
+    host = await openHost5(() => createStartHost({ framework: 'solid' }))
   }, 60_000)
   const solidHead = `import { createServerFn } from '@tanstack/solid-start'
 import { db } from './db'

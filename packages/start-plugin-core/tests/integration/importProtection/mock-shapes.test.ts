@@ -23,7 +23,8 @@
  * module are pinned there and in `start-dev-edits.test.ts`.
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart, startBundlers } from '../../build-harness'
+import { startBundlers } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
 import { runViteClient, startBrowserProtectedDevServer } from './client-pages'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'

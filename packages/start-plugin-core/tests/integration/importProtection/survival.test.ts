@@ -9,11 +9,9 @@
  * in error mode, a surviving edge fails the build and a dead one does not.
  */
 import { beforeAll, describe, expect, test } from 'vitest'
-import {
-  buildStart,
-  buildStartShared,
-  startBundlers,
-} from '../../build-harness'
+import { closeAfterAll } from '../../file-end'
+import { buildStartShared, startBundlers } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { distinct, rejection } from '../../importProtection/start-apps'
 import { cases } from './survival-cases'
 import type { StartBuild } from '../../build-harness'
@@ -95,15 +93,17 @@ const indexed = cases.map((c, index) => [c, index] as [SurvivalCase, number])
 
 describe.each(startBundlers)('%s build', (bundler) => {
   let build: StartBuild
+  const openBuild = closeAfterAll()
   beforeAll(async () => {
     const app = appOf(indexed)
-    build = await buildStartShared({
-      bundler,
-      files: app.files,
-      entry: 'src/entry.ts',
-      start: { importProtection: app.importProtection },
-    })
-    return () => build.close()
+    build = await openBuild(() =>
+      buildStartShared({
+        bundler,
+        files: app.files,
+        entry: 'src/entry.ts',
+        start: { importProtection: app.importProtection },
+      }),
+    )
   }, timeout)
 
   test.each(indexed.map(([c, index]) => ({ name: c.name, c, index })))(

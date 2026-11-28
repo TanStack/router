@@ -12,7 +12,7 @@
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { expect, test } from 'vitest'
-import { buildStart } from '../build-harness'
+import { buildStart } from '../build-start'
 
 test('vite: a build whose config file gives the plugins generates the route tree once, and a second build the routes added since', async () => {
   let generations = 0

@@ -7,7 +7,8 @@
  * of a path: the rules judge the id and the id cut at its last `#`.
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart, startBundlers } from '../../build-harness'
+import { startBundlers } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { reportedViolations } from '../../importProtection/start-apps'
 import type { StartBuildError, StartBundler } from '../../build-harness'
 import type { ImportProtectionOptions } from '../../importProtection/public-types'

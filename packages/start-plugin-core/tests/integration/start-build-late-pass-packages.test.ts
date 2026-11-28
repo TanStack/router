@@ -16,11 +16,11 @@ import mdx from '@mdx-js/rollup'
 import vue from '@vitejs/plugin-vue'
 import { describe, expect, test } from 'vitest'
 import {
-  buildStart,
   callByIdExports,
   callByIdPrelude,
   startBundlers,
 } from '../build-harness'
+import { buildStart } from '../build-start'
 import { appManifest, installPackage } from '../package-layouts'
 import type { StartBuildOptions } from '../build-harness'
 import type { StartDeclaration } from '../package-layouts'

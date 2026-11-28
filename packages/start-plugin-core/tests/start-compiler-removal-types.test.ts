@@ -1,4 +1,5 @@
 import { beforeAll, describe, test } from 'vitest'
+import { closeAfterAll } from './file-end'
 import { createStartHost } from './regression-helpers'
 import { SO, checkRow } from './removal-cases'
 import type { StartHost } from './start-host'
@@ -10,9 +11,9 @@ import type { Row } from './removal-cases'
 // The rows and how they are checked: `./removal-cases`.
 
 let host: StartHost
+const openHost = closeAfterAll()
 beforeAll(async () => {
-  host = await createStartHost()
-  return () => host.close()
+  host = await openHost(() => createStartHost())
 }, 60_000)
 const check = async (row: Row) => checkRow(host, row)
 

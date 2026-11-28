@@ -11,8 +11,10 @@ import {
   diagnosticsOf,
   expectDiagnostic,
 } from '@tanstack/compiler-test-utils/diagnostics'
-import { afterAll, describe, expect, test } from 'vitest'
-import { StartBuildError, buildStart } from '../build-harness'
+import { describe, expect, test } from 'vitest'
+import { closeAfterAll } from '../file-end'
+import { StartBuildError } from '../build-harness'
+import { buildStart } from '../build-start'
 import {
   compileError,
   createStartHost,
@@ -27,13 +29,9 @@ export const label = 'x'
 
 /** One dev host for the cases of this file (each case is its own module). */
 let devHost: Promise<StartHost> | undefined
-const vueHost = () => (devHost ??= createStartHost({ framework: 'vue' }))
-afterAll(() =>
-  devHost?.then(
-    (host) => host.close(),
-    () => {},
-  ),
-)
+const vueHost = () =>
+  (devHost ??= openDevHost(() => createStartHost({ framework: 'vue' })))
+const openDevHost = closeAfterAll()
 
 /** A component whose `<script setup>` block is `script`. */
 const sfcOf = (script: string) => `<script setup>

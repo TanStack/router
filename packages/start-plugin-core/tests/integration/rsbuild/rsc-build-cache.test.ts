@@ -11,7 +11,7 @@
  * page failed with a 500; main serves it).
  */
 import { expect, test } from 'vitest'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { rsbuildRscLinks } from '../../start-plugins'
 import type { StartPluginOptions } from '../../start-plugins'
 

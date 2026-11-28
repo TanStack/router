@@ -25,14 +25,15 @@
  * environment).
  */
 import { beforeAll, describe, expect, test } from 'vitest'
+import { closeAfterAll } from './file-end'
 import { createStartHost } from './start-host'
 import type { StartHost } from './start-host'
 
 describe('Vite with RSC: client references', () => {
   let host: StartHost
+  const openHost = closeAfterAll()
   beforeAll(async () => {
-    host = await createStartHost({ rsc: true })
-    return () => host.close()
+    host = await openHost(() => createStartHost({ rsc: true }))
   }, 60_000)
 
   // SPEC J4.17: the compiler keeps the directive, so the RSC plugin makes
@@ -59,9 +60,9 @@ export function Box() {
 
 describe('Vite with RSC: the server-fn provider', () => {
   let host: StartHost
+  const openHost2 = closeAfterAll()
   beforeAll(async () => {
-    host = await createStartHost({ rsc: true })
-    return () => host.close()
+    host = await openHost2(() => createStartHost({ rsc: true }))
   }, 60_000)
 
   const serverFnModule = {
@@ -107,9 +108,9 @@ export const greet = createServerFn().handler(() => 'MARK_GREET_HANDLER')
 // start-compiler-removal-definitions.test.ts.)
 describe('RSC: the caller and the provider', () => {
   let host: StartHost
+  const openHost3 = closeAfterAll()
   beforeAll(async () => {
-    host = await createStartHost({ rsc: true })
-    return () => host.close()
+    host = await openHost3(() => createStartHost({ rsc: true }))
   }, 60_000)
   const record = `export const calls: Array<string> = []
 export const record = (name: string) => {
@@ -157,9 +158,9 @@ return [...(await load('record.ts')).calls]`)
 
 describe('Vite with RSC: RSC CSS', () => {
   let host: StartHost
+  const openHost4 = closeAfterAll()
   beforeAll(async () => {
-    host = await createStartHost({ rsc: true })
-    return () => host.close()
+    host = await openHost4(() => createStartHost({ rsc: true }))
   }, 60_000)
 
   /**

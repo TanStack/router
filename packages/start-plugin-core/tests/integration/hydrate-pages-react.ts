@@ -15,6 +15,7 @@
  * the children under parent updates (J5.8).
  */
 import { beforeAll, describe, expect, test } from 'vitest'
+import { closeAfterAll } from '../file-end'
 import {
   barrelRows,
   buildHydrationApp,
@@ -469,17 +470,19 @@ export function reactPageSuite(bundler: StartBundler) {
   describe('React Hydrate pages', () => {
     let app: HydrationApp
 
+    const openApp = closeAfterAll()
     beforeAll(async () => {
-      app = await buildHydrationApp({
-        bundler,
-        fixtures: { ...fixtures, ...hydrateBarrelFixtures('react') },
-        files: {
-          'src/counter.tsx': counterFile,
-          'src/theme.tsx': themeFile,
-          ...hydrateBarrelFiles('react'),
-        },
-      })
-      return () => app.close()
+      app = await openApp(() =>
+        buildHydrationApp({
+          bundler,
+          fixtures: { ...fixtures, ...hydrateBarrelFixtures('react') },
+          files: {
+            'src/counter.tsx': counterFile,
+            'src/theme.tsx': themeFile,
+            ...hydrateBarrelFiles('react'),
+          },
+        }),
+      )
     }, 60_000)
 
     /** Hydrates fixture `name`; every child counts one click; no error. */

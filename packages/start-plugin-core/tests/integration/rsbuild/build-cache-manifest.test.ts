@@ -8,7 +8,7 @@
  * no page hydrated).
  */
 import { expect, test } from 'vitest'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { rsbuildEntries } from '../route-css-cases'
 
 const timeout = 60_000

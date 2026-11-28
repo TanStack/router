@@ -7,7 +7,7 @@
  * Source: RSC investigation (rsc-investigation-model.md §4.1, 11-19).
  */
 import { test } from 'vitest'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { rsbuildRscLinks } from '../../start-plugins'
 import { expectBothLayers, layersFiles } from './rsc-layers-app'
 

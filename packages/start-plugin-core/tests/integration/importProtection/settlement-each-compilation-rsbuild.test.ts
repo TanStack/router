@@ -41,7 +41,8 @@
  */
 import { describe, expect, test } from 'vitest'
 import { describeValuePrelude } from '../../importProtection/mock-helpers'
-import { StartBuildError, buildStart } from '../../build-harness'
+import { StartBuildError } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import {
   reportedErrors,
   startRsbuildStartDevServer,

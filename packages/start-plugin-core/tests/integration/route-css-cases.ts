@@ -11,7 +11,8 @@
  * route, and, for two routes that share a module, after a reload there (the
  * page the server renders at the route).
  */
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
+import { closeAfterAll } from '../file-end'
 import { openTestPage } from '../test-page'
 import { buildStartShared } from '../build-harness'
 import { startDevServerShared } from '../dev-server'
@@ -198,15 +199,9 @@ export function routeCssSuite(
     `${bundlerName[bundler]} %s`,
     (mode) => {
       let url: string
-      let opening: Promise<{ close: () => Promise<void> }> | undefined
-      afterAll(() =>
-        opening?.then(
-          (opened) => opened.close(),
-          () => {},
-        ),
-      )
+      const opening = closeAfterAll()
       beforeAll(async () => {
-        const opened = await (opening =
+        const opened = await opening(async () =>
           bundler === 'vite'
             ? mode === 'dev'
               ? startDevServerShared({
@@ -228,7 +223,8 @@ export function routeCssSuite(
                   bundler,
                   rsbuildConfig,
                   files: { ...rsbuildEntries, ...files },
-                }))
+                }),
+        )
         url = 'preview' in opened ? (await opened.preview()).url : opened.url!
       }, timeout)
 

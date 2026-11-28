@@ -11,6 +11,7 @@
  */
 import { beforeAll, describe, expect, test } from 'vitest'
 import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
+import { closeAfterAll } from '../file-end'
 import { buildStartShared, startBundlers } from '../build-harness'
 import { reportedViolations } from '../importProtection/start-apps'
 import type { StartBuild } from '../build-harness'
@@ -66,13 +67,15 @@ return [settle(entry.render), settle(entry.repaint), settle(entry.size), settle(
 describe.each(startBundlers)('%s build', (bundler) => {
   let build: StartBuild
 
+  const openBuild = closeAfterAll()
   beforeAll(async () => {
-    build = await buildStartShared({
-      bundler,
-      files,
-      entry: 'src/entry.ts',
-    })
-    return () => build.close()
+    build = await openBuild(() =>
+      buildStartShared({
+        bundler,
+        files,
+        entry: 'src/entry.ts',
+      }),
+    )
   }, timeout)
 
   test('reports no import-protection violation', () => {

@@ -24,7 +24,7 @@
  * L5 (the include at stage 0).
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import {
   reportedErrors,
   startRsbuildStartDevServer,

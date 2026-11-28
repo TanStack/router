@@ -10,7 +10,8 @@
  * Resolving every option key is best effort, but a missed key must never
  * prune a route or leave server code in the client bundle.
  */
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
+import { closeAfterAll } from '../file-end'
 import { buildStartShared, startBundlers } from '../build-harness'
 import type { StartBuild } from '../build-harness'
 
@@ -100,19 +101,15 @@ export const Route = createFileRoute('/cast-${slug(name)}')(${wrap(
   let build: StartBuild
   /** Ids of the routes of the client build's route tree. */
   let clientRoutes: Array<string>
-  let opening: Promise<{ close: () => Promise<void> }> | undefined
-  afterAll(() =>
-    opening?.then(
-      (opened) => opened.close(),
-      () => {},
-    ),
-  )
+  const opening = closeAfterAll()
   beforeAll(async () => {
-    build = await (opening = buildStartShared({
-      bundler,
-      files,
-      entry: 'src/entry.ts',
-    }))
+    build = await opening(() =>
+      buildStartShared({
+        bundler,
+        files,
+        entry: 'src/entry.ts',
+      }),
+    )
     clientRoutes = (
       await build.client.run(
         `return Object.values(entry.getRouter().routeTree.children ?? {}).map((route) => route.options.id)`,

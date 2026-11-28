@@ -11,7 +11,8 @@ import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { runNodeProgram } from '@tanstack/compiler-test-utils/run-node'
 import { expect } from 'vitest'
-import { buildStart, callByIdPrelude, inAppRequest } from '../build-harness'
+import { callByIdPrelude, inAppRequest } from '../build-harness'
+import { buildStart } from '../build-start'
 import {
   pageEntries,
   rootDocument,

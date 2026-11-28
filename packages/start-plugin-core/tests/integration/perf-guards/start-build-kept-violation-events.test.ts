@@ -12,7 +12,7 @@ import { setFlagsFromString } from 'node:v8'
 import { runInNewContext } from 'node:vm'
 import { expect, onTestFinished, test, vi } from 'vitest'
 import { compilerStats } from '@tanstack/router-utils/compiler'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 
 const timeout = 60_000
 

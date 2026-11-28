@@ -4,16 +4,17 @@
  * fails the build at the use. One test file per bundler
  * (`start-build-builder-shapes.test.ts`, `-rsbuild.test.ts`).
  */
-import { afterAll, describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { expectDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
+import { closeAfterAll } from '../file-end'
 import {
   StartBuildError,
-  buildStart,
   buildStartShared,
   callByIdExports,
   callByIdPrelude,
   sharedBuildFailure,
 } from '../build-harness'
+import { buildStart } from '../build-start'
 import type { StartBuild, StartBundler } from '../build-harness'
 import type { RsbuildConfig } from '@rsbuild/core'
 import type { InlineConfig } from 'vite'
@@ -1228,22 +1229,19 @@ export const fn = base.handler(async () => 'MARK_SERVER_SECRET')
     /** The rows of `shared` in one build (its failure fails each of them, naming the rows it names). */
     let together: Promise<StartBuild> | undefined
     const sharedBuild = () =>
-      (together ??= buildStartShared({
-        bundler,
-        files: sharedApp(shared),
-        entry: 'src/entry.ts',
-      }).catch((error: unknown) => {
-        throw sharedBuildFailure(
-          error,
-          shared.map(({ name }, index) => ({ path: `src/c${index}/`, name })),
-        )
-      }))
-    afterAll(() =>
-      together?.then(
-        (opened) => opened.close(),
-        () => {},
-      ),
-    )
+      (together ??= openTogether(() =>
+        buildStartShared({
+          bundler,
+          files: sharedApp(shared),
+          entry: 'src/entry.ts',
+        }).catch((error: unknown) => {
+          throw sharedBuildFailure(
+            error,
+            shared.map(({ name }, index) => ({ path: `src/c${index}/`, name })),
+          )
+        }),
+      ))
+    const openTogether = closeAfterAll()
 
     test.each(rows)(
       '$name compiles',

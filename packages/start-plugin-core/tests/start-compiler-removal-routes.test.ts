@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, test } from 'vitest'
+import { closeAfterAll } from './file-end'
 import { createStartHost } from './regression-helpers'
 import type { StartHost } from './start-host'
 
@@ -89,21 +90,23 @@ export const getServerDefault = () => ({ s1: 's' })
 `
 
 let host: StartHost
+const openHost = closeAfterAll()
 beforeAll(async () => {
-  host = await createStartHost({
-    files: {
-      ...Object.fromEntries(
-        Object.entries(routes).flatMap(([name, route]) => [
-          [`src/removal-${name}-db.server.ts`, serverModule],
-          [
-            `src/routes/removal-${name}.tsx`,
-            route(`../removal-${name}-db.server`),
-          ],
-        ]),
-      ),
-    },
-  })
-  return () => host.close()
+  host = await openHost(() =>
+    createStartHost({
+      files: {
+        ...Object.fromEntries(
+          Object.entries(routes).flatMap(([name, route]) => [
+            [`src/removal-${name}-db.server.ts`, serverModule],
+            [
+              `src/routes/removal-${name}.tsx`,
+              route(`../removal-${name}-db.server`),
+            ],
+          ]),
+        ),
+      },
+    }),
+  )
 }, 60_000)
 
 describe('route files', () => {

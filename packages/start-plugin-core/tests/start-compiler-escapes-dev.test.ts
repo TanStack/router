@@ -9,14 +9,15 @@ import {
   diagnosticPosition,
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
+import { closeAfterAll } from './file-end'
 import { compileError, createStartHost } from './regression-helpers'
 import { expectCompileError } from './diagnostics'
 import type { StartHost } from './start-host'
 
 let host: StartHost
+const openHost = closeAfterAll()
 beforeAll(async () => {
-  host = await createStartHost()
-  return () => host.close()
+  host = await openHost(() => createStartHost())
 }, 60_000)
 
 test('a builder passed to unknown code fails the client module at the use', async () => {

@@ -8,11 +8,8 @@
  */
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
-import {
-  buildStart,
-  callByIdExports,
-  callByIdPrelude,
-} from '../../build-harness'
+import { callByIdExports, callByIdPrelude } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import type { RsbuildPlugin, Rspack } from '@rsbuild/core'
 
 const timeout = 120_000

@@ -7,7 +7,8 @@
  * CSS was emitted but not linked, so the first paint had no route styles).
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart, startBundlers } from '../build-harness'
+import { startBundlers } from '../build-harness'
+import { buildStart } from '../build-start'
 import {
   pageEntries,
   rootDocument,

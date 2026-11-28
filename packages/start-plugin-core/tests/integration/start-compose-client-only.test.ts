@@ -13,6 +13,7 @@
  */
 import { beforeAll, describe, expect, test } from 'vitest'
 import { BuildError } from '@tanstack/compiler-test-utils/build-harness'
+import { closeAfterAll } from '../file-end'
 import { buildStartShared, startBundlers } from '../build-harness'
 import { reportedViolations } from '../importProtection/start-apps'
 import {
@@ -60,20 +61,22 @@ describe.each(startBundlers)(
     let build: StartBuild | undefined
     let failure: BuildError | undefined
 
+    const openBuild = closeAfterAll()
     beforeAll(async () => {
       try {
-        build = await buildStartShared({
-          bundler,
-          files,
-          entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-        })
+        build = await openBuild(() =>
+          buildStartShared({
+            bundler,
+            files,
+            entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+          }),
+        )
       } catch (error) {
         if (!(error instanceof BuildError)) {
           throw error
         }
         failure = error
       }
-      return () => build?.close()
     }, timeout)
 
     const built = () => {

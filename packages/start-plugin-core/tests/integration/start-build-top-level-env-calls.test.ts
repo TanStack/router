@@ -6,7 +6,8 @@
  * none of it. SPEC J4.9, G8.
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart, startBundlers } from '../build-harness'
+import { startBundlers } from '../build-harness'
+import { buildStart } from '../build-start'
 import {
   openAppPage,
   pageEntries,

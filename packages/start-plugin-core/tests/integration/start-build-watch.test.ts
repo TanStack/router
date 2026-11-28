@@ -9,7 +9,7 @@ import path from 'node:path'
 import mdx from '@mdx-js/rollup'
 import { describe, expect, test } from 'vitest'
 
-import { buildStart } from '../build-harness'
+import { buildStart } from '../build-start'
 
 import { buildWatchSuite, files, timeout } from './start-build-watch-cases'
 import type { Plugin } from 'vite'

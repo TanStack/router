@@ -19,6 +19,7 @@ import {
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
+import { closeAfterAll } from '../../file-end'
 import {
   compileError,
   expectCompileError,
@@ -40,14 +41,14 @@ import {
 import type { HydrateHost, RenderOptions, SolidHost } from '../../render'
 
 let hosts: HydrateHost
+const openHosts = closeAfterAll()
 beforeAll(async () => {
-  hosts = await createHydrateHost()
-  return () => hosts.close()
+  hosts = await openHosts(() => createHydrateHost())
 }, 60_000)
 let solidHost: SolidHost
+const openSolidHost = closeAfterAll()
 beforeAll(async () => {
-  solidHost = await createSolidHost()
-  return () => solidHost.close()
+  solidHost = await openSolidHost(() => createSolidHost())
 }, 60_000)
 
 const head = `import { Hydrate } from '@tanstack/react-start'

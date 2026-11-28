@@ -8,7 +8,7 @@
  * `close-orchestration.mjs`).
  */
 import { expect, test } from 'vitest'
-import { buildStart } from '../build-harness'
+import { buildStart } from '../build-start'
 import type { ViteBuilder } from 'vite'
 
 const timeout = 60_000

@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, test } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
+import { closeAfterAll } from './file-end'
 import {
   callFromClient,
   callServerFnThroughCallers,
@@ -218,9 +219,9 @@ ${page('check', '\n  schema({})')}`,
 }
 
 let host: StartHost
+const openHost = closeAfterAll()
 beforeAll(async () => {
-  host = await createStartHost({ files: routeFiles() })
-  return () => host.close()
+  host = await openHost(() => createStartHost({ files: routeFiles() }))
 }, 60_000)
 
 const serverFn = `import { createServerFn } from '@tanstack/react-start'\n`

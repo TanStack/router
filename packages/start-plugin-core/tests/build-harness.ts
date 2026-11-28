@@ -87,7 +87,6 @@ import react from '@vitejs/plugin-react'
 import { pluginReact } from '@rsbuild/plugin-react'
 import { inProbeRequest, requestFiles } from './request-probe'
 import { startPlugins, startRsbuildPlugin } from './start-plugins'
-import { closeAtEnd } from './test-end'
 import type { StartFramework } from './start-plugins'
 import type {
   BuildMode,
@@ -591,20 +590,7 @@ const harnessEntries = (root: string) => ({
 })
 
 /**
- * Builds the app with Start's plugin of `bundler` (client, then SSR) and
- * describes the output of each environment. Both results share the build's
- * console messages; warnings are per environment. The app is closed when
- * the current test finishes (`StartBuild.close`).
- */
-export function buildStart(options: StartBuildOptions): Promise<StartBuild> {
-  return closeAtEnd(
-    () => buildStartShared(options),
-    (opened) => opened.close(),
-  )
-}
-
-/**
- * `buildStart` for a build several tests share: the caller closes it
+ * `buildStart` (`build-start.ts`) for a build several tests share: the caller closes it
  * (`StartBuild.close`: `afterAll`, or the close a `beforeAll` returns). A
  * build that fails is closed before the call rejects.
  */

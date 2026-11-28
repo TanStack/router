@@ -13,6 +13,7 @@
  * (`render.ts`); errors and warnings by severity and position.
  */
 import { beforeAll, describe, expect, test } from 'vitest'
+import { closeAfterAll } from '../../file-end'
 import {
   compileError,
   expectCompileError,
@@ -26,14 +27,14 @@ import {
 import type { HydrateHost, SolidHost } from '../../render'
 
 let hosts: HydrateHost
+const openHosts = closeAfterAll()
 beforeAll(async () => {
-  hosts = await createHydrateHost()
-  return () => hosts.close()
+  hosts = await openHosts(() => createHydrateHost())
 }, 60_000)
 let solidHost: SolidHost
+const openSolidHost = closeAfterAll()
 beforeAll(async () => {
-  solidHost = await createSolidHost()
-  return () => solidHost.close()
+  solidHost = await openSolidHost(() => createSolidHost())
 }, 60_000)
 
 const head = `import { Hydrate } from '@tanstack/react-start'

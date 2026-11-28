@@ -5,6 +5,7 @@ import {
   recordFile,
   shapeSetup,
 } from '@tanstack/compiler-test-utils/dead-code-shapes'
+import { closeAfterAll } from '../../file-end'
 import { createHydrateHost, expectRendersLikeSource } from '../../render'
 import type { HydrateHost } from '../../render'
 
@@ -19,9 +20,9 @@ import type { HydrateHost } from '../../render'
 // of the Start compiler in start-compiler-dead-code-shapes.test.ts.
 
 let hosts: HydrateHost
+const openHosts = closeAfterAll()
 beforeAll(async () => {
-  hosts = await createHydrateHost()
-  return () => hosts.close()
+  hosts = await openHosts(() => createHydrateHost())
 }, 60_000)
 
 for (const shape of deadCodeShapes) {

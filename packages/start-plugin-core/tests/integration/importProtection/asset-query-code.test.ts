@@ -7,7 +7,7 @@
  * (J6.1). Source: review round 3 (R3-G6-1; main compiled such ids).
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import {
   rejection,
   reportedViolations,

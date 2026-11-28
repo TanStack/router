@@ -16,7 +16,7 @@
  *   the route tree (main: `resolveId` of that import fails).
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { startServerEntryFiles } from '../../dev-server'
 import {
   distinct,

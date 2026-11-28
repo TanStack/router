@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, test } from 'vitest'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
+import { closeAfterAll } from './file-end'
 import {
   callFromClient,
   callServerFnThroughCallers,
@@ -34,9 +35,9 @@ import type { PageSettled, StartCase } from './regression-helpers'
 // in the SSR environment and in real requests, on Start's real runtime.
 
 let host: StartHost
+const openHost = closeAfterAll()
 beforeAll(async () => {
-  host = await createStartHost()
-  return () => host.close()
+  host = await openHost(() => createStartHost())
 }, 60_000)
 beforeAll(async () => {
   await host.page()

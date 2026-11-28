@@ -6,6 +6,7 @@
  * the compiled value, not the source text).
  */
 import { beforeAll, expect, test } from 'vitest'
+import { closeAfterAll } from './file-end'
 import { createStartHost } from './regression-helpers'
 import type { StartHost } from './start-host'
 
@@ -25,25 +26,27 @@ const rows = [
 ]
 
 let host: StartHost
+const openHost = closeAfterAll()
 beforeAll(async () => {
-  host = await createStartHost({
-    files: Object.fromEntries(
-      rows.map(({ file, path, component }) => [
-        file,
-        `import { createFileRoute } from '@tanstack/react-router'
+  host = await openHost(() =>
+    createStartHost({
+      files: Object.fromEntries(
+        rows.map(({ file, path, component }) => [
+          file,
+          `import { createFileRoute } from '@tanstack/react-router'
 import { createIsomorphicFn, createServerOnlyFn } from '@tanstack/react-start'
 export const Route = createFileRoute('${path}')({
   loader: () => 'loader data',
   component: ${component},
 })
 `,
-      ]),
-    ),
-    start: {
-      router: { codeSplittingOptions: { defaultBehavior: [['loader']] } },
-    },
-  })
-  return () => host.close()
+        ]),
+      ),
+      start: {
+        router: { codeSplittingOptions: { defaultBehavior: [['loader']] } },
+      },
+    }),
+  )
 }, 60_000)
 
 test.each(rows)(

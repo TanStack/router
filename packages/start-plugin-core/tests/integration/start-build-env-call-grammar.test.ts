@@ -8,7 +8,8 @@
 import ts from 'typescript'
 import { parseSync } from 'vite'
 import { describe, expect, test } from 'vitest'
-import { buildStart, startBundlers } from '../build-harness'
+import { startBundlers } from '../build-harness'
+import { buildStart } from '../build-start'
 import { nestedUnderWrappers } from '../compiler-inputs'
 import type { ESTree } from 'vite'
 

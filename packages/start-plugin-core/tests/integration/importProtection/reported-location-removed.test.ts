@@ -7,7 +7,7 @@
  * a module of one app per channel.
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import {
   distinct,
   locationIn,

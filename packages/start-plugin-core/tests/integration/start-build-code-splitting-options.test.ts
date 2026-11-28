@@ -9,12 +9,12 @@ import { problems } from '@tanstack/compiler-test-utils/diagnostic-channel'
 import { expectNoDiagnostic } from '@tanstack/compiler-test-utils/diagnostics'
 import { loadedModulesExpression } from '@tanstack/compiler-test-utils/importers'
 import {
-  buildStart,
   callByIdExports,
   callByIdPrelude,
   requestsOfPrelude,
   startBundlers,
 } from '../build-harness'
+import { buildStart } from '../build-start'
 import { routeFiles } from './start-build-route-app'
 import type { StartBuild } from '../build-harness'
 

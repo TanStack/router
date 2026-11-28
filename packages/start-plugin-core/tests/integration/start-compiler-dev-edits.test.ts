@@ -12,6 +12,7 @@
  * edits).
  */
 import { beforeAll, describe, expect, test } from 'vitest'
+import { closeAfterAll } from '../file-end'
 import { factoryEdits } from '../compiler-inputs'
 import {
   createStartHost,
@@ -63,9 +64,9 @@ export const Route = createFileRoute('/edit-probe')({
  */
 function describeHost(files: Record<string, string>) {
   let host: StartHost
+  const openHost = closeAfterAll()
   beforeAll(async () => {
-    host = await createStartHost({ files })
-    return () => host.close()
+    host = await openHost(() => createStartHost({ files }))
   }, 60_000)
   beforeAll(async () => {
     await host.page()

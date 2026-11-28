@@ -6,7 +6,7 @@
  * Source: review-hotspot3-merged-gemini.md, finding 3B.
  */
 import { describe, expect, test } from 'vitest'
-import { buildStart } from '../../build-harness'
+import { buildStart } from '../../build-start'
 import { rsbuildEntries } from '../route-css-cases'
 
 const timeout = 120_000

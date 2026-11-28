@@ -16,7 +16,8 @@
  * compiler and read its imports. Where a surviving use is reported:
  * `reported-location.test.ts`.
  */
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { beforeAll, describe, expect, test } from 'vitest'
+import { closeAfterAll } from '../../file-end'
 import {
   inDevRequest,
   startDevServerShared,
@@ -141,25 +142,21 @@ describe('vite dev', () => {
    * the request a handler runs in (`inDevRequest`).
    */
   let server: DevServer
-  let opening: Promise<{ close: () => Promise<void> }> | undefined
-  afterAll(() =>
-    opening?.then(
-      (opened) => opened.close(),
-      () => {},
-    ),
-  )
+  const opening = closeAfterAll()
   beforeAll(async () => {
-    server = await (opening = startDevServerShared({
-      files: {
-        ...startRequestFiles,
-        ...files,
-        'src/entry.ts': `${files['src/entry.ts']}\nexport { getRouter } from './router'\n`,
-      },
-      start: {
-        router: { entry: 'entry.ts' },
-        importProtection: recorded.importProtection,
-      },
-    }))
+    server = await opening(() =>
+      startDevServerShared({
+        files: {
+          ...startRequestFiles,
+          ...files,
+          'src/entry.ts': `${files['src/entry.ts']}\nexport { getRouter } from './router'\n`,
+        },
+        start: {
+          router: { entry: 'entry.ts' },
+          importProtection: recorded.importProtection,
+        },
+      }),
+    )
     await server.load('/src/entry.ts')
     await server.import('/src/entry.ts', 'ssr')
   }, timeout)

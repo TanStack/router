@@ -17,6 +17,7 @@ import {
   findDiagnostics,
 } from '@tanstack/compiler-test-utils/diagnostics'
 import { expectNotLoaded } from '@tanstack/compiler-test-utils/importers'
+import { closeAfterAll } from './file-end'
 import {
   callFromClient,
   compileError,
@@ -28,9 +29,9 @@ import type { StartHost } from './start-host'
 import type { StartCase } from './regression-helpers'
 
 let host: StartHost
+const openHost = closeAfterAll()
 beforeAll(async () => {
-  host = await createStartHost()
-  return () => host.close()
+  host = await openHost(() => createStartHost())
 }, 60_000)
 
 const DB = `export const db = { x: () => 'from the server', y: () => 'more from the server' }\n`

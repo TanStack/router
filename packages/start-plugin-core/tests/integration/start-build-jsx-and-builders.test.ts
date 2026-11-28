@@ -9,6 +9,7 @@
  *   `.middleware([...])`.
  */
 import { beforeAll, expect, test } from 'vitest'
+import { closeAfterAll } from '../file-end'
 import {
   buildStartShared,
   callByIdExports,
@@ -64,12 +65,14 @@ ${callByIdExports}`,
 
 // One build for both rows.
 let build: StartBuild
+const openBuild = closeAfterAll()
 beforeAll(async () => {
-  build = await buildStartShared({
-    files,
-    entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
-  })
-  return () => build.close()
+  build = await openBuild(() =>
+    buildStartShared({
+      files,
+      entry: { client: 'src/client-entry.ts', ssr: 'src/ssr-entry.ts' },
+    }),
+  )
 }, timeout)
 
 test(
